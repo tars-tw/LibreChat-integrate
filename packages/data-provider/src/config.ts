@@ -1765,6 +1765,8 @@ export type TStartupConfig = {
     /** Whether LDAP uses username vs. email */
     username?: boolean;
   };
+  /** Whether login is delegated to the pwc_tars backend (username-based) */
+  tarsAuth?: boolean;
   serverDomain: string;
   emailLoginEnabled: boolean;
   registrationEnabled: boolean;
