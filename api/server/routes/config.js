@@ -87,6 +87,7 @@ function buildPreLoginPayload() {
     !!process.env.SAML_SESSION_SECRET;
 
   const ldap = getLdapConfig();
+  const tarsAuth = !!process.env.TARS_AUTH_URL;
 
   /** @type {Partial<TStartupConfig>} */
   const payload = {
@@ -110,10 +111,11 @@ function buildPreLoginPayload() {
     samlImageUrl: process.env.SAML_IMAGE_URL,
     serverDomain: process.env.DOMAIN_SERVER || 'http://localhost:3080',
     emailLoginEnabled,
-    registrationEnabled: !ldap?.enabled && isEnabled(process.env.ALLOW_REGISTRATION),
+    tarsAuth,
+    registrationEnabled: !tarsAuth && !ldap?.enabled && isEnabled(process.env.ALLOW_REGISTRATION),
     socialLoginEnabled: isEnabled(process.env.ALLOW_SOCIAL_LOGIN),
     emailEnabled: checkEmailConfig(),
-    passwordResetEnabled,
+    passwordResetEnabled: !tarsAuth && passwordResetEnabled,
     twoFactorAuthenticationRequired: isEnabled(process.env.ENFORCE_TWO_FACTOR_AUTHENTICATION),
   };
 
