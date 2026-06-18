@@ -13,3 +13,4 @@ export * from './openidRoleSync';
 export * from './userDocCache';
 export * from './reuse';
 export * from './openid/index';
+export * from './tars';
