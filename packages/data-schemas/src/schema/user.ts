@@ -83,6 +83,9 @@ const userSchema: Schema<IUser> = new Schema<IUser>(
     ldapId: {
       type: String,
     },
+    tarsId: {
+      type: String,
+    },
     githubId: {
       type: String,
     },
@@ -213,6 +216,7 @@ const oAuthIdFields = [
   'openidId',
   'samlId',
   'ldapId',
+  'tarsId',
   'githubId',
   'discordId',
   'appleId',
