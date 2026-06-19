@@ -17,6 +17,7 @@ import type { TMinimalFeedback } from './feedback';
 import type { ContentTypes } from './types/runs';
 
 export * from './schemas';
+export * from './types/tars';
 
 export type TMessages = TMessage[];
 

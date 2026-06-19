@@ -3,6 +3,7 @@ import { useRecoilValue } from 'recoil';
 import { getConfigDefaults, PermissionTypes, Permissions } from 'librechat-data-provider';
 import { OpenSidebar, PresetsMenu, NewChat, HeaderMenu } from './Menus';
 import ModelSelector from './Menus/Endpoints/ModelSelector';
+import DomainSelector from './Menus/Tars/DomainSelector';
 import { useGetStartupConfig } from '~/data-provider';
 import ExportAndShareMenu from './ExportAndShareMenu';
 import BookmarkMenu from './Menus/BookmarkMenu';
@@ -60,6 +61,7 @@ function Header() {
         )}
       >
         <ModelSelector startupConfig={startupConfig} />
+        <DomainSelector />
         {interfaceConfig.presets === true && interfaceConfig.modelSelect === true && (
           <PresetsMenu />
         )}
