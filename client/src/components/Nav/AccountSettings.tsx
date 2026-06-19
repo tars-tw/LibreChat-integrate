@@ -3,8 +3,10 @@ import { useSetAtom } from 'jotai';
 import { useSetRecoilState } from 'recoil';
 import * as Menu from '@ariakit/react/menu';
 import { GearIcon, Avatar } from '@librechat/client';
+import { SystemRoles } from 'librechat-data-provider';
 import {
   Archive,
+  BrainCircuit,
   ChevronRight,
   CircleHelp,
   Files,
@@ -18,6 +20,7 @@ import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/Archiv
 import { filesDialogTriggerAtom, showFilesDialogAtom } from '~/store/filesDialog';
 import useDirection, { inlineSide } from '~/hooks/Nav/useDirection';
 import { useGetStartupConfig } from '~/data-provider';
+import TarsAdminDialog from '~/components/Admin/Tars/TarsAdminDialog';
 import { useAuthContext } from '~/hooks/AuthContext';
 import { openInNewTab, policyUrls } from '~/utils';
 import { settingsOpenAtom } from './Settings';
@@ -108,9 +111,11 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
   const setFilesDialogTrigger = useSetAtom(filesDialogTriggerAtom);
   const setShowShortcutsDialog = useSetRecoilState(store.showShortcutsDialog);
   const [showArchived, setShowArchived] = useState(false);
+  const [showTarsAdmin, setShowTarsAdmin] = useState(false);
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
   /** The collapsed rail opens the menu beside it, toward the content. */
   const railSide = inlineSide(useDirection(), 'end');
+  const isTarsAdmin = user?.role === SystemRoles.ADMIN && user?.provider === 'tars';
 
   return (
     <Menu.MenuProvider placement={collapsed ? `${railSide}-end` : undefined}>
@@ -174,6 +179,12 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
           <Files className="icon-md" aria-hidden="true" />
           {localize('com_nav_my_files')}
         </Menu.MenuItem>
+        {isTarsAdmin && (
+          <Menu.MenuItem onClick={() => setShowTarsAdmin(true)} className="select-item text-sm">
+            <BrainCircuit className="icon-md" aria-hidden="true" />
+            {localize('com_nav_tars_admin')}
+          </Menu.MenuItem>
+        )}
         <Menu.MenuItem
           onClick={() => setShowSettings(true)}
           className="select-item text-sm"
@@ -192,6 +203,13 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
         <ArchivedChatsModal
           open={showArchived}
           onOpenChange={setShowArchived}
+          triggerRef={accountSettingsButtonRef}
+        />
+      )}
+      {showTarsAdmin && (
+        <TarsAdminDialog
+          open={showTarsAdmin}
+          onOpenChange={setShowTarsAdmin}
           triggerRef={accountSettingsButtonRef}
         />
       )}
