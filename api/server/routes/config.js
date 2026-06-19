@@ -4,6 +4,7 @@ const {
   isLangfuseConnectionAvailable,
   isLangfuseFanoutEnabled,
   getBalanceConfig,
+  getTarsSsoStatus,
   getCloudFrontConfig,
   getAppConfigOptionsFromUser,
   resolveBuildInfo,
@@ -32,6 +33,23 @@ const publicSharedLinksEnabled =
 
 const sharePointFilePickerEnabled = isEnabled(process.env.ENABLE_SHAREPOINT_FILEPICKER);
 const openidReuseTokens = isEnabled(process.env.OPENID_REUSE_TOKENS);
+
+const TARS_SSO_TTL_MS = 60000;
+let tarsSsoCache = null;
+let tarsSsoCacheAt = 0;
+/** Cached pwc_tars SSO status for the login page; refreshed at most once per TTL. */
+const resolveTarsSso = async () => {
+  if (!process.env.TARS_AUTH_URL) {
+    return undefined;
+  }
+  const now = Date.now();
+  if (tarsSsoCache && now - tarsSsoCacheAt < TARS_SSO_TTL_MS) {
+    return tarsSsoCache;
+  }
+  tarsSsoCache = await getTarsSsoStatus();
+  tarsSsoCacheAt = now;
+  return tarsSsoCache;
+};
 
 /**
  * Resolve build metadata eagerly at module load so the first `/api/config`
@@ -217,10 +235,13 @@ router.get('/', async function (req, res) {
     if (!req.user) {
       const tenantId = getTenantId();
       const baseConfig = await getAppConfig(tenantId ? { tenantId } : { baseOnly: true });
+      const tarsSso = await resolveTarsSso();
 
       /** @type {Partial<TStartupConfig>} */
       const payload = {
         ...preLoginPayload,
+        ...(req.query.context === 'share' ? publicSharePayload : {}),
+        ...(tarsSso ? { tarsSso } : {}),
         socialLogins: baseConfig?.registration?.socialLogins ?? defaultSocialLogins,
         turnstile: baseConfig?.turnstileConfig,
         ...(rum ? { rum } : {}),
