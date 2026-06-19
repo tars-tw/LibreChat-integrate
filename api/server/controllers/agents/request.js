@@ -42,12 +42,14 @@ const {
   saveMessage,
   getMessages,
   getConvo,
+  saveConvo,
   isAgentTriggerPrincipalActive,
   isSubagentOwnerAdmissible,
 } = require('~/models');
 const {
   acquireEventChildGenerationLease,
 } = require('~/server/services/Endpoints/agents/eventChildLease');
+const { mirrorChatToTars } = require('~/server/services/Tars/mirror');
 const {
   GENERATION_PROTOCOL_HEADER,
   GENERATION_PROTOCOL_V2,
@@ -1043,6 +1045,18 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
     parentMessageId:
       editedContent != null ? preallocatedResponseMessageId : preallocatedUserMessageId,
   });
+  // Capture any existing pwc_tars conversation mapping BEFORE generation: the agent's
+  // per-turn conversation save overwrites custom fields like tarsConversationId, so the
+  // mirror can't read it reliably afterwards.
+  let existingTarsConversationId;
+  if (!isNewConvo && req.user?.tarsId) {
+    try {
+      const priorConvo = await getConvo(userId, conversationId);
+      existingTarsConversationId = priorConvo?.tarsConversationId ?? undefined;
+    } catch {
+      existingTarsConversationId = undefined;
+    }
+  }
 
   let client = null;
   let jobCreatedAt;
@@ -1990,6 +2004,40 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
               ? 'Terminal response could not be persisted as unfinished'
               : 'Response message could not be persisted before terminal publication',
           );
+        }
+
+        // Persist the selected pwc_tars domain on the conversation itself. The agent
+        // client's own convo save (already awaited above) doesn't carry domain_id, so
+        // merge it in here. Best-effort; skip temporary chats.
+        const selectedDomainId = req.body?.domain_id;
+        if (selectedDomainId && !req.body?.isTemporary) {
+          saveConvo(
+            reqCtx,
+            { conversationId, domain_id: selectedDomainId },
+            { context: 'api/server/controllers/agents/request.js - persist domain_id' },
+          ).catch((err) => logger.error('[AgentController] Failed to persist domain_id', err));
+        }
+
+        // Best-effort, non-blocking mirror of this turn into pwc_tars (LibreChat → pwc_tars).
+        // Agent responses live in `content` (array of parts); `text` is usually empty.
+        if (!responseIsUnfinished && !req.body?.isTemporary) {
+          const responseText =
+            response?.text ||
+            (Array.isArray(response?.content)
+              ? response.content
+                  .filter((part) => part?.type === 'text' && part.text)
+                  .map((part) => part.text)
+                  .join('\n')
+              : '');
+          mirrorChatToTars(req, {
+            conversationId,
+            existingTarsConversationId,
+            title: conversation?.title,
+            model: conversation?.model ?? req.body?.model,
+            domainId: selectedDomainId ?? conversation?.domain_id,
+            query: text,
+            response: responseText,
+          });
         }
 
         // If the user stopped this turn — or an empty preempt boundary truncated
