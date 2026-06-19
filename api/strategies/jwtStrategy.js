@@ -51,6 +51,10 @@ const jwtLogin = () =>
           user.id = user._id.toString();
           /** Absent on the full doc means local user; null skips getUserPrincipals' fallback lookup */
           user.idOnTheSource ??= null;
+          if (user.tarsStatus && user.tarsStatus !== 'active') {
+            logger.warn(`[jwtLogin] Access denied for non-active tars user: ${user.id}`);
+            return done(null, false);
+          }
           if (!user.role) {
             user.role = SystemRoles.USER;
             await runAsSystem(() => updateUser(user.id, { role: user.role }));
