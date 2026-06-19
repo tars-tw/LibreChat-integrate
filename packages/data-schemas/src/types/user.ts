@@ -1,5 +1,6 @@
 import type {
   TUserFavorite,
+  TTarsMenuItem,
   RefillIntervalUnit,
   StatefulCodeEnvironment,
 } from 'librechat-data-provider';
@@ -30,6 +31,11 @@ export interface IUser extends Document {
   samlId?: string;
   ldapId?: string;
   tarsId?: string;
+  tarsStatus?: string;
+  tarsRoleId?: number;
+  tarsGroupIds?: string;
+  tarsMenuKeys?: string[];
+  tarsMenuItems?: TTarsMenuItem[];
   githubId?: string;
   discordId?: string;
   appleId?: string;
