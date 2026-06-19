@@ -68,6 +68,7 @@ export * from './types/subagents';
 export * from './types/background';
 export * from './types/pullRequest';
 export * from './types/queuedTurns';
+export * from './types/tars';
 /* access permissions */
 export * from './accessPermissions';
 /* query/mutation keys */
