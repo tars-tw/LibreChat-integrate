@@ -1,5 +1,6 @@
 import type {
   TUserFavorite,
+  TTarsMenuItem,
   RefillIntervalUnit,
   BalanceRefillMode,
   StatefulCodeEnvironment,
@@ -30,6 +31,12 @@ export interface IUser extends Document {
   openidId?: string;
   samlId?: string;
   ldapId?: string;
+  tarsId?: string;
+  tarsStatus?: string;
+  tarsRoleId?: number;
+  tarsGroupIds?: string;
+  tarsMenuKeys?: string[];
+  tarsMenuItems?: TTarsMenuItem[];
   githubId?: string;
   discordId?: string;
   appleId?: string;
