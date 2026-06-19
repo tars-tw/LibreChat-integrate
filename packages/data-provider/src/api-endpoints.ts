@@ -332,6 +332,13 @@ export const agentQueuedTurnsByConversation = (
 };
 export const agentQueuedTurn = (queuedTurnId: string) =>
   `${agentQueuedTurnsRoot}/${encodeURIComponent(queuedTurnId)}`;
+export const tarsDomains = () => `${BASE_URL}/api/tars/domains`;
+export const tarsDomain = (id: string | number) => `${BASE_URL}/api/tars/domains/${id}`;
+export const tarsDomainPrepareData = () => `${BASE_URL}/api/tars/domains/admin/prepare-data`;
+export const tarsKnowledgeBases = () => `${BASE_URL}/api/tars/knowledge-bases`;
+export const tarsKnowledgeBase = (id: string) => `${BASE_URL}/api/tars/knowledge-bases/${id}`;
+export const tarsKnowledgeBaseModels = () => `${BASE_URL}/api/tars/knowledge-bases/models`;
+export const tarsKnowledgeBaseUpload = () => `${BASE_URL}/api/tars/knowledge-bases/upload`;
 
 export const mcp = {
   tools: `${BASE_URL}/api/mcp/tools`,
