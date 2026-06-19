@@ -473,6 +473,7 @@
   "com_auth_two_factor_setup_finalize_error": "We could not finish signing you in. Your two-factor setup is saved. Try completing setup again.",
   "com_auth_two_factor_setup_required": "Two-Factor Authentication Required",
   "com_auth_two_factor_setup_required_description": "Your administrator requires two-factor authentication. Set it up before continuing.",
+  "com_auth_use_ldap_sso": "Sign in with SSO (LDAP)",
   "com_auth_username": "Username (optional)",
   "com_auth_username_max_length": "Username must be less than 20 characters",
   "com_auth_username_min_length": "Username must be at least 2 characters",
