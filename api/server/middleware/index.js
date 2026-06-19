@@ -16,6 +16,8 @@ const requireLocalAuth = require('./requireLocalAuth');
 const canDeleteAccount = require('./canDeleteAccount');
 const accessResources = require('./accessResources');
 const requireTarsAuth = require('./requireTarsAuth');
+const requireTarsAdmin = require('./requireTarsAdmin');
+const injectTarsDomain = require('./injectTarsDomain');
 const requireLdapAuth = require('./requireLdapAuth');
 const abortMiddleware = require('./abortMiddleware');
 const checkInviteUser = require('./checkInviteUser');
@@ -52,6 +54,8 @@ module.exports = {
   setTwoFactorTempUser,
   checkInviteUser,
   requireTarsAuth,
+  requireTarsAdmin,
+  injectTarsDomain,
   requireLdapAuth,
   requireLocalAuth,
   requireSameOrigin,
