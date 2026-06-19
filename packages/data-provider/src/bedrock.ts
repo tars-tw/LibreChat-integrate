@@ -410,6 +410,7 @@ export const bedrockInputSchema = s.tConversationSchema
   .pick({
     /* LibreChat params; optionType: 'conversation' */
     chatProjectId: true,
+    domain_id: true,
     modelLabel: true,
     promptPrefix: true,
     resendFiles: true,
