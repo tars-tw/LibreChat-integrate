@@ -133,6 +133,10 @@ export const conversationPreset: {
     }[];
     default: undefined;
   };
+  /* pwc_tars specialized brain */
+  domain_id: {
+    type: StringConstructor;
+  };
   /* assistants */
   assistant_id: {
     type: StringConstructor;
@@ -333,6 +337,10 @@ export const conversationPreset: {
       },
     ],
     default: undefined,
+  },
+  /* pwc_tars specialized brain */
+  domain_id: {
+    type: String,
   },
   /* assistants */
   assistant_id: {
