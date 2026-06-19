@@ -330,6 +330,10 @@ const convoSchema: Schema<IConversation> = new Schema(
       default: undefined,
       select: false,
     },
+    /** Linked pwc_tars conversation id (LibreChat → pwc_tars mirror mapping) */
+    tarsConversationId: {
+      type: String,
+    },
     tags: {
       type: [String],
       default: [],
