@@ -41,6 +41,10 @@ const requireJwtAuth = require('~/server/middleware/requireJwtAuth');
 const { importConversations } = require('~/server/utils/import');
 const subagentThreadTaskStore = require('~/server/services/Endpoints/agents/subagentThreadStore');
 const getLogStores = require('~/cache/getLogStores');
+const {
+  mirrorDeleteManyToTars,
+  collectTarsConversationIds,
+} = require('~/server/services/Tars/mirror');
 const db = require('~/models');
 
 const assistantClients = {
@@ -439,6 +443,12 @@ router.delete('/', configMiddleware, async (req, res) => {
     }
   }
 
+  // Capture the linked pwc_tars conversation ids BEFORE deletion so we can mirror the delete.
+  let tarsConversationIds = [];
+  if (req.user?.tarsId) {
+    tarsConversationIds = await collectTarsConversationIds(req.user.id, filter);
+  }
+
   try {
     const tenantId =
       typeof req.user.tenantId === 'string' && req.user.tenantId !== ''
@@ -517,6 +527,8 @@ router.delete('/', configMiddleware, async (req, res) => {
         deletedConversationIds.map((id) => deleteConvoSharedLinksWithCleanup(req.user.id, id)),
       );
     }
+    // Best-effort, non-blocking mirror of the deletion into pwc_tars (LibreChat → pwc_tars).
+    mirrorDeleteManyToTars(req, tarsConversationIds);
     res.status(201).json(dbResponse);
   } catch (error) {
     logger.error('Error clearing conversations', error);
@@ -525,6 +537,12 @@ router.delete('/', configMiddleware, async (req, res) => {
 });
 
 router.delete('/all', configMiddleware, async (req, res) => {
+  // Capture all linked pwc_tars conversation ids BEFORE deletion to mirror the clear-all.
+  let tarsConversationIds = [];
+  if (req.user?.tarsId) {
+    tarsConversationIds = await collectTarsConversationIds(req.user.id, {});
+  }
+
   try {
     const tenantId =
       typeof req.user.tenantId === 'string' && req.user.tenantId !== ''
@@ -543,6 +561,8 @@ router.delete('/all', configMiddleware, async (req, res) => {
     const dbResponse = fencedDeletion.result;
     await db.deleteToolCalls(req.user.id);
     await deleteAllSharedLinksWithCleanup(req.user.id);
+    // Best-effort, non-blocking mirror of the clear-all into pwc_tars (LibreChat → pwc_tars).
+    mirrorDeleteManyToTars(req, tarsConversationIds);
     res.status(201).json(dbResponse);
   } catch (error) {
     logger.error('Error clearing conversations', error);
