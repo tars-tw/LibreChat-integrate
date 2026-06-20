@@ -149,3 +149,60 @@ npm run frontend:dev
 ```
 之後就只在 `client/` 和 `/api/` 改，幾乎都自動更新；只有動到 `packages/*` 才回去重建 + 重啟前端。
 要交付/驗收正式版時，再 `npm run frontend` + `npm run backend` 用 `:3080` 看一次。
+
+---
+
+## 8. Langflow 整合
+
+把 `~/Downloads/langflow`（本機跑在 `http://localhost:7860`）整進聊天室。**純設定 + 少量後端程式，沒有改 `packages/*`。**
+
+### 8.1 三個入口（在 LibreChat 裡長這樣）
+
+| 入口 | 位置 | 用途 |
+|---|---|---|
+| **內嵌 Langflow 頁面** | 左側 rail 的 **Langflow**（流程圖示）→ 全頁 `/langflow` iframe | 在 LibreChat 裡直接編輯 Langflow flow |
+| **每個 flow 一個共享 Agent** | endpoint 切 **Agents** → 選 `Langflow · <flow 名>` | 明確指定用哪個 flow；對話會顯示 tool-call 卡片 |
+| ~~一般聊天的 MCP「Langflow」開關~~ | 已用 `chatMenu: false` 隱藏 | 避免「所有 flow 一起、模型自動挑」造成混淆 |
+
+> Agent 屬於 **Agents endpoint**，不在 `gpt-5.4-mini` 那層。共享的 agent 出現在 **Agents 市場**（「My Agents」只列你自己擁有的）。
+
+### 8.2 設定檔（兩個，都被 .gitignore，每台機器自己建）
+
+| 檔案 | 內容 | 範本 |
+|---|---|---|
+| `.env` | `LANGFLOW_API_KEY=<Langflow 的 API key>` | `.env.example` |
+| `librechat.yaml` | `mcpServers.langflow`（SSE 指向 `/api/v1/mcp/project/<PROJECT_ID>/sse`，帶 `x-api-key`）、`mcpSettings.allowedAddresses: ['localhost:7860']`、`endpoints.agents.capabilities` | `librechat.example.yaml` |
+
+> `localhost` 會被 LibreChat 當 SSRF 目標擋掉，**一定要**把 `localhost:7860`（Docker 內跑後端則 `host.docker.internal:7860`）加進 `mcpSettings.allowedAddresses`，否則 MCP 連不上。
+
+### 8.3 自動同步：新增 flow → 馬上出現（零腳本）
+
+機制在 `api/server/services/langflow/reconcile.js`：**每次有人打開 agent 清單**，後端就把 Langflow 專案裡 **已標 MCP 曝露（`mcp_enabled`）** 的 flow 對齊成「公開、admin 擁有」的 agent。
+
+- **新增 flow 流程**：在 Langflow 建好 flow → 在該 project 的 MCP 設定**打開該 flow 的開關** → 回 LibreChat 打開 Agents 選單，它就在了。**不用跑任何腳本。**
+- **只新增、不刪除**：在 Langflow 停用/改名 flow，舊 agent 不會自動消失，需手動刪。
+- 編排模型預設 `gpt-5.4-mini`（走你自己帳號的 OpenAI key，因為 `OPENAI_API_KEY=user_provided`）。
+
+### 8.4 可選 env 覆寫（搬機 / 客製，全都有預設、非必填）
+
+寫在 `.env`：
+
+| 變數 | 預設 | 用途 |
+|---|---|---|
+| `LANGFLOW_AGENT_MODEL` | `gpt-5.4-mini` | agent 編排模型 |
+| `LANGFLOW_AGENT_PROVIDER` | `openAI` | 編排 endpoint（**注意大小寫是 `openAI`**）|
+| `LANGFLOW_AGENT_OWNER_EMAIL` | 第一個 ADMIN | 共享 agent 的擁有者 |
+| `LANGFLOW_BASE_URL` / `LANGFLOW_PROJECT_ID` | 從 `librechat.yaml` 解析 | 直接指定 Langflow 來源；**CONFIG_PATH 為遠端 URL 時必填**（yaml 讀不到） |
+| `VITE_LANGFLOW_URL` | `http://localhost:7860` | 內嵌頁 iframe 來源（**build-time**，改了要重 build 前端） |
+
+### 8.5 搬到其他機器要改的環境值
+
+1. `.env`：`LANGFLOW_API_KEY`（該環境的 key）。
+2. `librechat.yaml`：`mcpServers.langflow.url` 的 **host + `<PROJECT_ID>`**、`mcpSettings.allowedAddresses` 的 host:port。
+3. （選）`.env` 的 `VITE_LANGFLOW_URL`（build 前設好）。
+4. build + 起 backend/frontend → 第一次有人打開 Agents 選單，agent 自動建好。**不需要跑 seed 腳本。**
+
+### 8.6 常見問題
+
+- **Agents 選單看不到 Langflow agent** → 多半是舊快取，硬重新整理 **Cmd+Shift+R**；並確認 endpoint 切到 **Agents 市場**（My Agents 只列自己擁有的）。
+- **內嵌 Langflow 頁面一片空白** → Langflow 服務（`:7860`）沒跑，或被反向代理加了 `X-Frame-Options` 擋 iframe。
