@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRecoilValue } from 'recoil';
-import { MessagesSquare } from 'lucide-react';
+import { MessagesSquare, Workflow } from 'lucide-react';
 import { useUserKeyQuery } from 'librechat-data-provider/react-query';
 import { getConfigDefaults, getEndpointField } from 'librechat-data-provider';
 import type { TEndpointsConfig } from 'librechat-data-provider';
@@ -13,6 +14,7 @@ import store from '~/store';
 const defaultInterface = getConfigDefaults().interface;
 
 export default function useUnifiedSidebarLinks() {
+  const navigate = useNavigate();
   /** Selector instead of the full conversation atom: the links only depend on
    * the endpoint, so parameter edits and other conversation writes stay out. */
   const endpoint = useRecoilValue(store.conversationEndpointByIndex(0)) ?? undefined;
@@ -59,8 +61,16 @@ export default function useUnifiedSidebarLinks() {
       Component: ConversationsSection,
     };
 
-    return [conversationLink, ...sideNavLinks];
-  }, [sideNavLinks]);
+    const langflowLink: NavLink = {
+      title: 'com_ui_langflow',
+      label: '',
+      icon: Workflow,
+      id: 'langflow',
+      onClick: () => navigate('/langflow'),
+    };
+
+    return [conversationLink, ...sideNavLinks, langflowLink];
+  }, [sideNavLinks, navigate]);
 
   return links;
 }
