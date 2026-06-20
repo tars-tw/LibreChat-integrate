@@ -386,6 +386,23 @@ actions:
 #       - -y
 #       - "mcp-obsidian"
 #       - /path/to/obsidian/vault
+#   # Langflow integration: exposes a Langflow project's flows as callable tools.
+#   # Which flows appear is controlled on the Langflow side (per-flow `mcp_enabled`
+#   # toggle in the project's MCP settings). Get the project id from the Langflow URL
+#   # or `GET /api/v1/projects/`. The API key is read from .env (LANGFLOW_API_KEY).
+#   # NOTE: localhost is treated as an SSRF target — add `localhost:7860` (or
+#   # `host.docker.internal:7860` when LibreChat runs in Docker) to
+#   # `mcpSettings.allowedAddresses` above, otherwise the connection is blocked.
+#   langflow:
+#     type: sse
+#     url: 'http://localhost:7860/api/v1/mcp/project/<PROJECT_ID>/sse'
+#     headers:
+#       x-api-key: '${LANGFLOW_API_KEY}'
+#     title: 'Langflow'
+#     description: 'Langflow flows exposed as callable tools'
+#     timeout: 60000
+#     chatMenu: true
+#     startup: true
 
 # Definition of custom endpoints
 endpoints:
