@@ -84,6 +84,7 @@ const { resizeAvatar } = require('~/server/services/Files/images/avatar');
 const { getFileStrategy } = require('~/server/utils/getFileStrategy');
 const { filterFile } = require('~/server/services/Files/process');
 const { getCachedTools } = require('~/server/services/Config');
+const { reconcileLangflowAgents } = require('~/server/services/langflow/reconcile');
 const {
   createMCPPermissionContext,
   resolveConfigServers,
@@ -1721,6 +1722,7 @@ const deleteAgentHandler = async (req, res) => {
  */
 const getListAgentsHandler = async (req, res) => {
   try {
+    await reconcileLangflowAgents();
     const userId = req.user.id;
     const { category, search, limit = 100, cursor, promoted } = req.query;
     let requiredPermission = req.query.requiredPermission;
