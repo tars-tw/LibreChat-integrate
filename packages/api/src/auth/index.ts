@@ -1,4 +1,5 @@
 export * from './domain';
+export { hostPortFromUrl } from './allowedAddresses';
 export * from './openid';
 export * from './saml';
 export * from './proxy';
