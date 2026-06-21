@@ -13,6 +13,7 @@ const {
   ioredisClient,
   cacheConfig,
   standardCache,
+  hostPortFromUrl,
 } = require('@librechat/api');
 const { setCachedTools } = require('./getCachedTools');
 const { loadAndFormatTools } = require('~/server/services/start/tools');
@@ -38,6 +39,29 @@ async function invalidateCodeEnvironmentConfigCache(tenantId) {
   await getCodeEnvironmentRegistry().invalidateAccessibleConfigurations(tenantId);
 }
 
+/**
+ * Exempts the local Langflow service from the MCP SSRF block by deriving its `host:port` from
+ * `VITE_LANGFLOW_URL` (the single Langflow URL source of truth) and adding it to
+ * `mcpSettings.allowedAddresses`. Injected here at base-config load so every `getAppConfig` consumer
+ * — the MCP connection registry AND the per-tool domain check in MCP.js — sees it from one place,
+ * keeping the host out of `librechat.yaml` (whose `allowedAddresses` entries aren't env-interpolated).
+ * No-op when the env var is unset or the host is already listed.
+ * @param {Awaited<ReturnType<typeof AppService>>} appConfig
+ */
+function withLangflowAllowedAddress(appConfig) {
+  const entry = hostPortFromUrl(process.env.VITE_LANGFLOW_URL || process.env.LANGFLOW_BASE_URL);
+  if (!entry || !appConfig) {
+    return appConfig;
+  }
+  const mcpSettings = appConfig.mcpSettings || {};
+  const existing = Array.isArray(mcpSettings.allowedAddresses) ? mcpSettings.allowedAddresses : [];
+  if (existing.includes(entry)) {
+    return appConfig;
+  }
+  appConfig.mcpSettings = { ...mcpSettings, allowedAddresses: [...existing, entry] };
+  return appConfig;
+}
+
 const loadBaseConfig = async (mode) => {
   /** @type {TCustomConfig} */
   const config = (await loadCustomConfig(true, { mode })) ?? {};
@@ -47,7 +71,9 @@ const loadBaseConfig = async (mode) => {
     adminIncluded: config.includedTools,
     directory: paths.structuredTools,
   });
-  return AppService({ config, paths, systemTools, expandCustomEndpoint });
+  return withLangflowAllowedAddress(
+    await AppService({ config, paths, systemTools, expandCustomEndpoint }),
+  );
 };
 
 const appConfigService = createAppConfigService({
