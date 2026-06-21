@@ -2,12 +2,13 @@ const mongoose = require('mongoose');
 const { CacheKeys } = require('librechat-data-provider');
 const { AppService, logger } = require('@librechat/data-schemas');
 const {
-  createAppConfigService,
-  clearMcpConfigCache,
-  createCodeEnvironmentRegistry,
-  mergeAccessibleCodeEnvironments,
   cacheConfig,
   standardCache,
+  hostPortFromUrl,
+  clearMcpConfigCache,
+  createAppConfigService,
+  createCodeEnvironmentRegistry,
+  mergeAccessibleCodeEnvironments,
 } = require('@librechat/api');
 const { setCachedTools, invalidateCachedTools } = require('./getCachedTools');
 const { loadAndFormatTools } = require('~/server/services/start/tools');
@@ -33,6 +34,29 @@ async function invalidateCodeEnvironmentConfigCache(tenantId) {
   await getCodeEnvironmentRegistry().invalidateAccessibleConfigurations(tenantId);
 }
 
+/**
+ * Exempts the local Langflow service from the MCP SSRF block by deriving its `host:port` from
+ * `VITE_LANGFLOW_URL` (the single Langflow URL source of truth) and adding it to
+ * `mcpSettings.allowedAddresses`. Injected here at base-config load so every `getAppConfig` consumer
+ * — the MCP connection registry AND the per-tool domain check in MCP.js — sees it from one place,
+ * keeping the host out of `librechat.yaml` (whose `allowedAddresses` entries aren't env-interpolated).
+ * No-op when the env var is unset or the host is already listed.
+ * @param {Awaited<ReturnType<typeof AppService>>} appConfig
+ */
+function withLangflowAllowedAddress(appConfig) {
+  const entry = hostPortFromUrl(process.env.VITE_LANGFLOW_URL || process.env.LANGFLOW_BASE_URL);
+  if (!entry || !appConfig) {
+    return appConfig;
+  }
+  const mcpSettings = appConfig.mcpSettings || {};
+  const existing = Array.isArray(mcpSettings.allowedAddresses) ? mcpSettings.allowedAddresses : [];
+  if (existing.includes(entry)) {
+    return appConfig;
+  }
+  appConfig.mcpSettings = { ...mcpSettings, allowedAddresses: [...existing, entry] };
+  return appConfig;
+}
+
 const loadBaseConfig = async () => {
   /** @type {TCustomConfig} */
   const config = (await loadCustomConfig()) ?? {};
@@ -42,7 +66,7 @@ const loadBaseConfig = async () => {
     adminIncluded: config.includedTools,
     directory: paths.structuredTools,
   });
-  return AppService({ config, paths, systemTools });
+  return withLangflowAllowedAddress(await AppService({ config, paths, systemTools }));
 };
 
 const { getAppConfig, clearAppConfigCache, clearOverrideCache } = createAppConfigService({
