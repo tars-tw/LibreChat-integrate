@@ -57,6 +57,7 @@ const { startExpiredFileSweep } = require('./services/Files/process');
 const { checkMigrations } = require('./services/start/migration');
 const optionalJwtAuth = require('./middleware/optionalJwtAuth');
 const initializeMCPs = require('./services/initializeMCPs');
+const { ensureLangflowProjectId } = require('./services/langflow/project');
 const configureSocialLogins = require('./socialLogins');
 const createSpaFallback = require('./utils/fallback');
 const { getAppConfig } = require('./services/Config');
@@ -152,6 +153,10 @@ const startServer = async () => {
   runAsSystem(sweepOrphanedPreviews).catch((err) => {
     logger.error('[sweepOrphanedPreviews] Background sweep failed:', err);
   });
+  // Resolve the Langflow project id before the app config is first loaded, so the
+  // `${LANGFLOW_PROJECT_ID}` placeholder in the langflow MCP url interpolates from a single
+  // auto-discovered value (no project id kept in .env or librechat.yaml).
+  await ensureLangflowProjectId();
   const appConfig = await getAppConfig({ baseOnly: true });
   initializeFileStorage(appConfig);
   const projectRoot = path.resolve(__dirname, '../..');
