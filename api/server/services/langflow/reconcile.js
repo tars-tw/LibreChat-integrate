@@ -28,16 +28,37 @@ let cachedConfig = null;
 let lastRun = 0;
 let inFlight = null;
 
-function configFromUrl(url, apiKey) {
-  const parsed = new URL(url);
-  const match = parsed.pathname.match(/\/project\/([0-9a-fA-F-]+)/);
-  return match ? { origin: parsed.origin, projectId: match[1], apiKey } : null;
+/** Extracts the Langflow project id from a url path. Works on the raw yaml value too, where the
+ *  host segment may still be a `${VITE_LANGFLOW_URL}` placeholder, since only the `/project/<id>`
+ *  path is matched (no full-URL parse). */
+function projectIdFromUrl(url) {
+  const match = typeof url === 'string' ? url.match(/\/project\/([0-9a-fA-F-]+)/) : null;
+  return match ? match[1] : null;
+}
+
+/** Reads the raw (un-interpolated) `mcpServers.langflow.url` from librechat.yaml. Returns null for
+ *  a remote CONFIG_PATH (can't be read from disk) or on any read error. */
+function readYamlLangflowUrl() {
+  const cfgPath = process.env.CONFIG_PATH || path.resolve(__dirname, '../../../../librechat.yaml');
+  if (/^https?:\/\//i.test(cfgPath)) {
+    return null;
+  }
+  try {
+    const cfg = yaml.load(fs.readFileSync(cfgPath, 'utf8'));
+    return cfg?.mcpServers?.[SERVER_NAME]?.url || null;
+  } catch (err) {
+    logger.warn('[langflow/reconcile] Failed to read librechat.yaml config:', err?.message);
+    return null;
+  }
 }
 
 /**
- * Resolves the Langflow origin + project id + api key. Prefers explicit env vars
- * (LANGFLOW_BASE_URL + LANGFLOW_PROJECT_ID) so it works even when CONFIG_PATH is a remote URL;
- * otherwise derives them from the local librechat.yaml mcpServers.langflow.url.
+ * Resolves the Langflow origin + project id + api key.
+ * - origin: from `VITE_LANGFLOW_URL` (the single URL source shared with the frontend iframe);
+ *   `LANGFLOW_BASE_URL` is a backward-compatible alias. Falls back to a fully-literal yaml url.
+ * - project id: from the yaml url path (its literal id survives the `${VITE_LANGFLOW_URL}` host
+ *   placeholder); `LANGFLOW_PROJECT_ID` is an optional override, required only when CONFIG_PATH is
+ *   a remote URL (yaml unreadable from disk).
  */
 function resolveLangflowConfig() {
   if (cachedConfig) {
@@ -48,37 +69,36 @@ function resolveLangflowConfig() {
     return null;
   }
 
-  const envBase = process.env.LANGFLOW_BASE_URL;
-  const envProject = process.env.LANGFLOW_PROJECT_ID;
-  if (envBase && envProject) {
+  const envBase = process.env.VITE_LANGFLOW_URL || process.env.LANGFLOW_BASE_URL;
+  const yamlUrl = readYamlLangflowUrl();
+
+  let origin = null;
+  if (envBase) {
     try {
-      cachedConfig = { origin: new URL(envBase).origin, projectId: envProject, apiKey };
-      return cachedConfig;
+      origin = new URL(envBase).origin;
     } catch (err) {
-      logger.warn('[langflow/reconcile] Invalid LANGFLOW_BASE_URL:', err?.message);
+      logger.warn('[langflow/reconcile] Invalid VITE_LANGFLOW_URL:', err?.message);
       return null;
+    }
+  } else if (yamlUrl) {
+    try {
+      origin = new URL(yamlUrl).origin;
+    } catch {
+      origin = null;
     }
   }
 
-  const cfgPath = process.env.CONFIG_PATH || path.resolve(__dirname, '../../../../librechat.yaml');
-  if (/^https?:\/\//i.test(cfgPath)) {
-    logger.warn(
-      '[langflow/reconcile] CONFIG_PATH is a URL; set LANGFLOW_BASE_URL + LANGFLOW_PROJECT_ID to enable reconcile.',
-    );
-    return null;
-  }
-  try {
-    const cfg = yaml.load(fs.readFileSync(cfgPath, 'utf8'));
-    const url = cfg?.mcpServers?.[SERVER_NAME]?.url;
-    if (!url) {
-      return null;
+  const projectId = process.env.LANGFLOW_PROJECT_ID || projectIdFromUrl(yamlUrl);
+
+  if (!origin || !projectId) {
+    if (!origin) {
+      logger.warn('[langflow/reconcile] Cannot resolve Langflow origin; set VITE_LANGFLOW_URL.');
     }
-    cachedConfig = configFromUrl(url, apiKey);
-    return cachedConfig;
-  } catch (err) {
-    logger.warn('[langflow/reconcile] Failed to read librechat.yaml config:', err?.message);
     return null;
   }
+
+  cachedConfig = { origin, projectId, apiKey };
+  return cachedConfig;
 }
 
 async function fetchEnabledFlows({ origin, projectId, apiKey }) {
