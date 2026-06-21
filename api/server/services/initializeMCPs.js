@@ -8,6 +8,7 @@ const { createMCPServersRegistry, createMCPManager } = require('~/config');
  * config. The registry calls this per inspection/connection so admin-panel `mcpSettings`
  * overrides are honored without a restart. Tenant comes from the ALS context inside
  * `getAppConfig`; `userId`/`role` pick up user/role-scoped overrides when an actor exists.
+ * The local Langflow host is already injected into `allowedAddresses` at base-config load.
  * @param {{ userId?: string, role?: string }} [ctx]
  */
 async function resolveMCPAllowlists(ctx) {

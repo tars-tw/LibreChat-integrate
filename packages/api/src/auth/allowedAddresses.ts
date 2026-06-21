@@ -114,6 +114,24 @@ export function normalizeAllowedAddressesSet(
 }
 
 /**
+ * Derives the canonical `host:port` SSRF-allowlist entry from a full URL
+ * (e.g. `http://localhost:7860` → `localhost:7860`), so a single URL env var
+ * can also seed the allowlist without callers re-deriving the scheme split.
+ * Falls back to the protocol's default port when the URL omits one. Returns
+ * `''` for empty or unparseable input so callers can filter it out.
+ */
+export function hostPortFromUrl(rawUrl?: string | null): string {
+  if (!rawUrl) return '';
+  try {
+    const url = new URL(rawUrl);
+    const port = url.port || (url.protocol === 'https:' ? '443' : '80');
+    return `${url.hostname}:${port}`;
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Checks whether a hostname or IP literal should be exempted from the SSRF
  * block. Mirrors the scoping rules of `normalizeAddressEntry`: the exemption
  * must match both address and port, and an IP candidate must itself be private
