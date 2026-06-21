@@ -19,10 +19,11 @@
 ```bash
 nvm use                                  # 讀 .nvmrc 切到 24.16.0(沒裝先 nvm install 24.16.0)
 cp .env.example .env                     # 複製後手動填下方「必填」兩個值
+#  建立 librechat.yaml(被 .gitignore,新機器要自建;內容直接抄 §7.2,全是 ${...} 參照可照貼)
 # 建立 docker-compose.override.yml(被 .gitignore,每台機器自建;內容見下方)
 docker compose up -d mongodb meilisearch # 只起依賴服務(MongoDB :27017 + Meilisearch)
 npm ci                                   # 安裝依賴(或 npm install)
-npm run frontend                         # build 全部 packages + client
+npm run frontend                         # build 全部 packages(dev 必要)+ client;純 dev 也可用更快的 npm run build
 ```
 
 **`cp` 後一定要自己填的 `.env` 值** —— 這兩個在 `.env.example` 是**註解掉的**,複製過來預設沒生效,務必解註解並填:
@@ -140,6 +141,41 @@ npm run backend
 
 > **Vite 不會自動偵測 `packages/*/dist` 的變更**。所以只要動到 `packages/*`,dev 前端就要手動重啟才看得到(必要時先刪 `client/node_modules/.vite` 再重啟)。
 
+### 5.1 `git pull` / 更版後一定要重建 ★
+
+上表是「**你自己**改了 X」;但別人的 commit 改了 `packages/*` 時,你的 `dist/` 一樣是舊的——拉完不重建,後端就會用到過時的 dist,典型症狀是 `xxx is not a function`(原始碼有該匯出,但 dist 還沒編出來)。
+
+所以 **每次 `git pull` / 切換分支 / 更版後,先重建再啟動**。分兩種情況:
+
+**(a) `package-lock.json` 沒變 → 只要重編(預設,非破壞性):**
+
+```bash
+npm run build             # turbo 全部 packages 重建;有快取,沒變的 package 自動 skip,很快
+```
+
+**(b) `package-lock.json` 變了 → 先補裝依賴再重編:**
+
+```bash
+git diff HEAD@{1} -- package-lock.json   # 想確認有沒有變可先看這個(空 = 沒變,走 (a) 即可)
+npm ci                                    # 依 lockfile 補裝
+npm run build
+```
+
+> 拿不準 lockfile 有沒有變,就直接走 (a) 的 `npm run build`;真的缺套件,build 會明確報錯(`xxx: command not found` / `Cannot find module`),那時再補 `npm ci`。重建後再 `npm run backend:dev` / `npm run backend`。
+
+#### ⚠️ 關於 `npm run smart-reinstall`(更版用它要先懂兩個地雷)
+
+`smart-reinstall` 會自動判斷 lockfile 有沒有變、該不該重裝,看起來最省事,但它在**需要重裝依賴**那條路上是**破壞性**的——`config/smart-reinstall.js` 的 `installDeps()` 順序是:**①先刪光所有 `node_modules` → ②`npm cache clean --force` → ③`npm ci`**。
+
+1. **中途失敗會把環境弄得比原本更糟**。若 ② 失敗(見下),`node_modules` 已被刪、③ 還沒跑,你會落到「完全沒有依賴」的狀態,接著任何 `npm run build` 都會 `rimraf: command not found`。
+2. **②`npm cache clean --force` 會踩 `~/.npm` 權限地雷**。若你過去用過 `sudo npm`,`~/.npm` 裡會有 root 擁有的檔案,清不掉而報 `EACCES … root-owned files`,整個腳本中斷。**一次性修法**(npm 官方建議):
+>
+> ```bash
+> sudo chown -R $(id -u):$(id -g) ~/.npm   # 把 cache 擁有權改回目前使用者
+> ```
+
+修掉權限後 `smart-reinstall` 才能順跑。但**日常更版建議優先用上面 (a)/(b) 的 `npm run build` / `npm ci`**:非破壞性、失敗了也只是沒做事,不會把你既有的 `node_modules` 先砍掉。`smart-reinstall` 留給「想一鍵重來」時用,且請接受它是破壞性的。
+
 ---
 
 ## 6. 已整合的功能
@@ -190,14 +226,51 @@ npm run backend
 
 > Agent 屬於 **Agents endpoint**,不在 `gpt-5.4-mini` 那層。共享的 agent 出現在 **Agents 市場**(「My Agents」只列你自己擁有的)。
 
-### 7.2 設定檔(兩個,都被 .gitignore,每台機器自己建)
+### 7.2 設定檔:`librechat.yaml` 全文
 
-**Langflow 連線只需 `.env` 兩個值;`librechat.yaml` 全用 `${...}` 參照、零 per-machine 值**(host、api key、project id 都不寫死):
+`librechat.yaml` 被 `.gitignore`,新機器要自建。下面就是**我們實際在跑的整份內容**——全用 `${...}` 帶 `.env` 的值,host、api key、project id 都不寫死,所以**照貼到專案根目錄 `librechat.yaml` 即可,一個字都不用改**:
 
-| 檔案 | 內容 | 範本 |
-|---|---|---|
-| `.env` | `VITE_LANGFLOW_URL`(Langflow URL,**單一來源**)、`LANGFLOW_API_KEY` | `.env.example` |
-| `librechat.yaml` | `mcpServers.langflow.url: '${VITE_LANGFLOW_URL}/api/v1/mcp/project/${LANGFLOW_PROJECT_ID}/sse'`、`headers.x-api-key: '${LANGFLOW_API_KEY}'`、`endpoints.agents.capabilities` | `librechat.example.yaml` |
+```yaml
+# LibreChat configuration
+# Docs: https://www.librechat.ai/docs/configuration/librechat_yaml
+version: 1.3.13
+cache: true
+
+# The local Langflow host is auto-exempted from the MCP SSRF block — its host:port is derived
+# from VITE_LANGFLOW_URL in code (api/server/services/initializeMCPs.js), so no host is hardcoded
+# here. Add other services to mcpSettings.allowedAddresses if you need to exempt them too.
+
+endpoints:
+  agents:
+    # Capabilities available to Agents. `tools` is what lets an Agent call MCP tools
+    # (e.g. the Langflow flows exposed below).
+    capabilities:
+      - tools
+      - actions
+      - file_search
+      - artifacts
+
+mcpServers:
+  # Langflow integration — exposes the flows of a Langflow project as callable tools.
+  # Which flows appear is controlled on the Langflow side (per-flow `mcp_enabled` toggle in the
+  # project's MCP settings). Nothing here is per-machine: the host is ${VITE_LANGFLOW_URL} (.env),
+  # the api key ${LANGFLOW_API_KEY} (.env), and the project id is auto-discovered at boot from the
+  # single Langflow project (api/server/services/langflow/project.js) into ${LANGFLOW_PROJECT_ID}.
+  langflow:
+    type: sse
+    url: '${VITE_LANGFLOW_URL}/api/v1/mcp/project/${LANGFLOW_PROJECT_ID}/sse'
+    headers:
+      x-api-key: '${LANGFLOW_API_KEY}'
+    title: 'Langflow'
+    description: 'Langflow flows exposed as callable tools'
+    timeout: 60000
+    # Hidden from the regular chat input toggle — the per-flow "Langflow ·" Agents are the
+    # intended entry point. The server still loads on startup so those Agents can call its tools.
+    chatMenu: false
+    startup: true
+```
+
+搭配的 `.env` 只要兩個值:`VITE_LANGFLOW_URL`(Langflow URL,單一來源)、`LANGFLOW_API_KEY`。yaml 把 server 掛上去、`.env` 提供連線值,**兩邊都要**才會生效。
 
 > **project id 自動探測,不用設。** 開機時後端用 `LANGFLOW_API_KEY` 打 Langflow `GET /api/v1/projects/`,若**只有一個專案**就取它的 id 塞進 `process.env.LANGFLOW_PROJECT_ID`(`api/server/services/langflow/project.js`),yaml 的 `${LANGFLOW_PROJECT_ID}` 隨之填好。固定單一專案就完全免設;若有多個專案,探測會放棄並要你在 `.env` 設 `LANGFLOW_PROJECT_ID` 指定。
 
