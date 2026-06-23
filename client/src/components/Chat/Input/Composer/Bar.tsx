@@ -203,6 +203,8 @@ interface BarProps {
   hasAddedConversation: boolean;
   /** Code approval and review controls supplied by the composer shell. */
   approvalSlot?: React.ReactNode;
+  /** Host controls that sit beside the `+` (the TARS prompts button). */
+  leadingSlot?: React.ReactNode;
   /** Send, stop or the during-run split button, decided by the caller. */
   actionSlot: React.ReactNode;
   /** Owned by `ChatForm`, which also paints the trace over the textarea. */
@@ -235,6 +237,7 @@ function Bar({
   speechDisabled,
   hasAddedConversation,
   approvalSlot,
+  leadingSlot,
   actionSlot,
   dictation,
 }: BarProps) {
@@ -397,7 +400,7 @@ function Bar({
       <div ref={rowRef} className={rowClass}>
         {/* Never unmounted, so its glyph can turn into the close mark rather
             than one icon being swapped for another. */}
-        <span ref={plusRef} className="shrink-0">
+        <span ref={plusRef} className="flex shrink-0 items-center">
           <Palette
             index={index}
             entries={entries}
@@ -418,6 +421,7 @@ function Bar({
             canAttach={canAttach}
             anchorRef={anchorRef}
           />
+          {leadingSlot}
         </span>
         {/* A box rather than `contents` so it has something to move: the split
             only puts chips here when they all fit on this line, so wrapping as
