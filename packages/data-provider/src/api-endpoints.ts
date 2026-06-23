@@ -305,6 +305,21 @@ export const tarsKnowledgeBases = () => `${BASE_URL}/api/tars/knowledge-bases`;
 export const tarsKnowledgeBase = (id: string) => `${BASE_URL}/api/tars/knowledge-bases/${id}`;
 export const tarsKnowledgeBaseModels = () => `${BASE_URL}/api/tars/knowledge-bases/models`;
 export const tarsKnowledgeBaseUpload = () => `${BASE_URL}/api/tars/knowledge-bases/upload`;
+export const tarsPrompts = (domainId?: string | number) =>
+  domainId != null && domainId !== ''
+    ? `${BASE_URL}/api/tars/prompts?domain_id=${encodeURIComponent(String(domainId))}`
+    : `${BASE_URL}/api/tars/prompts`;
+export const tarsPrompt = (id: string, query?: { domainId?: string; knowledgeBaseId?: string }) => {
+  const params = new URLSearchParams();
+  if (query?.domainId) {
+    params.append('domain_id', query.domainId);
+  }
+  if (query?.knowledgeBaseId) {
+    params.append('knowledge_base_id', query.knowledgeBaseId);
+  }
+  const qs = params.toString();
+  return qs ? `${BASE_URL}/api/tars/prompts/${id}?${qs}` : `${BASE_URL}/api/tars/prompts/${id}`;
+};
 
 export const mcp = {
   tools: `${BASE_URL}/api/mcp/tools`,

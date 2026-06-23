@@ -170,9 +170,7 @@ export const register = (payload: t.TRegisterUser) => {
   return request.post(endpoints.register(), payload);
 };
 
-export const tarsRegister = (
-  payload: t.TTarsRegister,
-): Promise<t.TTarsRegisterResponse> => {
+export const tarsRegister = (payload: t.TTarsRegister): Promise<t.TTarsRegisterResponse> => {
   return request.post(endpoints.tarsRegister(), payload);
 };
 
@@ -632,9 +630,7 @@ export const getTarsDomainPrepareData = (): Promise<t.TTarsDomainPrepareData> =>
   return request.get(endpoints.tarsDomainPrepareData());
 };
 
-export const createTarsDomain = (
-  data: t.TTarsDomainInput,
-): Promise<{ domain: t.TTarsDomain }> => {
+export const createTarsDomain = (data: t.TTarsDomainInput): Promise<{ domain: t.TTarsDomain }> => {
   return request.post(endpoints.tarsDomains(), data);
 };
 
@@ -676,6 +672,28 @@ export const deleteTarsKnowledgeBase = (id: string): Promise<{ success: boolean 
 
 export const uploadTarsKnowledgeBase = (data: FormData): Promise<Record<string, unknown>> => {
   return request.postMultiPart(endpoints.tarsKnowledgeBaseUpload(), data);
+};
+
+export const getTarsPrompts = (domainId?: string | number): Promise<t.TTarsPromptsResponse> => {
+  return request.get(endpoints.tarsPrompts(domainId));
+};
+
+export const createTarsPrompt = (data: t.TTarsPromptInput): Promise<{ prompt: t.TTarsPrompt }> => {
+  return request.post(endpoints.tarsPrompts(), data);
+};
+
+export const updateTarsPrompt = (
+  id: string,
+  data: t.TTarsPromptInput,
+): Promise<{ prompt: t.TTarsPrompt }> => {
+  return request.put(endpoints.tarsPrompt(id), data);
+};
+
+export const deleteTarsPrompt = (
+  id: string,
+  query?: { domainId?: string; knowledgeBaseId?: string },
+): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsPrompt(id, query));
 };
 
 /**
