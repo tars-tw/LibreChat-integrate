@@ -34,6 +34,7 @@ import { mainTextareaId, BadgeItem } from '~/common';
 import PendingSteerChips from './PendingSteerChips';
 import PendingQuoteChips from './PendingQuoteChips';
 import AttachFileChat from './Files/AttachFileChat';
+import { TarsPromptsButton } from './TarsPrompts';
 import useSteering from '~/hooks/Chat/useSteering';
 import FileFormChat from './Files/FileFormChat';
 import InFlightSteers from './InFlightSteers';
@@ -193,7 +194,7 @@ const ChatForm = memo(function ChatForm({
     draftId: answerMode.draftId,
   });
 
-  const { submitMessage, submitPrompt } = useSubmitMessage();
+  const { submitMessage, submitPrompt, insertPrompt } = useSubmitMessage();
 
   /** Queued/steered sends carry their FULL submission context: explicit
    *  (possibly empty) overrides stop `ask` from vacuuming quotes or skill
@@ -656,13 +657,18 @@ const ChatForm = memo(function ChatForm({
                   isRTL ? 'flex-row-reverse' : 'flex-row',
                 )}
               >
-                <div className={`${isRTL ? 'mr-2' : 'ml-2'}`}>
+                <div className={cn('flex items-center', isRTL ? 'mr-2' : 'ml-2')}>
                   <AttachFileChat
                     conversation={conversation}
                     disableInputs={disableInputs}
                     files={files}
                     setFiles={setFiles}
                     setFilesLoading={setFilesLoading}
+                  />
+                  <TarsPromptsButton
+                    domainId={conversation?.domain_id}
+                    insertPrompt={insertPrompt}
+                    disabled={disableInputs || isNotAppendable}
                   />
                 </div>
                 <BadgeRow
@@ -776,6 +782,7 @@ function ChatFormWrapper({
       conversation?.useResponsesApi,
       conversation?.model,
       conversation?.maxContextTokens,
+      conversation?.domain_id,
       hasMessages,
     ],
   );
