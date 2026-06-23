@@ -170,6 +170,10 @@ export const logout = () => `${BASE_URL}/api/auth/logout`;
 
 export const register = () => `${BASE_URL}/api/auth/register`;
 
+export const tarsRegister = () => `${BASE_URL}/api/auth/tars/register`;
+
+export const tarsForgotPassword = () => `${BASE_URL}/api/auth/tars/forgot-password`;
+
 export const loginFacebook = () => `${BASE_URL}/api/auth/facebook`;
 
 export const loginGoogle = () => `${BASE_URL}/api/auth/google`;

@@ -57,9 +57,11 @@ function AuthLayout({
     return null;
   };
 
-  const isTarsLogin = startupConfig?.tarsAuth === true && pathname.includes('login');
+  const isTarsRegister = pathname.includes('register');
+  const isTarsAuthPage =
+    startupConfig?.tarsAuth === true && (pathname.includes('login') || isTarsRegister);
 
-  if (isTarsLogin) {
+  if (isTarsAuthPage) {
     return (
       <div className="relative flex min-h-screen bg-white">
         <Banner />
@@ -74,9 +76,13 @@ function AuthLayout({
               {localize('com_auth_tars_brand')}
             </h1>
             <h2 className="mt-3 text-xl font-normal text-gray-800">
-              {localize('com_auth_sign_in')}
+              {localize(isTarsRegister ? 'com_auth_sign_up' : 'com_auth_sign_in')}
             </h2>
-            <p className="mb-6 mt-2 text-sm text-gray-500">{localize('com_auth_tars_subtitle')}</p>
+            <p className="mb-6 mt-2 text-sm text-gray-500">
+              {localize(
+                isTarsRegister ? 'com_auth_tars_register_subtitle' : 'com_auth_tars_subtitle',
+              )}
+            </p>
             <DisplayError />
             {children}
           </div>

@@ -71,6 +71,30 @@ export const useRefreshTokenMutation = (
   });
 };
 
+/* pwc_tars register / forgot-password (thin pass-throughs to pwc_tars) */
+export const useTarsRegisterMutation = (
+  options?: t.MutationOptions<t.TTarsRegisterResponse, t.TTarsRegister, unknown, unknown>,
+): UseMutationResult<t.TTarsRegisterResponse, unknown, t.TTarsRegister, unknown> => {
+  return useMutation(['tarsRegister'], {
+    mutationFn: (payload: t.TTarsRegister) => dataService.tarsRegister(payload),
+    ...(options || {}),
+  });
+};
+
+export const useTarsForgotPasswordMutation = (
+  options?: t.MutationOptions<
+    t.TTarsForgotPasswordResponse,
+    t.TTarsForgotPassword,
+    unknown,
+    unknown
+  >,
+): UseMutationResult<t.TTarsForgotPasswordResponse, unknown, t.TTarsForgotPassword, unknown> => {
+  return useMutation(['tarsForgotPassword'], {
+    mutationFn: (payload: t.TTarsForgotPassword) => dataService.tarsForgotPassword(payload),
+    ...(options || {}),
+  });
+};
+
 /* User */
 export const useDeleteUserMutation = (
   options?: t.MutationOptions<unknown, t.TDeleteUserRequest | undefined>,
