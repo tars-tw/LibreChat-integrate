@@ -6,6 +6,7 @@ import type {
   TTarsModelOptions,
   TTarsDomainsResponse,
   TTarsKnowledgeBase,
+  TTarsPromptsResponse,
   TTarsDomainPrepareData,
 } from 'librechat-data-provider';
 
@@ -54,6 +55,26 @@ export const useTarsKnowledgeBasesQuery = (
     {
       select: (data) => data.knowledgeBases ?? [],
       ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * The three-tier "我的提示" list (personal + specialized brain + its knowledge
+ * bases) for the given brain. Disabled until a `domainId` is known.
+ */
+export const useTarsPromptsQuery = (
+  domainId?: string | null,
+  config?: UseQueryOptions<TTarsPromptsResponse>,
+): QueryObserverResult<TTarsPromptsResponse> => {
+  return useQuery<TTarsPromptsResponse>(
+    [QueryKeys.tarsPrompts, domainId],
+    () => dataService.getTarsPrompts(domainId ?? undefined),
+    {
+      enabled: !!domainId,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
       ...config,
     },
   );
