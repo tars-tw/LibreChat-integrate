@@ -51,6 +51,7 @@ import PendingSteerChips from './PendingSteerChips';
 import PendingQuoteChips from './PendingQuoteChips';
 import AttachFileChat from './Files/AttachFileChat';
 import CodeWorkspaceMenu from './CodeWorkspaceMenu';
+import { TarsPromptsButton } from './TarsPrompts';
 import useSteering from '~/hooks/Chat/useSteering';
 import CodeApprovalMenu from './CodeApprovalMenu';
 import FileFormChat from './Files/FileFormChat';
@@ -297,7 +298,7 @@ const ChatForm = memo(function ChatForm({
     [pastedTextEdit],
   );
 
-  const { submitMessage, submitPrompt } = useSubmitMessage();
+  const { submitMessage, submitPrompt, insertPrompt } = useSubmitMessage();
   const codeWorkspace = useCodeWorkspace(conversation, addedConvo);
 
   /** Queued/steered sends carry their FULL submission context: explicit
@@ -827,13 +828,18 @@ const ChatForm = memo(function ChatForm({
                   isRTL ? 'flex-row-reverse' : 'flex-row',
                 )}
               >
-                <div className="shrink-0">
+                <div className="flex shrink-0 items-center">
                   <AttachFileChat
                     conversation={conversation}
                     disableInputs={disableInputs}
                     files={files}
                     setFiles={setFiles}
                     setFilesLoading={setFilesLoading}
+                  />
+                  <TarsPromptsButton
+                    domainId={conversation?.domain_id}
+                    insertPrompt={insertPrompt}
+                    disabled={disableInputs || isNotAppendable}
                   />
                 </div>
                 <BadgeRow
@@ -967,6 +973,7 @@ function ChatFormWrapper({
       conversation?.codeApprovalMode,
       conversation?.codeEnvironmentMode,
       conversation?.codeWorkspaces,
+      conversation?.domain_id,
       hasMessages,
     ],
   );
