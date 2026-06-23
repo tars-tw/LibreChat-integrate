@@ -98,3 +98,48 @@ export type TTarsKnowledgeBaseUpdate = {
   domain_ids?: string;
   new_max_retrieve_count?: number;
 };
+
+/** Which pwc_tars table a "我的提示" lives in — its visibility tier. */
+export type TTarsPromptScope = 'personal' | 'domain' | 'knowledge_base';
+
+/**
+ * A pwc_tars "我的提示" as surfaced to the client. Mirrors the backend
+ * `TarsPrompt` (pwc_tars `Prompt.to_dict()`). `knowledge_base_name` is present
+ * only on knowledge-base prompts; `scope` is tagged by the chat aggregator.
+ */
+export type TTarsPrompt = {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  content: string;
+  status: number;
+  created_by: string;
+  created_at: string;
+  updated_by?: string | null;
+  updated_at?: string | null;
+  knowledge_base_name?: string | null;
+  scope?: TTarsPromptScope;
+};
+
+/** A specialized brain's knowledge base, for the create form's scope picker. */
+export type TTarsPromptKnowledgeBase = {
+  id: string;
+  name: string;
+};
+
+export type TTarsPromptsResponse = {
+  prompts: TTarsPrompt[];
+  knowledgeBases: TTarsPromptKnowledgeBase[];
+};
+
+/** Create/update payload for a "我的提示". */
+export type TTarsPromptInput = {
+  name: string;
+  content: string;
+  category: string;
+  description?: string;
+  status?: number;
+  domain_id?: string | number;
+  knowledge_base_id?: string;
+};

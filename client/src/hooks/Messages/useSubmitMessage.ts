@@ -69,23 +69,30 @@ export default function useSubmitMessage() {
     [ask, methods, addedConvo, setMessages, getMessages, getLatestMessage],
   );
 
-  const submitPrompt = useCallback(
+  /** Always append the prompt to the composer, never send — ignores `autoSendPrompts`. */
+  const insertPrompt = useCallback(
     (text: string) => {
       const parsedText = replaceSpecialVars({ text, user });
-      if (autoSendPrompts && submitMessage({ text: parsedText }) !== false) {
-        return;
-      }
-      /** A refused auto-send still belongs to the user. Stage it exactly like
-       * a non-auto-sent prompt so every picker, including variable dialogs,
-       * preserves the text for the composer's guarded submit route. */
-
       const textarea = document.getElementById(mainTextareaId) as HTMLTextAreaElement | null;
       const currentText = textarea?.value ?? methods.getValues('text');
       const newText = currentText.trim().length > 1 ? `\n${parsedText}` : parsedText;
       setActivePrompt(newText);
     },
-    [autoSendPrompts, submitMessage, setActivePrompt, methods, user],
+    [setActivePrompt, methods, user],
   );
 
-  return { submitMessage, submitPrompt };
+  const submitPrompt = useCallback(
+    (text: string) => {
+      if (autoSendPrompts && submitMessage({ text: replaceSpecialVars({ text, user }) }) !== false) {
+        return;
+      }
+      /** A refused auto-send still belongs to the user. Stage it exactly like
+       * a non-auto-sent prompt so every picker, including variable dialogs,
+       * preserves the text for the composer's guarded submit route. */
+      insertPrompt(text);
+    },
+    [autoSendPrompts, submitMessage, insertPrompt, user],
+  );
+
+  return { submitMessage, submitPrompt, insertPrompt };
 }
