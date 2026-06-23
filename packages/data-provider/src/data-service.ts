@@ -170,6 +170,18 @@ export const register = (payload: t.TRegisterUser) => {
   return request.post(endpoints.register(), payload);
 };
 
+export const tarsRegister = (
+  payload: t.TTarsRegister,
+): Promise<t.TTarsRegisterResponse> => {
+  return request.post(endpoints.tarsRegister(), payload);
+};
+
+export const tarsForgotPassword = (
+  payload: t.TTarsForgotPassword,
+): Promise<t.TTarsForgotPasswordResponse> => {
+  return request.post(endpoints.tarsForgotPassword(), payload);
+};
+
 export const userKeyQuery = (name: string): Promise<t.TCheckUserKeyResponse> =>
   request.get(endpoints.userKeyQuery(name));
 

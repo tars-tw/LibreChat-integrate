@@ -8,6 +8,7 @@ import { loginPage } from 'librechat-data-provider';
 import type { TRegisterUser, TError } from 'librechat-data-provider';
 import type { TLoginLayoutContext } from '~/common';
 import { useLocalize, TranslationKeys } from '~/hooks';
+import TarsRegister from './TarsRegister';
 import { ErrorMessage } from './ErrorMessage';
 
 const Registration: React.FC = () => {
@@ -123,6 +124,10 @@ const Registration: React.FC = () => {
       </div>
     );
   };
+
+  if (startupConfig?.tarsAuth === true) {
+    return <TarsRegister />;
+  }
 
   return (
     <>

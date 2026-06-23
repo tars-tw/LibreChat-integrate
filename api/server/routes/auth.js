@@ -17,6 +17,10 @@ const {
 const { verify2FAWithTempToken } = require('~/server/controllers/auth/TwoFactorAuthController');
 const { logoutController } = require('~/server/controllers/auth/LogoutController');
 const { loginController } = require('~/server/controllers/auth/LoginController');
+const {
+  tarsRegisterController,
+  tarsForgotPasswordController,
+} = require('~/server/controllers/auth/TarsController');
 const { findBalanceByUser, upsertBalanceFields } = require('~/models');
 const { getAppConfig } = require('~/server/services/Config');
 const middleware = require('~/server/middleware');
@@ -61,6 +65,20 @@ router.post(
   setBalanceConfig,
   loginController,
 );
+if (tarsAuth) {
+  router.post(
+    '/tars/register',
+    middleware.registerLimiter,
+    middleware.checkBan,
+    tarsRegisterController,
+  );
+  router.post(
+    '/tars/forgot-password',
+    middleware.resetPasswordLimiter,
+    middleware.checkBan,
+    tarsForgotPasswordController,
+  );
+}
 router.post('/refresh', refreshController);
 router.post('/cloudfront/refresh', middleware.requireJwtAuth, (req, res) => {
   const result = getCloudFrontAuthCookieRefreshResult(req, res);

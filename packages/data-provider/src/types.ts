@@ -558,6 +558,29 @@ export type TLoginUser = {
   use_sso?: boolean;
 };
 
+/** pwc_tars registration payload (`POST /api/auth/tars/register`). */
+export type TTarsRegister = {
+  username: string;
+  email: string;
+  password: string;
+};
+
+export type TTarsRegisterResponse = {
+  message: string;
+  user: { id: string; username: string };
+};
+
+/** pwc_tars password reset payload (`POST /api/auth/tars/forgot-password`). */
+export type TTarsForgotPassword = {
+  username: string;
+  user_email: string;
+  new_password: string;
+};
+
+export type TTarsForgotPasswordResponse = {
+  message: string;
+};
+
 export type TLoginResponse = {
   token?: string;
   user?: TUser;

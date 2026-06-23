@@ -208,6 +208,97 @@ export async function notifyTarsLogout(
   }
 }
 
+/** Result of a pwc_tars registration attempt, mirroring the Flask `POST /api/auth/register` response. */
+export interface TarsRegisterResult {
+  status: number;
+  message: string;
+  user?: { id: string; username: string };
+}
+
+/**
+ * Registers a new user against the pwc_tars Flask backend (`POST /api/auth/register`).
+ * pwc_tars is the source of truth for user accounts; LibreChat provisions its linked
+ * shadow user later, on the user's first login. Returns the upstream status and message
+ * verbatim so the caller can mirror pwc_tars's behavior (e.g. 400 on duplicate username/email).
+ */
+export async function registerTars(
+  username: string,
+  email: string,
+  password: string,
+  baseUrl: string | undefined = process.env.TARS_AUTH_URL,
+): Promise<TarsRegisterResult> {
+  if (!baseUrl) {
+    throw new Error('TARS_AUTH_URL is not configured');
+  }
+
+  const url = `${baseUrl.replace(/\/+$/, '')}/api/auth/register`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password }),
+      signal: controller.signal,
+    });
+    const data = (await response.json().catch(() => ({}))) as TarsRegisterResult;
+    return { status: response.status, message: data.message ?? '', user: data.user };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      logger.error(`[registerTars] Request to ${url} timed out`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/** Result of a pwc_tars password reset, mirroring the Flask `POST /api/auth/forget_password` response. */
+export interface TarsForgotPasswordResult {
+  status: number;
+  message: string;
+}
+
+/**
+ * Resets a user's password against the pwc_tars Flask backend
+ * (`POST /api/auth/forget_password`). pwc_tars owns the password, so this is a thin
+ * pass-through; it verifies the username/email match and sets the new password directly.
+ * Returns the upstream status and message verbatim (e.g. 404 when no user matches).
+ */
+export async function resetTarsPassword(
+  username: string,
+  userEmail: string,
+  newPassword: string,
+  baseUrl: string | undefined = process.env.TARS_AUTH_URL,
+): Promise<TarsForgotPasswordResult> {
+  if (!baseUrl) {
+    throw new Error('TARS_AUTH_URL is not configured');
+  }
+
+  const url = `${baseUrl.replace(/\/+$/, '')}/api/auth/forget_password`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, user_email: userEmail, new_password: newPassword }),
+      signal: controller.signal,
+    });
+    const data = (await response.json().catch(() => ({}))) as TarsForgotPasswordResult;
+    return { status: response.status, message: data.message ?? '' };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      logger.error(`[resetTarsPassword] Request to ${url} timed out`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 /** Whether pwc_tars has SSO enabled and, if so, the normalized provider type. */
 export interface TarsSsoStatus {
   enabled: boolean;
