@@ -1,10 +1,10 @@
 import { useMemo, useEffect } from 'react';
 import { ControlCombobox } from '@librechat/client';
 import type { OptionWithIcon } from '~/common';
-import type { TTarsDomain } from 'librechat-data-provider';
+import type { TConversation, TTarsDomain } from 'librechat-data-provider';
 import { useTarsDomainsQuery } from '~/data-provider';
 import { useChatContext } from '~/Providers';
-import { useLocalize } from '~/hooks';
+import { useLocalize, useNewConvo } from '~/hooks';
 
 const DEFAULT_DOMAIN_NAME = 'general';
 
@@ -12,16 +12,28 @@ const DEFAULT_DOMAIN_NAME = 'general';
 const resolveDefaultDomain = (domains: TTarsDomain[]): TTarsDomain | undefined =>
   domains.find((domain) => domain.name.trim().toLowerCase() === DEFAULT_DOMAIN_NAME) ?? domains[0];
 
+/** Model-identifying fields carried over so switching brain keeps the current model. */
+const carryOverModelFields = (conversation: TConversation | null): Partial<TConversation> => {
+  if (!conversation) {
+    return {};
+  }
+  const { endpoint, endpointType, model, spec, iconURL, agent_id, assistant_id } = conversation;
+  return { endpoint, endpointType, model, spec, iconURL, agent_id, assistant_id };
+};
+
 /**
- * Lets a pwc_tars user pick one of their accessible specialized brains (專用腦)
- * for the current conversation. The selection persists as `domain_id` on the
- * conversation; the backend injects that domain's instructions on each message.
+ * Lets a pwc_tars user pick one of their accessible specialized brains (專用腦).
+ * A conversation is bound to exactly one brain (mirrors pwc_tars), so switching
+ * to a different brain starts a NEW conversation scoped to it. Switching while on
+ * a blank, unsent conversation just rebinds it in place. The selection persists as
+ * `domain_id`; the backend injects that domain's instructions on each message.
  * Defaults to the "General" brain — there is no empty option. Renders nothing
  * for non-tars users or when no domains are available.
  */
 function DomainSelector() {
   const localize = useLocalize();
-  const { conversation, setConversation } = useChatContext();
+  const { conversation, setConversation, getMessages } = useChatContext();
+  const { newConversation } = useNewConvo();
   const { data: domains = [] } = useTarsDomainsQuery();
 
   const items: OptionWithIcon[] = useMemo(
@@ -51,7 +63,17 @@ function DomainSelector() {
   const displayValue = domains.find((domain) => String(domain.id) === selectedValue)?.name;
 
   const handleSelect = (value: string) => {
-    setConversation((prev) => (prev ? { ...prev, domain_id: value } : prev));
+    if (value === selectedValue) {
+      return;
+    }
+    const hasMessages = (getMessages()?.length ?? 0) > 0;
+    if (!hasMessages) {
+      setConversation((prev) => (prev ? { ...prev, domain_id: value } : prev));
+      return;
+    }
+    newConversation({
+      template: { ...carryOverModelFields(conversation), domain_id: value },
+    });
   };
 
   return (
