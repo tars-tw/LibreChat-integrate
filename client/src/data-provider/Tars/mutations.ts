@@ -3,10 +3,14 @@ import { QueryKeys, dataService } from 'librechat-data-provider';
 import type { UseMutationResult, UseMutationOptions } from '@tanstack/react-query';
 import type {
   TTarsDomain,
+  TTarsChunk,
   TTarsPrompt,
+  TTarsDocument,
   TTarsDomainInput,
   TTarsPromptInput,
+  TTarsChunkUpdate,
   TTarsKnowledgeBase,
+  TTarsDocumentReprocess,
   TTarsKnowledgeBaseInput,
   TTarsKnowledgeBaseUpdate,
 } from 'librechat-data-provider';
@@ -131,6 +135,134 @@ export const useUploadTarsKnowledgeBaseMutation = (
     ...options,
     onSuccess: (...args) => {
       invalidateKnowledgeBases(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useUploadTarsDocumentsMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<Record<string, unknown>, unknown, FormData>,
+): UseMutationResult<Record<string, unknown>, unknown, FormData> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    (data: FormData) => dataService.uploadTarsKnowledgeBaseDocuments(knowledgeBaseId, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBases]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useRenameTarsDocumentMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<
+    { document: TTarsDocument },
+    unknown,
+    { docId: string; newFilename: string }
+  >,
+): UseMutationResult<
+  { document: TTarsDocument },
+  unknown,
+  { docId: string; newFilename: string }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ docId, newFilename }: { docId: string; newFilename: string }) =>
+      dataService.renameTarsKnowledgeBaseDocument(knowledgeBaseId, docId, newFilename),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsDocumentMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    (docId: string) => dataService.deleteTarsKnowledgeBaseDocument(knowledgeBaseId, docId),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBases]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useReprocessTarsDocumentMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<
+    Record<string, unknown>,
+    unknown,
+    { docId: string; data: TTarsDocumentReprocess }
+  >,
+): UseMutationResult<
+  Record<string, unknown>,
+  unknown,
+  { docId: string; data: TTarsDocumentReprocess }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ docId, data }: { docId: string; data: TTarsDocumentReprocess }) =>
+      dataService.reprocessTarsKnowledgeBaseDocument(knowledgeBaseId, docId, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useUpdateTarsChunkMutation = (
+  documentId: string,
+  options?: UseMutationOptions<
+    { chunk: TTarsChunk },
+    unknown,
+    { chunkId: string; data: TTarsChunkUpdate }
+  >,
+): UseMutationResult<
+  { chunk: TTarsChunk },
+  unknown,
+  { chunkId: string; data: TTarsChunkUpdate }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ chunkId, data }: { chunkId: string; data: TTarsChunkUpdate }) =>
+      dataService.updateTarsChunk(chunkId, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsDocumentChunks, documentId]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsChunkMutation = (
+  documentId: string,
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((chunkId: string) => dataService.deleteTarsChunk(chunkId), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsDocumentChunks, documentId]);
       options?.onSuccess?.(...args);
     },
   });

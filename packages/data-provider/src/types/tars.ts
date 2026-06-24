@@ -99,6 +99,68 @@ export type TTarsKnowledgeBaseUpdate = {
   new_max_retrieve_count?: number;
 };
 
+/** A document inside a knowledge base (pwc_tars `Document.to_dict()`). */
+export type TTarsDocument = {
+  id: string;
+  filename: string;
+  knowledge_base_ids?: string | null;
+  size?: number | null;
+  extension?: string | null;
+  mime_type?: string | null;
+  status: number;
+  hash?: string | null;
+  word_count?: number | null;
+  tokens?: number | null;
+  tags?: string | null;
+  file_path?: string | null;
+  chunk_size?: number | null;
+  overlap_size?: number | null;
+  file_source?: string | null;
+  llm_model?: string | null;
+  created_by?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type TTarsDocumentsResponse = {
+  documents: TTarsDocument[];
+};
+
+/** A chunk of a document (pwc_tars `ChunkFile.to_dict()`). */
+export type TTarsChunk = {
+  id: string;
+  document_id: string;
+  filename?: string | null;
+  position: number;
+  content: string;
+  word_count?: number | null;
+  tokens?: number | null;
+  hit_count?: number | null;
+  enabled?: boolean;
+  status?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type TTarsChunksResponse = {
+  chunks: TTarsChunk[];
+};
+
+/** Per-file chunk override keyed by filename, matching pwc_tars `file_settings`. */
+export type TTarsFileSetting = {
+  chunkSize?: number;
+  overlap?: number;
+};
+
+export type TTarsChunkUpdate = {
+  content: string;
+};
+
+export type TTarsDocumentReprocess = {
+  chunkSize?: number;
+  overlap?: number;
+};
+
 /** Which pwc_tars table a "我的提示" lives in — its visibility tier. */
 export type TTarsPromptScope = 'personal' | 'domain' | 'knowledge_base';
 
