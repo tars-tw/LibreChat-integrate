@@ -1,5 +1,6 @@
 import { useState, memo, useRef } from 'react';
 import { useSetRecoilState } from 'recoil';
+import { useNavigate } from 'react-router-dom';
 import * as Menu from '@ariakit/react/menu';
 import { GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import { SystemRoles } from 'librechat-data-provider';
@@ -8,6 +9,7 @@ import {
   BrainCircuit,
   ChevronRight,
   CircleHelp,
+  Database,
   FileText,
   Keyboard,
   LifeBuoy,
@@ -98,6 +100,7 @@ function HelpSubmenu({
 function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
   const localize = useLocalize();
   const { user, isAuthenticated, logout } = useAuthContext();
+  const navigate = useNavigate();
   const { data: startupConfig } = useGetStartupConfig();
   const balanceQuery = useGetUserBalance({
     enabled: !!isAuthenticated && startupConfig?.balance?.enabled,
@@ -177,6 +180,15 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
           <Menu.MenuItem onClick={() => setShowTarsAdmin(true)} className="select-item text-sm">
             <BrainCircuit className="icon-md" aria-hidden="true" />
             {localize('com_nav_tars_admin')}
+          </Menu.MenuItem>
+        )}
+        {isTarsAdmin && (
+          <Menu.MenuItem
+            onClick={() => navigate('/knowledge-bases')}
+            className="select-item text-sm"
+          >
+            <Database className="icon-md" aria-hidden="true" />
+            {localize('com_ui_tars_knowledge_bases')}
           </Menu.MenuItem>
         )}
         <Menu.MenuItem

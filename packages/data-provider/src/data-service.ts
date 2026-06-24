@@ -674,6 +674,55 @@ export const uploadTarsKnowledgeBase = (data: FormData): Promise<Record<string, 
   return request.postMultiPart(endpoints.tarsKnowledgeBaseUpload(), data);
 };
 
+export const getTarsKnowledgeBaseDocuments = (id: string): Promise<t.TTarsDocumentsResponse> => {
+  return request.get(endpoints.tarsKnowledgeBaseDocuments(id));
+};
+
+export const uploadTarsKnowledgeBaseDocuments = (
+  id: string,
+  data: FormData,
+): Promise<Record<string, unknown>> => {
+  return request.postMultiPart(endpoints.tarsKnowledgeBaseDocuments(id), data);
+};
+
+export const renameTarsKnowledgeBaseDocument = (
+  id: string,
+  docId: string,
+  newFilename: string,
+): Promise<{ document: t.TTarsDocument }> => {
+  return request.put(endpoints.tarsKnowledgeBaseDocumentRename(id, docId), { newFilename });
+};
+
+export const deleteTarsKnowledgeBaseDocument = (
+  id: string,
+  docId: string,
+): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsKnowledgeBaseDocument(id, docId));
+};
+
+export const reprocessTarsKnowledgeBaseDocument = (
+  id: string,
+  docId: string,
+  data: t.TTarsDocumentReprocess,
+): Promise<Record<string, unknown>> => {
+  return request.post(endpoints.tarsKnowledgeBaseDocumentReprocess(id, docId), data);
+};
+
+export const getTarsDocumentChunks = (docId: string): Promise<t.TTarsChunksResponse> => {
+  return request.get(endpoints.tarsDocumentChunks(docId));
+};
+
+export const updateTarsChunk = (
+  chunkId: string,
+  data: t.TTarsChunkUpdate,
+): Promise<{ chunk: t.TTarsChunk }> => {
+  return request.put(endpoints.tarsChunk(chunkId), data);
+};
+
+export const deleteTarsChunk = (chunkId: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsChunk(chunkId));
+};
+
 export const getTarsPrompts = (domainId?: string | number): Promise<t.TTarsPromptsResponse> => {
   return request.get(endpoints.tarsPrompts(domainId));
 };

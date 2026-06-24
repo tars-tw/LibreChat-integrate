@@ -305,6 +305,18 @@ export const tarsKnowledgeBases = () => `${BASE_URL}/api/tars/knowledge-bases`;
 export const tarsKnowledgeBase = (id: string) => `${BASE_URL}/api/tars/knowledge-bases/${id}`;
 export const tarsKnowledgeBaseModels = () => `${BASE_URL}/api/tars/knowledge-bases/models`;
 export const tarsKnowledgeBaseUpload = () => `${BASE_URL}/api/tars/knowledge-bases/upload`;
+export const tarsKnowledgeBaseDocuments = (id: string) =>
+  `${BASE_URL}/api/tars/knowledge-bases/${encodeURIComponent(id)}/documents`;
+export const tarsKnowledgeBaseDocument = (id: string, docId: string) =>
+  `${BASE_URL}/api/tars/knowledge-bases/${encodeURIComponent(id)}/documents/${encodeURIComponent(docId)}`;
+export const tarsKnowledgeBaseDocumentRename = (id: string, docId: string) =>
+  `${tarsKnowledgeBaseDocument(id, docId)}/rename`;
+export const tarsKnowledgeBaseDocumentReprocess = (id: string, docId: string) =>
+  `${tarsKnowledgeBaseDocument(id, docId)}/reprocess`;
+export const tarsDocumentChunks = (docId: string) =>
+  `${BASE_URL}/api/tars/documents/${encodeURIComponent(docId)}/chunks`;
+export const tarsChunk = (chunkId: string) =>
+  `${BASE_URL}/api/tars/chunks/${encodeURIComponent(chunkId)}`;
 export const tarsPrompts = (domainId?: string | number) =>
   domainId != null && domainId !== ''
     ? `${BASE_URL}/api/tars/prompts?domain_id=${encodeURIComponent(String(domainId))}`
