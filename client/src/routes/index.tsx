@@ -52,6 +52,16 @@ const loadProjectWorkspace = () =>
     Component: m.ProjectWorkspace,
   }));
 
+const loadKnowledgeBasesView = () =>
+  import('~/components/KnowledgeBases').then((m) => ({
+    Component: m.KnowledgeBasesView,
+  }));
+
+const loadKnowledgeBaseDetail = () =>
+  import('~/components/KnowledgeBases').then((m) => ({
+    Component: m.KnowledgeBaseDetail,
+  }));
+
 const baseEl = document.querySelector('base');
 const baseHref = baseEl?.getAttribute('href') || '/';
 
@@ -174,6 +184,14 @@ export const router = createBrowserRouter(
             {
               path: 'projects/:projectId',
               lazy: loadProjectWorkspace,
+            },
+            {
+              path: 'knowledge-bases',
+              lazy: loadKnowledgeBasesView,
+            },
+            {
+              path: 'knowledge-bases/:kbId',
+              lazy: loadKnowledgeBaseDetail,
             },
             {
               path: 'agents',
