@@ -3,12 +3,19 @@ import { QueryKeys, dataService } from 'librechat-data-provider';
 import type { UseQueryOptions, QueryObserverResult } from '@tanstack/react-query';
 import type {
   TTarsDomain,
+  TTarsChunk,
+  TTarsDocument,
   TTarsModelOptions,
+  TTarsChunksResponse,
   TTarsDomainsResponse,
   TTarsKnowledgeBase,
   TTarsPromptsResponse,
+  TTarsDocumentsResponse,
   TTarsDomainPrepareData,
 } from 'librechat-data-provider';
+
+/** pwc_tars document status: 0 uploaded, 1 processing, 2 completed, 4 failed. */
+const PROCESSING_STATUSES = new Set([0, 1]);
 
 const adminQueryOptions = {
   refetchOnWindowFocus: false,
@@ -55,6 +62,47 @@ export const useTarsKnowledgeBasesQuery = (
     {
       select: (data) => data.knowledgeBases ?? [],
       ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Documents inside a knowledge base. Polls every 5s while any document is still
+ * uploading/processing so status badges update without a manual refresh.
+ */
+export const useTarsKnowledgeBaseDocumentsQuery = (
+  knowledgeBaseId?: string | null,
+  config?: UseQueryOptions<TTarsDocumentsResponse, unknown, TTarsDocument[]>,
+): QueryObserverResult<TTarsDocument[]> => {
+  return useQuery<TTarsDocumentsResponse, unknown, TTarsDocument[]>(
+    [QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId],
+    () => dataService.getTarsKnowledgeBaseDocuments(knowledgeBaseId ?? ''),
+    {
+      enabled: !!knowledgeBaseId,
+      select: (data) => data.documents ?? [],
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchInterval: (data) =>
+        (data ?? []).some((doc) => PROCESSING_STATUSES.has(doc.status)) ? 5000 : false,
+      ...config,
+    },
+  );
+};
+
+/** Chunks of a document. Disabled until a `documentId` is known. */
+export const useTarsDocumentChunksQuery = (
+  documentId?: string | null,
+  config?: UseQueryOptions<TTarsChunksResponse, unknown, TTarsChunk[]>,
+): QueryObserverResult<TTarsChunk[]> => {
+  return useQuery<TTarsChunksResponse, unknown, TTarsChunk[]>(
+    [QueryKeys.tarsDocumentChunks, documentId],
+    () => dataService.getTarsDocumentChunks(documentId ?? ''),
+    {
+      enabled: !!documentId,
+      select: (data) => data.chunks ?? [],
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
       ...config,
     },
   );
