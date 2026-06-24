@@ -31,6 +31,8 @@ export enum QueryKeys {
   tarsDomains = 'tarsDomains',
   tarsDomainPrepareData = 'tarsDomainPrepareData',
   tarsKnowledgeBases = 'tarsKnowledgeBases',
+  tarsKnowledgeBaseDocuments = 'tarsKnowledgeBaseDocuments',
+  tarsDocumentChunks = 'tarsDocumentChunks',
   tarsModelOptions = 'tarsModelOptions',
   tarsPrompts = 'tarsPrompts',
   files = 'files',
