@@ -338,7 +338,36 @@ mcpServers:
 
 ---
 
-## 9. 常見問題
+## 9. 上線到實際網域
+
+對外把兩個網址各指到本機 port:`www.pwctars.com → :3080`(prod)/ `:3090`(dev)、`langflow.pwctars.com → :7860`。**Langflow 要用主站的子網域**(同網域),否則 iframe 會因跨站第三方 cookie 被擋而一直卡 loading。
+
+### 9.1 要改的 env(`.env`)
+
+```bash
+VITE_LANGFLOW_URL=https://langflow.pwctars.com   # Langflow 對外網址(build-time,改了要重 build)
+```
+
+> 只改這一個。iframe、`librechat.yaml` 的 MCP url、SSRF 白名單都從它推導。
+
+### 9.2 啟動指令
+
+**Prod(上線用,推薦):指向 `:3080`**
+```bash
+npm run frontend     # 重 build,VITE_* 固化進前端;改任何 VITE_ 值都要重跑
+npm run backend      # Express 在 :3080 同時 serve 前端 + API
+```
+
+**Dev(只在要邊改邊看時):指向 `:3090`**
+```bash
+VITE_ALLOWED_HOSTS=www.pwctars.com,pwctars.com npm run frontend:dev
+```
+
+> ⚠️ `VITE_ALLOWED_HOSTS` **必須在指令前面帶,放 `.env` 無效**(config 用 `process.env` 讀,`.env` 不會注入)。不帶會被 Vite 擋:`Blocked request. This host ... not allowed`。Prod 沒這問題。
+
+---
+
+## 10. 常見問題
 
 - **「3080 看不到更新」** → 你看的是 production,改了前端要 `npm run frontend`(或 `cd client && npm run build`);日常開發改用 `:3090` dev。
 - **「整個打不開 / 一直轉」** → 後端 `:3080` 沒在跑。`curl localhost:3080/health` 應回 `200`;不是就重開 `npm run backend(:dev)`。在「自己的終端機分頁」跑、別關分頁。
@@ -347,6 +376,8 @@ mcpServers:
 - **「Specialized Brains 選單沒出現」** → 沒用 tars admin 帳號登入,或前端是舊 bundle(重建 + 硬重新整理)。
 - **「Agents 選單看不到 Langflow agent」** → 多半是舊快取,硬重新整理 **Cmd+Shift+R**;並確認 endpoint 切到 **Agents 市場**(My Agents 只列自己擁有的)。
 - **「內嵌 Langflow 頁面一片空白」** → Langflow 服務(`:7860`)沒跑,或被反向代理加了 `X-Frame-Options` 擋 iframe。
+- **「對外網址報 `Blocked request. This host ... not allowed`」** → Vite dev server 的 host 檢查。指令前帶 `VITE_ALLOWED_HOSTS=<網域>`(放 `.env` 無效),或直接改用 prod。見 [§9.2](#92-啟動指令)。
+- **「對外開 Langflow 一直卡 loading,但 localhost 正常」** → 跨站第三方 cookie 被瀏覽器擋。Langflow 要改用**與 LibreChat 同網域的子網域**(如 `langflow.pwctars.com`),不要用另一個獨立網域。
 - **「`Tool <flow>_mcp_langflow not found` / `Domain no longer allowed`」** → `VITE_LANGFLOW_URL` 推導的 host 沒進 SSRF 白名單。確認 `.env` 有設 `VITE_LANGFLOW_URL` 且**重啟後端**(白名單在載入 app config 時注入);Docker 內跑後端要用 `host.docker.internal:7860`。
 - **「Langflow agent 沒出現 / project 探測失敗」** → 開機時 Langflow 沒在線(探測在開機做一次),或 Langflow 有多個專案(探測放棄)。前者待 Langflow 起來後重啟後端;後者在 `.env` 設 `LANGFLOW_PROJECT_ID` 指定。
 </content>
