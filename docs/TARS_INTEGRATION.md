@@ -210,6 +210,41 @@ npm run build
 
 因此 `.env` 設 `TARS_AUTH_URL=http://localhost:5000` 即可,後端直接以 host 連 pwc_tars。
 
+### 6.4 LLM Gateway(pwc_tars 反向取用 LibreChat 模型)
+
+**方向**:與認證/Langflow 相反。這裡是 **pwc_tars → LibreChat**:pwc_tars 把自己的 chat-completion LLM 呼叫,改打到 LibreChat 的 OpenAI 相容 passthrough 端點,由 LibreChat 用它既有的 provider 設定/金鑰去呼叫 gpt / gemini / claude。pwc_tars 仍保留自己的 multi-agent 編排,只換掉 LLM transport;**opt-in,關閉時 pwc_tars 維持直連 provider 不變**。本期只做 chat(embedding 之後再說)。
+
+**端點**:`POST /api/agents/v1m/chat/completions`(`v1m` = model passthrough)。`model` 帶**真實模型名 + provider 前綴**,例如 `openAI/gpt-5.4-mini`、`anthropic/claude-...`、`google/gemini-...`(LibreChat 沒有 model→provider 反查,所以前綴必填)。不跑 agent pipeline(無 tools / 無 system prompt)。
+
+**認證**(LibreChat 端,擇一;見 `.env` `# LLM Gateway` 區塊):
+| 設定 | 行為 |
+|---|---|
+| `LLM_GATEWAY_ALLOW_UNAUTHENTICATED=true` | 完全不認證(僅限封閉內網;3080 不可對外) |
+| `LLM_GATEWAY_SERVICE_KEY=<隨機字串>` | 共用 service key;呼叫端帶 `Authorization: Bearer <同字串>`(優先於 unauthenticated) |
+| 皆未設 | 退回 per-user remote-agent API key(LibreChat 預設) |
+
+**pwc_tars 端設定**(存在 `sys_config` DB,非 .env;由 `LLMManager.__init__` 在請求 thread 經 `g` 讀取):
+| key | 說明 |
+|---|---|
+| `FLAG_USE_LIBRECHAT_LLM` | `true` 才啟用(預設 `false`) |
+| `KEY_LIBRECHAT_BASE_URL` | 例 `http://localhost:3080/api/agents/v1m` |
+
+pwc_tars 只走 **unauthenticated** gateway(不送 key),所以 LibreChat 端請設 `LLM_GATEWAY_ALLOW_UNAUTHENTICATED=true`。若日後要改用 `LLM_GATEWAY_SERVICE_KEY`,需在 pwc_tars 這側再加一個 sys_config key 帶 Bearer token(目前刻意不做)。
+
+種子/migration:`pwc_tars/backend/sql/2_insert_values/sys_config.sql`(全新)與 `sql/3_update_sql/librechat_integration.sql`(既有 DB)。
+
+**關鍵檔案**:`packages/api/src/agents/passthrough.ts`(解析前綴 + 建無工具 ephemeral agent)、`api/server/controllers/agents/passthrough.js`、`api/server/routes/agents/passthrough.js`、`api/server/routes/agents/middleware.js`(`gatewayServiceAuth`)。串流核心重用 `packages/api/src/agents/openai/service.ts` 的 `createAgentChatCompletion`。
+
+**⚠️ IPv4 雷**:pwc_tars 的連線探測走 IPv4;LibreChat 預設 `HOST=localhost` 在 macOS 綁 IPv6-only(`::1`),會讓 pwc_tars 收到 ECONNREFUSED。請設 `HOST=127.0.0.1`(同機)或 `0.0.0.0`(跨機)。
+
+**驗證**(無認證模式;不帶 Authorization 應成功):
+```bash
+curl http://localhost:3080/api/agents/v1m/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"openAI/gpt-5.4-mini","messages":[{"role":"user","content":"hi"}]}'
+```
+打通後,pwc_tars log 會顯示 `Using OpenAI-compatible model: openAI/gpt-5.4-mini at http://localhost:3080/api/agents/v1m`。
+
 ---
 
 ## 7. Langflow 整合
