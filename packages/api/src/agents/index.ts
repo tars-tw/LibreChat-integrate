@@ -40,3 +40,4 @@ export * from './hitl';
 export * from './steering';
 export * from './activityLabels';
 export * from './toolValidation';
+export * from './passthrough';
