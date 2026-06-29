@@ -30,12 +30,11 @@ import type {
   ChatMessage,
   ToolCall,
 } from './types';
-import type { OpenAIStreamHandlerConfig, EventHandler } from './handlers';
+import type { OpenAIStreamHandlerConfig, EventHandler, ModelEndData } from './handlers';
 import type { ToolExecuteOptions } from '../handlers';
 import {
   createOpenAIContentAggregator,
   createOpenAIStreamTracker,
-  createOpenAIHandlers,
   sendFinalChunk,
   createChunk,
   writeSSE,
@@ -212,6 +211,17 @@ interface AppConfig {
 }
 
 /**
+ * Message/reasoning delta payload emitted by `@librechat/agents`:
+ * `{ id, delta: { content: [{ type, text?, think? }] } }`.
+ */
+interface DeltaEventData {
+  id?: string;
+  delta?: {
+    content?: Array<{ type?: string; text?: string; think?: string }>;
+  };
+}
+
+/**
  * Convert OpenAI messages to LibreChat format
  */
 export function convertMessages(messages: ChatMessage[]): unknown[] {
@@ -303,7 +313,7 @@ export function validateRequest(body: unknown): ChatCompletionValidationResult {
   const request = body as Record<string, unknown>;
 
   if (!request.model || typeof request.model !== 'string') {
-    return { valid: false, error: 'model (agent_id) is required' };
+    return { valid: false, error: 'model is required' };
   }
 
   if (!request.messages || !Array.isArray(request.messages)) {
@@ -519,11 +529,74 @@ export async function createAgentChatCompletion(
           }
         : null;
 
-    // Create event handlers
-    const eventHandlers =
-      isStreaming && handlerConfig
-        ? createOpenAIHandlers(handlerConfig, deps.toolExecuteOptions)
-        : {};
+    // Stream text/reasoning as SSE chunks when streaming, otherwise accumulate
+    // into the aggregator for the final JSON response.
+    const streamText = (text: string): void => {
+      if (!text) {
+        return;
+      }
+      if (isStreaming && tracker) {
+        tracker.addText();
+        writeSSE(res, createChunk(context, { content: text }));
+      } else if (aggregator) {
+        aggregator.addText(text);
+      }
+    };
+
+    const streamReasoning = (text: string): void => {
+      if (!text) {
+        return;
+      }
+      if (isStreaming && tracker) {
+        tracker.addReasoning();
+        writeSSE(res, createChunk(context, { reasoning: text }));
+      } else if (aggregator) {
+        aggregator.addReasoning(text);
+      }
+    };
+
+    const onDelta = (handler: (data: DeltaEventData) => void): EventHandler => ({
+      handle: (_event, data) => handler(data as DeltaEventData),
+    });
+
+    const eventHandlers: Record<string, EventHandler> = {
+      on_message_delta: onDelta((data) => {
+        const content = data?.delta?.content;
+        if (!Array.isArray(content)) {
+          return;
+        }
+        for (const part of content) {
+          if (part.type === 'text' && part.text) {
+            streamText(part.text);
+          }
+        }
+      }),
+      on_reasoning_delta: onDelta((data) => {
+        const content = data?.delta?.content;
+        if (!Array.isArray(content)) {
+          return;
+        }
+        for (const part of content) {
+          const text = part.think || part.text;
+          if (text) {
+            streamReasoning(text);
+          }
+        }
+      }),
+      on_chat_model_end: {
+        handle: (_event, data) => {
+          const usage = (data as ModelEndData)?.output?.usage_metadata;
+          if (!usage) {
+            return;
+          }
+          const target = isStreaming ? tracker : aggregator;
+          if (target) {
+            target.usage.promptTokens += usage.input_tokens ?? 0;
+            target.usage.completionTokens += usage.output_tokens ?? 0;
+          }
+        },
+      },
+    };
 
     // Convert messages to internal format
     const messages = convertMessages(request.messages);
