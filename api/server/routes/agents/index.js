@@ -36,6 +36,7 @@ const {
 const { saveMessage } = require('~/models');
 const responses = require('./responses');
 const openai = require('./openai');
+const passthrough = require('./passthrough');
 const { v1 } = require('./v1');
 const chat = require('./chat');
 
@@ -107,6 +108,13 @@ router.use('/v1/responses', responses);
  * Mounted at /agents/v1 (full path: /api/agents/v1/chat/completions)
  */
 router.use('/v1', openai);
+
+/**
+ * OpenAI-compatible model-passthrough routes (API key auth handled in route file)
+ * Mounted at /agents/v1m (full path: /api/agents/v1m/chat/completions)
+ * `model` is a real `<provider>/<model>` pair, not an agent_id.
+ */
+router.use('/v1m', passthrough);
 
 router.use(requireJwtAuth);
 router.use(checkBan);

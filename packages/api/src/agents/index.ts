@@ -47,3 +47,4 @@ export * from './activityLabels';
 export * from './activityPhases';
 export * from './reasoningLabels';
 export * from './toolValidation';
+export * from './passthrough';
