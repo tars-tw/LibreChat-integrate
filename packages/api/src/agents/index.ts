@@ -44,3 +44,4 @@ export * from './steering';
 export * from './activityLabels';
 export * from './activityPhases';
 export * from './toolValidation';
+export * from './passthrough';
