@@ -212,7 +212,9 @@ npm run build
 
 ### 6.4 LLM Gateway(pwc_tars 反向取用 LibreChat 模型)
 
-**方向**:與認證/Langflow 相反。這裡是 **pwc_tars → LibreChat**:pwc_tars 把自己的 chat-completion LLM 呼叫,改打到 LibreChat 的 OpenAI 相容 passthrough 端點,由 LibreChat 用它既有的 provider 設定/金鑰去呼叫 gpt / gemini / claude。pwc_tars 仍保留自己的 multi-agent 編排,只換掉 LLM transport;**opt-in,關閉時 pwc_tars 維持直連 provider 不變**。本期只做 chat(embedding 之後再說)。
+**方向**:與認證/Langflow 相反。這裡是 **pwc_tars → LibreChat**:pwc_tars 把自己的 chat-completion LLM 呼叫,改打到 LibreChat 的 OpenAI 相容 passthrough 端點,由 LibreChat 用它既有的 provider 設定/金鑰去呼叫 gpt / gemini / claude。pwc_tars 仍保留自己的 multi-agent 編排,只換掉 LLM transport。本期只做 chat(embedding 之後再說)。
+
+**觸發是 per-request,不是全域**:只有「明確要求」的請求才走 gateway,pwc_tars 自己的原生服務維持直連。目前唯一的觸發點是 `langflow-service`——當呼叫端(例如 LibreChat 情境下的 Langflow `TarsAgent` component)帶 header `X-Use-Librechat-Gateway: true` 時,那一次 RAG/SQL 的 LLM 才走 gateway。`langflow-service` route 收到 header → `llm_factory.mark_gateway_request(True)` → `LLMManager.__init__` 讀到 → 該請求改走 gateway。
 
 **端點**:`POST /api/agents/v1m/chat/completions`(`v1m` = model passthrough)。`model` 帶**真實模型名 + provider 前綴**,例如 `openAI/gpt-5.4-mini`、`anthropic/claude-...`、`google/gemini-...`(LibreChat 沒有 model→provider 反查,所以前綴必填)。不跑 agent pipeline(無 tools / 無 system prompt)。
 
@@ -224,10 +226,12 @@ npm run build
 | 皆未設 | 退回 per-user remote-agent API key(LibreChat 預設) |
 
 **pwc_tars 端設定**(存在 `sys_config` DB,非 .env;由 `LLMManager.__init__` 在請求 thread 經 `g` 讀取):
-| key | 說明 |
-|---|---|
-| `FLAG_USE_LIBRECHAT_LLM` | `true` 才啟用(預設 `false`) |
-| `KEY_LIBRECHAT_BASE_URL` | 例 `http://localhost:3080/api/agents/v1m` |
+| key | 角色 | 說明 |
+|---|---|---|
+| `FLAG_USE_LIBRECHAT_LLM` | **主開關 / kill switch** | `false` 時完全不走 gateway(即使有帶 header);要啟用整個功能才設 `true` |
+| `KEY_LIBRECHAT_BASE_URL` | gateway 位址 | 例 `http://localhost:3080/api/agents/v1m` |
+
+走 gateway 的條件 = **主開關 on** ＋ **請求帶 `X-Use-Librechat-Gateway` header** ＋ base_url 有設,三者都成立。任一不成立 → 用 pwc_tars 自己的模型直連。所以:pwc_tars 原生聊天(message route)永遠不帶 header → 直連;只有標了那個開關的 Langflow flow 才走 gateway。
 
 pwc_tars 只走 **unauthenticated** gateway(不送 key),所以 LibreChat 端請設 `LLM_GATEWAY_ALLOW_UNAUTHENTICATED=true`。若日後要改用 `LLM_GATEWAY_SERVICE_KEY`,需在 pwc_tars 這側再加一個 sys_config key 帶 Bearer token(目前刻意不做)。
 
