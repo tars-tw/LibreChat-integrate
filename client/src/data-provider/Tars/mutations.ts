@@ -10,6 +10,7 @@ import type {
   TTarsPromptInput,
   TTarsChunkUpdate,
   TTarsKnowledgeBase,
+  TTarsSysConfigUpdate,
   TTarsDocumentReprocess,
   TTarsKnowledgeBaseInput,
   TTarsKnowledgeBaseUpdate,
@@ -332,4 +333,18 @@ export const useDeleteTarsPromptMutation = (
       },
     },
   );
+};
+
+export const useUpdateTarsSysConfigMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, TTarsSysConfigUpdate>,
+): UseMutationResult<{ success: boolean }, unknown, TTarsSysConfigUpdate> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: TTarsSysConfigUpdate) => dataService.updateTarsSysConfig(data), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsSysConfigs]);
+      queryClient.invalidateQueries([QueryKeys.endpoints]);
+      options?.onSuccess?.(...args);
+    },
+  });
 };
