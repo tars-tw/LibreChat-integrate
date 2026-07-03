@@ -1,7 +1,8 @@
-import { EModelEndpoint, AuthKeys } from 'librechat-data-provider';
+import { ErrorTypes, EModelEndpoint, AuthKeys } from 'librechat-data-provider';
 import type { BaseInitializeParams, InitializeResultBase, AnthropicConfigOptions } from '~/types';
+import { checkUserKeyExpiry, isEnabled, isNoUserKeyError, mergeHeaders } from '~/utils';
 import { loadAnthropicVertexCredentials, getVertexCredentialOptions } from './vertex';
-import { checkUserKeyExpiry, isEnabled, mergeHeaders } from '~/utils';
+import { getTarsProviderApiKey, resolveTarsProviderKey } from '~/tars';
 import { getLLMConfig } from './llm';
 
 /**
@@ -47,18 +48,39 @@ export async function initializeAnthropic({
       };
     }
   } else {
-    const isUserProvided = ANTHROPIC_API_KEY === 'user_provided';
+    /** sys_config-managed key overrides env; the Vertex path never consults pwc_tars. */
+    const anthropicKey = await resolveTarsProviderKey(ANTHROPIC_API_KEY, EModelEndpoint.anthropic);
+    const isUserProvided = anthropicKey === 'user_provided';
 
-    const anthropicApiKey = isUserProvided
-      ? await db.getUserKey({ userId: req.user?.id ?? '', name: EModelEndpoint.anthropic })
-      : ANTHROPIC_API_KEY;
+    let anthropicApiKey = isUserProvided ? undefined : anthropicKey;
+    if (isUserProvided) {
+      if (expiresAt) {
+        checkUserKeyExpiry(expiresAt, EModelEndpoint.anthropic);
+      }
+      if (req.user?.id) {
+        try {
+          anthropicApiKey = await db.getUserKey({
+            userId: req.user.id,
+            name: EModelEndpoint.anthropic,
+          });
+        } catch (error) {
+          /** No stored personal key is a soft miss — sys_config may cover it below. */
+          if (!isNoUserKeyError(error)) {
+            throw error;
+          }
+          anthropicApiKey = undefined;
+        }
+      }
+      if (!anthropicApiKey) {
+        anthropicApiKey = await getTarsProviderApiKey(EModelEndpoint.anthropic);
+      }
+      if (!anthropicApiKey) {
+        throw new Error(JSON.stringify({ type: ErrorTypes.NO_USER_KEY }));
+      }
+    }
 
     if (!anthropicApiKey) {
       throw new Error('Anthropic API key not provided. Please provide it again.');
-    }
-
-    if (expiresAt && isUserProvided) {
-      checkUserKeyExpiry(expiresAt, EModelEndpoint.anthropic);
     }
 
     credentials[AuthKeys.ANTHROPIC_API_KEY] = anthropicApiKey;

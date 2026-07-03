@@ -25,6 +25,12 @@ jest.mock('~/utils', () => ({
     mockCheckUserKeyExpiry(expiresAt, endpoint),
 }));
 
+const mockGetTarsProviderApiKey = jest.fn();
+jest.mock('~/tars', () => ({
+  ...jest.requireActual('~/tars'),
+  getTarsProviderApiKey: (...args: unknown[]) => mockGetTarsProviderApiKey(...args),
+}));
+
 import { initializeGoogle } from './initialize';
 
 function createDb(): EndpointDbMethods {
@@ -163,5 +169,100 @@ describe('initializeGoogle', () => {
       'X-Conversation-Id': 'convo-9',
       'X-User-Id': 'user-1',
     });
+  });
+});
+
+describe('initializeGoogle – sentinel key chain', () => {
+  const originalEnv = process.env;
+  const noUserKeyError = () => new Error(JSON.stringify({ type: 'no_user_key' }));
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env = { ...originalEnv };
+    process.env.GOOGLE_KEY = 'user_provided';
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
+  it('prefers the stored personal key without consulting sys_config', async () => {
+    const db = createDb();
+    await initializeGoogle({
+      req: createReq(),
+      endpoint: EModelEndpoint.google,
+      model_parameters: { model: 'gemini-2.5-flash' },
+      db,
+    });
+
+    const [credentials] = getGoogleConfigCall();
+    expect(credentials).toBe('user-google-key');
+    expect(mockGetTarsProviderApiKey).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the sys_config key when the user has no stored key', async () => {
+    const db = createDb();
+    (db.getUserKey as jest.Mock).mockRejectedValue(noUserKeyError());
+    mockGetTarsProviderApiKey.mockResolvedValue('g-tars-key');
+
+    await initializeGoogle({
+      req: createReq(),
+      endpoint: EModelEndpoint.google,
+      model_parameters: { model: 'gemini-2.5-flash' },
+      db,
+    });
+
+    const [credentials] = getGoogleConfigCall();
+    expect(credentials).toEqual(
+      expect.objectContaining({ [AuthKeys.GOOGLE_API_KEY]: 'g-tars-key' }),
+    );
+    expect(mockGetTarsProviderApiKey).toHaveBeenCalledWith(EModelEndpoint.google);
+  });
+
+  it('throws NO_USER_KEY when neither a personal key nor a sys_config key exists', async () => {
+    const db = createDb();
+    (db.getUserKey as jest.Mock).mockRejectedValue(noUserKeyError());
+    mockGetTarsProviderApiKey.mockResolvedValue(undefined);
+
+    await expect(
+      initializeGoogle({
+        req: createReq(),
+        endpoint: EModelEndpoint.google,
+        model_parameters: { model: 'gemini-2.5-flash' },
+        db,
+      }),
+    ).rejects.toThrow('no_user_key');
+  });
+
+  it('rethrows non-NO_USER_KEY errors instead of masking them with sys_config', async () => {
+    const db = createDb();
+    (db.getUserKey as jest.Mock).mockRejectedValue(
+      new Error(JSON.stringify({ type: 'invalid_user_key' })),
+    );
+    mockGetTarsProviderApiKey.mockResolvedValue('g-tars-key');
+
+    await expect(
+      initializeGoogle({
+        req: createReq(),
+        endpoint: EModelEndpoint.google,
+        model_parameters: { model: 'gemini-2.5-flash' },
+        db,
+      }),
+    ).rejects.toThrow('invalid_user_key');
+  });
+
+  it('never consults sys_config on the vertexai endpoint', async () => {
+    mockLoadServiceKey.mockResolvedValue(null);
+    const db = createDb();
+
+    await initializeGoogle({
+      req: createReq(),
+      endpoint: Providers.VERTEXAI,
+      model_parameters: { model: 'gemini-2.5-flash' },
+      db,
+    });
+
+    expect(mockGetTarsProviderApiKey).not.toHaveBeenCalled();
+    expect(db.getUserKey).not.toHaveBeenCalled();
   });
 });
