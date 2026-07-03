@@ -1,6 +1,6 @@
 import path from 'path';
 import { Providers } from '@librechat/agents';
-import { EModelEndpoint, AuthKeys } from 'librechat-data-provider';
+import { ErrorTypes, EModelEndpoint, AuthKeys } from 'librechat-data-provider';
 import type {
   BaseInitializeParams,
   InitializeResultBase,
@@ -9,11 +9,13 @@ import type {
 } from '~/types';
 import {
   isEnabled,
-  loadServiceKey,
-  checkUserKeyExpiry,
   mergeHeaders,
   resolveHeaders,
+  loadServiceKey,
+  isNoUserKeyError,
+  checkUserKeyExpiry,
 } from '~/utils';
+import { getTarsProviderApiKey, resolveTarsProviderKey } from '~/tars';
 import { getGoogleConfig } from './llm';
 
 /**
@@ -31,24 +33,48 @@ export async function initializeGoogle({
   db,
 }: BaseInitializeParams): Promise<InitializeResultBase> {
   const appConfig = req.config;
-  const { GOOGLE_KEY, GOOGLE_REVERSE_PROXY, GOOGLE_AUTH_HEADER, PROXY } = process.env;
-  const isUserProvided = GOOGLE_KEY === 'user_provided';
+  const { GOOGLE_REVERSE_PROXY, GOOGLE_AUTH_HEADER, PROXY } = process.env;
   const isVertexEndpoint = endpoint === Providers.VERTEXAI;
+  /** sys_config-managed key overrides env; the Vertex path never consults pwc_tars. */
+  const GOOGLE_KEY = isVertexEndpoint
+    ? process.env.GOOGLE_KEY
+    : await resolveTarsProviderKey(process.env.GOOGLE_KEY, EModelEndpoint.google);
+  const isUserProvided = GOOGLE_KEY === 'user_provided';
   const useUserProvidedGoogleKey = !isVertexEndpoint && isUserProvided;
   const { key: expiresAt } = req.body;
 
   let userKey = null;
-  if (expiresAt && useUserProvidedGoogleKey) {
-    checkUserKeyExpiry(expiresAt, EModelEndpoint.google);
-    userKey = await db.getUserKey({ userId: req.user?.id ?? '', name: EModelEndpoint.google });
+  let tarsFallbackKey: string | undefined;
+  if (useUserProvidedGoogleKey) {
+    if (expiresAt) {
+      checkUserKeyExpiry(expiresAt, EModelEndpoint.google);
+    }
+    if (req.user?.id) {
+      try {
+        userKey = await db.getUserKey({ userId: req.user.id, name: EModelEndpoint.google });
+      } catch (error) {
+        /** No stored personal key is a soft miss — sys_config may cover it below. */
+        if (!isNoUserKeyError(error)) {
+          throw error;
+        }
+        userKey = null;
+      }
+    }
+    if (userKey == null) {
+      tarsFallbackKey = await getTarsProviderApiKey(EModelEndpoint.google);
+      if (!tarsFallbackKey) {
+        throw new Error(JSON.stringify({ type: ErrorTypes.NO_USER_KEY }));
+      }
+    }
   }
+  const useUserKey = useUserProvidedGoogleKey && userKey != null;
+  const effectiveGoogleKey = tarsFallbackKey ?? GOOGLE_KEY;
 
   let serviceKey: Record<string, unknown> = {};
 
   /** Check if GOOGLE_KEY is provided at all (including 'user_provided') */
   const isGoogleKeyProvided =
-    !isVertexEndpoint &&
-    ((GOOGLE_KEY && GOOGLE_KEY.trim() !== '') || (useUserProvidedGoogleKey && userKey != null));
+    !isVertexEndpoint && ((effectiveGoogleKey && effectiveGoogleKey.trim() !== '') || useUserKey);
 
   if ((isVertexEndpoint || !isGoogleKeyProvided) && loadServiceKey) {
     /** Only attempt to load service key if GOOGLE_KEY is not provided */
@@ -65,11 +91,11 @@ export async function initializeGoogle({
     }
   }
 
-  const credentials: GoogleCredentials = useUserProvidedGoogleKey
+  const credentials: GoogleCredentials = useUserKey
     ? (userKey as GoogleCredentials)
     : {
         [AuthKeys.GOOGLE_SERVICE_KEY]: serviceKey,
-        ...(!isVertexEndpoint && { [AuthKeys.GOOGLE_API_KEY]: GOOGLE_KEY }),
+        ...(!isVertexEndpoint && { [AuthKeys.GOOGLE_API_KEY]: effectiveGoogleKey }),
       };
 
   let clientOptions: GoogleConfigOptions = {};
