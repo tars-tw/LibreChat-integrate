@@ -3,3 +3,4 @@ export * from './domains';
 export * from './knowledge';
 export * from './mirror';
 export * from './prompts';
+export * from './sysconfig';

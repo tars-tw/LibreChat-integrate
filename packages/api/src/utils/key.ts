@@ -137,3 +137,19 @@ export function checkUserKeyExpiry(expiresAt: string, endpoint: string): void {
     throw new Error(errorMessage);
   }
 }
+
+/**
+ * Whether an error is the `NO_USER_KEY` throw from `getUserKey`/`getUserKeyValues`
+ * (a stringified JSON message). Lets callers treat "no stored key" as a soft miss
+ * while still surfacing `INVALID_USER_KEY` and other failures.
+ */
+export function isNoUserKeyError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  try {
+    return JSON.parse(error.message)?.type === ErrorTypes.NO_USER_KEY;
+  } catch {
+    return false;
+  }
+}
