@@ -22,6 +22,12 @@ jest.mock('~/utils', () => ({
   checkUserKeyExpiry: jest.fn(),
 }));
 
+const mockGetTarsProviderApiKey = jest.fn();
+jest.mock('~/tars', () => ({
+  ...jest.requireActual('~/tars'),
+  getTarsProviderApiKey: (...args: unknown[]) => mockGetTarsProviderApiKey(...args),
+}));
+
 import { getAzureCredentials } from '~/utils';
 import { initializeOpenAI } from './initialize';
 
@@ -265,5 +271,99 @@ describe('initializeOpenAI – custom headers', () => {
     const options = mockGetOpenAIConfig.mock.calls[0][1] as { headers?: Record<string, string> };
     // Left unresolved here; request-time resolveConfigHeaders resolves it once
     expect(options.headers).toEqual({ 'X-Global': '{{LIBRECHAT_USER_ID}}' });
+  });
+});
+
+describe('initializeOpenAI – sentinel key chain', () => {
+  const noUserKeyError = () => new Error(JSON.stringify({ type: 'no_user_key' }));
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('prefers the stored personal key without consulting sys_config', async () => {
+    const params = createParams({ OPENAI_API_KEY: 'user_provided' });
+    try {
+      await initializeOpenAI(params);
+    } finally {
+      (params as unknown as { _restore: () => void })._restore();
+    }
+    expect(mockGetOpenAIConfig).toHaveBeenCalledWith(
+      'sk-user-key',
+      expect.any(Object),
+      EModelEndpoint.openAI,
+    );
+    expect(mockGetTarsProviderApiKey).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the sys_config key when the user has no stored key', async () => {
+    const params = createParams({ OPENAI_API_KEY: 'user_provided' });
+    (params.db.getUserKeyValues as jest.Mock).mockRejectedValue(noUserKeyError());
+    mockGetTarsProviderApiKey.mockResolvedValue('sk-tars');
+    try {
+      await initializeOpenAI(params);
+    } finally {
+      (params as unknown as { _restore: () => void })._restore();
+    }
+    expect(mockGetOpenAIConfig).toHaveBeenCalledWith(
+      'sk-tars',
+      expect.any(Object),
+      EModelEndpoint.openAI,
+    );
+  });
+
+  it('resolves the stored key for gateway-shaped requests without a `key` body field', async () => {
+    const params = createParams({ OPENAI_API_KEY: 'user_provided' });
+    (params.req as unknown as { body: Record<string, unknown> }).body = {};
+    try {
+      await initializeOpenAI(params);
+    } finally {
+      (params as unknown as { _restore: () => void })._restore();
+    }
+    expect(params.db.getUserKeyValues).toHaveBeenCalledWith({
+      userId: 'user-1',
+      name: EModelEndpoint.openAI,
+    });
+    expect(mockGetOpenAIConfig).toHaveBeenCalledWith(
+      'sk-user-key',
+      expect.any(Object),
+      EModelEndpoint.openAI,
+    );
+  });
+
+  it('throws when neither a personal key nor a sys_config key exists', async () => {
+    const params = createParams({ OPENAI_API_KEY: 'user_provided' });
+    (params.db.getUserKeyValues as jest.Mock).mockRejectedValue(noUserKeyError());
+    mockGetTarsProviderApiKey.mockResolvedValue(undefined);
+    try {
+      await expect(initializeOpenAI(params)).rejects.toThrow();
+    } finally {
+      (params as unknown as { _restore: () => void })._restore();
+    }
+  });
+
+  it('rethrows non-NO_USER_KEY errors instead of masking them with sys_config', async () => {
+    const params = createParams({ OPENAI_API_KEY: 'user_provided' });
+    (params.db.getUserKeyValues as jest.Mock).mockRejectedValue(
+      new Error(JSON.stringify({ type: 'invalid_user_key' })),
+    );
+    mockGetTarsProviderApiKey.mockResolvedValue('sk-tars');
+    try {
+      await expect(initializeOpenAI(params)).rejects.toThrow('invalid_user_key');
+    } finally {
+      (params as unknown as { _restore: () => void })._restore();
+    }
+  });
+
+  it('keeps the azureOpenAI flow throwing on a missing personal key', async () => {
+    const params = createParams({ AZURE_API_KEY: 'user_provided' });
+    params.endpoint = EModelEndpoint.azureOpenAI;
+    (params.db.getUserKeyValues as jest.Mock).mockRejectedValue(noUserKeyError());
+    mockGetTarsProviderApiKey.mockResolvedValue('sk-tars');
+    try {
+      await expect(initializeOpenAI(params)).rejects.toThrow('no_user_key');
+    } finally {
+      (params as unknown as { _restore: () => void })._restore();
+    }
   });
 });
