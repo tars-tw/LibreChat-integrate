@@ -5,6 +5,7 @@ import type {
   TTarsDomain,
   TTarsChunk,
   TTarsDocument,
+  TTarsSysConfig,
   TTarsModelOptions,
   TTarsChunksResponse,
   TTarsDomainsResponse,
@@ -12,6 +13,7 @@ import type {
   TTarsPromptsResponse,
   TTarsDocumentsResponse,
   TTarsDomainPrepareData,
+  TTarsSysConfigsResponse,
 } from 'librechat-data-provider';
 
 /** pwc_tars document status: 0 uploaded, 1 processing, 2 completed, 4 failed. */
@@ -123,6 +125,21 @@ export const useTarsPromptsQuery = (
       enabled: !!domainId,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
+      ...config,
+    },
+  );
+};
+
+/** Admin: pwc_tars 系統參數設定 rows. */
+export const useTarsSysConfigsQuery = (
+  config?: UseQueryOptions<TTarsSysConfigsResponse, unknown, TTarsSysConfig[]>,
+): QueryObserverResult<TTarsSysConfig[]> => {
+  return useQuery<TTarsSysConfigsResponse, unknown, TTarsSysConfig[]>(
+    [QueryKeys.tarsSysConfigs],
+    () => dataService.getTarsSysConfigs(),
+    {
+      select: (data) => data.sysConfigs ?? [],
+      ...adminQueryOptions,
       ...config,
     },
   );
