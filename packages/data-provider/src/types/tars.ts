@@ -205,3 +205,33 @@ export type TTarsPromptInput = {
   domain_id?: string | number;
   knowledge_base_id?: string;
 };
+
+/** A pwc_tars system parameter (系統參數設定). Mirrors `SysConfig.to_dict()`. */
+export type TTarsSysConfig = {
+  id: number;
+  category: string | null;
+  key: string;
+  value: string | null;
+  type: string;
+  description: string | null;
+  status: string;
+  is_displayed: boolean;
+  created_by: string;
+  created_name: string;
+  updated_by: string | null;
+  updated_name: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export type TTarsSysConfigsResponse = {
+  sysConfigs: TTarsSysConfig[];
+};
+
+/** Update payload; key/category are immutable in the UI. */
+export type TTarsSysConfigUpdate = {
+  key: string;
+  value?: string;
+  description?: string;
+  status?: 'active' | 'inactive';
+};

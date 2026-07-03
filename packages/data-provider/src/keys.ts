@@ -30,6 +30,7 @@ export enum QueryKeys {
   tarsDocumentChunks = 'tarsDocumentChunks',
   tarsModelOptions = 'tarsModelOptions',
   tarsPrompts = 'tarsPrompts',
+  tarsSysConfigs = 'tarsSysConfigs',
   files = 'files',
   fileConfig = 'fileConfig',
   tools = 'tools',

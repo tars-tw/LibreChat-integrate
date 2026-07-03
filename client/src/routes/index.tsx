@@ -62,6 +62,11 @@ const loadKnowledgeBaseDetail = () =>
     Component: m.KnowledgeBaseDetail,
   }));
 
+const loadSystemConfigView = () =>
+  import('~/components/SystemConfig').then((m) => ({
+    Component: m.SystemConfigView,
+  }));
+
 const baseEl = document.querySelector('base');
 const baseHref = baseEl?.getAttribute('href') || '/';
 
@@ -192,6 +197,10 @@ export const router = createBrowserRouter(
             {
               path: 'knowledge-bases/:kbId',
               lazy: loadKnowledgeBaseDetail,
+            },
+            {
+              path: 'system-config',
+              lazy: loadSystemConfigView,
             },
             {
               path: 'agents',

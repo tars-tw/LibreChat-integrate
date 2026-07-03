@@ -18,7 +18,7 @@
 
 ```bash
 nvm use                                  # 讀 .nvmrc 切到 24.16.0(沒裝先 nvm install 24.16.0)
-cp .env.example .env                     # 複製後手動填下方「必填」兩個值
+cp .env.example .env                     # 複製後依下表解註解/填值(全部在 .env.example 中被註解掉)
 #  建立 librechat.yaml(被 .gitignore,新機器要自建;內容直接抄 §7.2,全是 ${...} 參照可照貼)
 # 建立 docker-compose.override.yml(被 .gitignore,每台機器自建;內容見下方)
 docker compose up -d mongodb meilisearch # 只起依賴服務(MongoDB :27017 + Meilisearch)
@@ -34,9 +34,11 @@ npm run frontend                         # build 全部 packages(dev 必要)+ cl
 | `VITE_LANGFLOW_URL` | Langflow URL,如 `http://localhost:7860`(**單一來源**,餵 iframe + MCP url host + SSRF 白名單) | 用 Langflow 才需要;**Vite build-time,改了要重 build 前端** |
 | `LANGFLOW_API_KEY` | Langflow 的 API key | 用 Langflow 才需要 |
 
+> LLM gateway(Langflow TarsAgent 的「用 LibreChat 模型驅動」)所需的 `LLM_GATEWAY_ALLOW_UNAUTHENTICATED=true` 已在 `.env.example` **預設開啟**,本機開發不用動;**對外部署**時務必改成 `LLM_GATEWAY_SERVICE_KEY`(見 [§6.4](#64-llm-gatewaypwc_tars-反向取用-librechat-模型))。
+
 > Langflow 的 **project id 不用設** —— 開機時後端從你唯一的 Langflow 專案自動探測(`.env`、`librechat.yaml` 都不寫)。
 
-其餘關鍵值(`JWT_SECRET`、`JWT_REFRESH_SECRET`、`CREDS_KEY`、`CREDS_IV`、`MEILI_MASTER_KEY`)`.env.example` 已內建可用範例值,本機 dev **不必動**;各家模型 API key(`OPENAI_API_KEY` 等)預設 `user_provided`,從 UI 輸入即可。完整變數說明見 [§6.2](#62-環境變數env)。
+其餘關鍵值(`JWT_SECRET`、`JWT_REFRESH_SECRET`、`CREDS_KEY`、`CREDS_IV`、`MEILI_MASTER_KEY`、`HOST=127.0.0.1`)`.env.example` 已內建可用範例值,本機 dev **不必動**;各家模型 API key(`OPENAI_API_KEY` 等)維持哨兵值 `user_provided` —— 實際 key 的解析鏈是「使用者聊天室自設 > pwc_tars sys_config(系統參數設定頁)> 提示設 key」(見 [§6.4](#64-llm-gatewaypwc_tars-反向取用-librechat-模型)),`.env` 不放真 key。完整變數說明見 [§6.2](#62-環境變數env)。
 
 > ⚠️ 上述範例 secret 是公開 repo 內人人可見的值,**對外/共享環境請重新產生 `JWT_*` 與 `CREDS_*`**。
 
@@ -199,6 +201,7 @@ npm run build
 |---|---|---|
 | `TARS_AUTH_URL` | ✅ | pwc_tars Flask 服務基底 URL。**設了才會啟用整個 tars 整合**(登入改走 pwc_tars、登入頁變 username、註冊/密碼重設自動關閉)。 |
 | `TARS_ADMIN_ROLE_IDS` | ⬜ | 逗號清單;pwc_tars `role_id` 屬此集合者 → LibreChat `ADMIN`。預設 `1`(對應 pwc_tars 種子的 Admin 角色)。 |
+| `LLM_GATEWAY_ALLOW_UNAUTHENTICATED` | ⬜ | 開放 `/v1m` gateway 免認證(僅限封閉內網)。**`.env.example` 已預設 `true`**,本機開發即開即用;對外部署改設 `LLM_GATEWAY_SERVICE_KEY`,詳見 [§6.4](#64-llm-gatewaypwc_tars-反向取用-librechat-模型)。 |
 
 沿用 LibreChat 既有(LibreChat 自簽自己的 token):`JWT_SECRET`、`JWT_REFRESH_SECRET`、`SESSION_EXPIRY`、`REFRESH_TOKEN_EXPIRY`。
 
@@ -234,6 +237,9 @@ npm run build
 走 gateway 的條件 = **主開關 on** ＋ **請求帶 `X-Use-Librechat-Gateway` header** ＋ base_url 有設,三者都成立。任一不成立 → 用 pwc_tars 自己的模型直連。所以:pwc_tars 原生聊天(message route)永遠不帶 header → 直連;只有標了那個開關的 Langflow flow 才走 gateway。
 
 pwc_tars 只走 **unauthenticated** gateway(不送 key),所以 LibreChat 端請設 `LLM_GATEWAY_ALLOW_UNAUTHENTICATED=true`。若日後要改用 `LLM_GATEWAY_SERVICE_KEY`,需在 pwc_tars 這側再加一個 sys_config key 帶 Bearer token(目前刻意不做)。
+
+**Gateway 的 API key 解析與使用者身分轉發**:LibreChat 端 provider key 的解析鏈是「發話者聊天室自設的個人 key > sys_config 的 key(`KEY_OPEN_AI_API` / `KEY_ANTHROPIC_API` / `KEY_GEMINI_API`,經 LibreChat 系統參數設定頁管理)> 提示設 key」(`.env` 三個 provider key 都設哨兵值 `user_provided`)。gateway 請求預設是 service 身分(synthetic user),只吃得到 sys_config 的 key;若請求帶 `X-Librechat-User-Id: <LibreChat user id>` header(**僅在 service 認證模式下受信任**),LibreChat 會改以該使用者身分解析他的個人 key。整條自動傳遞鏈:LibreChat 聊天 → MCP header `x-langflow-global-var-librechat_user_id: {{LIBRECHAT_USER_ID}}`(見 §7.2)→ Langflow 放進 `graph.context.request_variables` → `TarsAgent` component 自動讀取(欄位留空時)→ 轉發 pwc_tars(`langflow-service` route → `mark_gateway_user`)→ `LLMManager` 對 gateway 的 LLM 呼叫掛上 header。使用者不需要手動填任何 ID。
+> ⚠️ `LLM_GATEWAY_ALLOW_UNAUTHENTICATED=true` 模式下,內網任何請求都可用這個 header 冒名任一使用者的 key——與開放 gateway 本身同一信任邊界,3080 不可對外。
 
 種子/migration:`pwc_tars/backend/sql/2_insert_values/sys_config.sql`(全新)與 `sql/3_update_sql/librechat_integration.sql`(既有 DB)。
 
@@ -288,6 +294,10 @@ endpoints:
       - actions
       - file_search
       - artifacts
+      - execute_code
+      - web_search
+      - skills
+      - context
 
 mcpServers:
   # Langflow integration — exposes the flows of a Langflow project as callable tools.
@@ -300,6 +310,11 @@ mcpServers:
     url: '${VITE_LANGFLOW_URL}/api/v1/mcp/project/${LANGFLOW_PROJECT_ID}/sse'
     headers:
       x-api-key: '${LANGFLOW_API_KEY}'
+      # 把發話者的 LibreChat user id 以 Langflow request-variable header 帶進 flow：
+      # Langflow 會把 x-langflow-global-var-* 放進 graph.context.request_variables，
+      # TarsAgent component 讀取後轉發 pwc_tars → LLM gateway 以該使用者身分解析個人 key。
+      # 這個佔位符同時讓 langflow 的 MCP 連線變成 per-user scoped。
+      x-langflow-global-var-librechat_user_id: '{{LIBRECHAT_USER_ID}}'
     title: 'Langflow'
     description: 'Langflow flows exposed as callable tools'
     timeout: 60000
@@ -323,7 +338,7 @@ mcpServers:
 
 - **新增 flow 流程**:在 Langflow 建好 flow → 在該 project 的 MCP 設定**打開該 flow 的開關** → 回 LibreChat 打開 Agents 選單,它就在了。**不用跑任何腳本。**
 - **只新增、不刪除**:在 Langflow 停用/改名 flow,舊 agent 不會自動消失,需手動刪。
-- 編排模型預設 `gpt-5.4-mini`(走你自己帳號的 OpenAI key,因為 `OPENAI_API_KEY=user_provided`)。
+- 編排模型預設 `gpt-5.4-mini`(key 解析鏈:你聊天室自設的個人 key > sys_config 的 `KEY_OPEN_AI_API`;`.env` 為哨兵值 `OPENAI_API_KEY=user_provided`,見 §6.4)。
 
 ### 7.4 必填與可選 env
 

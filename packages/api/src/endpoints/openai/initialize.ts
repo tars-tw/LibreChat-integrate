@@ -9,9 +9,11 @@ import {
   mergeHeaders,
   resolveHeaders,
   isUserProvided,
+  isNoUserKeyError,
   checkUserKeyExpiry,
   getAzureCredentials,
 } from '~/utils';
+import { getTarsProviderApiKey, resolveTarsProviderKey } from '~/tars';
 import { validateEndpointURL } from '~/auth';
 import { getOpenAIConfig } from './config';
 
@@ -32,8 +34,12 @@ export async function initializeOpenAI({
   const appConfig = req.config;
   const openAIConfig = appConfig?.endpoints?.[EModelEndpoint.openAI];
   const allConfig = appConfig?.endpoints?.all;
-  const { PROXY, OPENAI_API_KEY, AZURE_API_KEY, OPENAI_REVERSE_PROXY, AZURE_OPENAI_BASEURL } =
-    process.env;
+  const { PROXY, AZURE_API_KEY, OPENAI_REVERSE_PROXY, AZURE_OPENAI_BASEURL } = process.env;
+  /** sys_config-managed key overrides env unless the admin opted into per-user keys. */
+  const OPENAI_API_KEY = await resolveTarsProviderKey(
+    process.env.OPENAI_API_KEY,
+    EModelEndpoint.openAI,
+  );
 
   const { key: expiresAt } = req.body;
   const modelName = model_parameters?.model as string | undefined;
@@ -51,15 +57,36 @@ export async function initializeOpenAI({
   const userProvidesKey = isUserProvided(credentials[endpoint as keyof typeof credentials]);
   const userProvidesURL = isUserProvided(baseURLOptions[endpoint as keyof typeof baseURLOptions]);
 
-  let userValues: UserKeyValues | null = null;
+  const isOpenAIProvider = endpoint === EModelEndpoint.openAI;
   if (expiresAt && (userProvidesKey || userProvidesURL)) {
     checkUserKeyExpiry(expiresAt, endpoint);
-    userValues = await db.getUserKeyValues({ userId: req.user?.id ?? '', name: endpoint });
+  }
+
+  let userValues: UserKeyValues | null = null;
+  /** Sentinel mode fetches the personal key even without `expiresAt` (the
+   *  gateway passthrough sends no `key` body field). */
+  const shouldFetchUserValues =
+    (!!expiresAt && (userProvidesKey || userProvidesURL)) ||
+    (isOpenAIProvider && userProvidesKey && !!req.user?.id);
+  if (shouldFetchUserValues) {
+    try {
+      userValues = await db.getUserKeyValues({ userId: req.user?.id ?? '', name: endpoint });
+    } catch (error) {
+      /** A missing personal key is tolerated only where sys_config can supply
+       *  the openAI key below; Azure and user-provided-URL flows keep throwing. */
+      if (!isOpenAIProvider || userProvidesURL || !isNoUserKeyError(error)) {
+        throw error;
+      }
+      userValues = null;
+    }
   }
 
   let apiKey = userProvidesKey
     ? userValues?.apiKey
     : credentials[endpoint as keyof typeof credentials];
+  if (isOpenAIProvider && userProvidesKey && !apiKey) {
+    apiKey = await getTarsProviderApiKey(EModelEndpoint.openAI);
+  }
   const baseURL = userProvidesURL
     ? userValues?.baseURL
     : baseURLOptions[endpoint as keyof typeof baseURLOptions];

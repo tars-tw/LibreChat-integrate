@@ -22,6 +22,7 @@ import {
 } from '~/utils';
 import { getModelCacheTokenConfigKey, isScopedTokenConfigKey } from '~/endpoints/keys';
 import { createSSRFSafeAgents, validateEndpointURL } from '~/auth';
+import { getTarsProviderApiKey } from '~/tars';
 import { standardCache, tokenConfigCache } from '~/cache';
 
 type SSRFSafeAgents = ReturnType<typeof createSSRFSafeAgents>;
@@ -346,7 +347,10 @@ export async function fetchOpenAIModels(
   _models: string[] = [],
 ): Promise<string[]> {
   let models = _models.slice() ?? [];
-  const apiKey = resolveOpenAIApiKey(opts);
+  const apiKey =
+    opts.openAIApiKey ||
+    (await getTarsProviderApiKey(EModelEndpoint.openAI)) ||
+    process.env.OPENAI_API_KEY;
   const openaiBaseURL = 'https://api.openai.com/v1';
   let baseURL = openaiBaseURL;
   let reverseProxyUrl = process.env.OPENAI_REVERSE_PROXY;
@@ -417,7 +421,10 @@ export async function getOpenAIModels(opts: GetOpenAIModelsOptions = {}): Promis
     return splitAndTrim(process.env[key]);
   }
 
-  if (isUserProvided(resolveOpenAIApiKey(opts))) {
+  if (
+    isUserProvided(resolveOpenAIApiKey(opts)) &&
+    !(await getTarsProviderApiKey(EModelEndpoint.openAI))
+  ) {
     return models;
   }
 
@@ -440,7 +447,8 @@ export async function fetchAnthropicModels(
   _models: string[] = [],
 ): Promise<string[]> {
   let models = _models.slice() ?? [];
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey =
+    (await getTarsProviderApiKey(EModelEndpoint.anthropic)) || process.env.ANTHROPIC_API_KEY;
   const anthropicBaseURL = 'https://api.anthropic.com/v1';
   let baseURL = anthropicBaseURL;
   const reverseProxyUrl = process.env.ANTHROPIC_REVERSE_PROXY;
@@ -497,7 +505,10 @@ export async function getAnthropicModels(
     return splitAndTrim(process.env.ANTHROPIC_MODELS);
   }
 
-  if (isUserProvided(process.env.ANTHROPIC_API_KEY)) {
+  if (
+    isUserProvided(process.env.ANTHROPIC_API_KEY) &&
+    !(await getTarsProviderApiKey(EModelEndpoint.anthropic))
+  ) {
     return models;
   }
 

@@ -745,6 +745,16 @@ export const deleteTarsPrompt = (
   return request.delete(endpoints.tarsPrompt(id, query));
 };
 
+export const getTarsSysConfigs = (): Promise<t.TTarsSysConfigsResponse> => {
+  return request.get(endpoints.tarsSysConfigs());
+};
+
+export const updateTarsSysConfig = (
+  data: t.TTarsSysConfigUpdate,
+): Promise<{ success: boolean }> => {
+  return request.put(endpoints.tarsSysConfigs(), data);
+};
+
 /**
  * Unified marketplace agents endpoint with query string controls
  */
