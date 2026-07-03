@@ -2,6 +2,13 @@ import { EModelEndpoint } from 'librechat-data-provider';
 import type { AnthropicClientOptions } from '@librechat/agents';
 import type { BaseInitializeParams, ServerRequest } from '~/types';
 import { FINE_GRAINED_TOOL_STREAMING_BETA } from './helpers';
+
+const mockGetTarsProviderApiKey = jest.fn();
+jest.mock('~/tars', () => ({
+  ...jest.requireActual('~/tars'),
+  getTarsProviderApiKey: (...args: unknown[]) => mockGetTarsProviderApiKey(...args),
+}));
+
 import { initializeAnthropic } from './initialize';
 
 const getDefaultHeaders = (llmConfig: unknown): Record<string, string> =>
@@ -105,5 +112,83 @@ describe('initializeAnthropic – custom headers', () => {
     } finally {
       restore();
     }
+  });
+});
+
+describe('initializeAnthropic – sentinel key chain', () => {
+  const noUserKeyError = () => new Error(JSON.stringify({ type: 'no_user_key' }));
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const getApiKey = (result: { llmConfig: unknown }): string | undefined =>
+    (result.llmConfig as { apiKey?: string }).apiKey;
+
+  it('prefers the stored personal key without consulting sys_config', async () => {
+    const { params, restore } = createParams({}, { ANTHROPIC_API_KEY: 'user_provided' });
+    (params.db.getUserKey as jest.Mock).mockResolvedValue('sk-ant-user');
+    try {
+      const result = await initializeAnthropic(params);
+      expect(getApiKey(result)).toBe('sk-ant-user');
+    } finally {
+      restore();
+    }
+    expect(mockGetTarsProviderApiKey).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the sys_config key when the user has no stored key', async () => {
+    const { params, restore } = createParams({}, { ANTHROPIC_API_KEY: 'user_provided' });
+    (params.db.getUserKey as jest.Mock).mockRejectedValue(noUserKeyError());
+    mockGetTarsProviderApiKey.mockResolvedValue('sk-ant-tars');
+    try {
+      const result = await initializeAnthropic(params);
+      expect(getApiKey(result)).toBe('sk-ant-tars');
+    } finally {
+      restore();
+    }
+    expect(mockGetTarsProviderApiKey).toHaveBeenCalledWith(EModelEndpoint.anthropic);
+  });
+
+  it('throws NO_USER_KEY when neither a personal key nor a sys_config key exists', async () => {
+    const { params, restore } = createParams({}, { ANTHROPIC_API_KEY: 'user_provided' });
+    (params.db.getUserKey as jest.Mock).mockRejectedValue(noUserKeyError());
+    mockGetTarsProviderApiKey.mockResolvedValue(undefined);
+    try {
+      await expect(initializeAnthropic(params)).rejects.toThrow('no_user_key');
+    } finally {
+      restore();
+    }
+  });
+
+  it('rethrows non-NO_USER_KEY errors instead of masking them with sys_config', async () => {
+    const { params, restore } = createParams({}, { ANTHROPIC_API_KEY: 'user_provided' });
+    (params.db.getUserKey as jest.Mock).mockRejectedValue(
+      new Error(JSON.stringify({ type: 'invalid_user_key' })),
+    );
+    mockGetTarsProviderApiKey.mockResolvedValue('sk-ant-tars');
+    try {
+      await expect(initializeAnthropic(params)).rejects.toThrow('invalid_user_key');
+    } finally {
+      restore();
+    }
+  });
+
+  it('never consults sys_config on the Vertex path', async () => {
+    const { params, restore } = createParams(
+      {
+        [EModelEndpoint.anthropic]: {
+          vertexConfig: { enabled: true, region: 'us-east5', projectId: 'p1' },
+        },
+      },
+      { ANTHROPIC_API_KEY: 'user_provided' },
+    );
+    try {
+      await initializeAnthropic(params).catch(() => undefined);
+    } finally {
+      restore();
+    }
+    expect(mockGetTarsProviderApiKey).not.toHaveBeenCalled();
+    expect(params.db.getUserKey).not.toHaveBeenCalled();
   });
 });
