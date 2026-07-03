@@ -18,6 +18,7 @@ import {
   LogOut,
   Scale,
   ShieldCheck,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/ArchivedChatsModal';
 import { filesDialogTriggerAtom, showFilesDialogAtom } from '~/store/filesDialog';
@@ -194,6 +195,12 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
           >
             <Database className="icon-md" aria-hidden="true" />
             {localize('com_ui_tars_knowledge_bases')}
+          </Menu.MenuItem>
+        )}
+        {isTarsAdmin && (
+          <Menu.MenuItem onClick={() => navigate('/system-config')} className="select-item text-sm">
+            <SlidersHorizontal className="icon-md" aria-hidden="true" />
+            {localize('com_ui_tars_sys_config')}
           </Menu.MenuItem>
         )}
         <Menu.MenuItem

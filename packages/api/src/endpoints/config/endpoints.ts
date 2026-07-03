@@ -15,6 +15,7 @@ import { loadCustomEndpointsConfig as defaultLoadCustomEndpoints } from '~/endpo
 import { isCodeEnvironmentSelectionEnabled } from '~/code/protocol';
 import { getAppConfigOptionsFromUser } from '~/app/service';
 import { getResponsesApiRouting } from './responses';
+import { getTarsProviderApiKey } from '~/tars';
 
 type PartialEndpointEntry = Partial<TConfig> & Record<string, unknown>;
 type DefaultEndpointsResult = Record<string, PartialEndpointEntry | false | null>;
@@ -186,6 +187,27 @@ export function createEndpointsConfigService(deps: EndpointsConfigDeps): {
         userProvideSessionToken: process.env.BEDROCK_AWS_SESSION_TOKEN === AuthType.USER_PROVIDED,
         userProvideBearerToken: process.env.BEDROCK_AWS_BEARER_TOKEN === AuthType.USER_PROVIDED,
       };
+    }
+
+    /**
+     * With a `user_provided` env sentinel, an active pwc_tars sys_config key
+     * means users need not supply their own — report `userProvide: false` so
+     * the client does not lock the chat input. The sysconfig TTL cache bounds
+     * the per-request cost to at most one fetch per TTL window.
+     */
+    const tarsKeyedProviders = [
+      EModelEndpoint.openAI,
+      EModelEndpoint.anthropic,
+      EModelEndpoint.google,
+    ] as const;
+    for (const provider of tarsKeyedProviders) {
+      const entry = mergedConfig[provider];
+      if (!entry || entry.userProvide !== true) {
+        continue;
+      }
+      if (await getTarsProviderApiKey(provider)) {
+        mergedConfig[provider] = { ...entry, userProvide: false };
+      }
     }
 
     return orderEndpointsConfig(mergedConfig as TEndpointsConfig);
