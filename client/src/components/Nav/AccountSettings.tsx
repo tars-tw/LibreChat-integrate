@@ -12,6 +12,7 @@ import {
   LogOut,
   Scale,
   ShieldCheck,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/ArchivedChatsModal';
 import { filesDialogTriggerAtom, showFilesDialogAtom } from '~/store/filesDialog';
