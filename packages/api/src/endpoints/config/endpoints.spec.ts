@@ -12,6 +12,12 @@ import type { AppConfigServiceDeps } from '~/app/service';
 import type { EndpointsConfigDeps } from './endpoints';
 import type { ServerRequest } from '~/types';
 
+const mockGetTarsProviderApiKey = jest.fn();
+jest.mock('~/tars', () => ({
+  ...jest.requireActual('~/tars'),
+  getTarsProviderApiKey: (...args: unknown[]) => mockGetTarsProviderApiKey(...args),
+}));
+
 import { createEndpointsConfigService } from './endpoints';
 import { createAppConfigService } from '~/app/service';
 
@@ -396,5 +402,46 @@ describe('createEndpointsConfigService', () => {
 describe('defaultAgentCapabilities', () => {
   it('includes AgentCapabilities.skills so skills are enabled by default', () => {
     expect(defaultAgentCapabilities).toContain(AgentCapabilities.skills);
+  });
+});
+
+describe('getEndpointsConfig – dynamic userProvide via sys_config', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('flips userProvide to false when sys_config has an active key', async () => {
+    const deps = createMockDeps({
+      loadDefaultEndpointsConfig: jest.fn().mockResolvedValue({
+        [EModelEndpoint.openAI]: { userProvide: true, order: 0 },
+        [EModelEndpoint.anthropic]: { userProvide: true, order: 1 },
+      }),
+    });
+    mockGetTarsProviderApiKey.mockImplementation((provider: unknown) =>
+      Promise.resolve(provider === EModelEndpoint.openAI ? 'sk-tars' : undefined),
+    );
+
+    const { getEndpointsConfig } = createEndpointsConfigService(deps);
+    const result = await getEndpointsConfig(fakeReq());
+
+    expect(result[EModelEndpoint.openAI]).toEqual(expect.objectContaining({ userProvide: false }));
+    expect(result[EModelEndpoint.anthropic]).toEqual(
+      expect.objectContaining({ userProvide: true }),
+    );
+  });
+
+  it('leaves non-sentinel endpoints untouched and skips the sys_config lookup', async () => {
+    const deps = createMockDeps({
+      loadDefaultEndpointsConfig: jest.fn().mockResolvedValue({
+        [EModelEndpoint.openAI]: { userProvide: false, order: 0 },
+        [EModelEndpoint.google]: false,
+      }),
+    });
+
+    const { getEndpointsConfig } = createEndpointsConfigService(deps);
+    const result = await getEndpointsConfig(fakeReq());
+
+    expect(result[EModelEndpoint.openAI]).toEqual(expect.objectContaining({ userProvide: false }));
+    expect(mockGetTarsProviderApiKey).not.toHaveBeenCalled();
   });
 });

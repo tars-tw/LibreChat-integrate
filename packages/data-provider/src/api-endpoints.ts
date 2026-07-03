@@ -332,6 +332,7 @@ export const tarsPrompt = (id: string, query?: { domainId?: string; knowledgeBas
   const qs = params.toString();
   return qs ? `${BASE_URL}/api/tars/prompts/${id}?${qs}` : `${BASE_URL}/api/tars/prompts/${id}`;
 };
+export const tarsSysConfigs = () => `${BASE_URL}/api/tars/sys-configs`;
 
 export const mcp = {
   tools: `${BASE_URL}/api/mcp/tools`,
