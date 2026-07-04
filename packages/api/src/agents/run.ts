@@ -61,6 +61,7 @@ import { resolveSubagentMaxTurns } from '~/agents/config';
 import { buildLangfuseConfig } from '~/langfuse/config';
 import { resolveConfigHeaders } from '~/utils/headers';
 import { applyTestRunHook } from '~/agents/testHook';
+import { isTarsLocalEndpoint } from '~/tars/models';
 import { isUserProvided } from '~/utils/common';
 
 /** Expected shape of JSON tool search results */
@@ -479,8 +480,18 @@ function resolveSummarizationProvider(
      * remapping to `openAI` and routing summaries to the default backend.
      * Callers wanting user-provided summarization against a non-agent
      * endpoint must hit the same endpoint as the agent (handled upstream).
+     *
+     * A pwc_tars local endpoint has no single base URL to resolve statically
+     * here — its host is per-model and resolved at agent init. Cross-endpoint
+     * summarization against it is unsupported; keep the raw provider. (The
+     * common same-endpoint title/summary case never reaches here — it reuses
+     * the agent's client via `isSameEndpointAsAgent` in `shapeSummarizationConfig`.)
      */
-    if (isUserProvided(rawApiKey) || isUserProvided(rawBaseURL)) {
+    if (
+      isUserProvided(rawApiKey) ||
+      isUserProvided(rawBaseURL) ||
+      isTarsLocalEndpoint(rawBaseURL)
+    ) {
       return { provider: rawProvider };
     }
     const apiKey = extractEnvVariable(rawApiKey);

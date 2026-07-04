@@ -14,6 +14,7 @@ import type {
   EndpointTokenConfig,
   AnthropicModelOptions,
 } from '~/types';
+import { isTarsLocalEndpoint, resolveTarsLocalModelBaseURL } from '~/tars/models';
 import { getLLMConfig as getAnthropicLLMConfig } from '~/endpoints/anthropic/llm';
 import { extractDefaultParams } from '~/endpoints/openai/llm';
 import { isUserProvided, checkUserKeyExpiry } from '~/utils';
@@ -192,7 +193,21 @@ export async function initializeCustom({
   }
 
   const CUSTOM_API_KEY = extractEnvVariable(endpointConfig.apiKey ?? '');
-  const CUSTOM_BASE_URL = extractEnvVariable(endpointConfig.baseURL ?? '');
+  let CUSTOM_BASE_URL = extractEnvVariable(endpointConfig.baseURL ?? '');
+
+  /** A pwc_tars local endpoint routes per-model: the requested model's vLLM
+   *  host is resolved live from the pwc_tars registry (models can live on
+   *  different hosts). Unresolvable → the model is not currently served. */
+  if (isTarsLocalEndpoint(CUSTOM_BASE_URL)) {
+    const requestedModel = (model_parameters?.model as string | undefined) ?? '';
+    const resolvedBaseURL = await resolveTarsLocalModelBaseURL(requestedModel);
+    if (!resolvedBaseURL) {
+      throw new Error(
+        `Model "${requestedModel}" is not currently available on any ${endpoint} host.`,
+      );
+    }
+    CUSTOM_BASE_URL = resolvedBaseURL;
+  }
 
   if (CUSTOM_API_KEY.match(envVarRegex)) {
     throw new Error(`Missing API Key for ${endpoint}.`);

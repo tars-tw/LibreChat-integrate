@@ -11,6 +11,7 @@ import type { AppConfig } from '@librechat/data-schemas';
 import type { ServerRequest, GetUserKeyValuesFunction, UserKeyValues } from '~/types';
 import type { FetchModelsParams } from '~/endpoints/models';
 import type { GetAppConfigOptions } from '~/app/service';
+import { isTarsLocalEndpoint, getTarsLocalModelNames } from '~/tars/models';
 import { fetchModels as defaultFetchModels } from '~/endpoints/models';
 import { getTokenConfigKey } from '~/endpoints/custom/initialize';
 import { getAppConfigOptionsFromUser } from '~/app/service';
@@ -106,6 +107,15 @@ export function createLoadConfigModels(deps: LoadConfigModelsDeps) {
       const name = normalizeEndpointName(configName);
       endpointsMap[name] = endpoint;
       modelsConfig[name] = [];
+
+      /** A pwc_tars local endpoint (e.g. vLLM) discovers its whole model list —
+       *  and each model's host — from the pwc_tars registry, so it bypasses the
+       *  per-baseURL fetch below entirely. The list is availability-gated: an
+       *  empty result (nothing loaded / pwc_tars down) hides the endpoint. */
+      if (isTarsLocalEndpoint(baseURL)) {
+        modelsConfig[name] = await getTarsLocalModelNames();
+        continue;
+      }
 
       const resolvedApiKey = extractEnvVariable(apiKey);
       const resolvedBaseURL = extractEnvVariable(baseURL);

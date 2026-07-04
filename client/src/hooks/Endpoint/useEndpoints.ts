@@ -100,6 +100,13 @@ export const useEndpoints = ({
         return acc;
       }
 
+      /** Custom endpoints always have `models.default` (schema min 1), so an
+       *  empty list only happens for availability-gated endpoints (e.g. a
+       *  tars-managed vLLM host that is down) — hide them entirely. */
+      if (endpointType === EModelEndpoint.custom && !hasModels) {
+        return acc;
+      }
+
       // Base result object with formatted default icon
       const result: Endpoint = {
         value: ep,
