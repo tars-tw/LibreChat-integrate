@@ -255,6 +255,36 @@ curl http://localhost:3080/api/agents/v1m/chat/completions \
 ```
 打通後,pwc_tars log 會顯示 `Using OpenAI-compatible model: openAI/gpt-5.4-mini at http://localhost:3080/api/agents/v1m`。
 
+### 6.5 vLLM 地端模型(自動探索自 pwc_tars model registry)
+
+**方向**:LibreChat → 地端 vLLM。在模型選單多一個 **vLLM** endpoint(目前部署 `gemma-4-31B`),走 LibreChat 標準 custom endpoint 管線,所以參數面板、串流、標題生成、agents 等功能全部可用。
+
+**權威來源是 `model_profile.endpoint`,不是 sys_config**。這是踩過的雷:pwc_tars 解析地端模型 URL 的唯一來源是 `model_profile` 表的 `endpoint` 欄位(per-model),`sys_config.VLLM_API_ENDPOINT` 在 pwc_tars 的 Python 端**零引用、是死值**。而且地端模型是 **per-host** 的——`gemma-4-31B` 和某個 `deepseek-reasoner` build 可能在**不同機器**,一個全域 sys_config 值天生表達不了。所以 LibreChat 完全改讀 pwc_tars 的 model registry。
+
+**設定來源:sentinel `baseURL: 'tars://local'`**。`librechat.yaml` 的 vLLM endpoint 把 `baseURL` 設成特殊標記 `tars://local`,告訴 LibreChat「這個 endpoint 的模型清單與每個模型的 host 都即時向 pwc_tars 探索」。實際打的是 pwc_tars 的 `GET /api/model/health_status`(回 `endpoint → loaded_models`,只含地端 vLLM 主機),共用 `packages/api/src/tars/models.ts` 的 30 秒 TTL 快取。兩件事:
+- **顯示哪些模型** = 當下所有 vLLM 主機上「已載入(loaded_models)」的地端模型的聯集。**可用性閘控**:沒有任何模型在跑(或 pwc_tars 連不上)→ 清單為空 → 前端把整個 vLLM endpoint 藏起來(不 fallback 到 `models.default`)。
+- **每個模型路由到自己的 host**:聊天初始化時(`initializeCustom`)拿當前選的 `model` 去 `health_status` 映射查出它所在的 vLLM 主機,把 baseURL 設成 `<該主機>/v1`。不同模型 → 不同主機,per-request 解析。
+
+**改 pwc_tars 不用重啟 LibreChat**,最慢 30 秒生效(前端模型清單另有 2 分鐘快取)。
+
+**新增地端模型 = 純 pwc_tars 端操作,LibreChat 零設定**:
+1. 在 pwc_tars `model_profile` 註冊該模型(`name` + `endpoint` = 它的 vLLM 主機),並在該主機用 vLLM serve 起來(`--served-model-name` 要跟 `model_profile.name` 一致)。
+2. pwc_tars 的 health checker 探測到 → `health_status` 的 `loaded_models` 就有它 → LibreChat 下次重新整理自動出現在 vLLM 選單,並自動路由到正確主機。
+3. 跨幾台 host 都行,不需要在 `librechat.yaml` 加任何 block。`models.default: ['gemma-4-31B']` 只是 schema 要求的佔位(至少一項),實際清單永遠以 pwc_tars 為準。
+
+> ⚠️ pwc_tars 的健康檢查預設只在啟動時探測一次(`ENABLE_PERIODIC_CHECK=False`)。若地端模型是在 pwc_tars 啟動**之後**才起來、卻沒出現在 LibreChat,通常是 pwc_tars 尚未重新探測——在 pwc_tars 端開週期探測或重啟 pwc_tars 即可。
+
+**關鍵檔案**:`packages/api/src/tars/models.ts`(`health_status` 探索 + `model→host` 映射 + TTL 快取 + `isTarsLocalEndpoint`/`getTarsLocalModelNames`/`resolveTarsLocalModelBaseURL`)、`packages/api/src/endpoints/config/models.ts`(模型清單來自探索、可用性閘控)、`packages/api/src/endpoints/custom/initialize.ts`(聊天時 per-model 解析 host)、`packages/api/src/agents/run.ts`(summarization 對 marker 的防禦)、`client/src/hooks/Endpoint/useEndpoints.ts`(隱藏空的 custom endpoint)、`librechat.yaml`(vLLM endpoint 定義)。
+
+**驗證**:
+```bash
+# 1. pwc_tars 眼中哪些地端模型活著、在哪台
+curl http://<tars-host>:5000/api/model/health_status
+#    → {"endpoints":[{"endpoint":"http://219.86.90.151:11434","loaded_models":["gemma-4-31B"]}, ...]}
+# 2. LibreChat 端看得到(登入後的 cookie/token 帶著打)
+curl http://localhost:3080/api/models | jq '.vLLM'
+```
+
 ---
 
 ## 7. Langflow 整合
@@ -273,7 +303,7 @@ curl http://localhost:3080/api/agents/v1m/chat/completions \
 
 ### 7.2 設定檔:`librechat.yaml` 全文
 
-`librechat.yaml` 被 `.gitignore`,新機器要自建。下面就是**我們實際在跑的整份內容**——全用 `${...}` 帶 `.env` 的值,host、api key、project id 都不寫死,所以**照貼到專案根目錄 `librechat.yaml` 即可,一個字都不用改**:
+`librechat.yaml` 被 `.gitignore`,新機器要自建。下面就是**我們實際在跑的整份內容**(含 §6.5 的 vLLM 地端模型 endpoint)——全用 `${...}` 帶 `.env` 的值或 `tars://local` 探索標記,host、api key、project id 都不寫死,所以**照貼到專案根目錄 `librechat.yaml` 即可,一個字都不用改**:
 
 ```yaml
 # LibreChat configuration
@@ -298,6 +328,31 @@ endpoints:
       - web_search
       - skills
       - context
+
+  custom:
+    # Local (地端) models served by vLLM. This endpoint is fully auto-discovered
+    # from the pwc_tars model registry — the special baseURL `tars://local` tells
+    # LibreChat to source BOTH the model list and each model's host live from
+    # pwc_tars `GET /api/model/health_status` (30s TTL cache):
+    #   - Which models appear = whichever local models are currently loaded on any
+    #     vLLM host (availability-gated; the whole endpoint is hidden when none are
+    #     up or pwc_tars is unreachable — nothing to fall back to).
+    #   - Each model routes to its OWN host (models may live on different machines;
+    #     e.g. gemma-4-31B and a deepseek-reasoner build can be on separate boxes).
+    # Add a local model purely on the pwc_tars side (register it in model_profile
+    # with its endpoint + serve it on vLLM) and it appears here with ZERO LibreChat
+    # config. `models.default` is nominal only (schema requires ≥1); the real list
+    # always comes from pwc_tars.
+    - name: 'vLLM'
+      # vLLM runs without --api-key, so any non-empty placeholder works. The real
+      # per-model baseURL is injected at request time (see tars://local above).
+      apiKey: 'EMPTY'
+      baseURL: 'tars://local'
+      models:
+        default: ['gemma-4-31B']
+      titleConvo: true
+      titleModel: 'current_model'
+      modelDisplayLabel: 'vLLM'
 
 mcpServers:
   # Langflow integration — exposes the flows of a Langflow project as callable tools.

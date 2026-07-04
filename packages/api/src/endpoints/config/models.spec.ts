@@ -15,6 +15,13 @@ jest.mock('~/utils', () => {
   };
 });
 
+const mockGetTarsLocalModelNames = jest.fn();
+jest.mock('~/tars/models', () => ({
+  // Inline literal — jest.mock() factory may not reference imports.
+  isTarsLocalEndpoint: (val?: string | null) => val?.trim() === 'tars://local',
+  getTarsLocalModelNames: (...args: unknown[]) => mockGetTarsLocalModelNames(...args),
+}));
+
 import { SCOPED_TOKEN_CONFIG_KEY_PREFIX } from '../keys';
 import { createLoadConfigModels } from './models';
 
@@ -295,5 +302,87 @@ describe('createLoadConfigModels – in-request fetch coalescing', () => {
 
     // Same baseURL + apiKey + headers → one fetch shared across both endpoints.
     expect(fetchModels).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('createLoadConfigModels – pwc_tars local endpoint (tars://local)', () => {
+  const fetchModels = jest.fn();
+
+  const buildAppConfig = () => ({
+    endpoints: {
+      [EModelEndpoint.custom]: [
+        {
+          name: 'vLLM',
+          baseURL: 'tars://local',
+          apiKey: 'EMPTY',
+          models: { default: ['gemma-4-31B'] },
+        },
+      ],
+    },
+  });
+
+  const req = {
+    user: { id: 'user-1' },
+    config: undefined,
+  } as unknown as ServerRequest;
+
+  beforeEach(() => {
+    fetchModels.mockReset().mockResolvedValue([]);
+    mockGetTarsLocalModelNames.mockReset();
+  });
+
+  it('sources the model list from pwc_tars discovery and never does a per-baseURL fetch', async () => {
+    mockGetTarsLocalModelNames.mockResolvedValue(['deepseek-reasoner', 'gemma-4-31B']);
+
+    const loadConfigModels = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(buildAppConfig()),
+      getUserKeyValues: jest.fn(),
+      fetchModels,
+    });
+
+    const result = await loadConfigModels(req);
+
+    expect(mockGetTarsLocalModelNames).toHaveBeenCalledTimes(1);
+    expect(fetchModels).not.toHaveBeenCalled();
+    expect(result['vLLM']).toEqual(['deepseek-reasoner', 'gemma-4-31B']);
+  });
+
+  it('exposes no models (never falls back to models.default) when nothing is loaded', async () => {
+    mockGetTarsLocalModelNames.mockResolvedValue([]);
+
+    const loadConfigModels = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(buildAppConfig()),
+      getUserKeyValues: jest.fn(),
+      fetchModels,
+    });
+
+    const result = await loadConfigModels(req);
+
+    expect(result['vLLM']).toEqual([]);
+  });
+
+  it('keeps the models.default fallback for regular (non-tars) endpoints', async () => {
+    fetchModels.mockResolvedValue([]);
+
+    const loadConfigModels = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue({
+        endpoints: {
+          [EModelEndpoint.custom]: [
+            {
+              name: 'PlainProxy',
+              baseURL: 'https://proxy.example.com/v1',
+              apiKey: 'sk-plain',
+              models: { fetch: true, default: ['fallback-model'] },
+            },
+          ],
+        },
+      }),
+      getUserKeyValues: jest.fn(),
+      fetchModels,
+    });
+
+    const result = await loadConfigModels(req);
+
+    expect(result['PlainProxy']).toEqual(['fallback-model']);
   });
 });
