@@ -109,15 +109,13 @@ async function refreshKeyCache(): Promise<Map<string, string> | null> {
 }
 
 /**
- * The active sys_config API key for a provider, from a per-process TTL cache.
+ * The active sys_config value for `key`, from a per-process TTL cache.
  * Concurrent chat requests share one in-flight fetch; on failure the previous
  * values are served (or an empty negative cache on cold start) so a down
  * pwc_tars is retried at most once per TTL. Returns undefined when the TARS
  * integration is unconfigured or the key is absent/invalid/inactive.
  */
-export async function getTarsProviderApiKey(
-  provider: TarsKeyedProvider,
-): Promise<string | undefined> {
+export async function getTarsSysConfigValue(key: string): Promise<string | undefined> {
   if (!isTarsConfigured()) {
     return undefined;
   }
@@ -125,7 +123,14 @@ export async function getTarsProviderApiKey(
     inflight = inflight ?? refreshKeyCache();
     await inflight;
   }
-  return cachedKeys?.get(TARS_PROVIDER_KEY_MAP[provider]);
+  return cachedKeys?.get(key);
+}
+
+/** The active sys_config API key for a provider — see {@link getTarsSysConfigValue}. */
+export async function getTarsProviderApiKey(
+  provider: TarsKeyedProvider,
+): Promise<string | undefined> {
+  return getTarsSysConfigValue(TARS_PROVIDER_KEY_MAP[provider]);
 }
 
 /**
