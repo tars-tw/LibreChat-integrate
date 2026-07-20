@@ -287,6 +287,38 @@ curl http://localhost:3080/api/models | jq '.vLLM'
 
 ---
 
+### 6.6 TARS MCP Gateway(pwc_tars 的 OpenAPI / 客製 API 工具 → LibreChat)
+
+**方向**:LibreChat → pwc_tars。pwc_tars 的 MCP 設定(`MCPSettings` 管理頁)裡 `openapi`(Swagger 匯入)與 `custom_api`(手寫 REST 工具)兩種 server 的工具,自動出現在 LibreChat 的 MCP 工具體系——聊天輸入框的 MCP 下拉選單、Agent 工具掛載都能用。**pwc_tars 是 source of truth**:工具定義、domain 權限、`mcp_logs` 稽核全部留在 pwc_tars,LibreChat 不落地任何工具設定。
+
+**原理:loopback MCP server**。LibreChat 在 `POST /api/tars/mcp` 自架一個 stateless streamable-http 的真 MCP server(用 `@modelcontextprotocol/sdk`),它的 `tools/list` / `tools/call` 全部代理到 pwc_tars 的 `/api/mcp` REST API(`GET /available-tools?user_id=`、`POST /execute`)。啟動時(`TARS_AUTH_URL` 有設即自動)把這個 endpoint 以 server 名 **`tars`** 注入 `mcpConfig`,所以 LibreChat 既有的 MCP 管線(連線管理、工具快取、權限、UI)**零改動**直接吃到。
+
+- **使用者身分與權限**:注入的 header `X-Tars-User-Id: {{LIBRECHAT_USER_ID}}` 使連線 per-user;gateway route 把 Mongo user id 換成 `User.tarsId` 後帶給 pwc_tars,由 pwc_tars 套用**完整權限堆疊**——domain 授權(`sys_domain_mcp.is_enabled`)、domain 工具白名單(`mcp_tool_ids`,空 = 整台 server)、per-user server 開關與工具覆寫(`sys_user_mcp.is_enabled` / `tool_config`)。`POST /execute` 也帶 `user_id`:pwc_tars 會再做一次工具可見性檢查(403 擋越權)、合併該使用者的 per-user 憑證(`sys_user_mcp.auth_credentials`,自動挑存有憑證的 domain),`mcp_logs` 稽核記到真實使用者。pwc_tars admin(role_id=1)不受 domain 白名單限制,但**自己的 per-user 工具開關仍生效**;個人設定寫入時若 server 未連結任何可存取 domain,偏好會 fallback 落在第一個(可存取)domain。**Server 預設全關(opt-in)**——使用者要在「TARS Tools」面板明確開啟 server 後,其工具才會進入聊天(admin 亦同),避免大量工具灌爆模型的 tool 上限。**沒綁 tars 帳號的使用者 fail-closed(零工具)**。
+- **安全**:route 不走 JWT(呼叫者是 LibreChat 自己),改用 gateway key(`X-Tars-Gateway-Key`)驗證——預設由 `JWT_SECRET` HMAC 派生(多實例共享 env 即一致),可用 `TARS_MCP_GATEWAY_KEY` 覆寫。
+- **工具命名**:`<server code>__<tool name>`(聚合所有 pwc_tars server,避免跨 server 撞名),LibreChat 端最終為 `<name>_mcp_tars`。
+- **快取**:工具清單 per-user 30 秒 TTL;pwc_tars 端改設定最慢 30 秒反映(重開聊天下拉即可)。
+
+**env(全部可選)**:`TARS_MCP_ENABLED=false` 關閉;`TARS_MCP_GATEWAY_KEY` 覆寫金鑰;`TARS_MCP_SELF_URL` 覆寫 loopback URL(預設 `http://localhost:<PORT>/api/tars/mcp`,反代/多實例才需要);`TARS_MCP_EXECUTE_TIMEOUT_MS` 工具執行逾時(預設 60000);`TARS_MCP_MAX_TOOLS` 工具數上限(預設 100——OpenAI 單請求上限 128 涵蓋**所有**工具來源,超過的會被截斷並記 warning。正解是在 pwc_tars 端用 domain 工具白名單或 OpenAPI server 的 `tool_config` 過濾,不要靠截斷)。
+
+**pwc_tars 端配套改動**(同次完成,在 pwc_tars repo):`routes.py` 新增 `resolve_user_visible_tool_map`(server→可見工具集合,跨 domain 取聯集)與 `resolve_credential_domain_id`;`GET /available-tools` 落實原本保留的 `user_id` 過濾並新增 `server_code` 欄位;`POST /execute` 接受 body `user_id` / `domain_id`(可見性檢查 + per-user 憑證合併 + 稽核歸戶);新增 `GET|PUT /api/mcp/user-settings` 與 `PUT|DELETE /api/mcp/user-settings/credentials`(免 domain 語境的使用者聚合設定/工具開關/憑證,供 LibreChat 面板)。**已知限制**:`external` / `builtin` 型 server 不代理(external 請直接把該 MCP server 接進 LibreChat)。
+
+**LibreChat 內建管理/使用者 UI**(免開 pwc_tars 前台)。**主要入口在側邊欄的 MCP 面板**:tars 使用者會看到一張「TARS Tools」卡片(取代自動注入的 `tars` server 原生卡片),點卡片開工具面板;tars admin 卡片上多一顆齒輪直達 `/mcp-settings` 管理頁(帳號選單也保留「MCP Tool Settings」入口)。
+- **管理頁 `/mcp-settings`**(pwc_tars admin 限定):列出/新增/編輯/刪除 `openapi`、`custom_api` server——OpenAPI 貼 swagger URL 可「Parse」預覽工具清單,custom_api 以 JSON 編輯工具定義;auth 支援 none/bearer/api_key/basic/login;儲存後自動 sync 並回報 created/updated/deleted。連線測試(test)、重新同步(sync)都在列表操作列。後端全部代理到 pwc_tars(`/api/tars/mcp/admin/*`,`requireTarsAdmin`)。
+- **使用者面板**(帳號選單「TARS Tools」,所有 tars 使用者):顯示自己可用的 server 與工具(名稱/說明/參數 schema 即時同步自 pwc_tars),可逐 server、逐工具開關(寫回 `sys_user_mcp`);需要帳密/token 的 server 有「Credentials required / set」徽章,展開即可輸入,儲存前 pwc_tars 會**先向目標 API 驗證**(Verify & Save,失敗回傳原因)。設定變更會立即失效 gateway 快取;若聊天中已連線,重勾一次 MCP 下拉的 TARS 即可拿到最新工具清單。
+- 關鍵檔案:`client/src/components/McpSettings/`(管理頁)、`client/src/components/Tars/McpToolsDialog.tsx`(使用者面板)、`client/src/data-provider/Tars/{queries,mutations}.ts`、`packages/api/src/tars/mcp/{admin,user}.ts`、`api/server/routes/tars/mcp.js`(admin/user 代理路由)。
+
+**關鍵檔案**:`packages/api/src/tars/mcp/client.ts`(pwc_tars REST client + 快取 + 名稱對映)、`server.ts`(MCP protocol server + `handleTarsMcpRequest`)、`config.ts`(gateway key 派生 + `withTarsMcpConfig` 設定注入)、`api/server/routes/tars/mcp.js`(薄路由)、`api/server/services/Config/app.js`(注入掛載點)。
+
+**驗證**:
+```bash
+# 1. pwc_tars 端有 enabled 的 openapi/custom_api server 且已 sync 工具
+curl "http://<tars-host>:5000/api/mcp/servers?enabled_only=true"
+# 2. LibreChat 啟動 log 無 [tars-mcp] 警告;登入後聊天輸入框 MCP 下拉出現「TARS」
+# 3. 選用後對話中直接請模型呼叫某工具,或在 pwc_tars 查 mcp_logs 確認有執行紀錄
+```
+
+---
+
 ## 7. Langflow 整合
 
 把 `~/Downloads/langflow`(本機跑在 `http://localhost:7860`)整進聊天室。**純設定 + 少量後端程式,沒有改 `packages/*`。**

@@ -19,6 +19,10 @@ import MCPAdminSettings from './MCPAdminSettings';
 import MCPServerDialog from './MCPServerDialog';
 import MCPServerList from './MCPServerList';
 import store from '~/store';
+import TarsCard from './TarsCard';
+
+/** The auto-injected TARS gateway server; its card is replaced by {@link TarsCard}. */
+const TARS_SERVER_NAME = 'tars';
 
 export default function MCPBuilderPanel() {
   const localize = useLocalize();
@@ -49,11 +53,12 @@ export default function MCPBuilderPanel() {
   const configDialogProps = getConfigDialogProps();
 
   const filteredServers = useMemo(() => {
+    const servers = availableMCPServers.filter((server) => server.serverName !== TARS_SERVER_NAME);
     if (!searchQuery.trim()) {
-      return availableMCPServers;
+      return servers;
     }
     const query = searchQuery.toLowerCase();
-    return availableMCPServers.filter((server) => {
+    return servers.filter((server) => {
       const displayName = server.config?.title || server.serverName;
       return (
         displayName.toLowerCase().includes(query) || server.serverName.toLowerCase().includes(query)
@@ -108,6 +113,11 @@ export default function MCPBuilderPanel() {
           />
         }
       />
+
+      {/* pwc_tars tool source (catalog / toggles / credentials; admin: manage) */}
+      <div className="shrink-0 px-3 pb-2">
+        <TarsCard />
+      </div>
 
       {/* Only the list scrolls */}
       <PanelContent

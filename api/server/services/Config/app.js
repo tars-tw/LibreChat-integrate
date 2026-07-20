@@ -15,6 +15,7 @@ const {
   cacheConfig,
   standardCache,
   hostPortFromUrl,
+  withTarsMcpConfig,
 } = require('@librechat/api');
 const { setCachedTools } = require('./getCachedTools');
 const { loadAndFormatTools } = require('~/server/services/start/tools');
@@ -72,8 +73,10 @@ const loadBaseConfig = async (mode) => {
     adminIncluded: config.includedTools,
     directory: paths.structuredTools,
   });
-  return withLangflowAllowedAddress(
-    await AppService({ config, paths, systemTools, expandCustomEndpoint }),
+  return withTarsMcpConfig(
+    withLangflowAllowedAddress(
+      await AppService({ config, paths, systemTools, expandCustomEndpoint }),
+    ),
   );
 };
 
