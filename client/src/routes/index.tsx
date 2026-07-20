@@ -72,6 +72,11 @@ const loadSystemConfigView = () =>
     Component: m.SystemConfigView,
   }));
 
+const loadMcpSettingsView = () =>
+  import('~/components/McpSettings').then((m) => ({
+    Component: m.McpSettingsView,
+  }));
+
 const baseEl = document.querySelector('base');
 const baseHref = baseEl?.getAttribute('href') || '/';
 
@@ -219,6 +224,10 @@ export const router = createBrowserRouter(
                 {
                   path: 'system-config',
                   lazy: loadSystemConfigView,
+                },
+                {
+                  path: 'mcp-settings',
+                  lazy: loadMcpSettingsView,
                 },
                 {
                   path: 'agents',
