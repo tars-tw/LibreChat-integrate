@@ -14,11 +14,17 @@ import type {
   TTarsDocumentReprocess,
   TTarsKnowledgeBaseInput,
   TTarsKnowledgeBaseUpdate,
+  TTarsMcpServer,
+  TTarsMcpSyncResult,
+  TTarsMcpParsedSpec,
+  TTarsMcpServerInput,
+  TTarsMcpUserServerUpdate,
 } from 'librechat-data-provider';
 
 type DomainResponse = { domain: TTarsDomain };
 type KnowledgeResponse = { knowledgeBase: TTarsKnowledgeBase };
 type PromptResponse = { prompt: TTarsPrompt };
+type McpServerResponse = { server: TTarsMcpServer };
 
 const invalidateDomains = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsDomainPrepareData]);
@@ -344,6 +350,158 @@ export const useUpdateTarsSysConfigMutation = (
     onSuccess: (...args) => {
       queryClient.invalidateQueries([QueryKeys.tarsSysConfigs]);
       queryClient.invalidateQueries([QueryKeys.endpoints]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+const invalidateTarsMcp = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsMcpServers]);
+  queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+};
+
+export const useCreateTarsMcpServerMutation = (
+  options?: UseMutationOptions<McpServerResponse, unknown, TTarsMcpServerInput>,
+): UseMutationResult<McpServerResponse, unknown, TTarsMcpServerInput> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: TTarsMcpServerInput) => dataService.createTarsMcpServer(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsMcp(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useUpdateTarsMcpServerMutation = (
+  options?: UseMutationOptions<
+    McpServerResponse,
+    unknown,
+    { id: string; data: Partial<TTarsMcpServerInput> }
+  >,
+): UseMutationResult<
+  McpServerResponse,
+  unknown,
+  { id: string; data: Partial<TTarsMcpServerInput> }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: { id: string; data: Partial<TTarsMcpServerInput> }) =>
+      dataService.updateTarsMcpServer(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateTarsMcp(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsMcpServerMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.deleteTarsMcpServer(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsMcp(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useTestTarsMcpServerMutation = (
+  options?: UseMutationOptions<{ result: Record<string, unknown> }, unknown, string>,
+): UseMutationResult<{ result: Record<string, unknown> }, unknown, string> => {
+  return useMutation((id: string) => dataService.testTarsMcpServer(id), options);
+};
+
+export const useSyncTarsMcpServerMutation = (
+  options?: UseMutationOptions<{ result: TTarsMcpSyncResult }, unknown, string>,
+): UseMutationResult<{ result: TTarsMcpSyncResult }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.syncTarsMcpServer(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsMcp(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useParseTarsMcpOpenapiMutation = (
+  options?: UseMutationOptions<
+    { parsed: TTarsMcpParsedSpec },
+    unknown,
+    { openapi_url?: string; base_url?: string; timeout?: number }
+  >,
+): UseMutationResult<
+  { parsed: TTarsMcpParsedSpec },
+  unknown,
+  { openapi_url?: string; base_url?: string; timeout?: number }
+> => {
+  return useMutation((data) => dataService.parseTarsMcpOpenapi(data), options);
+};
+
+export const useUpdateTarsMcpUserServerMutation = (
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { id: string; data: TTarsMcpUserServerUpdate }
+  >,
+): UseMutationResult<
+  { success: boolean },
+  unknown,
+  { id: string; data: TTarsMcpUserServerUpdate }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: { id: string; data: TTarsMcpUserServerUpdate }) =>
+      dataService.updateTarsMcpUserServer(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useSaveTarsMcpUserCredentialsMutation = (
+  options?: UseMutationOptions<
+    { result: Record<string, unknown> },
+    unknown,
+    { id: string; credentials: Record<string, string> }
+  >,
+): UseMutationResult<
+  { result: Record<string, unknown> },
+  unknown,
+  { id: string; credentials: Record<string, string> }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, credentials }: { id: string; credentials: Record<string, string> }) =>
+      dataService.saveTarsMcpUserCredentials(id, credentials),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useClearTarsMcpUserCredentialsMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.clearTarsMcpUserCredentials(id), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
       options?.onSuccess?.(...args);
     },
   });
