@@ -235,3 +235,96 @@ export type TTarsSysConfigUpdate = {
   description?: string;
   status?: 'active' | 'inactive';
 };
+
+/** A pwc_tars MCP tool row (`McpTool.to_dict()`); `input_schema` is JSON Schema. */
+export type TTarsMcpTool = {
+  id: string;
+  mcp_server_id?: string;
+  name: string;
+  description?: string | null;
+  input_schema?: Record<string, unknown> | null;
+  is_enabled?: boolean;
+};
+
+/** Admin view of a pwc_tars MCP server (`McpServer.to_dict()` + injected fields). */
+export type TTarsMcpServer = {
+  id: string;
+  name: string;
+  code?: string | null;
+  description?: string | null;
+  type: 'openapi' | 'custom_api' | 'external' | 'builtin';
+  is_enabled: boolean;
+  priority?: number | null;
+  tags?: string[] | null;
+  connection_config?: Record<string, unknown> | null;
+  tool_config?: Record<string, unknown> | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  tool_count?: number;
+  requires_user_credentials?: boolean;
+  tools?: TTarsMcpTool[];
+};
+
+export type TTarsMcpServersResponse = { servers: TTarsMcpServer[] };
+
+/** Create/update payload for a pwc_tars MCP server managed from LibreChat. */
+export type TTarsMcpServerInput = {
+  name: string;
+  code?: string;
+  description?: string;
+  type: 'openapi' | 'custom_api';
+  is_enabled?: boolean;
+  priority?: number;
+  tags?: string[];
+  connection_config: Record<string, unknown>;
+  tool_config?: Record<string, unknown>;
+  env_vars?: Record<string, string>;
+};
+
+export type TTarsMcpSyncResult = {
+  synced?: number;
+  created?: number;
+  updated?: number;
+  deleted?: number;
+};
+
+/** Preview of a parsed OpenAPI/Swagger spec (pwc_tars `POST /parse-openapi`). */
+export type TTarsMcpParsedSpec = {
+  api_info?: Record<string, unknown>;
+  base_url?: string;
+  tools?: Array<{ name?: string; description?: string; method?: string; path?: string }>;
+  tool_count?: number;
+  login_hint?: Record<string, unknown> | null;
+};
+
+/** One tool in the user panel, with the user's own enable state. */
+export type TTarsMcpUserTool = {
+  id: string;
+  name: string;
+  description?: string | null;
+  input_schema?: Record<string, unknown> | null;
+  user_enabled: boolean;
+};
+
+/** One server in the user panel (domain-visible; includes credential status). */
+export type TTarsMcpUserServer = {
+  id: string;
+  name: string;
+  code?: string | null;
+  description?: string | null;
+  type: string;
+  is_enabled: boolean;
+  user_enabled: boolean;
+  requires_user_credentials: boolean;
+  has_credentials: boolean;
+  auth_type: string;
+  login_fields: string[];
+  tools: TTarsMcpUserTool[];
+};
+
+export type TTarsMcpUserSettingsResponse = { servers: TTarsMcpUserServer[] };
+
+export type TTarsMcpUserServerUpdate = {
+  is_enabled?: boolean;
+  tool_config?: Record<string, boolean>;
+};

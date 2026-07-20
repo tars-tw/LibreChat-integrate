@@ -124,10 +124,7 @@ export async function updateTarsDomain(
   return data.domain;
 }
 
-export async function deleteTarsDomain(
-  domainId: number | string,
-  baseUrl?: string,
-): Promise<void> {
+export async function deleteTarsDomain(domainId: number | string, baseUrl?: string): Promise<void> {
   await tarsFetch(`/api/domain_settings/delete_domain/${encodeURIComponent(String(domainId))}`, {
     method: 'DELETE',
     baseUrl,
