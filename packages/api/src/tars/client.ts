@@ -12,6 +12,24 @@ export interface TarsFetchOptions {
   baseUrl?: string;
 }
 
+/**
+ * Non-2xx pwc_tars response. `serverMessage` carries the `message` field of the
+ * pwc_tars error envelope (`{success: false, message}`) when the body was JSON,
+ * so callers can surface the backend's own failure reason (e.g. an MCP tool
+ * execution error) instead of a generic status line.
+ */
+export class TarsRequestError extends Error {
+  public readonly status: number;
+  public readonly serverMessage?: string;
+
+  constructor(status: number, path: string, serverMessage?: string) {
+    super(`pwc_tars request to ${path} returned status ${status}`);
+    this.name = 'TarsRequestError';
+    this.status = status;
+    this.serverMessage = serverMessage;
+  }
+}
+
 /** Whether the pwc_tars integration is configured (env `TARS_AUTH_URL` is set). */
 export function isTarsConfigured(baseUrl: string | undefined = process.env.TARS_AUTH_URL): boolean {
   return !!baseUrl?.trim();
@@ -62,7 +80,16 @@ export async function tarsFetch<T>(path: string, options: TarsFetchOptions = {})
 
     if (!response.ok) {
       logger.error(`[tarsFetch] Unexpected status ${response.status} from ${method} ${url}`);
-      throw new Error(`pwc_tars request to ${path} returned status ${response.status}`);
+      let serverMessage: string | undefined;
+      try {
+        const errorBody = (await response.json()) as { message?: unknown };
+        if (typeof errorBody?.message === 'string') {
+          serverMessage = errorBody.message;
+        }
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new TarsRequestError(response.status, path, serverMessage);
     }
 
     return (await response.json()) as T;
