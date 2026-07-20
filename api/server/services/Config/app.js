@@ -5,6 +5,7 @@ const {
   cacheConfig,
   standardCache,
   hostPortFromUrl,
+  withTarsMcpConfig,
   clearMcpConfigCache,
   createAppConfigService,
   createCodeEnvironmentRegistry,
@@ -66,7 +67,9 @@ const loadBaseConfig = async () => {
     adminIncluded: config.includedTools,
     directory: paths.structuredTools,
   });
-  return withLangflowAllowedAddress(await AppService({ config, paths, systemTools }));
+  return withTarsMcpConfig(
+    withLangflowAllowedAddress(await AppService({ config, paths, systemTools })),
+  );
 };
 
 const { getAppConfig, clearAppConfigCache, clearOverrideCache } = createAppConfigService({
