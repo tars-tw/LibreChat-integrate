@@ -1,6 +1,11 @@
 const { CacheKeys } = require('librechat-data-provider');
 const { AppService, logger } = require('@librechat/data-schemas');
-const { createAppConfigService, clearMcpConfigCache, hostPortFromUrl } = require('@librechat/api');
+const {
+  createAppConfigService,
+  clearMcpConfigCache,
+  withTarsMcpConfig,
+  hostPortFromUrl,
+} = require('@librechat/api');
 const { setCachedTools, invalidateCachedTools } = require('./getCachedTools');
 const { loadAndFormatTools } = require('~/server/services/start/tools');
 const loadCustomConfig = require('./loadCustomConfig');
@@ -40,7 +45,9 @@ const loadBaseConfig = async () => {
     adminIncluded: config.includedTools,
     directory: paths.structuredTools,
   });
-  return withLangflowAllowedAddress(await AppService({ config, paths, systemTools }));
+  return withTarsMcpConfig(
+    withLangflowAllowedAddress(await AppService({ config, paths, systemTools })),
+  );
 };
 
 const { getAppConfig, clearAppConfigCache, clearOverrideCache } = createAppConfigService({

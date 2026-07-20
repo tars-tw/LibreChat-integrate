@@ -17,6 +17,7 @@ import {
   Scale,
   ShieldCheck,
   SlidersHorizontal,
+  Wrench,
 } from 'lucide-react';
 import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/ArchivedChatsModal';
 import { MyFilesModal } from '~/components/Chat/Input/Files/MyFilesModal';
@@ -196,6 +197,12 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
           <Menu.MenuItem onClick={() => navigate('/system-config')} className="select-item text-sm">
             <SlidersHorizontal className="icon-md" aria-hidden="true" />
             {localize('com_ui_tars_sys_config')}
+          </Menu.MenuItem>
+        )}
+        {isTarsAdmin && (
+          <Menu.MenuItem onClick={() => navigate('/mcp-settings')} className="select-item text-sm">
+            <Wrench className="icon-md" aria-hidden="true" />
+            {localize('com_ui_tars_mcp_settings')}
           </Menu.MenuItem>
         )}
         <Menu.MenuItem

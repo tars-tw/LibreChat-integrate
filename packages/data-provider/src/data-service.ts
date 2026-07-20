@@ -755,6 +755,71 @@ export const updateTarsSysConfig = (
   return request.put(endpoints.tarsSysConfigs(), data);
 };
 
+export const getTarsMcpServers = (): Promise<t.TTarsMcpServersResponse> => {
+  return request.get(endpoints.tarsMcpAdminServers());
+};
+
+export const getTarsMcpServer = (id: string): Promise<{ server: t.TTarsMcpServer }> => {
+  return request.get(endpoints.tarsMcpAdminServer(id));
+};
+
+export const createTarsMcpServer = (
+  data: t.TTarsMcpServerInput,
+): Promise<{ server: t.TTarsMcpServer }> => {
+  return request.post(endpoints.tarsMcpAdminServers(), data);
+};
+
+export const updateTarsMcpServer = (
+  id: string,
+  data: Partial<t.TTarsMcpServerInput>,
+): Promise<{ server: t.TTarsMcpServer }> => {
+  return request.put(endpoints.tarsMcpAdminServer(id), data);
+};
+
+export const deleteTarsMcpServer = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsMcpAdminServer(id));
+};
+
+export const testTarsMcpServer = (
+  id: string,
+): Promise<{ result: Record<string, unknown> }> => {
+  return request.post(endpoints.tarsMcpAdminServerTest(id), {});
+};
+
+export const syncTarsMcpServer = (id: string): Promise<{ result: t.TTarsMcpSyncResult }> => {
+  return request.post(endpoints.tarsMcpAdminServerSync(id), {});
+};
+
+export const parseTarsMcpOpenapi = (data: {
+  openapi_url?: string;
+  base_url?: string;
+  timeout?: number;
+}): Promise<{ parsed: t.TTarsMcpParsedSpec }> => {
+  return request.post(endpoints.tarsMcpAdminParseOpenapi(), data);
+};
+
+export const getTarsMcpUserSettings = (): Promise<t.TTarsMcpUserSettingsResponse> => {
+  return request.get(endpoints.tarsMcpUserSettings());
+};
+
+export const updateTarsMcpUserServer = (
+  id: string,
+  data: t.TTarsMcpUserServerUpdate,
+): Promise<{ success: boolean }> => {
+  return request.put(endpoints.tarsMcpUserServer(id), data);
+};
+
+export const saveTarsMcpUserCredentials = (
+  id: string,
+  credentials: Record<string, string>,
+): Promise<{ result: Record<string, unknown> }> => {
+  return request.put(endpoints.tarsMcpUserServerCredentials(id), { credentials });
+};
+
+export const clearTarsMcpUserCredentials = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsMcpUserServerCredentials(id));
+};
+
 /**
  * Unified marketplace agents endpoint with query string controls
  */
