@@ -333,6 +333,16 @@ export const tarsPrompt = (id: string, query?: { domainId?: string; knowledgeBas
   return qs ? `${BASE_URL}/api/tars/prompts/${id}?${qs}` : `${BASE_URL}/api/tars/prompts/${id}`;
 };
 export const tarsSysConfigs = () => `${BASE_URL}/api/tars/sys-configs`;
+export const tarsMcpAdminServers = () => `${BASE_URL}/api/tars/mcp/admin/servers`;
+export const tarsMcpAdminServer = (id: string) =>
+  `${BASE_URL}/api/tars/mcp/admin/servers/${encodeURIComponent(id)}`;
+export const tarsMcpAdminServerTest = (id: string) => `${tarsMcpAdminServer(id)}/test`;
+export const tarsMcpAdminServerSync = (id: string) => `${tarsMcpAdminServer(id)}/sync`;
+export const tarsMcpAdminParseOpenapi = () => `${BASE_URL}/api/tars/mcp/admin/parse-openapi`;
+export const tarsMcpUserSettings = () => `${BASE_URL}/api/tars/mcp/user/settings`;
+export const tarsMcpUserServer = (id: string) =>
+  `${BASE_URL}/api/tars/mcp/user/servers/${encodeURIComponent(id)}`;
+export const tarsMcpUserServerCredentials = (id: string) => `${tarsMcpUserServer(id)}/credentials`;
 
 export const mcp = {
   tools: `${BASE_URL}/api/mcp/tools`,
