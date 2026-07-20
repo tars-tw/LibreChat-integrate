@@ -6,14 +6,18 @@ import type {
   TTarsChunk,
   TTarsDocument,
   TTarsSysConfig,
+  TTarsMcpServer,
   TTarsModelOptions,
   TTarsChunksResponse,
   TTarsDomainsResponse,
   TTarsKnowledgeBase,
+  TTarsMcpUserServer,
   TTarsPromptsResponse,
   TTarsDocumentsResponse,
   TTarsDomainPrepareData,
   TTarsSysConfigsResponse,
+  TTarsMcpServersResponse,
+  TTarsMcpUserSettingsResponse,
 } from 'librechat-data-provider';
 
 /** pwc_tars document status: 0 uploaded, 1 processing, 2 completed, 4 failed. */
@@ -139,6 +143,39 @@ export const useTarsSysConfigsQuery = (
     () => dataService.getTarsSysConfigs(),
     {
       select: (data) => data.sysConfigs ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: pwc_tars MCP servers (openapi / custom_api / external / builtin). */
+export const useTarsMcpServersQuery = (
+  config?: UseQueryOptions<TTarsMcpServersResponse, unknown, TTarsMcpServer[]>,
+): QueryObserverResult<TTarsMcpServer[]> => {
+  return useQuery<TTarsMcpServersResponse, unknown, TTarsMcpServer[]>(
+    [QueryKeys.tarsMcpServers],
+    () => dataService.getTarsMcpServers(),
+    {
+      select: (data) => data.servers ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * The authenticated user's pwc_tars MCP tool panel: domain-visible servers and
+ * tools with the user's own enable states and credential status.
+ */
+export const useTarsMcpUserSettingsQuery = (
+  config?: UseQueryOptions<TTarsMcpUserSettingsResponse, unknown, TTarsMcpUserServer[]>,
+): QueryObserverResult<TTarsMcpUserServer[]> => {
+  return useQuery<TTarsMcpUserSettingsResponse, unknown, TTarsMcpUserServer[]>(
+    [QueryKeys.tarsMcpUserSettings],
+    () => dataService.getTarsMcpUserSettings(),
+    {
+      select: (data) => data.servers ?? [],
       ...adminQueryOptions,
       ...config,
     },
