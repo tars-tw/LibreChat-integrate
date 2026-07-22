@@ -13,7 +13,7 @@ import {
   checkUserKeyExpiry,
   getAzureCredentials,
 } from '~/utils';
-import { getTarsProviderApiKey, resolveTarsProviderKey } from '~/tars';
+import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
 import { validateEndpointURL } from '~/auth';
 import { getOpenAIConfig } from './config';
 
@@ -58,16 +58,25 @@ export async function initializeOpenAI({
   const userProvidesURL = isUserProvided(baseURLOptions[endpoint as keyof typeof baseURLOptions]);
 
   const isOpenAIProvider = endpoint === EModelEndpoint.openAI;
+  /** An expired personal key is ignored when an active sys_config key covers
+   *  the openAI endpoint; Azure and user-provided-URL flows keep the strict
+   *  expiry check. */
+  let expiredKeyCovered = false;
   if (expiresAt && (userProvidesKey || userProvidesURL)) {
-    checkUserKeyExpiry(expiresAt, endpoint);
+    if (isOpenAIProvider && !userProvidesURL) {
+      expiredKeyCovered = await isExpiredKeyCoveredByTars(expiresAt, EModelEndpoint.openAI);
+    } else {
+      checkUserKeyExpiry(expiresAt, endpoint);
+    }
   }
 
   let userValues: UserKeyValues | null = null;
   /** Sentinel mode fetches the personal key even without `expiresAt` (the
    *  gateway passthrough sends no `key` body field). */
   const shouldFetchUserValues =
-    (!!expiresAt && (userProvidesKey || userProvidesURL)) ||
-    (isOpenAIProvider && userProvidesKey && !!req.user?.id);
+    !expiredKeyCovered &&
+    ((!!expiresAt && (userProvidesKey || userProvidesURL)) ||
+      (isOpenAIProvider && userProvidesKey && !!req.user?.id));
   if (shouldFetchUserValues) {
     try {
       userValues = await db.getUserKeyValues({ userId: req.user?.id ?? '', name: endpoint });
