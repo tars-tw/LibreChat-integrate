@@ -23,9 +23,11 @@ jest.mock('~/utils', () => ({
 }));
 
 const mockGetTarsProviderApiKey = jest.fn();
+const mockIsExpiredKeyCoveredByTars = jest.fn().mockResolvedValue(false);
 jest.mock('~/tars', () => ({
   ...jest.requireActual('~/tars'),
   getTarsProviderApiKey: (...args: unknown[]) => mockGetTarsProviderApiKey(...args),
+  isExpiredKeyCoveredByTars: (...args: unknown[]) => mockIsExpiredKeyCoveredByTars(...args),
 }));
 
 import { getAzureCredentials } from '~/utils';
@@ -350,6 +352,37 @@ describe('initializeOpenAI – sentinel key chain', () => {
     mockGetTarsProviderApiKey.mockResolvedValue('sk-tars');
     try {
       await expect(initializeOpenAI(params)).rejects.toThrow('invalid_user_key');
+    } finally {
+      (params as unknown as { _restore: () => void })._restore();
+    }
+  });
+
+  it('ignores an expired personal key when sys_config covers it', async () => {
+    const params = createParams({ OPENAI_API_KEY: 'user_provided' });
+    (params.req as unknown as { body: Record<string, unknown> }).body = { key: '2020-01-01' };
+    mockIsExpiredKeyCoveredByTars.mockResolvedValueOnce(true);
+    mockGetTarsProviderApiKey.mockResolvedValue('sk-tars');
+    try {
+      await initializeOpenAI(params);
+    } finally {
+      (params as unknown as { _restore: () => void })._restore();
+    }
+    expect(params.db.getUserKeyValues).not.toHaveBeenCalled();
+    expect(mockGetOpenAIConfig).toHaveBeenCalledWith(
+      'sk-tars',
+      expect.any(Object),
+      EModelEndpoint.openAI,
+    );
+  });
+
+  it('propagates the expiry error when sys_config does not cover the expired key', async () => {
+    const params = createParams({ OPENAI_API_KEY: 'user_provided' });
+    (params.req as unknown as { body: Record<string, unknown> }).body = { key: '2020-01-01' };
+    mockIsExpiredKeyCoveredByTars.mockRejectedValueOnce(
+      new Error(JSON.stringify({ type: 'expired_user_key' })),
+    );
+    try {
+      await expect(initializeOpenAI(params)).rejects.toThrow('expired_user_key');
     } finally {
       (params as unknown as { _restore: () => void })._restore();
     }
