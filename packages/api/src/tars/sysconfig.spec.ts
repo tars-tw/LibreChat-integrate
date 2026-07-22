@@ -13,6 +13,7 @@ import {
   updateTarsSysConfig,
   getTarsProviderApiKey,
   resolveTarsProviderKey,
+  isExpiredKeyCoveredByTars,
   invalidateTarsSysConfigCache,
 } from './sysconfig';
 import type { TarsSysConfig } from './sysconfig';
@@ -239,5 +240,31 @@ describe('resolveTarsProviderKey', () => {
   it('falls back to the env value when sys_config has no usable key', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, []));
     await expect(resolveTarsProviderKey('sk-env', EModelEndpoint.openAI)).resolves.toBe('sk-env');
+  });
+});
+
+describe('isExpiredKeyCoveredByTars', () => {
+  it('returns false for an unexpired key without consulting pwc_tars', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+    await expect(isExpiredKeyCoveredByTars('2099-01-01', EModelEndpoint.openAI)).resolves.toBe(
+      false,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('returns true for an expired key covered by an active sys_config key', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, [row('KEY_OPEN_AI_API', 'sk-tars')]));
+    await expect(isExpiredKeyCoveredByTars('2020-01-01', EModelEndpoint.openAI)).resolves.toBe(
+      true,
+    );
+  });
+
+  it('rethrows the expiry error when sys_config has no usable key', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, []));
+    await expect(isExpiredKeyCoveredByTars('2020-01-01', EModelEndpoint.openAI)).rejects.toThrow(
+      'expired_user_key',
+    );
   });
 });

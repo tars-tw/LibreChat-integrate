@@ -7,15 +7,8 @@ import type {
   GoogleConfigOptions,
   GoogleCredentials,
 } from '~/types';
-import {
-  isEnabled,
-  mergeHeaders,
-  resolveHeaders,
-  loadServiceKey,
-  isNoUserKeyError,
-  checkUserKeyExpiry,
-} from '~/utils';
-import { getTarsProviderApiKey, resolveTarsProviderKey } from '~/tars';
+import { isEnabled, mergeHeaders, resolveHeaders, loadServiceKey, isNoUserKeyError } from '~/utils';
+import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
 import { getGoogleConfig } from './llm';
 
 /**
@@ -46,10 +39,12 @@ export async function initializeGoogle({
   let userKey = null;
   let tarsFallbackKey: string | undefined;
   if (useUserProvidedGoogleKey) {
-    if (expiresAt) {
-      checkUserKeyExpiry(expiresAt, EModelEndpoint.google);
-    }
-    if (req.user?.id) {
+    /** An expired personal key is ignored when an active sys_config key
+     *  covers the provider — the fallback below then supplies it. */
+    const expiredKeyCovered = expiresAt
+      ? await isExpiredKeyCoveredByTars(expiresAt, EModelEndpoint.google)
+      : false;
+    if (!expiredKeyCovered && req.user?.id) {
       try {
         userKey = await db.getUserKey({ userId: req.user.id, name: EModelEndpoint.google });
       } catch (error) {
