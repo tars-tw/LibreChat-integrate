@@ -1,8 +1,8 @@
 import { ErrorTypes, EModelEndpoint, AuthKeys } from 'librechat-data-provider';
 import type { BaseInitializeParams, InitializeResultBase, AnthropicConfigOptions } from '~/types';
-import { checkUserKeyExpiry, isEnabled, isNoUserKeyError, mergeHeaders } from '~/utils';
+import { isEnabled, isNoUserKeyError, mergeHeaders } from '~/utils';
 import { loadAnthropicVertexCredentials, getVertexCredentialOptions } from './vertex';
-import { getTarsProviderApiKey, resolveTarsProviderKey } from '~/tars';
+import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
 import { getLLMConfig } from './llm';
 
 /**
@@ -54,10 +54,12 @@ export async function initializeAnthropic({
 
     let anthropicApiKey = isUserProvided ? undefined : anthropicKey;
     if (isUserProvided) {
-      if (expiresAt) {
-        checkUserKeyExpiry(expiresAt, EModelEndpoint.anthropic);
-      }
-      if (req.user?.id) {
+      /** An expired personal key is ignored when an active sys_config key
+       *  covers the provider — the fallback below then supplies it. */
+      const expiredKeyCovered = expiresAt
+        ? await isExpiredKeyCoveredByTars(expiresAt, EModelEndpoint.anthropic)
+        : false;
+      if (!expiredKeyCovered && req.user?.id) {
         try {
           anthropicApiKey = await db.getUserKey({
             userId: req.user.id,

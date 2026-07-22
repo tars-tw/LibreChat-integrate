@@ -1,7 +1,7 @@
 import { EModelEndpoint } from 'librechat-data-provider';
 import { logger } from '@librechat/data-schemas';
 import { tarsFetch, isTarsConfigured } from './client';
-import { isUserProvided } from '~/utils';
+import { isUserProvided, checkUserKeyExpiry } from '~/utils';
 
 /** A pwc_tars system parameter (系統參數設定). Mirrors `SysConfig.to_dict()`. */
 export interface TarsSysConfig {
@@ -131,6 +131,28 @@ export async function getTarsProviderApiKey(
   provider: TarsKeyedProvider,
 ): Promise<string | undefined> {
   return getTarsSysConfigValue(TARS_PROVIDER_KEY_MAP[provider]);
+}
+
+/**
+ * Expiry guard for personal keys of TARS-keyed providers: returns false while
+ * the key is still valid, returns true when it is expired but an active
+ * sys_config key covers the provider — the caller must then ignore the
+ * personal key so the sys_config fallback applies — and otherwise rethrows
+ * the expiry error.
+ */
+export async function isExpiredKeyCoveredByTars(
+  expiresAt: string,
+  provider: TarsKeyedProvider,
+): Promise<boolean> {
+  try {
+    checkUserKeyExpiry(expiresAt, provider);
+    return false;
+  } catch (error) {
+    if (await getTarsProviderApiKey(provider)) {
+      return true;
+    }
+    throw error;
+  }
 }
 
 /**
