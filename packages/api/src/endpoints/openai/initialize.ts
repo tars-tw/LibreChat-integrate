@@ -13,7 +13,7 @@ import {
   checkUserKeyExpiry,
   getAzureCredentials,
 } from '~/utils';
-import { getTarsProviderApiKey, resolveTarsProviderKey } from '~/tars';
+import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
 import { resolveEndpointRuntime } from '~/types';
 import { validateEndpointURL } from '~/auth';
 import { getOpenAIConfig } from './config';
@@ -84,11 +84,20 @@ export async function initializeOpenAI(
   const needsUserURL = userProvidesURL && !mappedAzureConfig?.baseURL;
 
   const isOpenAIProvider = endpoint === EModelEndpoint.openAI;
-  let userValues: UserKeyValues | null = null;
+  /** An expired personal key is ignored when an active sys_config key covers
+   *  the openAI endpoint; Azure and user-provided-URL flows keep the strict
+   *  expiry check. */
+  let expiredKeyCovered = false;
   if (expiresAt && (needsUserKey || needsUserURL)) {
-    checkUserKeyExpiry(expiresAt, endpoint);
+    if (isOpenAIProvider && !userProvidesURL) {
+      expiredKeyCovered = await isExpiredKeyCoveredByTars(expiresAt, EModelEndpoint.openAI);
+    } else {
+      checkUserKeyExpiry(expiresAt, endpoint);
+    }
   }
-  if (needsUserKey || needsUserURL) {
+
+  let userValues: UserKeyValues | null = null;
+  if (!expiredKeyCovered && (needsUserKey || needsUserURL)) {
     try {
       userValues = await db.getUserKeyValues({ userId: user?.id ?? '', name: endpoint });
     } catch (error) {
