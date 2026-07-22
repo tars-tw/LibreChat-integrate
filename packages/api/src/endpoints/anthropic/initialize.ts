@@ -4,9 +4,9 @@ import type {
   AnthropicConfigOptions,
   ProviderInitializeParams,
 } from '~/types';
-import { checkUserKeyExpiry, isEnabled, isNoUserKeyError, mergeHeaders } from '~/utils';
+import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
 import { loadAnthropicVertexCredentials, getVertexCredentialOptions } from './vertex';
-import { getTarsProviderApiKey, resolveTarsProviderKey } from '~/tars';
+import { isEnabled, isNoUserKeyError, mergeHeaders } from '~/utils';
 import { resolveEndpointRuntime } from '~/types';
 import { getLLMConfig } from './llm';
 
@@ -57,10 +57,12 @@ export async function initializeAnthropic(
 
     let anthropicApiKey = isUserProvided ? undefined : anthropicKey;
     if (isUserProvided) {
-      if (expiresAt) {
-        checkUserKeyExpiry(expiresAt, EModelEndpoint.anthropic);
-      }
-      if (user?.id) {
+      /** An expired personal key is ignored when an active sys_config key
+       *  covers the provider — the fallback below then supplies it. */
+      const expiredKeyCovered = expiresAt
+        ? await isExpiredKeyCoveredByTars(expiresAt, EModelEndpoint.anthropic)
+        : false;
+      if (!expiredKeyCovered && user?.id) {
         try {
           anthropicApiKey = await db.getUserKey({
             userId: user.id,
