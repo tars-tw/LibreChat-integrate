@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import debounce from 'lodash/debounce';
 import {
   EModelEndpoint,
@@ -16,7 +16,11 @@ import {
   useLocalize,
 } from '~/hooks';
 import { useAgentsMapContext, useAssistantsMapContext, useLiveAnnouncer } from '~/Providers';
-import { useGetEndpointsQuery, useListAgentsQuery } from '~/data-provider';
+import {
+  useGetEndpointsQuery,
+  useListAgentsQuery,
+  useTarsAllowedModelsQuery,
+} from '~/data-provider';
 import { useModelSelectorChatContext } from './ModelSelectorChatContext';
 import useSelectMention from '~/hooks/Input/useSelectMention';
 import { filterItems } from './utils';
@@ -42,6 +46,7 @@ type ModelSelectorContextType = {
   handleSelectSpec: (spec: t.TModelSpec) => void;
   handleSelectEndpoint: (endpoint: Endpoint) => void;
   handleSelectModel: (endpoint: Endpoint, model: string) => void;
+  isModelLocked: (endpoint: Endpoint, model: string) => boolean;
 } & ReturnType<typeof useKeyDialog>;
 
 const ModelSelectorContext = createContext<ModelSelectorContextType | undefined>(undefined);
@@ -110,12 +115,57 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     { select: selectAgents },
   );
 
-  const { mappedEndpoints, endpointRequiresUserKey } = useEndpoints({
+  const { mappedEndpoints: rawEndpoints, endpointRequiresUserKey } = useEndpoints({
     agents,
     assistantsMap,
     startupConfig,
     endpointsConfig,
   });
+
+  const { data: tarsAllowedModels } = useTarsAllowedModelsQuery();
+  const tarsAllowedSet = useMemo(() => {
+    if (!tarsAllowedModels) {
+      return null;
+    }
+    return new Set(tarsAllowedModels.map((name) => name.toLowerCase()));
+  }, [tarsAllowedModels]);
+
+  const isModelLocked = useCallback(
+    (endpoint: Endpoint, model: string): boolean => {
+      if (!tarsAllowedSet) {
+        return false;
+      }
+      if (isAgentsEndpoint(endpoint.value) || isAssistantsEndpoint(endpoint.value)) {
+        return false;
+      }
+      return !tarsAllowedSet.has(model.toLowerCase());
+    },
+    [tarsAllowedSet],
+  );
+
+  /** Allowed (model_profile) models float to the top; locked ones keep their relative order below. */
+  const mappedEndpoints = useMemo(() => {
+    if (!tarsAllowedSet) {
+      return rawEndpoints;
+    }
+    return rawEndpoints.map((endpoint) => {
+      if (!endpoint.models?.length || !endpoint.hasModels) {
+        return endpoint;
+      }
+      if (isAgentsEndpoint(endpoint.value) || isAssistantsEndpoint(endpoint.value)) {
+        return endpoint;
+      }
+      const allowed: NonNullable<Endpoint['models']> = [];
+      const locked: NonNullable<Endpoint['models']> = [];
+      for (const model of endpoint.models) {
+        (tarsAllowedSet.has(model.name.toLowerCase()) ? allowed : locked).push(model);
+      }
+      if (allowed.length === 0 || locked.length === 0) {
+        return endpoint;
+      }
+      return { ...endpoint, models: [...allowed, ...locked] };
+    });
+  }, [rawEndpoints, tarsAllowedSet]);
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
@@ -235,6 +285,9 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
 
   const handleSelectModel = useCallback(
     (endpoint: Endpoint, model: string) => {
+      if (isModelLocked(endpoint, model)) {
+        return;
+      }
       if (isAgentsEndpoint(endpoint.value)) {
         onSelectEndpoint?.(endpoint.value, {
           agent_id: model,
@@ -258,8 +311,38 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       const announcement = localize('com_ui_model_selected', { 0: modelDisplayName });
       announcePolite({ message: announcement, isStatus: true });
     },
-    [agentsMap, announcePolite, assistantsMap, getModelDisplayName, localize, onSelectEndpoint],
+    [
+      agentsMap,
+      announcePolite,
+      assistantsMap,
+      getModelDisplayName,
+      isModelLocked,
+      localize,
+      onSelectEndpoint,
+    ],
   );
+
+  /** A stale default/last selection can point at a locked model (e.g. from
+   *  localStorage predating the whitelist) — switch to the first allowed one. */
+  useEffect(() => {
+    if (!tarsAllowedSet) {
+      return;
+    }
+    const { endpoint: endpointValue, model: selectedModel, modelSpec } = selectedValues;
+    if (!endpointValue || !selectedModel || modelSpec) {
+      return;
+    }
+    const selectedEndpoint = mappedEndpoints.find((item) => item.value === endpointValue);
+    if (!selectedEndpoint || !isModelLocked(selectedEndpoint, selectedModel)) {
+      return;
+    }
+    const fallback = selectedEndpoint.models?.find((item) =>
+      tarsAllowedSet.has(item.name.toLowerCase()),
+    );
+    if (fallback) {
+      handleSelectModel(selectedEndpoint, fallback.name);
+    }
+  }, [tarsAllowedSet, selectedValues, mappedEndpoints, isModelLocked, handleSelectModel]);
 
   const value = useMemo(
     () => ({
@@ -274,6 +357,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       endpointsConfig,
       handleSelectSpec,
       handleSelectModel,
+      isModelLocked,
       setSelectedValues,
       handleSelectEndpoint,
       setEndpointSearchValue,
@@ -293,6 +377,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       endpointsConfig,
       handleSelectSpec,
       handleSelectModel,
+      isModelLocked,
       setSelectedValues,
       handleSelectEndpoint,
       setEndpointSearchValue,

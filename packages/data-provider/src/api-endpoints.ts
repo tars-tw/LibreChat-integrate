@@ -333,6 +333,7 @@ export const tarsPrompt = (id: string, query?: { domainId?: string; knowledgeBas
   return qs ? `${BASE_URL}/api/tars/prompts/${id}?${qs}` : `${BASE_URL}/api/tars/prompts/${id}`;
 };
 export const tarsSysConfigs = () => `${BASE_URL}/api/tars/sys-configs`;
+export const tarsModels = () => `${BASE_URL}/api/tars/models`;
 export const tarsMcpAdminServers = () => `${BASE_URL}/api/tars/mcp/admin/servers`;
 export const tarsMcpAdminServer = (id: string) =>
   `${BASE_URL}/api/tars/mcp/admin/servers/${encodeURIComponent(id)}`;
