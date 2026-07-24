@@ -1,4 +1,5 @@
 const { logger } = require('@librechat/data-schemas');
+const { reorderTarsWhitelistedModels } = require('@librechat/api');
 const { loadDefaultModels, loadConfigModels } = require('~/server/services/Config');
 
 const getModelsConfig = (req) => loadModels(req);
@@ -6,7 +7,7 @@ const getModelsConfig = (req) => loadModels(req);
 async function loadModels(req) {
   const defaultModelsConfig = await loadDefaultModels(req);
   const customModelsConfig = await loadConfigModels(req);
-  return { ...defaultModelsConfig, ...customModelsConfig };
+  return reorderTarsWhitelistedModels({ ...defaultModelsConfig, ...customModelsConfig });
 }
 
 async function modelController(req, res) {

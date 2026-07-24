@@ -8,6 +8,7 @@ import type {
   TTarsSysConfig,
   TTarsMcpServer,
   TTarsModelOptions,
+  TTarsModelsResponse,
   TTarsChunksResponse,
   TTarsDomainsResponse,
   TTarsKnowledgeBase,
@@ -176,6 +177,26 @@ export const useTarsMcpUserSettingsQuery = (
     () => dataService.getTarsMcpUserSettings(),
     {
       select: (data) => data.servers ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * The pwc_tars model_profile whitelist for the model selector. `null` means no
+ * restriction (TARS unconfigured, unreachable, or the request failed).
+ */
+export const useTarsAllowedModelsQuery = (
+  config?: UseQueryOptions<TTarsModelsResponse, unknown, string[] | null>,
+): QueryObserverResult<string[] | null> => {
+  return useQuery<TTarsModelsResponse, unknown, string[] | null>(
+    [QueryKeys.tarsModels],
+    () => dataService.getTarsModels(),
+    {
+      select: (data) => data.models ?? null,
+      staleTime: 5 * 60 * 1000,
+      retry: false,
       ...adminQueryOptions,
       ...config,
     },
