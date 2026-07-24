@@ -84,6 +84,11 @@ export type TTarsModelOptions = {
   rerank: TTarsModelOption[];
 };
 
+/** pwc_tars model_profile whitelist; `models: null` means no restriction. */
+export type TTarsModelsResponse = {
+  models: string[] | null;
+};
+
 export type TTarsKnowledgeBaseInput = {
   name: string;
   description?: string;
