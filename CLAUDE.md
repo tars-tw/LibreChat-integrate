@@ -55,26 +55,13 @@ pwc_tars's MCP `openapi` (Swagger import) and `custom_api` servers surface in Li
 
 ---
 
-## Branching and Pull Requests
+## Git Workflow
 
-- **Branch off `dev`, and target `dev` with every pull request.** All work lands on `dev` first.
-- **`main` is the released branch.** It is kept as a fast-forward of `dev` and synced as-is, so it
-  is always an ancestor of `dev` — equal to it right after a sync, behind it otherwise. It never
-  carries a commit that `dev` does not have.
-- **Never open a backport pull request to `main`.** Anything merged to `dev` reaches `main` at the
-  next sync; a second pull request for the same change is redundant.
-- **The repository's default branch is `main`**, so `gh pr create` and the GitHub UI target it
-  unless told otherwise — always pass `--base dev` explicitly.
-- Pull requests opened against `main` are retargeted to `dev` automatically by
-  `.github/workflows/pr-retarget-dev.yml`. The `target: main` label exempts one, as do release-bound
-  upstream branches (`dev`, `release/*`, `hotfix/*`). Backport branches are deliberately not exempt —
-  a backport merged straight to `main` is what breaks the fast-forward invariant.
-- **`Fixes #N` does not close the issue.** GitHub honors closing keywords only when a pull request
-  merges into the default branch (`main`). Merging to `dev` does not close anything, and the later
-  fast-forward of `main` is not a merge event either — close linked issues by hand.
-- **Git worktrees share one stash stack.** `refs/stash` lives in the common `.git` directory, so a
-  bare `git stash pop` in one worktree can take work stashed in another. Prefer a throwaway WIP
-  commit; if you must stash, `git stash push -m <tag>` and `apply` that specific entry.
+- **Never `git commit` or `git push` on your own.** Do not commit or push unless the user explicitly asks for that action in the current request. Staging changes for review is fine; creating a commit or pushing is not.
+- Standing approval does not carry over — a previous "go ahead and commit" applies only to that one request, never to later changes.
+- Leave finished work as **uncommitted changes in the working tree** and tell the user what changed, so they decide when and how to commit.
+- **Never `git push` / `git push --force` / `git push --tags`** to any remote under any circumstances.
+- Other local git operations (`add`, `stash`, `branch`, `checkout`, `reset`, local `merge`/`rebase`) are allowed when they serve the task.
 
 ---
 
