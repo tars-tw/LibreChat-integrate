@@ -54,6 +54,16 @@ pwc_tars's MCP `openapi` (Swagger import) and `custom_api` servers surface in Li
 
 ---
 
+## Git Workflow
+
+- **Never `git commit` or `git push` on your own.** Do not commit or push unless the user explicitly asks for that action in the current request. Staging changes for review is fine; creating a commit or pushing is not.
+- Standing approval does not carry over — a previous "go ahead and commit" applies only to that one request, never to later changes.
+- Leave finished work as **uncommitted changes in the working tree** and tell the user what changed, so they decide when and how to commit.
+- **Never `git push` / `git push --force` / `git push --tags`** to any remote under any circumstances.
+- Other local git operations (`add`, `stash`, `branch`, `checkout`, `reset`, local `merge`/`rebase`) are allowed when they serve the task.
+
+---
+
 ## Code Style
 
 ### Naming and File Organization
