@@ -10,8 +10,11 @@ jest.mock('@librechat/data-schemas', () => ({
 import {
   isTarsLocalEndpoint,
   getTarsLocalModelNames,
+  getTarsModelProfileNames,
   resolveTarsLocalModelBaseURL,
+  reorderTarsWhitelistedModels,
   invalidateTarsLocalModelsCache,
+  invalidateTarsModelProfilesCache,
   TARS_LOCAL_ENDPOINT_MARKER,
 } from './models';
 
@@ -31,6 +34,7 @@ const healthStatus = (endpoints: Array<{ endpoint: string; loaded_models: string
 beforeEach(() => {
   process.env.TARS_AUTH_URL = BASE_URL;
   invalidateTarsLocalModelsCache();
+  invalidateTarsModelProfilesCache();
 });
 
 afterEach(() => {
@@ -174,5 +178,119 @@ describe('resolveTarsLocalModelBaseURL', () => {
     const fetchMock = jest.spyOn(global, 'fetch');
     await expect(resolveTarsLocalModelBaseURL('')).resolves.toBeUndefined();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('getTarsModelProfileNames', () => {
+  const modelList = (names: Array<string | null>) => names.map((model_name) => ({ model_name }));
+
+  it('returns the model_profile names, trimmed and deduplicated', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        buildResponse(200, modelList(['gpt-4o', ' claude-sonnet-4-6 ', 'gpt-4o', '', null])),
+      );
+    await expect(getTarsModelProfileNames()).resolves.toEqual(['gpt-4o', 'claude-sonnet-4-6']);
+  });
+
+  it('returns null without fetching when TARS is unconfigured', async () => {
+    delete process.env.TARS_AUTH_URL;
+    const fetchMock = jest.spyOn(global, 'fetch');
+    await expect(getTarsModelProfileNames()).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('fails open to null on a cold cache without retrying within the TTL', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
+    await expect(getTarsModelProfileNames()).resolves.toBeNull();
+    await expect(getTarsModelProfileNames()).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('serves from cache within the TTL and refetches after it expires', async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, modelList(['gpt-4o'])));
+
+    await expect(getTarsModelProfileNames()).resolves.toEqual(['gpt-4o']);
+    await expect(getTarsModelProfileNames()).resolves.toEqual(['gpt-4o']);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(61_000);
+    await expect(getTarsModelProfileNames()).resolves.toEqual(['gpt-4o']);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('serves the stale list when a refresh fails', async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(buildResponse(200, modelList(['gpt-4o'])))
+      .mockRejectedValueOnce(new Error('down'));
+
+    await expect(getTarsModelProfileNames()).resolves.toEqual(['gpt-4o']);
+    jest.advanceTimersByTime(61_000);
+    await expect(getTarsModelProfileNames()).resolves.toEqual(['gpt-4o']);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shares a single in-flight fetch across concurrent lookups', async () => {
+    let resolveFetch: (value: Response) => void = () => undefined;
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(() => new Promise<Response>((resolve) => (resolveFetch = resolve)));
+
+    const lookups = Promise.all([getTarsModelProfileNames(), getTarsModelProfileNames()]);
+    resolveFetch(buildResponse(200, modelList(['gpt-4o'])));
+
+    await expect(lookups).resolves.toEqual([['gpt-4o'], ['gpt-4o']]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('reorderTarsWhitelistedModels', () => {
+  const whitelist = (names: string[]) =>
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(
+        200,
+        names.map((model_name) => ({ model_name })),
+      ),
+    );
+
+  it('moves whitelisted models to the front, keeping relative order on both sides', async () => {
+    whitelist(['gpt-4o-mini', 'GPT-4o']);
+    await expect(
+      reorderTarsWhitelistedModels({
+        openAI: ['gpt-3.5-turbo', 'gpt-4o', 'gpt-4', 'gpt-4o-mini'],
+        google: ['gemini-2.0-flash'],
+      }),
+    ).resolves.toEqual({
+      openAI: ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo', 'gpt-4'],
+      google: ['gemini-2.0-flash'],
+    });
+  });
+
+  it('returns the config untouched when TARS is unconfigured', async () => {
+    delete process.env.TARS_AUTH_URL;
+    const config = { openAI: ['gpt-3.5-turbo', 'gpt-4o'] };
+    await expect(reorderTarsWhitelistedModels(config)).resolves.toBe(config);
+  });
+
+  it('returns the config untouched when the whitelist fetch fails cold', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
+    const config = { openAI: ['gpt-3.5-turbo', 'gpt-4o'] };
+    await expect(reorderTarsWhitelistedModels(config)).resolves.toBe(config);
+  });
+
+  it('leaves endpoints untouched when all or none of their models are whitelisted', async () => {
+    whitelist(['gpt-4o', 'gemini-2.0-flash']);
+    const config = {
+      openAI: ['claude-3-5-sonnet', 'o1'],
+      google: ['gemini-2.0-flash'],
+    };
+    const result = await reorderTarsWhitelistedModels(config);
+    expect(result.openAI).toEqual(['claude-3-5-sonnet', 'o1']);
+    expect(result.google).toEqual(['gemini-2.0-flash']);
   });
 });
