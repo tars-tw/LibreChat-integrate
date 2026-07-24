@@ -119,3 +119,97 @@ export async function resolveTarsLocalModelBaseURL(model: string): Promise<strin
   const map = await getModelMap();
   return map.get(model);
 }
+
+/** One entry of pwc_tars `GET /api/model/get_model_list`. */
+interface TarsModelListEntry {
+  model_name?: string | null;
+}
+
+const PROFILE_CACHE_TTL_MS = 60_000;
+
+let cachedProfileNames: string[] | null = null;
+let profileCachedAt = 0;
+let profileInflight: Promise<string[] | null> | null = null;
+
+/** Drops the cached model_profile name list so the next lookup re-reads pwc_tars. */
+export function invalidateTarsModelProfilesCache(): void {
+  cachedProfileNames = null;
+  profileCachedAt = 0;
+  profileInflight = null;
+}
+
+async function refreshProfileNames(): Promise<string[] | null> {
+  try {
+    const rows = await tarsFetch<TarsModelListEntry[]>('/api/model/get_model_list', {
+      timeoutMs: FETCH_TIMEOUT_MS,
+    });
+    const names = new Set<string>();
+    for (const row of rows ?? []) {
+      const name = row?.model_name?.trim();
+      if (name) {
+        names.add(name);
+      }
+    }
+    cachedProfileNames = [...names];
+  } catch (error) {
+    logger.warn(
+      `[TarsModelProfiles] Failed to refresh model_profile list; ${
+        cachedProfileNames ? 'serving stale list' : 'treating as unrestricted'
+      }`,
+      error,
+    );
+  } finally {
+    profileCachedAt = Date.now();
+    profileInflight = null;
+  }
+  return cachedProfileNames;
+}
+
+/**
+ * Names of the active pwc_tars `model_profile` rows (the customer-approved
+ * model whitelist), from a per-process TTL cache with a shared in-flight fetch.
+ * Returns null — meaning "no restriction" — when the TARS integration is
+ * unconfigured or pwc_tars is unreachable with no cached list (fail-open: the
+ * selector must not lock every model because pwc_tars is down).
+ */
+export async function getTarsModelProfileNames(): Promise<string[] | null> {
+  if (!isTarsConfigured()) {
+    return null;
+  }
+  if (Date.now() - profileCachedAt >= PROFILE_CACHE_TTL_MS) {
+    profileInflight = profileInflight ?? refreshProfileNames();
+    await profileInflight;
+  }
+  return cachedProfileNames;
+}
+
+/**
+ * Reorders every endpoint's model list so pwc_tars model_profile (whitelisted)
+ * models come first, each side keeping its relative order. The first entry of a
+ * list is LibreChat's default model for new conversations, so without this the
+ * default can land on a locked model. No-op when unrestricted.
+ */
+export async function reorderTarsWhitelistedModels<T extends Record<string, string[]>>(
+  modelsConfig: T,
+): Promise<T> {
+  const names = await getTarsModelProfileNames();
+  if (!names?.length) {
+    return modelsConfig;
+  }
+  const allowed = new Set(names.map((name) => name.toLowerCase()));
+  const result = { ...modelsConfig };
+  for (const [endpoint, models] of Object.entries(modelsConfig)) {
+    if (!Array.isArray(models) || models.length === 0) {
+      continue;
+    }
+    const top: string[] = [];
+    const rest: string[] = [];
+    for (const model of models) {
+      (typeof model === 'string' && allowed.has(model.toLowerCase()) ? top : rest).push(model);
+    }
+    if (top.length > 0 && rest.length > 0) {
+      result[endpoint as keyof T] = [...top, ...rest] as T[keyof T];
+    }
+  }
+  return result;
+}
