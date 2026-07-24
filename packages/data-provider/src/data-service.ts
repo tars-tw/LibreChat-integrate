@@ -821,6 +821,10 @@ export const getTarsSysConfigs = (): Promise<t.TTarsSysConfigsResponse> => {
   return request.get(endpoints.tarsSysConfigs());
 };
 
+export const getTarsModels = (): Promise<t.TTarsModelsResponse> => {
+  return request.get(endpoints.tarsModels());
+};
+
 export const updateTarsSysConfig = (
   data: t.TTarsSysConfigUpdate,
 ): Promise<{ success: boolean }> => {
@@ -852,9 +856,7 @@ export const deleteTarsMcpServer = (id: string): Promise<{ success: boolean }> =
   return request.delete(endpoints.tarsMcpAdminServer(id));
 };
 
-export const testTarsMcpServer = (
-  id: string,
-): Promise<{ result: Record<string, unknown> }> => {
+export const testTarsMcpServer = (id: string): Promise<{ result: Record<string, unknown> }> => {
   return request.post(endpoints.tarsMcpAdminServerTest(id), {});
 };
 
