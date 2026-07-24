@@ -1,6 +1,6 @@
 import React from 'react';
 import { VisuallyHidden } from '@ariakit/react';
-import { CheckCircle2, EarthIcon, Pin, PinOff } from 'lucide-react';
+import { CheckCircle2, EarthIcon, Lock, Pin, PinOff } from 'lucide-react';
 import { isAgentsEndpoint, isAssistantsEndpoint } from 'librechat-data-provider';
 import type { Endpoint } from '~/common';
 import { useFavorites, useLocalize, useIsActiveItem } from '~/hooks';
@@ -15,7 +15,7 @@ interface EndpointModelItemProps {
 
 export function EndpointModelItem({ modelId, endpoint }: EndpointModelItemProps) {
   const localize = useLocalize();
-  const { handleSelectModel, selectedValues } = useModelSelectorContext();
+  const { handleSelectModel, selectedValues, isModelLocked } = useModelSelectorContext();
   const {
     endpoint: selectedEndpoint,
     model: selectedModel,
@@ -47,6 +47,7 @@ export function EndpointModelItem({ modelId, endpoint }: EndpointModelItemProps)
     modelName = endpoint.assistantNames[modelId];
   }
 
+  const isLocked = isModelLocked(endpoint, modelId ?? '');
   const isAgent = isAgentsEndpoint(endpoint.value);
   const isFavorite = isAgent
     ? isFavoriteAgent(modelId ?? '')
@@ -99,38 +100,49 @@ export function EndpointModelItem({ modelId, endpoint }: EndpointModelItemProps)
   return (
     <MenuItem
       ref={itemRef}
+      disabled={isLocked}
       onClick={() => handleSelectModel(endpoint, modelId ?? '')}
       aria-selected={isSelected || undefined}
-      className="group flex w-full cursor-pointer items-center justify-between rounded-lg px-2 text-sm"
+      className={cn(
+        'group flex w-full items-center justify-between rounded-lg px-2 text-sm',
+        isLocked ? 'cursor-not-allowed' : 'cursor-pointer',
+      )}
     >
       <div className="flex w-full min-w-0 items-center gap-2 px-1 py-1">
         {renderAvatar()}
         <span className="truncate">{modelName}</span>
         {isGlobal && <EarthIcon className="ml-1 size-4 text-surface-submit" />}
       </div>
-      <button
-        type="button"
-        tabIndex={isActive ? 0 : -1}
-        onClick={handleFavoriteClick}
-        aria-label={isFavorite ? localize('com_ui_unpin') : localize('com_ui_pin')}
-        className={cn(
-          'rounded-md p-1 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring-primary',
-          isFavorite
-            ? 'visible'
-            : // Visible by default so it's tappable on touch (no hover to
-              // reveal it); only hidden-until-hover on hover-capable pointers.
-              // A hover-gated child would otherwise make the whole item
-              // hover-dependent, so the first tap only reveals it and a second
-              // tap is needed to select (the iOS double-tap).
-              'group-focus-within:visible group-hover:visible group-data-[active-item]:visible [@media(hover:hover)]:invisible',
-        )}
-      >
-        {isFavorite ? (
-          <PinOff className="h-4 w-4 text-text-secondary" aria-hidden="true" />
-        ) : (
-          <Pin className="h-4 w-4 text-text-secondary" aria-hidden="true" />
-        )}
-      </button>
+      {isLocked ? (
+        <>
+          <Lock className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
+          <VisuallyHidden>{localize('com_ui_model_locked')}</VisuallyHidden>
+        </>
+      ) : (
+        <button
+          type="button"
+          tabIndex={isActive ? 0 : -1}
+          onClick={handleFavoriteClick}
+          aria-label={isFavorite ? localize('com_ui_unpin') : localize('com_ui_pin')}
+          className={cn(
+            'rounded-md p-1 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring-primary',
+            isFavorite
+              ? 'visible'
+              : // Visible by default so it's tappable on touch (no hover to
+                // reveal it); only hidden-until-hover on hover-capable pointers.
+                // A hover-gated child would otherwise make the whole item
+                // hover-dependent, so the first tap only reveals it and a second
+                // tap is needed to select (the iOS double-tap).
+                'group-focus-within:visible group-hover:visible group-data-[active-item]:visible [@media(hover:hover)]:invisible',
+          )}
+        >
+          {isFavorite ? (
+            <PinOff className="h-4 w-4 text-text-secondary" aria-hidden="true" />
+          ) : (
+            <Pin className="h-4 w-4 text-text-secondary" aria-hidden="true" />
+          )}
+        </button>
+      )}
       {isSelected && (
         <>
           <CheckCircle2 className="size-4 shrink-0 text-text-primary" aria-hidden="true" />
