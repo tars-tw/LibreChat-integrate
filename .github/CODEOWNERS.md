@@ -1,1 +1,1 @@
-* @Chrisliao0806, @milk7472
+* @Chrisliao0806, @milk7472, @Min-rou
