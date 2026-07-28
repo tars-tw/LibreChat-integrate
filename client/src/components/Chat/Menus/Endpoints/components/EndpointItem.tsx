@@ -11,6 +11,7 @@ import MarketplaceItem, { marketplaceSearchMatches } from './Marketplace';
 import { filterModels, shouldRenderEndpointOption } from '../utils';
 import { useModelSelectorContext } from '../ModelSelectorContext';
 import VirtualizedModelList from './VirtualizedModelList';
+import { DomainItems } from '../../Tars/DomainItems';
 import { useFavorites, useLocalize } from '~/hooks';
 import { ModelSpecItem } from './ModelSpecItem';
 import { cn } from '~/utils';
@@ -146,6 +147,12 @@ function EndpointMenuContent({
 
   return (
     <>
+      {isAgentsEndpoint(endpoint.value) && (
+        <DomainItems
+          searchValue={searchValue}
+          showSeparator={showMarketplace || hasSelectableRows}
+        />
+      )}
       {showMarketplace && (
         <MarketplaceItem
           label={localize('com_agents_marketplace')}
