@@ -26,7 +26,7 @@ export const defaultTheme: IThemeRGB = {
   'rgb-accent-primary-hover': '10 79 83', // #0a4f53
 
   // Ring colors
-  'rgb-ring-primary': '89 89 89', // #595959 (gray-500)
+  'rgb-ring-primary': '253 81 8', // #fd5108 (pwc-orange-500)
   'rgb-focus-outline': '0 0 0', // #000000
   'rgb-focus-control': '33 33 33', // #212121 (gray-800)
 
@@ -56,8 +56,8 @@ export const defaultTheme: IThemeRGB = {
   'rgb-surface-overlay': '89 89 89', // #595959 (gray-500)
   'rgb-surface-media-overlay': '0 0 0', // #000 (black, over the user's media in both modes)
   'rgb-text-on-media': '255 255 255', // #fff (white)
-  'rgb-surface-submit': '4 120 87', // #047857 (green-700)
-  'rgb-surface-submit-hover': '6 95 70', // #065f46 (green-800)
+  'rgb-surface-submit': '253 81 8', // #fd5108 (pwc-orange-500)
+  'rgb-surface-submit-hover': '224 71 5', // #e04705 (pwc-orange-600)
   'rgb-surface-destructive': '185 28 28', // #b91c1c (red-700)
   'rgb-surface-destructive-hover': '153 27 27', // #991b1b (red-800)
   'rgb-surface-chat': '255 255 255', // #fff (white)
@@ -138,7 +138,7 @@ export const defaultTheme: IThemeRGB = {
   'rgb-text-on-status': '255 255 255', // #fff (white)
 
   // Brand colors
-  'rgb-brand-purple': '126 34 206', // #7e22ce (purple-700)
+  'rgb-brand-purple': '253 81 8', // #fd5108 (pwc-orange-500)
   'rgb-avatar-fill': '121 137 255', // #7989ff (the default avatar fill in every bundled theme)
   'rgb-avatar-text': '33 33 33', // #212121 (gray-800, matching text-primary)
   'rgb-avatar-placeholder': '247 247 248', // #f7f7f8 (gray-50, matching surface-secondary)

@@ -58,7 +58,7 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
   const tarsIconBoxClassName =
     'flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500';
   const tarsInputClassName =
-    'w-full rounded-r-md border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:border-[#fd5108] focus:outline-none focus-visible:border-[#fd5108]';
+    'w-full rounded-r-md border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:border-pwc-orange focus:outline-none focus-visible:border-pwc-orange';
 
   useEffect(() => {
     if (error && error.includes('422') && !showResendLink) {
@@ -229,8 +229,8 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
               {...register('use_sso')}
               className={`h-4 w-4 rounded ${
                 isTars
-                  ? 'border-gray-300 text-[#fd5108] focus:ring-[#fd5108]'
-                  : 'border-border-light text-green-600 focus:ring-green-500'
+                  ? 'border-gray-300 text-pwc-orange focus:ring-pwc-orange'
+                  : 'border-border-light text-brand-primary focus:ring-brand-primary'
               }`}
             />
             <label
@@ -266,8 +266,7 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
             variant="submit"
             shape={isTars ? undefined : 'soft'}
             size={isTars ? undefined : 'auth'}
-            className={`w-full ${isTars ? 'h-11 rounded-md text-white hover:brightness-95' : ''}`}
-            style={isTars ? { backgroundColor: '#fd5108' } : undefined}
+            className={`w-full ${isTars ? 'h-11 rounded-md text-white' : ''}`}
           >
             {isSubmitting ? <Spinner /> : buttonLabel}
           </Button>
@@ -277,7 +276,7 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
             <button
               type="button"
               onClick={() => setForgotOpen(true)}
-              className="text-sm font-medium text-[#fd5108] hover:underline"
+              className="text-sm font-medium text-pwc-orange hover:underline"
             >
               {localize('com_auth_password_forgot')}
             </button>
