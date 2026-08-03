@@ -21,7 +21,7 @@ export const defaultTheme: IThemeRGB = {
   'rgb-accent-primary-hover': '10 79 83', // #0a4f53
 
   // Ring colors
-  'rgb-ring-primary': '89 89 89', // #595959 (gray-500)
+  'rgb-ring-primary': '253 81 8', // #fd5108 (pwc-orange-500)
 
   // Header colors
   'rgb-header-primary': '255 255 255', // #fff (white)
@@ -43,8 +43,8 @@ export const defaultTheme: IThemeRGB = {
   'rgb-surface-tertiary-alt': '255 255 255', // #fff (white)
   'rgb-surface-dialog': '255 255 255', // #fff (white)
   'rgb-surface-overlay': '89 89 89', // #595959 (gray-500)
-  'rgb-surface-submit': '4 120 87', // #047857 (green-700)
-  'rgb-surface-submit-hover': '6 95 70', // #065f46 (green-800)
+  'rgb-surface-submit': '253 81 8', // #fd5108 (pwc-orange-500)
+  'rgb-surface-submit-hover': '224 71 5', // #e04705 (pwc-orange-600)
   'rgb-surface-destructive': '185 28 28', // #b91c1c (red-700)
   'rgb-surface-destructive-hover': '153 27 27', // #991b1b (red-800)
   'rgb-surface-chat': '255 255 255', // #fff (white)
@@ -86,7 +86,7 @@ export const defaultTheme: IThemeRGB = {
   'rgb-text-on-status': '255 255 255', // #fff (white)
 
   // Brand colors
-  'rgb-brand-purple': '126 34 206', // #7e22ce (purple-700)
+  'rgb-brand-purple': '253 81 8', // #fd5108 (pwc-orange-500)
 
   /** Categorical series scale. Steps clear 3:1 against BOTH the popover surface
    *  and the #ececec meter track, with worst adjacent CVD ΔE 12.4 and worst
