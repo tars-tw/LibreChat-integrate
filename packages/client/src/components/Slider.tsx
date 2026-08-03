@@ -43,12 +43,12 @@ const Slider: React.ForwardRefExoticComponent<SliderProps & React.RefAttributes<
             className: 'relative h-2 w-full grow overflow-hidden rounded-full bg-surface-tertiary',
           }}
         >
-          <SliderPrimitive.Range {...{ className: 'absolute h-full bg-surface-inverted' }} />
+          <SliderPrimitive.Range {...{ className: 'absolute h-full bg-surface-submit' }} />
         </SliderPrimitive.Track>
         <SliderPrimitive.Thumb
           {...{
             className: cn(
-              'block h-5 w-5 rounded-full border-2 border-border-xheavy bg-surface-primary ring-offset-surface-primary transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus-control focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+              'block h-5 w-5 rounded-full border-2 border-surface-submit bg-surface-primary ring-offset-surface-primary transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus-control focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
               disabledFillClasses,
             ),
             'aria-labelledby': ariaLabelledBy,
