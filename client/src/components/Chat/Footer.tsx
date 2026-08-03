@@ -78,10 +78,10 @@ function Footer({ className, startupConfig, configuredOnly = false }: FooterProp
   /** The generic disclaimer is the part a conversation drops; operator content is not. */
   const genericFooter = configuredOnly
     ? ''
-    : '[LibreChat ' +
+    : '[PwC TARS.ai ' +
       Constants.VERSION +
-      '](https://librechat.ai) - ' +
-      localize('com_ui_latest_footer');
+      '](https://www.pwc.tw/zh/services/consulting-services/ai-application.html) - ' +
+      'All rights reserved. | [Privacy Policy](https://www.pwc.tw/zh/legal-notices/privacy-statement-zh.html) | [Terms of Service](https://www.pwc.tw/zh/services/consulting-services.html)';
   const mainContent = configuredFooter ?? genericFooter;
   const mainContentParts = mainContent === '' ? [] : mainContent.split('|');
 
