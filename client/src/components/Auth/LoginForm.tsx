@@ -43,7 +43,7 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
     : localize('com_auth_login');
   const buttonLabel = isTars ? tarsButtonLabel : localize('com_auth_continue');
   const authInputClassName =
-    'webkit-dark-styles transition-color peer h-auto w-full rounded-2xl border border-border-light bg-surface-primary px-3.5 pb-2.5 pt-3 text-text-primary duration-200 hover:border-border-light focus:border-accent-primary focus:outline-none focus-visible:border-accent-primary';
+    'webkit-dark-styles transition-color peer h-auto w-full rounded-2xl border border-border-light bg-surface-primary px-3.5 pb-2.5 pt-3 text-text-primary duration-200 hover:border-border-light focus:border-brand-primary focus:outline-none focus-visible:border-brand-primary';
   const authSecretInputClassName = `${authInputClassName} pr-12`;
   const authLabelClassName =
     'absolute start-3 top-1.5 z-10 origin-[0] -translate-y-4 scale-75 transform bg-surface-primary px-2 text-sm text-text-secondary-alt duration-200 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:scale-100 peer-focus:top-1.5 peer-focus:-translate-y-4 peer-focus:scale-75 peer-focus:px-2 peer-focus:text-accent-primary rtl:peer-focus:left-auto rtl:peer-focus:translate-x-1/4';
@@ -52,7 +52,7 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
   const tarsIconBoxClassName =
     'flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500';
   const tarsInputClassName =
-    'w-full rounded-r-md border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:border-[#fd5108] focus:outline-none focus-visible:border-[#fd5108]';
+    'w-full rounded-r-md border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:border-pwc-orange focus:outline-none focus-visible:border-pwc-orange';
 
   useEffect(() => {
     if (error && error.includes('422') && !showResendLink) {
@@ -224,8 +224,8 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
               {...register('use_sso')}
               className={`h-4 w-4 rounded ${
                 isTars
-                  ? 'border-gray-300 text-[#fd5108] focus:ring-[#fd5108]'
-                  : 'border-border-light text-green-600 focus:ring-green-500'
+                  ? 'border-gray-300 text-pwc-orange focus:ring-pwc-orange'
+                  : 'border-border-light text-brand-primary focus:ring-brand-primary'
               }`}
             />
             <label
@@ -259,8 +259,7 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
             type="submit"
             disabled={(requireCaptcha && !turnstileToken) || isSubmitting}
             variant="submit"
-            className={`w-full ${isTars ? 'h-11 rounded-md text-white hover:brightness-95' : 'h-12 rounded-2xl'}`}
-            style={isTars ? { backgroundColor: '#fd5108' } : undefined}
+            className={`w-full ${isTars ? 'h-11 rounded-md text-white' : 'h-12 rounded-2xl'}`}
           >
             {isSubmitting ? <Spinner /> : buttonLabel}
           </Button>
@@ -270,7 +269,7 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
             <button
               type="button"
               onClick={() => setForgotOpen(true)}
-              className="text-sm font-medium text-[#fd5108] hover:underline"
+              className="text-sm font-medium text-pwc-orange hover:underline"
             >
               {localize('com_auth_password_forgot')}
             </button>
