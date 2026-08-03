@@ -67,10 +67,15 @@
   --pwc-orange-800: #8f2d03;
   --pwc-orange-900: #6b2102;
   --pwc-primary: var(--pwc-orange-500);
-  /* Canonical brand accent — every primary action / active control points here. */
-  --brand-primary: var(--pwc-primary);
-  --brand-primary-hover: var(--pwc-orange-600);
-  --brand-primary-subtle: var(--pwc-orange-100);
+  /* Canonical brand accent — every primary action / active control points here.
+     Stored as bare HSL channels so Tailwind alpha modifiers (bg-brand-primary/20) resolve;
+     keep the triplets in sync with the --pwc-orange-* hex values noted beside them. */
+  --brand-primary-hsl: 18 98% 51%; /* #fd5108 — pwc-orange-500 */
+  --brand-primary-hover-hsl: 18 96% 45%; /* #e04705 — pwc-orange-600 */
+  --brand-primary-subtle-hsl: 43 100% 87%; /* #ffecbd — pwc-orange-100 */
+  --brand-primary: hsl(var(--brand-primary-hsl));
+  --brand-primary-hover: hsl(var(--brand-primary-hover-hsl));
+  --brand-primary-subtle: hsl(var(--brand-primary-subtle-hsl));
   --pwc-warning: var(--pwc-orange-400);
   --pwc-success: #ff9f00;
   --pwc-info: #e9b01f;
@@ -216,7 +221,7 @@ html {
   --destructive-foreground: 0 0% 98%;
   --border: 0 0% 89.8%;
   --input: 0 0% 89.8%;
-  --ring: 18 98% 51%;
+  --ring: var(--brand-primary-hsl);
   --radius: 0.5rem;
   --chart-1: 12 76% 61%;
   --chart-2: 173 58% 39%;
