@@ -68,6 +68,39 @@
   --blue-800: 30 64 175;
   --blue-900: 30 58 138;
   --blue-950: 23 37 84;
+  /* pwc_tars brand palette — mirrors frontend/src/assets/scss/partials/_variables.scss */
+  --pwc-orange-50: 255 245 237;
+  --pwc-orange-100: 255 236 189;
+  --pwc-orange-200: 255 205 168;
+  --pwc-orange-300: 255 170 114;
+  --pwc-orange-400: 254 124 57;
+  --pwc-orange-500: 253 81 8;
+  --pwc-orange-600: 224 71 5;
+  --pwc-orange-700: 185 58 4;
+  --pwc-orange-800: 143 45 3;
+  --pwc-orange-900: 107 33 2;
+  --pwc-primary: var(--pwc-orange-500);
+  /* Canonical brand accent — every primary action / active control points here. */
+  --brand-primary: var(--pwc-primary);
+  --brand-primary-hover: var(--pwc-orange-600);
+  --brand-primary-subtle: var(--pwc-orange-100);
+  --pwc-warning: var(--pwc-orange-400);
+  --pwc-success: 255 159 0;
+  --pwc-info: 233 176 31;
+  --pwc-danger: 220 38 38;
+  --pwc-secondary: 161 168 179;
+  --pwc-dark: 55 71 79;
+  --pwc-border: 234 234 234;
+  --pwc-gradient: linear-gradient(
+    -135deg,
+    rgb(var(--pwc-orange-400)) 0%,
+    rgb(var(--pwc-orange-300)) 100%
+  );
+  --pwc-gradient-strong: linear-gradient(
+    -135deg,
+    rgb(var(--pwc-orange-500)) 0%,
+    rgb(var(--pwc-orange-400)) 100%
+  );
   --brand-purple: 126 34 206;
   --gizmo-gray-500: 153 153 153;
   --gizmo-gray-600: 102 102 102;
@@ -147,7 +180,7 @@
 }
 
 html {
-  --brand-purple: 126 34 206;
+  --brand-purple: var(--pwc-primary);
   --presentation: var(--white);
   --text-primary: var(--gray-800);
   --text-secondary: var(--gray-600);
@@ -162,7 +195,7 @@ html {
   --link-visited: 147 51 234;
   --accent-primary: 18 110 107;
   --accent-primary-hover: 10 79 83;
-  --ring-primary: var(--gray-500);
+  --ring-primary: var(--pwc-primary);
   --header-primary: var(--white);
   --header-hover: var(--gray-50);
   --header-button-hover: var(--gray-50);
@@ -180,8 +213,8 @@ html {
   --surface-tertiary-alt: var(--white);
   --surface-dialog: var(--white);
   --surface-overlay: var(--gray-500);
-  --surface-submit: var(--green-700);
-  --surface-submit-hover: var(--green-800);
+  --surface-submit: var(--brand-primary);
+  --surface-submit-hover: var(--brand-primary-hover);
   --surface-destructive: var(--red-700);
   --surface-destructive-hover: var(--red-800);
   --surface-chat: var(--white);
@@ -255,7 +288,7 @@ html {
   --provider-foreground: #ffffff;
 }
 .dark {
-  --brand-purple: 171 104 255;
+  --brand-purple: var(--pwc-orange-400);
   --presentation: var(--gray-800);
   --text-primary: var(--gray-100);
   --text-secondary: var(--gray-300);
@@ -289,8 +322,8 @@ html {
   --surface-tertiary-alt: var(--gray-700);
   --surface-dialog: var(--gray-875);
   --surface-overlay: 0 0 0;
-  --surface-submit: var(--green-700);
-  --surface-submit-hover: var(--green-800);
+  --surface-submit: var(--brand-primary);
+  --surface-submit-hover: var(--brand-primary-hover);
   --surface-destructive: var(--red-800);
   --surface-destructive-hover: var(--red-900);
   --surface-chat: var(--gray-700);
@@ -1199,14 +1232,12 @@ button {
   opacity: 0.5;
 }
 .btn-primary {
-  --tw-bg-opacity: 1;
   --tw-text-opacity: 1;
-  background-color: rgba(16, 163, 127, var(--tw-bg-opacity));
+  background-color: rgb(var(--brand-primary));
   color: rgba(255, 255, 255, var(--tw-text-opacity));
 }
 .btn-primary:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgba(26, 127, 100, var(--tw-bg-opacity));
+  background-color: rgb(var(--brand-primary-hover));
 }
 .btn-primary:focus {
   --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width)
@@ -1222,16 +1253,13 @@ button {
     var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 transparent);
 }
 .btn-primary.focus-visible {
-  --tw-ring-opacity: 1;
-  --tw-ring-color: rgba(25, 195, 125, var(--tw-ring-opacity));
+  --tw-ring-color: rgb(var(--brand-primary));
 }
 .btn-primary:focus-visible {
-  --tw-ring-opacity: 1;
-  --tw-ring-color: rgba(25, 195, 125, var(--tw-ring-opacity));
+  --tw-ring-color: rgb(var(--brand-primary));
 }
 .btn-primary:disabled:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgba(16, 163, 127, var(--tw-bg-opacity));
+  background-color: rgb(var(--brand-primary));
 }
 .btn-secondary {
   --tw-border-opacity: 1;
