@@ -4,7 +4,7 @@ import * as ProgressPrimitive from '@radix-ui/react-progress';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '~/utils';
 
-/** Fill tone for the indicator; the track stays neutral in every variant. */
+/** Fill tone for the indicator; the track keeps the brand tint in every variant. */
 const progressIndicatorVariants: (
   props?:
     | ({
@@ -14,7 +14,7 @@ const progressIndicatorVariants: (
 ) => string = cva('h-full w-full flex-1 transition-all motion-reduce:transition-none', {
   variants: {
     variant: {
-      default: 'bg-surface-inverted',
+      default: 'bg-surface-submit',
       warning: 'bg-status-warning',
       error: 'bg-status-error',
     },
@@ -36,7 +36,7 @@ const Progress: React.ForwardRefExoticComponent<
       ref={ref}
       value={value}
       className={cn(
-        'bg-surface-tertiary dir-rtl:-scale-x-100 relative h-2 w-full overflow-hidden rounded-full',
+        'bg-surface-submit/20 dir-rtl:-scale-x-100 relative h-2 w-full overflow-hidden rounded-full',
         className,
       )}
       {...props}
