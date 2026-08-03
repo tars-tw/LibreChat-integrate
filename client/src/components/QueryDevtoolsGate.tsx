@@ -27,7 +27,7 @@ export default function QueryDevtoolsGate({ isDevelopment, config }: QueryDevtoo
 
   return (
     <Suspense fallback={null}>
-      <LazyReactQueryDevtools initialIsOpen={false} position="top-right" />
+      <LazyReactQueryDevtools initialIsOpen={false} position="bottom-right" />
     </Suspense>
   );
 }
