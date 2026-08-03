@@ -14,7 +14,7 @@ import { useLocalize } from '~/hooks';
 const iconBoxClassName =
   'flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500';
 const inputClassName =
-  'w-full rounded-r-md border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:border-[#fd5108] focus:outline-none';
+  'w-full rounded-r-md border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:border-pwc-orange focus:outline-none';
 
 const emptyForm = { username: '', user_email: '', new_password: '' };
 
@@ -117,8 +117,7 @@ function TarsForgotPasswordModal({
             type="button"
             onClick={handleSubmit}
             disabled={resetMutation.isLoading}
-            className="rounded-md px-4 py-2 text-sm text-white hover:brightness-95 disabled:opacity-60"
-            style={{ backgroundColor: '#fd5108' }}
+            className="rounded-md bg-pwc-orange px-4 py-2 text-sm text-white hover:bg-pwc-orange-600 disabled:opacity-60"
           >
             {localize('com_ui_confirm')}
           </button>
