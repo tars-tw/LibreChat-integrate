@@ -13,7 +13,7 @@ export const defaultTheme: IThemeRGB = {
   'rgb-text-warning': '245 158 11', // #f59e0b (amber-500)
 
   // Ring colors
-  'rgb-ring-primary': '89 89 89', // #595959 (gray-500)
+  'rgb-ring-primary': '253 81 8', // #fd5108 (pwc-orange-500)
 
   // Header colors
   'rgb-header-primary': '255 255 255', // #fff (white)
@@ -33,8 +33,8 @@ export const defaultTheme: IThemeRGB = {
   'rgb-surface-tertiary': '236 236 236', // #ececec (gray-100)
   'rgb-surface-tertiary-alt': '255 255 255', // #fff (white)
   'rgb-surface-dialog': '255 255 255', // #fff (white)
-  'rgb-surface-submit': '4 120 87', // #047857 (green-700)
-  'rgb-surface-submit-hover': '6 95 70', // #065f46 (green-800)
+  'rgb-surface-submit': '253 81 8', // #fd5108 (pwc-orange-500)
+  'rgb-surface-submit-hover': '224 71 5', // #e04705 (pwc-orange-600)
   'rgb-surface-destructive': '185 28 28', // #b91c1c (red-700)
   'rgb-surface-destructive-hover': '153 27 27', // #991b1b (red-800)
   'rgb-surface-chat': '255 255 255', // #fff (white)
@@ -47,7 +47,7 @@ export const defaultTheme: IThemeRGB = {
   'rgb-border-xheavy': '89 89 89', // #595959 (gray-500)
 
   // Brand colors
-  'rgb-brand-purple': '171 104 255', // #ab68ff
+  'rgb-brand-purple': '253 81 8', // #fd5108 (pwc-orange-500)
 
   // Presentation
   'rgb-presentation': '255 255 255', // #fff (white)
@@ -66,7 +66,7 @@ export const defaultTheme: IThemeRGB = {
   'rgb-destructive-foreground': '17 17 17', // Same as text-primary
   'rgb-border': '215 215 215', // Same as border-medium
   'rgb-input': '230 230 230', // Same as border-light
-  'rgb-ring': '180 180 180', // Same as ring-primary
+  'rgb-ring': '253 81 8', // Same as ring-primary
   'rgb-card': '247 247 248', // Same as surface-secondary
   'rgb-card-foreground': '17 17 17', // Same as text-primary
 };

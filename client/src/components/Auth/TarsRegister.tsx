@@ -19,7 +19,7 @@ import { useLocalize } from '~/hooks';
 const iconBoxClassName =
   'flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500';
 const inputClassName =
-  'w-full rounded-r-md border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:border-[#fd5108] focus:outline-none';
+  'w-full rounded-r-md border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:border-pwc-orange focus:outline-none';
 
 /**
  * pwc_tars Terms of Service — fixed company legal text, kept identical to the pwc_tars
@@ -204,14 +204,14 @@ function TarsRegister() {
             id="terms"
             checked={termsAccepted}
             onChange={handleCheckboxClick}
-            className="h-4 w-4 rounded border-gray-300 text-[#fd5108] focus:ring-[#fd5108]"
+            className="h-4 w-4 rounded border-gray-300 text-pwc-orange focus:ring-pwc-orange"
           />
           <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
             {localize('com_auth_tars_agree_prefix')}{' '}
             <button
               type="button"
               onClick={() => setTermsOpen(true)}
-              className="font-medium text-[#fd5108] hover:underline"
+              className="font-medium text-pwc-orange hover:underline"
             >
               {localize('com_auth_tars_terms')}
             </button>
@@ -223,8 +223,7 @@ function TarsRegister() {
           aria-label={localize('com_auth_sign_up')}
           disabled={registerMutation.isLoading}
           variant="submit"
-          className="h-11 w-full rounded-md text-white hover:brightness-95"
-          style={{ backgroundColor: '#fd5108' }}
+          className="h-11 w-full rounded-md text-white"
         >
           {registerMutation.isLoading ? <Spinner /> : localize('com_auth_sign_up')}
         </Button>
@@ -253,8 +252,7 @@ function TarsRegister() {
                 setTermsAccepted(true);
                 setTermsOpen(false);
               }}
-              className="rounded-md px-4 py-2 text-sm text-white hover:brightness-95"
-              style={{ backgroundColor: '#fd5108' }}
+              className="rounded-md bg-pwc-orange px-4 py-2 text-sm text-white hover:bg-pwc-orange-600"
             >
               {localize('com_ui_confirm')}
             </button>

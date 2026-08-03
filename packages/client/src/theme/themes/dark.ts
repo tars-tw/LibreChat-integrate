@@ -13,7 +13,7 @@ export const darkTheme: IThemeRGB = {
   'rgb-text-warning': '245 158 11', // #f59e0b (amber-500)
 
   // Ring colors (not defined in dark mode, using default)
-  'rgb-ring-primary': '89 89 89', // #595959 (gray-500)
+  'rgb-ring-primary': '253 81 8', // #fd5108 (pwc-orange-500)
 
   // Header colors
   'rgb-header-primary': '47 47 47', // #2f2f2f (gray-700)
@@ -33,8 +33,8 @@ export const darkTheme: IThemeRGB = {
   'rgb-surface-tertiary': '47 47 47', // #2f2f2f (gray-700)
   'rgb-surface-tertiary-alt': '47 47 47', // #2f2f2f (gray-700)
   'rgb-surface-dialog': '23 23 23', // #171717 (gray-850)
-  'rgb-surface-submit': '4 120 87', // #047857 (green-700)
-  'rgb-surface-submit-hover': '6 95 70', // #065f46 (green-800)
+  'rgb-surface-submit': '253 81 8', // #fd5108 (pwc-orange-500)
+  'rgb-surface-submit-hover': '224 71 5', // #e04705 (pwc-orange-600)
   'rgb-surface-destructive': '153 27 27', // #991b1b (red-800)
   'rgb-surface-destructive-hover': '127 29 29', // #7f1d1d (red-900)
   'rgb-surface-chat': '47 47 47', // #2f2f2f (gray-700)
@@ -47,7 +47,7 @@ export const darkTheme: IThemeRGB = {
   'rgb-border-xheavy': '153 150 150', // #999696 (gray-400)
 
   // Brand colors
-  'rgb-brand-purple': '171 104 255', // #ab68ff
+  'rgb-brand-purple': '254 124 57', // #fe7c39 (pwc-orange-400)
 
   // Presentation
   'rgb-presentation': '33 33 33', // #212121 (gray-800)
@@ -66,7 +66,7 @@ export const darkTheme: IThemeRGB = {
   'rgb-destructive-foreground': '255 255 255', // Same as text-primary
   'rgb-border': '82 82 82', // Same as border-medium
   'rgb-input': '66 66 66', // Same as border-light
-  'rgb-ring': '255 255 255', // Same as ring-primary
+  'rgb-ring': '254 124 57', // Same as ring-primary
   'rgb-card': '42 42 42', // Same as surface-secondary
   'rgb-card-foreground': '255 255 255', // Same as text-primary
 };
