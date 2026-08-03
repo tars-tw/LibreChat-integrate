@@ -133,7 +133,7 @@ function Login() {
           {startupConfig?.tarsAuth === true ? (
             <a
               href={registerPage()}
-              className="inline-flex p-1 text-sm font-medium text-[#fd5108] hover:underline"
+              className="inline-flex p-1 text-sm font-medium text-pwc-orange hover:underline"
             >
               {localize('com_auth_sign_up')}
             </a>
