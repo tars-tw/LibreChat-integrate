@@ -1731,6 +1731,8 @@ export type TStartupConfig = {
     enabled: boolean;
     type: 'ldap' | 'oidc' | 'saml' | null;
   };
+  /** Product version from the pwc_tars `sys_config` VERSION row; absent when unset or unreachable */
+  tarsVersion?: string;
   serverDomain: string;
   emailLoginEnabled: boolean;
   registrationEnabled: boolean;
