@@ -28,6 +28,30 @@ const carryOverModelFields = (conversation: TConversation | null): Partial<TConv
 };
 
 /**
+ * Read-only view of the brain bound to the active conversation. Kept separate from
+ * `useTarsDomain` so display-only consumers (e.g. the landing headline) don't pull in
+ * the conversation-mutating machinery behind `selectDomain`.
+ */
+export function useSelectedTarsDomain() {
+  const { conversation } = useChatContext();
+  const { data: domains = [] } = useTarsDomainsQuery();
+
+  const defaultDomainId = useMemo(() => {
+    const fallback = resolveDefaultDomain(domains);
+    return fallback ? String(fallback.id) : undefined;
+  }, [domains]);
+
+  const domainId = conversation?.domain_id ?? null;
+  const selectedId = domainId ?? defaultDomainId ?? '';
+  const selectedName = useMemo(
+    () => domains.find((domain) => String(domain.id) === selectedId)?.name,
+    [domains, selectedId],
+  );
+
+  return { domains, domainId, defaultDomainId, selectedId, selectedName };
+}
+
+/**
  * Shared state for the pwc_tars specialized brain (專用腦) bound to the active
  * conversation. A conversation maps to exactly one brain (mirrors pwc_tars), so
  * switching to a different brain starts a NEW conversation scoped to it; switching
@@ -38,7 +62,7 @@ const carryOverModelFields = (conversation: TConversation | null): Partial<TConv
 export function useTarsDomain() {
   const { conversation, setConversation, getMessages } = useChatContext();
   const { newConversation } = useNewConvo();
-  const { data: domains = [] } = useTarsDomainsQuery();
+  const { domains, domainId, defaultDomainId, selectedId, selectedName } = useSelectedTarsDomain();
 
   /** The general brain leads the list; pwc_tars returns the rest ordered by name. */
   const orderedDomains = useMemo(() => {
@@ -49,25 +73,12 @@ export function useTarsDomain() {
     return [general, ...domains.filter((domain) => domain !== general)];
   }, [domains]);
 
-  const defaultDomainId = useMemo(() => {
-    const fallback = resolveDefaultDomain(domains);
-    return fallback ? String(fallback.id) : undefined;
-  }, [domains]);
-
-  const domainId = conversation?.domain_id ?? null;
-
   useEffect(() => {
     if (!defaultDomainId || domainId) {
       return;
     }
     setConversation((prev) => (prev ? { ...prev, domain_id: defaultDomainId } : prev));
   }, [defaultDomainId, domainId, setConversation]);
-
-  const selectedId = domainId ?? defaultDomainId ?? '';
-  const selectedName = useMemo(
-    () => domains.find((domain) => String(domain.id) === selectedId)?.name,
-    [domains, selectedId],
-  );
 
   const selectDomain = useCallback(
     (value: string) => {
@@ -86,5 +97,15 @@ export function useTarsDomain() {
     [conversation, defaultDomainId, getMessages, newConversation, setConversation],
   );
 
-  return { domains: orderedDomains, selectedId, selectedName, selectDomain };
+  /** The model picker is only offered on the general brain — a specialized brain pins its own model. */
+  const isGeneralDomain = Boolean(defaultDomainId) && selectedId === defaultDomainId;
+
+  return {
+    domains: orderedDomains,
+    generalDomainId: defaultDomainId,
+    selectedId,
+    selectedName,
+    selectDomain,
+    isGeneralDomain,
+  };
 }

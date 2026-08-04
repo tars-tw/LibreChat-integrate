@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Pin, PinOff } from 'lucide';
 import { MorphIcon } from '@librechat/client';
 import { VisuallyHidden } from '@ariakit/react';
-import { CheckCircle2, EarthIcon, Lock } from 'lucide-react';
+import { CheckCircle2, EarthIcon } from 'lucide-react';
 import { isAgentsEndpoint, isAssistantsEndpoint } from 'librechat-data-provider';
 import type { Endpoint } from '~/common';
 import { resolveProviderIcon } from '~/hooks/Endpoint/useProviderIcon';
@@ -40,8 +40,7 @@ function EndpointModelItemComponent({
   setSize,
 }: EndpointModelItemProps) {
   const localize = useLocalize();
-  const { handleSelectModel, selectedValues, endpointsConfig, isModelLocked } =
-    useModelSelectorContext();
+  const { handleSelectModel, selectedValues, endpointsConfig } = useModelSelectorContext();
   const {
     endpoint: selectedEndpoint,
     model: selectedModel,
@@ -66,8 +65,6 @@ function EndpointModelItemComponent({
   ) {
     modelName = endpoint.assistantNames[modelId];
   }
-
-  const isLocked = isModelLocked(endpoint, modelId ?? '');
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -119,48 +116,37 @@ function EndpointModelItemComponent({
   return (
     <MenuItem
       ref={itemRef}
-      disabled={isLocked}
       onClick={() => handleSelectModel(endpoint, modelId ?? '')}
       aria-selected={isSelected || undefined}
       aria-posinset={posInSet}
       aria-setsize={setSize}
-      className={cn(
-        'group flex w-full items-center justify-between rounded-lg px-2 text-sm',
-        isLocked ? 'cursor-not-allowed' : 'cursor-pointer',
-      )}
+      className="group flex w-full cursor-pointer items-center justify-between rounded-lg px-2 text-sm"
     >
       <div className="flex w-full min-w-0 items-center gap-2 px-1 py-1">
         {renderAvatar()}
         <span className="truncate">{modelName}</span>
         {isGlobal && <EarthIcon className="text-surface-submit ms-1 size-4" />}
       </div>
-      {isLocked ? (
-        <>
-          <Lock className="text-text-secondary h-4 w-4 shrink-0" aria-hidden="true" />
-          <VisuallyHidden>{localize('com_ui_model_locked')}</VisuallyHidden>
-        </>
-      ) : (
-        <button
-          type="button"
-          tabIndex={isActive ? 0 : -1}
-          onClick={handleFavoriteClick}
-          aria-label={isFavorite ? localize('com_ui_unpin') : localize('com_ui_pin')}
-          className={cn(
-            'hover:bg-surface-hover focus-visible:ring-ring-primary text-text-secondary rounded-md p-1 focus-visible:ring-2 focus-visible:outline-hidden focus-visible:ring-inset',
-            isFavorite
-              ? 'visible'
-              : // Visible by default so it's tappable on touch (no hover to
-                // reveal it); only hidden-until-hover where no pointer is coarse,
-                // so a 2-in-1's touchscreen keeps it beside its hovering trackpad.
-                // A hover-gated child would otherwise make the whole item
-                // hover-dependent, so the first tap only reveals it and a second
-                // tap is needed to select (the iOS double-tap).
-                'no-touch:invisible group-focus-within:visible group-hover:visible group-data-[active-item]:visible',
-          )}
-        >
-          <MorphIcon icon={isFavorite ? PinOff : Pin} className="h-4 w-4" />
-        </button>
-      )}
+      <button
+        type="button"
+        tabIndex={isActive ? 0 : -1}
+        onClick={handleFavoriteClick}
+        aria-label={isFavorite ? localize('com_ui_unpin') : localize('com_ui_pin')}
+        className={cn(
+          'hover:bg-surface-hover focus-visible:ring-ring-primary text-text-secondary rounded-md p-1 focus-visible:ring-2 focus-visible:outline-hidden focus-visible:ring-inset',
+          isFavorite
+            ? 'visible'
+            : // Visible by default so it's tappable on touch (no hover to
+              // reveal it); only hidden-until-hover where no pointer is coarse,
+              // so a 2-in-1's touchscreen keeps it beside its hovering trackpad.
+              // A hover-gated child would otherwise make the whole item
+              // hover-dependent, so the first tap only reveals it and a second
+              // tap is needed to select (the iOS double-tap).
+              'no-touch:invisible group-focus-within:visible group-hover:visible group-data-[active-item]:visible',
+        )}
+      >
+        <MorphIcon icon={isFavorite ? PinOff : Pin} className="h-4 w-4" />
+      </button>
       {isSelected && (
         <>
           <CheckCircle2 className="text-text-primary size-4 shrink-0" aria-hidden="true" />
