@@ -8,10 +8,10 @@ import {
   renderSearchResults,
   renderCustomGroups,
 } from './components';
-import { ModelSelectorProvider, useModelSelectorContext } from './ModelSelectorContext';
+import { useModelSelectorContext } from './ModelSelectorContext';
 import { useShortcutAriaKey, useShortcutHint } from '~/hooks/useKeyboardShortcuts';
-import { ModelSelectorChatProvider } from './ModelSelectorChatContext';
 import { getSelectedIcon, getDisplayValue } from './utils';
+import { useTarsDomain } from '../Tars/domain';
 import { CustomMenu as Menu } from './CustomMenu';
 import DialogManager from './DialogManager';
 import { useLocalize } from '~/hooks';
@@ -132,17 +132,17 @@ function ModelSelectorContent() {
 export default function ModelSelector({ startupConfig }: ModelSelectorProps) {
   const interfaceConfig = startupConfig?.interface ?? defaultInterface;
   const modelSpecs = startupConfig?.modelSpecs?.list ?? [];
+  const { domains, isGeneralDomain } = useTarsDomain();
+
+  /** A specialized brain pins its own model — only the general brain exposes the picker. */
+  if (domains.length > 0 && !isGeneralDomain) {
+    return null;
+  }
 
   // Hide the selector when modelSelect is false and there are no model specs to show
   if (interfaceConfig.modelSelect === false && modelSpecs.length === 0) {
     return null;
   }
 
-  return (
-    <ModelSelectorChatProvider>
-      <ModelSelectorProvider startupConfig={startupConfig}>
-        <ModelSelectorContent />
-      </ModelSelectorProvider>
-    </ModelSelectorChatProvider>
-  );
+  return <ModelSelectorContent />;
 }
