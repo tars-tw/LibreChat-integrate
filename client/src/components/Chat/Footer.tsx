@@ -5,6 +5,7 @@ import { Constants, hasConfiguredFooter } from 'librechat-data-provider';
 import type { TStartupConfig } from 'librechat-data-provider';
 import { useGetStartupConfig } from '~/data-provider';
 import { useLocalize } from '~/hooks';
+import { cn } from '~/utils';
 
 type FooterProps = {
   className?: string;
@@ -18,7 +19,10 @@ type FooterProps = {
   configuredOnly?: boolean;
 };
 
-type FooterStartupConfig = Pick<Partial<TStartupConfig>, 'analyticsGtmId' | 'customFooter'> & {
+type FooterStartupConfig = Pick<
+  Partial<TStartupConfig>,
+  'analyticsGtmId' | 'customFooter' | 'tarsVersion'
+> & {
   interface?: Pick<NonNullable<TStartupConfig['interface']>, 'privacyPolicy' | 'termsOfService'>;
 };
 
@@ -59,6 +63,10 @@ function Footer({ className, startupConfig, configuredOnly = false }: FooterProp
   const config = shouldFetchConfig ? fetchedConfig : startupConfig;
   const localize = useLocalize();
 
+  /** pwc_tars owns the product version (sys_config VERSION); the bundled build
+   *  version is only a fallback for when that integration is unavailable. */
+  const version = config?.tarsVersion ?? Constants.VERSION;
+
   const privacyPolicy = config?.interface?.privacyPolicy;
   const termsOfService = config?.interface?.termsOfService;
 
@@ -78,10 +86,10 @@ function Footer({ className, startupConfig, configuredOnly = false }: FooterProp
   /** The generic disclaimer is the part a conversation drops; operator content is not. */
   const genericFooter = configuredOnly
     ? ''
-    : '[PwC TARS.ai ' +
-      Constants.VERSION +
-      '](https://www.pwc.tw/zh/services/consulting-services/ai-application.html) - ' +
-      'All rights reserved. | [Privacy Policy](https://www.pwc.tw/zh/legal-notices/privacy-statement-zh.html) | [Terms of Service](https://www.pwc.tw/zh/services/consulting-services.html)';
+    : 'PwC TARS.ai ' +
+      version +
+      ' - ' +
+      'All rights reserved. | [Privacy Policy](https://www.pwc.tw/zh/legal-notices/privacy-statement-zh.html)';
   const mainContent = configuredFooter ?? genericFooter;
   const mainContentParts = mainContent === '' ? [] : mainContent.split('|');
 
@@ -133,7 +141,7 @@ function Footer({ className, startupConfig, configuredOnly = false }: FooterProp
   return (
     <div className="relative w-full">
       <div
-        className={
+        className={cn(
           className ??
           /* The disclaimer is the least important text on the landing page and
              sat in `text-primary`, the same weight as the greeting above it.
@@ -144,23 +152,28 @@ function Footer({ className, startupConfig, configuredOnly = false }: FooterProp
              rather than the brighter `text-secondary`: the underline carries the
              affordance, and a link that outshines its own sentence puts the
              emphasis back where this change takes it from. */
-          'absolute bottom-0 left-0 right-0 hidden items-center justify-center gap-2 px-2 py-2 text-center text-xs text-text-muted sm:flex md:px-[60px]'
-        }
+            'absolute bottom-0 left-0 right-0 hidden items-center justify-center gap-0.5 px-2 py-2 text-center text-xs text-text-muted sm:flex md:px-[60px]',
+          'flex-col leading-tight',
+        )}
+        role="contentinfo"
       >
-        {footerElements.map((contentRender, index) => {
-          const isLastElement = index === footerElements.length - 1;
-          return (
-            <React.Fragment key={`footer-element-${index}`}>
-              {contentRender}
-              {!isLastElement && (
-                <div
-                  key={`separator-${index}`}
-                  className="h-2 border-r-[1px] border-border-medium"
-                />
-              )}
-            </React.Fragment>
-          );
-        })}
+        <div className="text-text-secondary">{localize('com_ui_ai_disclaimer')}</div>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {footerElements.map((contentRender, index) => {
+            const isLastElement = index === footerElements.length - 1;
+            return (
+              <React.Fragment key={`footer-element-${index}`}>
+                {contentRender}
+                {!isLastElement && (
+                  <div
+                    key={`separator-${index}`}
+                    className="h-2 border-r-[1px] border-border-medium"
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
