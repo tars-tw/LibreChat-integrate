@@ -229,6 +229,7 @@
   "com_auth_to_reset_your_password": "重設您的密碼。",
   "com_auth_to_try_again": "重試。",
   "com_auth_two_factor": "請在您偏好的一次性密碼應用程式中查看驗證碼。",
+  "com_auth_use_ldap_sso": "使用 SSO (LDAP) 登入",
   "com_auth_username": "使用者名稱（選填）",
   "com_auth_username_max_length": "使用者名稱長度必須少於 20 個字元",
   "com_auth_username_min_length": "使用者名稱長度必須至少有 2 個字元",
