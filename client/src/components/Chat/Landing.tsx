@@ -18,6 +18,7 @@ import { useLocalize, useAuthContext, useGreeting } from '~/hooks';
 import AgentContact from '~/components/Agents/AgentContact';
 import ConvoIcon from '~/components/Endpoints/ConvoIcon';
 import temporaryStore from '~/store/temporary';
+import { useSelectedTarsDomain } from './Menus/Tars/domain';
 
 const containerClassName =
   'shadow-stroke relative flex h-full items-center justify-center rounded-full bg-presentation text-text-primary dark:after:shadow-none ';
@@ -52,6 +53,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const { user } = useAuthContext();
   const localize = useLocalize();
   const isTemporary = useRecoilValue(temporaryStore.isTemporary);
+  const { selectedName: domainName } = useSelectedTarsDomain();
 
   const [textHasMultipleLines, setTextHasMultipleLines] = useState(false);
   const [lineCount, setLineCount] = useState(1);
@@ -70,7 +72,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     });
   }, [conversation?.endpoint, conversation?.iconURL, endpointsConfig]);
 
-  const { entity, isAgent, isAssistant } = getEntity({
+  const { entity, isAgent } = getEntity({
     endpoint: endpointType,
     agentsMap,
     assistantMap,
@@ -149,6 +151,9 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     ? localize('com_ui_temporary')
     : (resolvedWelcome ?? scheduledGreeting);
 
+  /** The bound specialized brain titles the landing, ahead of any entity name. */
+  const headline = domainName || name;
+
   return (
     <div
       className={`flex h-full transform-gpu flex-col items-center justify-center pb-16 transition-all duration-200 ${centerFormOnLanding ? 'max-h-full sm:max-h-0' : 'max-h-full'} ${getDynamicMargin}`}
@@ -184,12 +189,12 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
               </TooltipAnchor>
             )}
           </div>
-          {((isAgent || isAssistant) && name) || name ? (
+          {headline ? (
             <div className="flex flex-col items-center gap-0 p-2">
               <SplitText
-                key={`split-text-${name}`}
-                text={name}
-                className={`${getTextSizeClass(name)} font-medium text-text-primary`}
+                key={`split-text-${headline}`}
+                text={headline}
+                className={`${getTextSizeClass(headline)} font-medium text-text-primary`}
                 delay={50}
                 textAlign="center"
                 animationFrom={greetingAnimationFrom}
