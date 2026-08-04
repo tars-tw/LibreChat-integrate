@@ -2,8 +2,7 @@ import { memo, useMemo } from 'react';
 import { useRecoilValue } from 'recoil';
 import { getConfigDefaults, PermissionTypes, Permissions } from 'librechat-data-provider';
 import { OpenSidebar, PresetsMenu, NewChat, HeaderMenu } from './Menus';
-import ModelSelector from './Menus/Endpoints/ModelSelector';
-import DomainSelector from './Menus/Tars/DomainSelector';
+import Selectors from './Menus/Selectors';
 import { useGetStartupConfig } from '~/data-provider';
 import ExportAndShareMenu from './ExportAndShareMenu';
 import BookmarkMenu from './Menus/BookmarkMenu';
@@ -60,8 +59,7 @@ function Header() {
           hiddenBehindNav,
         )}
       >
-        <ModelSelector startupConfig={startupConfig} />
-        <DomainSelector />
+        <Selectors startupConfig={startupConfig} />
         {interfaceConfig.presets === true && interfaceConfig.modelSelect === true && (
           <PresetsMenu />
         )}
