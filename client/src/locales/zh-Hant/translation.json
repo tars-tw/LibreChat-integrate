@@ -849,6 +849,7 @@
   "com_ui_instructions": "說明",
   "com_ui_key": "鍵",
   "com_ui_latest_footer": "讓每個人都能使用 AI",
+  "com_ui_ai_disclaimer": "⚠️ AI 回覆可能包含錯誤、不完整或過時資訊，請自行查證重要內容，不應作為唯一決策依據，並請勿輸入個人資料、機密資訊或其他敏感資料。",
   "com_ui_locked": "已鎖定",
   "com_ui_logo": "{{0}} 標誌",
   "com_ui_low": "低",
