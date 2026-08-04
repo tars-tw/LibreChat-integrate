@@ -29,6 +29,7 @@ type ModelSelectorContextType = {
   // LibreChat
   modelSpecs: t.TModelSpec[];
   mappedEndpoints: Endpoint[];
+  agentsEndpoint: Endpoint | undefined;
   agentsMap: t.TAgentsMap | undefined;
   assistantsMap: t.TAssistantsMap | undefined;
   endpointsConfig: t.TEndpointsConfig;
@@ -41,8 +42,14 @@ type ModelSelectorContextType = {
   handleSelectSpec: (spec: t.TModelSpec) => void;
   handleSelectEndpoint: (endpoint: Endpoint) => void;
   handleSelectModel: (endpoint: Endpoint, model: string) => void;
-  isModelLocked: (endpoint: Endpoint, model: string) => boolean;
 } & ReturnType<typeof useKeyDialog>;
+
+/** Providers offered by the model picker, in display order. */
+const MODEL_ENDPOINT_ORDER: string[] = [
+  EModelEndpoint.openAI,
+  EModelEndpoint.google,
+  EModelEndpoint.anthropic,
+];
 
 const ModelSelectorContext = createContext<ModelSelectorContextType | undefined>(undefined);
 
@@ -122,29 +129,36 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     [tarsAllowedSet],
   );
 
-  /** Allowed (model_profile) models float to the top; locked ones keep their relative order below. */
-  const mappedEndpoints = useMemo(() => {
+  /** Models outside the model_profile whitelist are removed from the selector entirely;
+   *  an endpoint left with no allowed model drops out with them. */
+  const allowedEndpoints = useMemo(() => {
     if (!tarsAllowedSet) {
       return rawEndpoints;
     }
-    return rawEndpoints.map((endpoint) => {
-      if (!endpoint.models?.length || !endpoint.hasModels) {
-        return endpoint;
-      }
+    return rawEndpoints.flatMap((endpoint) => {
       if (isAgentsEndpoint(endpoint.value) || isAssistantsEndpoint(endpoint.value)) {
         return endpoint;
       }
-      const allowed: NonNullable<Endpoint['models']> = [];
-      const locked: NonNullable<Endpoint['models']> = [];
-      for (const model of endpoint.models) {
-        (tarsAllowedSet.has(model.name.toLowerCase()) ? allowed : locked).push(model);
-      }
-      if (allowed.length === 0 || locked.length === 0) {
+      if (!endpoint.hasModels || !endpoint.models?.length) {
         return endpoint;
       }
-      return { ...endpoint, models: [...allowed, ...locked] };
+      const models = endpoint.models.filter((item) => tarsAllowedSet.has(item.name.toLowerCase()));
+      return models.length ? { ...endpoint, models } : [];
     });
   }, [rawEndpoints, tarsAllowedSet]);
+
+  /** The agents endpoint is rendered by the brain picker, not the model picker. */
+  const agentsEndpoint = useMemo(
+    () => allowedEndpoints.find((endpoint) => isAgentsEndpoint(endpoint.value)),
+    [allowedEndpoints],
+  );
+
+  /** Specialized brains replace agent selection, so the model picker exposes only the
+   *  raw providers, in the product's fixed order. */
+  const mappedEndpoints = useMemo(() => {
+    const byValue = new Map(allowedEndpoints.map((endpoint) => [endpoint.value, endpoint]));
+    return MODEL_ENDPOINT_ORDER.flatMap((value) => byValue.get(value) ?? []);
+  }, [allowedEndpoints]);
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
@@ -301,8 +315,8 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     ],
   );
 
-  /** A stale default/last selection can point at a locked model (e.g. from
-   *  localStorage predating the whitelist) — switch to the first allowed one. */
+  /** A stale default/last selection can point at a model the whitelist no longer exposes
+   *  (e.g. from localStorage predating it) — switch to the first remaining one. */
   useEffect(() => {
     if (!tarsAllowedSet) {
       return;
@@ -315,9 +329,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     if (!selectedEndpoint || !isModelLocked(selectedEndpoint, selectedModel)) {
       return;
     }
-    const fallback = selectedEndpoint.models?.find((item) =>
-      tarsAllowedSet.has(item.name.toLowerCase()),
-    );
+    const fallback = selectedEndpoint.models?.[0];
     if (fallback) {
       handleSelectModel(selectedEndpoint, fallback.name);
     }
@@ -333,10 +345,10 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       modelSpecs,
       assistantsMap,
       mappedEndpoints,
+      agentsEndpoint,
       endpointsConfig,
       handleSelectSpec,
       handleSelectModel,
-      isModelLocked,
       setSelectedValues,
       handleSelectEndpoint,
       setEndpointSearchValue,
@@ -353,10 +365,10 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       modelSpecs,
       assistantsMap,
       mappedEndpoints,
+      agentsEndpoint,
       endpointsConfig,
       handleSelectSpec,
       handleSelectModel,
-      isModelLocked,
       setSelectedValues,
       handleSelectEndpoint,
       setEndpointSearchValue,

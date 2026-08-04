@@ -10,7 +10,6 @@ import MarketplaceItem, { marketplaceSearchMatches } from './Marketplace';
 import { filterModels, shouldRenderEndpointOption } from '../utils';
 import { useModelSelectorContext } from '../ModelSelectorContext';
 import { renderEndpointModels } from './EndpointModelItem';
-import { DomainItems } from '../../Tars/DomainItems';
 import { ModelSpecItem } from './ModelSpecItem';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
@@ -136,12 +135,6 @@ function EndpointMenuContent({
 
   return (
     <>
-      {isAgentsEndpoint(endpoint.value) && (
-        <DomainItems
-          searchValue={searchValue}
-          showSeparator={showMarketplace || hasSelectableRows}
-        />
-      )}
       {showMarketplace && <MarketplaceItem label={localize('com_agents_marketplace')} />}
       {showMarketplace && hasSelectableRows && <CustomMenuSeparator />}
       {endpointSpecs.map((spec: TModelSpec) => (
