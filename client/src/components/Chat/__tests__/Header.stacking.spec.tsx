@@ -46,7 +46,7 @@ jest.mock('../Trace', () => ({ useTraceControl: () => ({ show: false }) }));
 jest.mock('../BackgroundTasks', () => ({
   BackgroundTasksButton: jest.fn(() => <div data-testid="conversation-tasks" />),
 }));
-jest.mock('../Menus/Endpoints/ModelSelector', () => () => null);
+jest.mock('../Menus/Selectors', () => () => null);
 jest.mock('../ExportAndShareMenu', () => () => null);
 jest.mock('../SubagentThreadLink', () => () => null);
 jest.mock('../Menus/BookmarkMenu', () => () => null);
