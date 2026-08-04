@@ -75,9 +75,7 @@ function AuthLayout({
             <h1 className="font-serif text-5xl font-extrabold tracking-[0.1em] text-gray-900">
               {localize('com_auth_tars_brand')}
             </h1>
-            <h2 className="mt-3 text-xl font-normal text-gray-800">
-              {localize(isTarsRegister ? 'com_auth_sign_up' : 'com_auth_sign_in')}
-            </h2>
+
             <p className="mb-6 mt-2 text-sm text-gray-500">
               {localize(
                 isTarsRegister ? 'com_auth_tars_register_subtitle' : 'com_auth_tars_subtitle',
