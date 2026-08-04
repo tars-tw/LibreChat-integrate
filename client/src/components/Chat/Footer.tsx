@@ -5,13 +5,17 @@ import { Constants } from 'librechat-data-provider';
 import type { TStartupConfig } from 'librechat-data-provider';
 import { useGetStartupConfig } from '~/data-provider';
 import { useLocalize } from '~/hooks';
+import { cn } from '~/utils';
 
 type FooterProps = {
   className?: string;
   startupConfig?: FooterStartupConfig | null;
 };
 
-type FooterStartupConfig = Pick<Partial<TStartupConfig>, 'analyticsGtmId' | 'customFooter'> & {
+type FooterStartupConfig = Pick<
+  Partial<TStartupConfig>,
+  'analyticsGtmId' | 'customFooter' | 'tarsVersion'
+> & {
   interface?: Pick<NonNullable<TStartupConfig['interface']>, 'privacyPolicy' | 'termsOfService'>;
 };
 
@@ -20,6 +24,10 @@ function Footer({ className, startupConfig }: FooterProps) {
   const { data: fetchedConfig } = useGetStartupConfig({ enabled: shouldFetchConfig });
   const config = shouldFetchConfig ? fetchedConfig : startupConfig;
   const localize = useLocalize();
+
+  /** pwc_tars owns the product version (sys_config VERSION); the bundled build
+   *  version is only a fallback for when that integration is unavailable. */
+  const version = config?.tarsVersion ?? Constants.VERSION;
 
   const privacyPolicy = config?.interface?.privacyPolicy;
   const termsOfService = config?.interface?.termsOfService;
@@ -39,11 +47,10 @@ function Footer({ className, startupConfig }: FooterProps) {
   const mainContentParts = (
     typeof config?.customFooter === 'string'
       ? config.customFooter
-      : '[PwC TARS.ai ' +
-        Constants.VERSION +
-        '](https://www.pwc.tw/zh/services/consulting-services/ai-application.html) - ' +
-        'All rights reserved. | [Privacy Policy](https://www.pwc.tw/zh/legal-notices/privacy-statement-zh.html) | [Terms of Service](https://www.pwc.tw/zh/services/consulting-services.html)'
-        // localize('com_ui_latest_footer')
+      : 'PwC TARS.ai ' +
+        version +
+        ' - ' +
+        'All rights reserved. | [Privacy Policy](https://www.pwc.tw/zh/legal-notices/privacy-statement-zh.html)'
   ).split('|');
 
   useEffect(() => {
@@ -88,25 +95,30 @@ function Footer({ className, startupConfig }: FooterProps) {
   return (
     <div className="relative w-full">
       <div
-        className={
+        className={cn(
           className ??
-          'absolute bottom-0 left-0 right-0 hidden items-center justify-center gap-2 px-2 py-2 text-center text-xs text-text-primary sm:flex md:px-[60px]'
-        }
+            'hidden w-full items-center justify-center gap-0.5 px-2 pb-2 pt-1 text-center text-xs text-text-primary sm:flex md:px-[60px]',
+          'flex-col leading-tight',
+        )}
+        role="contentinfo"
       >
-        {footerElements.map((contentRender, index) => {
-          const isLastElement = index === footerElements.length - 1;
-          return (
-            <React.Fragment key={`footer-element-${index}`}>
-              {contentRender}
-              {!isLastElement && (
-                <div
-                  key={`separator-${index}`}
-                  className="h-2 border-r-[1px] border-border-medium"
-                />
-              )}
-            </React.Fragment>
-          );
-        })}
+        <div className="text-text-secondary">{localize('com_ui_ai_disclaimer')}</div>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {footerElements.map((contentRender, index) => {
+            const isLastElement = index === footerElements.length - 1;
+            return (
+              <React.Fragment key={`footer-element-${index}`}>
+                {contentRender}
+                {!isLastElement && (
+                  <div
+                    key={`separator-${index}`}
+                    className="h-2 border-r-[1px] border-border-medium"
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
