@@ -3,6 +3,7 @@ const {
   isEnabled,
   getBalanceConfig,
   getTarsSsoStatus,
+  getTarsSysConfigValue,
   getCloudFrontConfig,
   getAppConfigOptionsFromUser,
   resolveBuildInfo,
@@ -47,6 +48,20 @@ const resolveTarsSso = async () => {
   tarsSsoCache = await getTarsSsoStatus();
   tarsSsoCacheAt = now;
   return tarsSsoCache;
+};
+
+/**
+ * Product version from the pwc_tars `sys_config` VERSION row. `getTarsSysConfigValue`
+ * owns the TTL cache and returns undefined when the integration is unconfigured or
+ * pwc_tars is unreachable, so the client falls back to the bundled `Constants.VERSION`.
+ */
+const resolveTarsVersion = async () => {
+  try {
+    return await getTarsSysConfigValue('VERSION');
+  } catch (err) {
+    logger.warn(`[config] Failed to resolve pwc_tars VERSION: ${err.message}`);
+    return undefined;
+  }
 };
 
 /**
@@ -232,14 +247,18 @@ router.get('/', async function (req, res) {
 
     if (!req.user) {
       const tenantId = getTenantId();
-      const baseConfig = await getAppConfig(tenantId ? { tenantId } : { baseOnly: true });
-      const tarsSso = await resolveTarsSso();
+      const [baseConfig, tarsSso, tarsVersion] = await Promise.all([
+        getAppConfig(tenantId ? { tenantId } : { baseOnly: true }),
+        resolveTarsSso(),
+        resolveTarsVersion(),
+      ]);
 
       /** @type {Partial<TStartupConfig>} */
       const payload = {
         ...preLoginPayload,
         ...(req.query.context === 'share' ? publicSharePayload : {}),
         ...(tarsSso ? { tarsSso } : {}),
+        ...(tarsVersion ? { tarsVersion } : {}),
         socialLogins: baseConfig?.registration?.socialLogins ?? defaultSocialLogins,
         turnstile: baseConfig?.turnstileConfig,
         ...(rum ? { rum } : {}),
@@ -268,7 +287,10 @@ router.get('/', async function (req, res) {
       return res.status(200).send(payload);
     }
 
-    const appConfig = await getAppConfig(getAppConfigOptionsFromUser(req.user));
+    const [appConfig, tarsVersion] = await Promise.all([
+      getAppConfig(getAppConfigOptionsFromUser(req.user)),
+      resolveTarsVersion(),
+    ]);
 
     const balanceConfig = getBalanceConfig(appConfig);
     const cloudFront = buildCloudFrontStartupConfig();
@@ -300,6 +322,7 @@ router.get('/', async function (req, res) {
       ...(cloudFront ? { cloudFront } : {}),
       ...(rum ? { rum } : {}),
       fileUploadSseEnabled: isEnabled(process.env.FILE_UPLOAD_SSE_ENABLED),
+      ...(tarsVersion ? { tarsVersion } : {}),
     };
 
     const webSearch = buildWebSearchConfig(appConfig);
