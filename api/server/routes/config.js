@@ -8,6 +8,7 @@ const {
   isLangfuseFanoutEnabled,
   getBalanceConfig,
   getTarsSsoStatus,
+  getTarsSysConfigValue,
   getCloudFrontConfig,
   getAppConfigOptionsFromUser,
   resolveBuildInfo,
@@ -70,6 +71,20 @@ const resolveTarsSso = async () => {
   tarsSsoCache = await getTarsSsoStatus();
   tarsSsoCacheAt = now;
   return tarsSsoCache;
+};
+
+/**
+ * Product version from the pwc_tars `sys_config` VERSION row. `getTarsSysConfigValue`
+ * owns the TTL cache and returns undefined when the integration is unconfigured or
+ * pwc_tars is unreachable, so the client falls back to the bundled `Constants.VERSION`.
+ */
+const resolveTarsVersion = async () => {
+  try {
+    return await getTarsSysConfigValue('VERSION');
+  } catch (err) {
+    logger.warn(`[config] Failed to resolve pwc_tars VERSION: ${err.message}`);
+    return undefined;
+  }
 };
 
 /**
@@ -254,14 +269,18 @@ router.get('/', async function (req, res) {
     const publicSharePayload = buildPublicSharePayload();
 
     if (!req.user) {
-      const baseConfig = await resolvePreLoginAppConfig(getAppConfig);
-      const tarsSso = await resolveTarsSso();
+      const [baseConfig, tarsSso, tarsVersion] = await Promise.all([
+        resolvePreLoginAppConfig(getAppConfig),
+        resolveTarsSso(),
+        resolveTarsVersion(),
+      ]);
 
       /** @type {Partial<TStartupConfig>} */
       const payload = {
         ...preLoginPayload,
         ...(req.query.context === 'share' ? publicSharePayload : {}),
         ...(tarsSso ? { tarsSso } : {}),
+        ...(tarsVersion ? { tarsVersion } : {}),
         socialLogins: baseConfig?.registration?.socialLogins ?? defaultSocialLogins,
         turnstile: baseConfig?.turnstileConfig,
         rum: getRumConfig(baseConfig?.config?.telemetry),
@@ -281,12 +300,13 @@ router.get('/', async function (req, res) {
       return res.status(200).send(payload);
     }
 
-    const [appConfig, conversationListLimits] = await Promise.all([
+    const [appConfig, conversationListLimits, tarsVersion] = await Promise.all([
       getAppConfig({
         ...getAppConfigOptionsFromUser(req.user),
         failClosed: true,
       }),
       loadConversationListLimits(getAppConfig),
+      resolveTarsVersion(),
     ]);
     const codeEnvironmentDecisionVersion = resolveCodeEnvironmentDecisionVersion(
       process.env.CODE_ENVIRONMENT_DECISION_VERSION,
@@ -384,6 +404,7 @@ router.get('/', async function (req, res) {
       rum: getRumConfig(appConfig?.config?.telemetry),
       fileUploadSseEnabled: isEnabled(process.env.FILE_UPLOAD_SSE_ENABLED),
       endpointsDropParamsMap: endpointsDropParamsMap,
+      ...(tarsVersion ? { tarsVersion } : {}),
     };
 
     const webSearch = buildWebSearchConfig(appConfig);
