@@ -9,8 +9,7 @@ import {
 } from 'librechat-data-provider';
 import { OpenSidebar, PresetsMenu, NewChat, HeaderMenu } from './Menus';
 import { TemporaryChat, TemporaryChatIndicator } from './TemporaryChat';
-import ModelSelector from './Menus/Endpoints/ModelSelector';
-import DomainSelector from './Menus/Tars/DomainSelector';
+import Selectors from './Menus/Selectors';
 import { useGetStartupConfig } from '~/data-provider';
 import ExportAndShareMenu from './ExportAndShareMenu';
 import SubagentThreadLink from './SubagentThreadLink';
@@ -83,8 +82,7 @@ function Header({
         {parentConversationId != null && (
           <SubagentThreadLink threadId={parentConversationId} labelClassName="hidden lg:inline" />
         )}
-        {!readOnly && <ModelSelector startupConfig={startupConfig} />}
-        {!readOnly && <DomainSelector />}
+        {!readOnly && <Selectors startupConfig={startupConfig} />}
         {!readOnly && interfaceConfig.presets === true && interfaceConfig.modelSelect === true && (
           <PresetsMenu />
         )}
