@@ -11,6 +11,7 @@ import { useLocalize, useAuthContext, useGreeting } from '~/hooks';
 import { useChatSettings } from '~/Providers/ChatSettingsContext';
 import AgentContact from '~/components/Agents/AgentContact';
 import ConvoIcon from '~/components/Endpoints/ConvoIcon';
+import { useSelectedTarsDomain } from './Menus/Tars/domain';
 
 const containerClassName =
   'relative flex h-full items-center justify-center rounded-full bg-presentation text-text-primary';
@@ -46,6 +47,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const localize = useLocalize();
   const remScale = useRemScale();
   const { isTemporary } = useChatSettings();
+  const { selectedName: domainName } = useSelectedTarsDomain();
 
   const [textHasMultipleLines, setTextHasMultipleLines] = useState(false);
   const [lineCount, setLineCount] = useState(1);
@@ -137,6 +139,9 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     ? localize('com_ui_temporary')
     : (resolvedWelcome ?? scheduledGreeting);
 
+  /** The bound specialized brain titles the landing, ahead of any entity name. */
+  const headline = domainName || name;
+
   return (
     <div
       className={`flex h-full transform-gpu flex-col items-center justify-center pb-16 transition-all duration-200 ${centerFormOnLanding ? 'max-h-full sm:max-h-0' : 'max-h-full'} ${getDynamicMargin}`}
@@ -174,12 +179,12 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
               </TooltipAnchor>
             )}
           </div>
-          {name ? (
+          {headline ? (
             <div className="flex flex-col items-center gap-0 p-2">
               <SplitText
-                key={`split-text-${name}`}
-                text={name}
-                className={`${getTextSizeClass(name)} text-text-primary font-medium`}
+                key={`split-text-${headline}`}
+                text={headline}
+                className={`${getTextSizeClass(headline)} text-text-primary font-medium`}
                 delay={50}
                 textAlign="center"
                 animationFrom={greetingAnimationFrom}
