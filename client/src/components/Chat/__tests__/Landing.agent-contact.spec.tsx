@@ -39,6 +39,7 @@ jest.mock('~/Providers', () => ({
 jest.mock('~/data-provider', () => ({
   useGetStartupConfig: () => ({ data: { interface: mockInterfaceConfig } }),
   useGetEndpointsQuery: () => ({ data: {} }),
+  useTarsDomainsQuery: () => ({ data: [] }),
 }));
 
 jest.mock('~/hooks', () => ({

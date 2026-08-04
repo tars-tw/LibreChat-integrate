@@ -13,6 +13,10 @@ export interface CustomMenuProps extends Ariakit.MenuButtonProps<'div'> {
   comboboxLabel?: string;
   trigger?: Ariakit.MenuButtonProps['render'];
   defaultOpen?: boolean;
+  /** Defaults to `right` for submenus, `left` for a root menu. */
+  placement?: Ariakit.MenuStoreProps['placement'];
+  /** Whether the popup may cover its anchor. Turn off for `bottom-*` placements. */
+  overlap?: boolean;
 }
 
 export const CustomMenu = React.forwardRef<HTMLDivElement, CustomMenuProps>(function CustomMenu(
@@ -27,6 +31,8 @@ export const CustomMenu = React.forwardRef<HTMLDivElement, CustomMenuProps>(func
     comboboxLabel,
     trigger,
     defaultOpen,
+    placement,
+    overlap = true,
     ...props
   },
   ref,
@@ -39,7 +45,7 @@ export const CustomMenu = React.forwardRef<HTMLDivElement, CustomMenuProps>(func
 
   const menuStore = Ariakit.useMenuStore({
     showTimeout: 100,
-    placement: inlineSide(direction, parent ? 'end' : 'start'),
+    placement: placement ?? inlineSide(direction, parent ? 'end' : 'start'),
     defaultOpen: defaultOpen,
   });
   const isOpen = menuStore.useState('open');
@@ -72,7 +78,7 @@ export const CustomMenu = React.forwardRef<HTMLDivElement, CustomMenuProps>(func
       <Ariakit.Menu
         open={isOpen}
         portal
-        overlap
+        overlap={overlap}
         unmountOnHide
         gutter={parent ? -4 : 4}
         className={cn(
