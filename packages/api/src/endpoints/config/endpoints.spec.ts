@@ -523,8 +523,10 @@ describe('getEndpointsConfig – dynamic userProvide via sys_config', () => {
     const { getEndpointsConfig } = createEndpointsConfigService(deps);
     const result = await getEndpointsConfig(fakeReq());
 
-    expect(result[EModelEndpoint.openAI]).toEqual(expect.objectContaining({ userProvide: false }));
-    expect(result[EModelEndpoint.anthropic]).toEqual(
+    expect(result?.[EModelEndpoint.openAI]).toEqual(
+      expect.objectContaining({ userProvide: false }),
+    );
+    expect(result?.[EModelEndpoint.anthropic]).toEqual(
       expect.objectContaining({ userProvide: true }),
     );
   });
@@ -540,7 +542,9 @@ describe('getEndpointsConfig – dynamic userProvide via sys_config', () => {
     const { getEndpointsConfig } = createEndpointsConfigService(deps);
     const result = await getEndpointsConfig(fakeReq());
 
-    expect(result[EModelEndpoint.openAI]).toEqual(expect.objectContaining({ userProvide: false }));
+    expect(result?.[EModelEndpoint.openAI]).toEqual(
+      expect.objectContaining({ userProvide: false }),
+    );
     expect(mockGetTarsProviderApiKey).not.toHaveBeenCalled();
   });
 });
