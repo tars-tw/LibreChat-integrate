@@ -6,6 +6,7 @@ import Landing from '../Landing';
 let mockConversation: Record<string, unknown> | null = null;
 let mockAgentsMap: Record<string, any> | undefined;
 let mockAssistantMap: Record<string, any> | undefined;
+let mockDomains: Array<{ id: number; name: string }> = [];
 
 jest.mock('@react-spring/web', () => ({
   easings: {
@@ -18,6 +19,8 @@ jest.mock('librechat-data-provider', () => ({
     azureOpenAI: 'azureOpenAI',
     openAI: 'openAI',
   },
+  isAgentsEndpoint: (endpoint?: string | null) => endpoint === 'agents',
+  isEphemeralAgentId: (agentId?: string | null) => agentId === 'ephemeral',
 }));
 
 jest.mock('@librechat/client', () => ({
@@ -35,7 +38,7 @@ jest.mock('~/Providers', () => ({
 jest.mock('~/data-provider', () => ({
   useGetStartupConfig: () => ({ data: { interface: {} } }),
   useGetEndpointsQuery: () => ({ data: {} }),
-  useTarsDomainsQuery: () => ({ data: [] }),
+  useTarsDomainsQuery: () => ({ data: mockDomains }),
 }));
 
 jest.mock('~/hooks', () => ({
@@ -87,6 +90,7 @@ describe('Landing agent contact', () => {
     mockConversation = null;
     mockAgentsMap = undefined;
     mockAssistantMap = undefined;
+    mockDomains = [];
   });
 
   it('shows contact for the selected agent from agentsMap', () => {
@@ -124,6 +128,31 @@ describe('Landing agent contact', () => {
 
     expect(screen.queryByText('Contact:')).not.toBeInTheDocument();
     expect(screen.queryByText('No contact available')).not.toBeInTheDocument();
+  });
+
+  it('titles the landing with the agent, not the bound brain', () => {
+    mockDomains = [{ id: 100, name: '通用腦' }];
+    mockConversation = {
+      endpoint: 'agents',
+      agent_id: 'agent-1',
+    };
+    mockAgentsMap = {
+      'agent-1': { id: 'agent-1', name: '簡報高手', description: '我超級會做簡報的唷!' },
+    };
+
+    render(<Landing centerFormOnLanding={false} />);
+
+    expect(screen.getByText('簡報高手')).toBeInTheDocument();
+    expect(screen.queryByText('通用腦')).not.toBeInTheDocument();
+  });
+
+  it('titles the landing with the bound brain when no agent is selected', () => {
+    mockDomains = [{ id: 100, name: '通用腦' }];
+    mockConversation = { endpoint: 'openAI', model: 'gpt-4o' };
+
+    render(<Landing centerFormOnLanding={false} />);
+
+    expect(screen.getByText('通用腦')).toBeInTheDocument();
   });
 
   it('does not show contact for assistants', () => {
