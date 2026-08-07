@@ -6,7 +6,7 @@ import Landing from '../Landing';
 let mockConversation: Record<string, unknown> | null = null;
 let mockAgentsMap: Record<string, any> | undefined;
 let mockAssistantMap: Record<string, any> | undefined;
-let mockDomains: Array<{ id: number; name: string }> = [];
+let mockDomains: Array<{ id: number; name: string; description?: string | null }> = [];
 
 jest.mock('@react-spring/web', () => ({
   easings: {
@@ -163,6 +163,38 @@ describe('Landing agent contact', () => {
     render(<Landing centerFormOnLanding={false} />);
 
     expect(screen.getByText('通用腦')).toBeInTheDocument();
+  });
+
+  it("describes the landing with the bound brain's description", () => {
+    mockDomains = [{ id: 100, name: '通用腦', description: '什麼都問得到' }];
+    mockConversation = { endpoint: 'openAI', model: 'gpt-4o', greeting: 'Start chatting' };
+
+    render(<Landing centerFormOnLanding={false} />);
+
+    expect(screen.getByText('什麼都問得到')).toBeInTheDocument();
+    expect(screen.queryByText('Start chatting')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the greeting when the brain has no description', () => {
+    mockDomains = [{ id: 100, name: '通用腦', description: null }];
+    mockConversation = { endpoint: 'openAI', model: 'gpt-4o', greeting: 'Start chatting' };
+
+    render(<Landing centerFormOnLanding={false} />);
+
+    expect(screen.getByText('Start chatting')).toBeInTheDocument();
+  });
+
+  it("keeps the agent's description ahead of the brain's", () => {
+    mockDomains = [{ id: 100, name: '通用腦', description: '什麼都問得到' }];
+    mockConversation = { endpoint: 'agents', agent_id: 'agent-1' };
+    mockAgentsMap = {
+      'agent-1': { id: 'agent-1', name: '簡報高手', description: '我超級會做簡報的唷!' },
+    };
+
+    render(<Landing centerFormOnLanding={false} />);
+
+    expect(screen.getByText('我超級會做簡報的唷!')).toBeInTheDocument();
+    expect(screen.queryByText('什麼都問得到')).not.toBeInTheDocument();
   });
 
   it('does not show contact for assistants', () => {

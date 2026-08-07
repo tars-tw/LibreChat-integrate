@@ -49,7 +49,8 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const { data: endpointsConfig } = useGetEndpointsQuery();
   const { user } = useAuthContext();
   const localize = useLocalize();
-  const { selectedName: domainName } = useSelectedTarsDomain();
+  const { selectedName: domainName, selectedDescription: domainDescription } =
+    useSelectedTarsDomain();
 
   const [textHasMultipleLines, setTextHasMultipleLines] = useState(false);
   const [lineCount, setLineCount] = useState(1);
@@ -84,8 +85,12 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const brandedSpecLabel = modelSpec?.showOnLanding ? modelSpec.label : '';
   const brandedSpecDescription = (modelSpec?.showOnLanding && modelSpec.description) || '';
   const name = entity?.name ?? brandedSpecLabel;
-  const description =
+  const selectedAgent =
+    isAgent && conversation?.agent_id != null ? agentsMap?.[conversation.agent_id] : undefined;
+  const entityDescription =
     (entity?.description || brandedSpecDescription || conversation?.greeting) ?? '';
+  /** The brain titles the landing unless an agent is selected, so its blurb leads too. */
+  const description = (selectedAgent ? '' : (domainDescription ?? '')) || entityDescription;
   const descriptionIsHTML = description.trim().startsWith('<');
 
   const sanitizeDescription = useMemo(
@@ -96,9 +101,6 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
       }),
     [],
   );
-  const selectedAgent =
-    isAgent && conversation?.agent_id != null ? agentsMap?.[conversation.agent_id] : undefined;
-
   const getGreeting = useCallback(() => {
     if (typeof startupConfig?.interface?.customWelcome === 'string') {
       const customWelcome = startupConfig.interface.customWelcome;
