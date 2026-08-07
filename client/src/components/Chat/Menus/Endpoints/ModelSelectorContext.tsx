@@ -8,13 +8,7 @@ import {
 } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
 import type { Endpoint, SelectedValues } from '~/common';
-import {
-  useAgentDefaultPermissionLevel,
-  useSelectorEffects,
-  useKeyDialog,
-  useEndpoints,
-  useLocalize,
-} from '~/hooks';
+import { useSelectorEffects, useKeyDialog, useEndpoints, useLocalize } from '~/hooks';
 import { useAgentsMapContext, useAssistantsMapContext, useLiveAnnouncer } from '~/Providers';
 import {
   useGetEndpointsQuery,
@@ -99,25 +93,13 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     });
   }, [startupConfig, agentsMap]);
 
-  const permissionLevel = useAgentDefaultPermissionLevel();
   /**
-   * Always query the VIEW scope so this shares one cache entry (and one paginated walk)
-   * with `useAgentsMap` and `useMentions`. Asking for EDIT here spawned a second full
-   * fetch under its own key, holding a duplicate copy of the whole agent list. The
-   * marketplace's "my agents" framing is preserved by filtering on `isEditable`, which
-   * the list endpoint resolves from the same ACL read it already performs.
+   * The brain menu lists what the marketplace lists — every agent the user may view,
+   * not just the ones they may edit — since the marketplace row is gone from the menu.
+   * The VIEW scope also shares one cache entry (and one paginated walk) with
+   * `useAgentsMap` and `useMentions` instead of spawning a second full fetch.
    */
-  const wantsEditableOnly = permissionLevel === PermissionBits.EDIT;
-  const selectAgents = useCallback(
-    (data: t.AgentListResponse) => {
-      const list = data?.data;
-      if (!wantsEditableOnly) {
-        return list;
-      }
-      return list?.filter((agent) => agent.isEditable !== false);
-    },
-    [wantsEditableOnly],
-  );
+  const selectAgents = useCallback((data: t.AgentListResponse) => data?.data, []);
   const { data: agents = null } = useListAgentsQuery(
     { requiredPermission: PermissionBits.VIEW },
     { select: selectAgents },
