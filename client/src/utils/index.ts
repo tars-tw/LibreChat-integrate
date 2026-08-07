@@ -8,6 +8,7 @@ export * from './json';
 export * from './icons';
 export * from './email';
 export * from './share';
+export * from './manual';
 export * from './files';
 export * from './media';
 export * from './greeting';
