@@ -220,13 +220,10 @@ function ChatView({ index = 0, project }: { index?: number; project?: TChatProje
                               centerFormOnLanding={centerFormOnLanding}
                             />
                           )}
-                          {/* The generic disclaimer is the welcome screen's; a
-                            deployment's own footer, privacy policy and terms
-                            stay with the conversation that always showed them. */}
-                          {!isLandingPage && configuredFooter && <Footer configuredOnly />}
+                          {!isLandingPage && <Footer showDisclaimer={false} />}
                         </div>
                       </div>
-                      {isLandingPage && <Footer />}
+                      {isLandingPage && <Footer showDisclaimer={false} />}
                     </>
                   </TraceSurface>
                 </Presentation>
