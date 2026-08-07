@@ -3,9 +3,9 @@ import { Bot, Brain } from 'lucide-react';
 import { TooltipAnchor } from '@librechat/client';
 import type { TConversation } from 'librechat-data-provider';
 import { CustomMenu as Menu } from '../Endpoints/CustomMenu';
-import { EndpointItem } from '../Endpoints/components/EndpointItem';
 import { useModelSelectorContext } from '../Endpoints/ModelSelectorContext';
 import { DomainMenuItem } from './DomainItems';
+import AgentItems from './AgentItems';
 import { useTarsDomain } from './domain';
 import { useLocalize } from '~/hooks';
 
@@ -147,7 +147,7 @@ function DomainSelector() {
             ))}
           </Menu>
         )}
-        {agentsEndpoint && <EndpointItem endpoint={agentsEndpoint} endpointIndex={0} />}
+        {agentsEndpoint && <AgentItems endpoint={agentsEndpoint} />}
       </Menu>
     </div>
   );
