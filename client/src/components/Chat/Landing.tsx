@@ -172,8 +172,10 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
       ? getGreeting()
       : getGreeting() + (user?.name ? ', ' + user.name : '');
 
-  /** The bound specialized brain titles the landing, ahead of any entity name. */
-  const headline = domainName || name;
+  /** The bound specialized brain titles the landing, ahead of any entity name — except
+   *  when an agent is selected: the agent replaces the brain in the header, so it titles
+   *  the landing too (its description already sits below). */
+  const headline = (selectedAgent ? name : '') || domainName || name;
 
   return (
     <div
