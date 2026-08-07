@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
+import { isAgentsEndpoint, isEphemeralAgentId } from 'librechat-data-provider';
 import type { TConversation, TTarsDomain } from 'librechat-data-provider';
 import { useTarsDomainsQuery } from '~/data-provider';
 import { useChatContext } from '~/Providers';
@@ -48,7 +49,18 @@ export function useSelectedTarsDomain() {
     [domains, selectedId],
   );
 
-  return { domains, domainId, defaultDomainId, selectedId, selectedName };
+  /**
+   * An agent picked from the brain menu takes over the brain's slot in the UI: it titles
+   * the header and the landing, and it pins its own model. Ephemeral agents back plain
+   * model conversations, so they don't count as a selection.
+   */
+  const agentId = conversation?.agent_id ?? null;
+  const selectedAgentId =
+    isAgentsEndpoint(conversation?.endpoint) && agentId && !isEphemeralAgentId(agentId)
+      ? agentId
+      : null;
+
+  return { domains, domainId, defaultDomainId, selectedId, selectedName, selectedAgentId };
 }
 
 /**
@@ -62,7 +74,8 @@ export function useSelectedTarsDomain() {
 export function useTarsDomain() {
   const { conversation, setConversation, getMessages } = useChatContext();
   const { newConversation } = useNewConvo();
-  const { domains, domainId, defaultDomainId, selectedId, selectedName } = useSelectedTarsDomain();
+  const { domains, domainId, defaultDomainId, selectedId, selectedName, selectedAgentId } =
+    useSelectedTarsDomain();
 
   /** The general brain leads the list; pwc_tars returns the rest ordered by name. */
   const orderedDomains = useMemo(() => {
@@ -80,18 +93,26 @@ export function useTarsDomain() {
     setConversation((prev) => (prev ? { ...prev, domain_id: defaultDomainId } : prev));
   }, [defaultDomainId, domainId, setConversation]);
 
+  /**
+   * `modelOverride` is supplied when the picker is leaving an agent (the agent owns the
+   * model, so the brain has to be handed one back). Its presence also means the call is
+   * never a no-op, even when the brain itself doesn't change.
+   */
   const selectDomain = useCallback(
-    (value: string) => {
-      if (value === (conversation?.domain_id ?? defaultDomainId ?? '')) {
+    (value: string, modelOverride?: Partial<TConversation>) => {
+      const clearsAgent = modelOverride != null;
+      if (!clearsAgent && value === (conversation?.domain_id ?? defaultDomainId ?? '')) {
         return;
       }
+      const modelFields = { ...carryOverModelFields(conversation), ...modelOverride };
       const hasMessages = (getMessages()?.length ?? 0) > 0;
-      if (!hasMessages) {
+      /** Dropping an agent rebuilds the conversation so its agent-scoped state goes with it. */
+      if (!hasMessages && !clearsAgent) {
         setConversation((prev) => (prev ? { ...prev, domain_id: value } : prev));
         return;
       }
       newConversation({
-        template: { ...carryOverModelFields(conversation), domain_id: value },
+        template: { ...modelFields, domain_id: value },
       });
     },
     [conversation, defaultDomainId, getMessages, newConversation, setConversation],
@@ -105,6 +126,7 @@ export function useTarsDomain() {
     generalDomainId: defaultDomainId,
     selectedId,
     selectedName,
+    selectedAgentId,
     selectDomain,
     isGeneralDomain,
   };
