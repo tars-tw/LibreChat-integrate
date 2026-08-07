@@ -131,10 +131,11 @@ function ModelSelectorContent() {
 export default function ModelSelector({ startupConfig }: ModelSelectorProps) {
   const interfaceConfig = startupConfig?.interface ?? defaultInterface;
   const modelSpecs = startupConfig?.modelSpecs?.list ?? [];
-  const { domains, isGeneralDomain } = useTarsDomain();
+  const { domains, isGeneralDomain, selectedAgentId } = useTarsDomain();
 
-  /** A specialized brain pins its own model — only the general brain exposes the picker. */
-  if (domains.length > 0 && !isGeneralDomain) {
+  /** A specialized brain and an agent both pin their own model — only a bare general
+   *  brain exposes the picker. */
+  if (domains.length > 0 && (!isGeneralDomain || selectedAgentId != null)) {
     return null;
   }
 
