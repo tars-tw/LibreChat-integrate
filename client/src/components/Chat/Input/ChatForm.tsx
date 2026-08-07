@@ -84,6 +84,7 @@ import { mainTextareaId } from '~/common';
 import CollapseChat from './CollapseChat';
 import QuoteButton from './QuoteButton';
 import ToolDialogs from './ToolDialogs';
+import Disclaimer from '../Disclaimer';
 import StopButton from './StopButton';
 import SendButton from './SendButton';
 import Queue from './Composer/Queue';
@@ -1055,6 +1056,7 @@ const ChatForm = memo(function ChatForm({
             uploadingCount={uploadingCount}
             idleActions={idleActions}
           />
+          <Disclaimer />
         </div>
       </div>
     </form>
