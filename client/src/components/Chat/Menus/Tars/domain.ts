@@ -44,10 +44,13 @@ export function useSelectedTarsDomain() {
 
   const domainId = conversation?.domain_id ?? null;
   const selectedId = domainId ?? defaultDomainId ?? '';
-  const selectedName = useMemo(
-    () => domains.find((domain) => String(domain.id) === selectedId)?.name,
+  const selectedDomain = useMemo(
+    () => domains.find((domain) => String(domain.id) === selectedId),
     [domains, selectedId],
   );
+  const selectedName = selectedDomain?.name;
+  /** pwc_tars `sys_domain.description` — the brain's own blurb, shown under the landing headline. */
+  const selectedDescription = selectedDomain?.description ?? undefined;
 
   /**
    * An agent picked from the brain menu takes over the brain's slot in the UI: it titles
@@ -60,7 +63,15 @@ export function useSelectedTarsDomain() {
       ? agentId
       : null;
 
-  return { domains, domainId, defaultDomainId, selectedId, selectedName, selectedAgentId };
+  return {
+    domains,
+    domainId,
+    defaultDomainId,
+    selectedId,
+    selectedName,
+    selectedDescription,
+    selectedAgentId,
+  };
 }
 
 /**
