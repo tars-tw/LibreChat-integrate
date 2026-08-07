@@ -7,6 +7,7 @@ import { SystemRoles } from 'librechat-data-provider';
 import {
   Archive,
   CircleHelp,
+  Database,
   FileText,
   Keyboard,
   LifeBuoy,
@@ -91,6 +92,7 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
   const [showFiles, setShowFiles] = useState(false);
   const setShowShortcutsDialog = useSetRecoilState(store.showShortcutsDialog);
   const [showArchived, setShowArchived] = useState(false);
+  const [showTarsAdmin, setShowTarsAdmin] = useState(false);
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
   const isTarsAdmin = user?.role === SystemRoles.ADMIN && user?.provider === 'tars';
 
@@ -193,6 +195,13 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
         />
       )}
       {showSettings && <Settings open={showSettings} onOpenChange={setShowSettings} />}
+      {showTarsAdmin && (
+        <TarsAdminDialog
+          open={showTarsAdmin}
+          onOpenChange={setShowTarsAdmin}
+          triggerRef={accountSettingsButtonRef}
+        />
+      )}
     </Menu.MenuProvider>
   );
 }
