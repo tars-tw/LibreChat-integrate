@@ -7,7 +7,11 @@ import DomainSelector from '../DomainSelector';
 const mockSelectDomain = jest.fn();
 let mockDomains: Array<{ id: number; name: string }> = [];
 let mockSelectedId = '100';
-let mockAgentsEndpoint: { value: string; label: string } | undefined;
+let mockSelectedAgentId: string | null = null;
+let mockAgentsEndpoint:
+  | { value: string; label: string; agentNames?: Record<string, string> }
+  | undefined;
+let mockMappedEndpoints: Array<{ value: string; models?: Array<{ name: string }> }>;
 
 jest.mock('../domain', () => ({
   useTarsDomain: () => ({
@@ -15,13 +19,18 @@ jest.mock('../domain', () => ({
     generalDomainId: '100',
     selectedId: mockSelectedId,
     selectedName: mockDomains.find((d) => String(d.id) === mockSelectedId)?.name,
+    selectedAgentId: mockSelectedAgentId,
     selectDomain: mockSelectDomain,
     isGeneralDomain: mockSelectedId === '100',
   }),
 }));
 
 jest.mock('../../Endpoints/ModelSelectorContext', () => ({
-  useModelSelectorContext: () => ({ agentsEndpoint: mockAgentsEndpoint }),
+  useModelSelectorContext: () => ({
+    agentsEndpoint: mockAgentsEndpoint,
+    agentsMap: { agent_1: { name: '簡報高手' } },
+    mappedEndpoints: mockMappedEndpoints,
+  }),
 }));
 
 jest.mock('../../Endpoints/components/EndpointItem', () => ({
@@ -56,7 +65,9 @@ describe('DomainSelector', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSelectedId = '100';
+    mockSelectedAgentId = null;
     mockAgentsEndpoint = { value: 'agents', label: 'My Agents' };
+    mockMappedEndpoints = [{ value: 'openAI', models: [{ name: 'gpt-4o' }] }];
     mockDomains = [
       { id: 100, name: '通用腦' },
       { id: 201, name: 'HR AI助手' },
@@ -99,7 +110,45 @@ describe('DomainSelector', () => {
     await openMenu();
 
     await userEvent.click(screen.getByText('通用腦'));
-    expect(mockSelectDomain).toHaveBeenCalledWith('100');
+    expect(mockSelectDomain).toHaveBeenCalledWith('100', undefined);
+  });
+
+  it('labels the trigger with the selected agent instead of the brain', () => {
+    mockSelectedAgentId = 'agent_1';
+    render(<DomainSelector />);
+    expect(screen.getByTestId('domain-selector-button')).toHaveTextContent('簡報高手');
+    expect(screen.getByTestId('domain-selector-button')).not.toHaveTextContent('通用腦');
+  });
+
+  it('prefers the agents endpoint name over the agents map', () => {
+    mockSelectedAgentId = 'agent_1';
+    mockAgentsEndpoint = {
+      value: 'agents',
+      label: 'My Agents',
+      agentNames: { agent_1: '簡報大師' },
+    };
+    render(<DomainSelector />);
+    expect(screen.getByTestId('domain-selector-button')).toHaveTextContent('簡報大師');
+  });
+
+  it('drops the brain checkmark while an agent is selected', async () => {
+    mockSelectedAgentId = 'agent_1';
+    render(<DomainSelector />);
+    await openMenu();
+
+    expect(screen.getAllByRole('menuitem')[0]).not.toHaveAttribute('aria-selected');
+  });
+
+  it('hands the brain a default model when leaving an agent', async () => {
+    mockSelectedAgentId = 'agent_1';
+    render(<DomainSelector />);
+    await openMenu();
+
+    await userEvent.click(screen.getByText('通用腦'));
+    expect(mockSelectDomain).toHaveBeenCalledWith(
+      '100',
+      expect.objectContaining({ endpoint: 'openAI', model: 'gpt-4o', agent_id: undefined }),
+    );
   });
 
   it('omits the agents row when no agents endpoint is available', async () => {
