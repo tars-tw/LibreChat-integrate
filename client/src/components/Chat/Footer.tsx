@@ -4,12 +4,15 @@ import ReactMarkdown from 'react-markdown';
 import { Constants } from 'librechat-data-provider';
 import type { TStartupConfig } from 'librechat-data-provider';
 import { useGetStartupConfig } from '~/data-provider';
+import Disclaimer from './Disclaimer';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 
 type FooterProps = {
   className?: string;
   startupConfig?: FooterStartupConfig | null;
+  /** Off where a composer is present — `Disclaimer` then sits under the input instead. */
+  showDisclaimer?: boolean;
 };
 
 type FooterStartupConfig = Pick<
@@ -19,7 +22,7 @@ type FooterStartupConfig = Pick<
   interface?: Pick<NonNullable<TStartupConfig['interface']>, 'privacyPolicy' | 'termsOfService'>;
 };
 
-function Footer({ className, startupConfig }: FooterProps) {
+function Footer({ className, startupConfig, showDisclaimer = true }: FooterProps) {
   const shouldFetchConfig = startupConfig === undefined;
   const { data: fetchedConfig } = useGetStartupConfig({ enabled: shouldFetchConfig });
   const config = shouldFetchConfig ? fetchedConfig : startupConfig;
@@ -101,7 +104,7 @@ function Footer({ className, startupConfig }: FooterProps) {
         )}
         role="contentinfo"
       >
-        <div className="text-text-secondary">{localize('com_ui_ai_disclaimer')}</div>
+        {showDisclaimer && <Disclaimer className="block p-0 text-text-secondary" />}
         <div className="flex flex-wrap items-center justify-center gap-2">
           {footerElements.map((contentRender, index) => {
             const isLastElement = index === footerElements.length - 1;
