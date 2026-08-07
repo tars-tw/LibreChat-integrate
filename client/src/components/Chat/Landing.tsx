@@ -53,7 +53,8 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const { user } = useAuthContext();
   const localize = useLocalize();
   const isTemporary = useRecoilValue(temporaryStore.isTemporary);
-  const { selectedName: domainName } = useSelectedTarsDomain();
+  const { selectedName: domainName, selectedDescription: domainDescription } =
+    useSelectedTarsDomain();
 
   const [textHasMultipleLines, setTextHasMultipleLines] = useState(false);
   const [lineCount, setLineCount] = useState(1);
@@ -88,9 +89,14 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const brandedSpecLabel = modelSpec?.showOnLanding ? modelSpec.label : '';
   const brandedSpecDescription = (modelSpec?.showOnLanding && modelSpec.description) || '';
   const name = isTemporary ? '' : (entity?.name ?? brandedSpecLabel);
+  const selectedAgent =
+    isAgent && conversation?.agent_id != null ? agentsMap?.[conversation.agent_id] : undefined;
+  const entityDescription =
+    (entity?.description || brandedSpecDescription || conversation?.greeting) ?? '';
+  /** The brain titles the landing unless an agent is selected, so its blurb leads too. */
   const description = isTemporary
     ? localize('com_ui_temporary_description')
-    : ((entity?.description || brandedSpecDescription || conversation?.greeting) ?? '');
+    : (selectedAgent ? '' : (domainDescription ?? '')) || entityDescription;
   const descriptionIsHTML = description.trim().startsWith('<');
 
   const sanitizeDescription = useMemo(
@@ -101,9 +107,6 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
       }),
     [],
   );
-  const selectedAgent =
-    isAgent && conversation?.agent_id != null ? agentsMap?.[conversation.agent_id] : undefined;
-
   const customWelcome =
     typeof startupConfig?.interface?.customWelcome === 'string'
       ? startupConfig.interface.customWelcome
