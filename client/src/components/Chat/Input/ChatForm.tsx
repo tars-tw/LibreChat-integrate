@@ -45,6 +45,7 @@ import AudioRecorder from './AudioRecorder';
 import CollapseChat from './CollapseChat';
 import QuoteButton from './QuoteButton';
 import StreamAudio from './StreamAudio';
+import Disclaimer from '../Disclaimer';
 import TokenUsage from './TokenUsage';
 import StopButton from './StopButton';
 import SendButton from './SendButton';
@@ -733,6 +734,7 @@ const ChatForm = memo(function ChatForm({
               {TextToSpeech && automaticPlayback && <StreamAudio index={index} />}
             </div>
           </div>
+          <Disclaimer />
         </div>
       </div>
     </form>
