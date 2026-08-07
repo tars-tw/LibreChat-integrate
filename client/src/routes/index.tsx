@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import type { TranslationKeys } from '~/hooks';
 import {
   Login,
   VerifyEmail,
@@ -11,6 +12,7 @@ import {
 import { MarketplaceProvider } from '~/components/Agents/MarketplaceContext';
 import AgentMarketplace from '~/components/Agents/Marketplace';
 import { OAuthSuccess, OAuthError } from '~/components/OAuth';
+import AdminPlaceholder from '~/components/Admin/Placeholder';
 import { AuthContextProvider } from '~/hooks/AuthContext';
 import RouteErrorBoundary from './RouteErrorBoundary';
 import StartupLayout from './Layouts/Startup';
@@ -71,6 +73,16 @@ const loadMcpSettingsView = () =>
   import('~/components/McpSettings').then((m) => ({
     Component: m.McpSettingsView,
   }));
+
+const loadDomainsView = () =>
+  import('~/components/Admin/Tars/DomainsView').then((m) => ({
+    Component: m.default,
+  }));
+
+const placeholderRoute = (path: string, titleKey: TranslationKeys) => ({
+  path,
+  element: <AdminPlaceholder titleKey={titleKey} />,
+});
 
 const baseEl = document.querySelector('base');
 const baseHref = baseEl?.getAttribute('href') || '/';
@@ -212,6 +224,25 @@ export const router = createBrowserRouter(
               path: 'mcp-settings',
               lazy: loadMcpSettingsView,
             },
+            {
+              path: 'admin/domains',
+              lazy: loadDomainsView,
+            },
+            placeholderRoute('kb-schedules', 'com_ui_tars_nav_kb_schedule'),
+            placeholderRoute('data-sources/databases', 'com_ui_tars_nav_app_db'),
+            placeholderRoute('data-sources/documents', 'com_ui_tars_nav_doc_groups'),
+            placeholderRoute('data-sources/websites', 'com_ui_tars_nav_websites'),
+            placeholderRoute('admin/users', 'com_ui_tars_nav_users'),
+            placeholderRoute('admin/groups', 'com_ui_tars_nav_groups'),
+            placeholderRoute('admin/permissions', 'com_ui_tars_nav_permissions'),
+            placeholderRoute('admin/system-settings', 'com_ui_tars_nav_system_settings'),
+            placeholderRoute('admin/model-keys', 'com_ui_tars_nav_model_keys'),
+            placeholderRoute('admin/issues', 'com_ui_tars_nav_issues'),
+            placeholderRoute('admin/about', 'com_ui_tars_nav_about'),
+            placeholderRoute('audit/messages', 'com_ui_tars_nav_audit_messages'),
+            placeholderRoute('audit/operations', 'com_ui_tars_nav_audit_operations'),
+            placeholderRoute('audit/tokens', 'com_ui_tars_nav_audit_tokens'),
+            placeholderRoute('audit/governance', 'com_ui_tars_nav_audit_governance'),
             {
               path: 'agents',
               element: (
