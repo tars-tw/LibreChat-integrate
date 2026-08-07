@@ -171,10 +171,10 @@ function ChatView({ index = 0, project }: { index?: number; project?: TChatProje
                         project={isProjectLandingPage ? project : undefined}
                       />
                     )}
-                    {!isLandingPage && <Footer />}
+                    {!isLandingPage && <Footer showDisclaimer={false} />}
                   </div>
                 </div>
-                {isLandingPage && <Footer />}
+                {isLandingPage && <Footer showDisclaimer={false} />}
               </>
             </div>
           </Presentation>
