@@ -7,25 +7,21 @@ import { GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import { SystemRoles } from 'librechat-data-provider';
 import {
   Archive,
-  BrainCircuit,
-  ChevronRight,
   CircleHelp,
   Files,
-  Database,
   FileText,
   Keyboard,
   LifeBuoy,
   LogOut,
   Scale,
   ShieldCheck,
-  SlidersHorizontal,
   Wrench,
 } from 'lucide-react';
 import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/ArchivedChatsModal';
 import { filesDialogTriggerAtom, showFilesDialogAtom } from '~/store/filesDialog';
 import useDirection, { inlineSide } from '~/hooks/Nav/useDirection';
 import { useGetStartupConfig } from '~/data-provider';
-import TarsAdminDialog from '~/components/Admin/Tars/TarsAdminDialog';
+import AdminMenu, { SubmenuGroup } from './Tars/AdminMenu';
 import { useAuthContext } from '~/hooks/AuthContext';
 import { openInNewTab, policyUrls } from '~/utils';
 import { settingsOpenAtom } from './Settings';
@@ -48,59 +44,39 @@ function HelpSubmenu({
   const hasTos = !!termsOfServiceURL;
   const hasPrivacy = !!privacyPolicyURL;
   const showLegalDivider = (hasHelpFaq || true) && (hasTos || hasPrivacy);
-  const submenuSide = inlineSide(useDirection(), 'end');
 
   return (
-    <Menu.MenuProvider placement={`${submenuSide}-start`}>
-      <Menu.MenuItem
-        hideOnClick={false}
-        render={
-          <Menu.MenuButton className="select-item flex w-full cursor-pointer items-center gap-2 text-sm" />
-        }
-      >
-        <CircleHelp className="icon-md" aria-hidden="true" />
-        <span className="flex-1 text-start">{localize('com_nav_help')}</span>
-        <ChevronRight className="text-text-secondary h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
-      </Menu.MenuItem>
-      <Menu.Menu
-        portal
-        gutter={12}
-        className="popover-ui popover-from-left z-[126] w-[min(15.25rem,90vw)]"
-      >
-        {hasHelpFaq && (
-          <Menu.MenuItem
-            onClick={() => openInNewTab(helpAndFaqURL)}
-            className="select-item text-sm"
-          >
-            <LifeBuoy className="icon-md" aria-hidden="true" />
-            {localize('com_nav_help_faq')}
-          </Menu.MenuItem>
-        )}
-        <Menu.MenuItem onClick={onShowShortcuts} className="select-item text-sm">
-          <Keyboard className="icon-md" aria-hidden="true" />
-          {localize('com_shortcut_keyboard_shortcuts')}
+    <SubmenuGroup icon={CircleHelp} label={localize('com_nav_help')}>
+      {hasHelpFaq && (
+        <Menu.MenuItem onClick={() => openInNewTab(helpAndFaqURL)} className="select-item text-sm">
+          <LifeBuoy className="icon-md" aria-hidden="true" />
+          {localize('com_nav_help_faq')}
         </Menu.MenuItem>
-        {showLegalDivider && (hasTos || hasPrivacy) && <DropdownMenuSeparator />}
-        {hasTos && (
-          <Menu.MenuItem
-            onClick={() => openInNewTab(termsOfServiceURL)}
-            className="select-item text-sm"
-          >
-            <Scale className="icon-md" aria-hidden="true" />
-            {localize('com_ui_terms_of_service')}
-          </Menu.MenuItem>
-        )}
-        {hasPrivacy && (
-          <Menu.MenuItem
-            onClick={() => openInNewTab(privacyPolicyURL)}
-            className="select-item text-sm"
-          >
-            <ShieldCheck className="icon-md" aria-hidden="true" />
-            {localize('com_ui_privacy_policy')}
-          </Menu.MenuItem>
-        )}
-      </Menu.Menu>
-    </Menu.MenuProvider>
+      )}
+      <Menu.MenuItem onClick={onShowShortcuts} className="select-item text-sm">
+        <Keyboard className="icon-md" aria-hidden="true" />
+        {localize('com_shortcut_keyboard_shortcuts')}
+      </Menu.MenuItem>
+      {showLegalDivider && <DropdownMenuSeparator />}
+      {hasTos && (
+        <Menu.MenuItem
+          onClick={() => openInNewTab(termsOfServiceURL)}
+          className="select-item text-sm"
+        >
+          <Scale className="icon-md" aria-hidden="true" />
+          {localize('com_ui_terms_of_service')}
+        </Menu.MenuItem>
+      )}
+      {hasPrivacy && (
+        <Menu.MenuItem
+          onClick={() => openInNewTab(privacyPolicyURL)}
+          className="select-item text-sm"
+        >
+          <ShieldCheck className="icon-md" aria-hidden="true" />
+          {localize('com_ui_privacy_policy')}
+        </Menu.MenuItem>
+      )}
+    </SubmenuGroup>
   );
 }
 
@@ -115,7 +91,6 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
   const setFilesDialogTrigger = useSetAtom(filesDialogTriggerAtom);
   const setShowShortcutsDialog = useSetRecoilState(store.showShortcutsDialog);
   const [showArchived, setShowArchived] = useState(false);
-  const [showTarsAdmin, setShowTarsAdmin] = useState(false);
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
   /** The collapsed rail opens the menu beside it, toward the content. */
   const railSide = inlineSide(useDirection(), 'end');
@@ -183,27 +158,7 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
           <Files className="icon-md" aria-hidden="true" />
           {localize('com_nav_my_files')}
         </Menu.MenuItem>
-        {isTarsAdmin && (
-          <Menu.MenuItem onClick={() => setShowTarsAdmin(true)} className="select-item text-sm">
-            <BrainCircuit className="icon-md" aria-hidden="true" />
-            {localize('com_nav_tars_admin')}
-          </Menu.MenuItem>
-        )}
-        {isTarsAdmin && (
-          <Menu.MenuItem
-            onClick={() => navigate('/knowledge-bases')}
-            className="select-item text-sm"
-          >
-            <Database className="icon-md" aria-hidden="true" />
-            {localize('com_ui_tars_knowledge_bases')}
-          </Menu.MenuItem>
-        )}
-        {isTarsAdmin && (
-          <Menu.MenuItem onClick={() => navigate('/system-config')} className="select-item text-sm">
-            <SlidersHorizontal className="icon-md" aria-hidden="true" />
-            {localize('com_ui_tars_sys_config')}
-          </Menu.MenuItem>
-        )}
+        {isTarsAdmin && <AdminMenu />}
         {isTarsAdmin && (
           <Menu.MenuItem onClick={() => navigate('/mcp-settings')} className="select-item text-sm">
             <Wrench className="icon-md" aria-hidden="true" />
@@ -228,13 +183,6 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
         <ArchivedChatsModal
           open={showArchived}
           onOpenChange={setShowArchived}
-          triggerRef={accountSettingsButtonRef}
-        />
-      )}
-      {showTarsAdmin && (
-        <TarsAdminDialog
-          open={showTarsAdmin}
-          onOpenChange={setShowTarsAdmin}
           triggerRef={accountSettingsButtonRef}
         />
       )}
