@@ -108,6 +108,9 @@ export default defineConfig(({ command }) => ({
         ],
         globIgnores: [
           'images/**/*',
+          /** Static user manuals (~88MB) — served on demand, never precached. */
+          'manual_zh-Hant/**/*',
+          'manual_en/**/*',
           '**/*.map',
           'index.html',
           'sw-heal.js',
