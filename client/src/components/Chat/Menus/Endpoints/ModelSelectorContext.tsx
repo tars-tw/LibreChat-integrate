@@ -1,15 +1,14 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import debounce from 'lodash/debounce';
-import { EModelEndpoint, isAgentsEndpoint, isAssistantsEndpoint } from 'librechat-data-provider';
+import {
+  PermissionBits,
+  EModelEndpoint,
+  isAgentsEndpoint,
+  isAssistantsEndpoint,
+} from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
 import type { Endpoint, SelectedValues } from '~/common';
-import {
-  useAgentDefaultPermissionLevel,
-  useSelectorEffects,
-  useKeyDialog,
-  useEndpoints,
-  useLocalize,
-} from '~/hooks';
+import { useSelectorEffects, useKeyDialog, useEndpoints, useLocalize } from '~/hooks';
 import { useAgentsMapContext, useAssistantsMapContext, useLiveAnnouncer } from '~/Providers';
 import {
   useGetEndpointsQuery,
@@ -93,9 +92,10 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     });
   }, [startupConfig, agentsMap]);
 
-  const permissionLevel = useAgentDefaultPermissionLevel();
+  /** The brain menu lists what the marketplace lists — every agent the user may view,
+   *  not just the ones they may edit — since the marketplace row is gone from the menu. */
   const { data: agents = null } = useListAgentsQuery(
-    { requiredPermission: permissionLevel },
+    { requiredPermission: PermissionBits.VIEW },
     {
       select: (data) => data?.data,
     },

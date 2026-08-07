@@ -11,9 +11,11 @@ import { cn } from '~/utils';
 interface EndpointModelItemProps {
   modelId: string | null;
   endpoint: Endpoint;
+  /** Replaces the row's avatar — used to mark a row's kind (e.g. Langflow agents). */
+  icon?: React.ReactNode;
 }
 
-export function EndpointModelItem({ modelId, endpoint }: EndpointModelItemProps) {
+export function EndpointModelItem({ modelId, endpoint, icon }: EndpointModelItemProps) {
   const localize = useLocalize();
   const { handleSelectModel, selectedValues } = useModelSelectorContext();
   const {
@@ -75,6 +77,9 @@ export function EndpointModelItem({ modelId, endpoint }: EndpointModelItemProps)
     const showEndpointIcon = isAgentOrAssistant && endpoint.icon;
 
     const getContent = () => {
+      if (icon) {
+        return icon;
+      }
       if (avatarUrl) {
         return <img src={avatarUrl} alt={modelName ?? ''} className="h-full w-full object-cover" />;
       }
