@@ -90,6 +90,7 @@ import SkillsCommand from './SkillsCommand';
 import AutoPlayAudio from './AutoPlayAudio';
 import { mainTextareaId } from '~/common';
 import ToolDialogs from './ToolDialogs';
+import Disclaimer from '../Disclaimer';
 import Queue from './Composer/Queue';
 import Tray from './Composer/Tray';
 import Bar from './Composer/Bar';
@@ -1059,6 +1060,7 @@ const ChatForm = memo(function ChatForm({
             uploadingCount={uploadingCount}
             idleActions={idleActions}
           />
+          <Disclaimer />
         </div>
       </div>
     </form>

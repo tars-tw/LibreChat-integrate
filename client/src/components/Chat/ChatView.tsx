@@ -175,9 +175,9 @@ function ChatViewPane({
                          screen's; a deployment's own footer stays with the
                          conversation that always showed it. */
                       bandFooter={
-                        !fullFooter && configuredFooter ? <Footer configuredOnly /> : null
+                        !fullFooter && configuredFooter ? <Footer showDisclaimer={false} /> : null
                       }
-                      footer={fullFooter ? <Footer /> : null}
+                      footer={fullFooter ? <Footer showDisclaimer={false} /> : null}
                       renderMascot={(bandRef) => (
                         <Lia
                           bandRef={bandRef}
