@@ -1,5 +1,5 @@
 import { useState, memo, useRef } from 'react';
-import { useSetRecoilState } from 'recoil';
+import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { useNavigate } from 'react-router-dom';
 import * as Menu from '@ariakit/react/menu';
 import { GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
@@ -23,6 +23,7 @@ import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/Archiv
 import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
 import TarsAdminDialog from '~/components/Admin/Tars/TarsAdminDialog';
 import { useAuthContext } from '~/hooks/AuthContext';
+import { getHelpAndFaqURL } from '~/utils';
 import { useLocalize } from '~/hooks';
 import Settings from './Settings';
 import store from '~/store';
@@ -39,10 +40,11 @@ function HelpSubmenu({
   onShowShortcuts: () => void;
 }) {
   const localize = useLocalize();
-  const hasHelpFaq = !!helpAndFaqURL && helpAndFaqURL !== '/';
+  const lang = useRecoilValue(store.lang);
+  const helpURL = getHelpAndFaqURL(lang, helpAndFaqURL);
   const hasTos = !!termsOfServiceURL;
   const hasPrivacy = !!privacyPolicyURL;
-  const showLegalDivider = (hasHelpFaq || true) && (hasTos || hasPrivacy);
+  const showLegalDivider = hasTos || hasPrivacy;
 
   return (
     <Menu.MenuProvider placement="right-start">
@@ -61,20 +63,18 @@ function HelpSubmenu({
         gutter={12}
         className="account-settings-popover popover-ui popover-from-left z-[126] w-[244px] rounded-lg"
       >
-        {hasHelpFaq && (
-          <Menu.MenuItem
-            onClick={() => window.open(helpAndFaqURL, '_blank', 'noopener,noreferrer')}
-            className="select-item text-sm"
-          >
-            <LifeBuoy className="icon-md" aria-hidden="true" />
-            {localize('com_nav_help_faq')}
-          </Menu.MenuItem>
-        )}
+        <Menu.MenuItem
+          onClick={() => window.open(helpURL, '_blank', 'noopener,noreferrer')}
+          className="select-item text-sm"
+        >
+          <LifeBuoy className="icon-md" aria-hidden="true" />
+          {localize('com_nav_help_faq')}
+        </Menu.MenuItem>
         <Menu.MenuItem onClick={onShowShortcuts} className="select-item text-sm">
           <Keyboard className="icon-md" aria-hidden="true" />
           {localize('com_shortcut_keyboard_shortcuts')}
         </Menu.MenuItem>
-        {showLegalDivider && (hasTos || hasPrivacy) && <DropdownMenuSeparator />}
+        {showLegalDivider && <DropdownMenuSeparator />}
         {hasTos && (
           <Menu.MenuItem
             onClick={() => window.open(termsOfServiceURL, '_blank', 'noopener,noreferrer')}
