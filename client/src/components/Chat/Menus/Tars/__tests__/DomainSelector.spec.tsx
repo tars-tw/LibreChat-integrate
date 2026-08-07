@@ -33,8 +33,9 @@ jest.mock('../../Endpoints/ModelSelectorContext', () => ({
   }),
 }));
 
-jest.mock('../../Endpoints/components/EndpointItem', () => ({
-  EndpointItem: ({ endpoint }: { endpoint: { label: string } }) => (
+jest.mock('../AgentItems', () => ({
+  __esModule: true,
+  default: ({ endpoint }: { endpoint: { label: string } }) => (
     <div data-testid="agents-endpoint">{endpoint.label}</div>
   ),
 }));
