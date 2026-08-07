@@ -1,0 +1,2493 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>TARS User Manual</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0;
+      max-width: none;
+      padding: 0;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    .manual-shell {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      min-height: 100vh;
+      background-color: #fdfdfd;
+      gap: 0;
+    }
+    .manual-sidebar {
+      width: 260px;
+      min-width: 220px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      align-self: flex-start;
+      height: 100vh;
+      max-height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 1rem 0.65rem 1.5rem 0.85rem;
+      border-right: 1px solid #eecfb8;
+      background: linear-gradient(180deg, #fffaf6 0%, #fdfdfd 45%);
+      box-sizing: border-box;
+    }
+    .manual-sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .manual-sidebar::-webkit-scrollbar-thumb {
+      background: #fdd4bb;
+      border-radius: 3px;
+    }
+    .manual-toc-title {
+      margin: 0 0 0.85rem 0;
+      padding: 0 0.35rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fd5108;
+      letter-spacing: 0.02em;
+    }
+    .manual-toc-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .manual-toc-list li {
+      margin: 0;
+      line-height: 1.35;
+    }
+    .manual-toc-list a {
+      display: block;
+      font-size: 0.8rem;
+      color: #3f4d67;
+      text-decoration: none;
+      padding: 0.35em 0.4em;
+      border-radius: 4px;
+      border-left: 2px solid transparent;
+    }
+    .manual-toc-list a:hover {
+      outline: none;
+      background-color: #fff0e8;
+      color: #fd5108;
+      border-left-color: #fd5108;
+    }
+    .manual-toc-list a:focus {
+      outline: none;
+      background-color: transparent;
+      color: #3f4d67;
+      border-left-color: transparent;
+    }
+    .manual-toc-list a:focus-visible {
+      outline: 2px solid #fd5108;
+      outline-offset: 2px;
+      background-color: #fff8f4;
+      color: #fd5108;
+      border-left-color: #fd5108;
+    }
+    #manual-main {
+      flex: 1 1 auto;
+      min-width: min(280px, 45%);
+      max-width: min(56em, 100%);
+      margin: 0;
+      padding-left: 0;
+      padding-right: clamp(14px, 3vw, 40px);
+      padding-top: 40px;
+      padding-bottom: 50px;
+      box-sizing: border-box;
+      align-self: stretch;
+      background-color: #ffffff;
+    }
+    @media (max-width: 420px) {
+      .manual-shell {
+        flex-direction: column;
+      }
+      .manual-sidebar {
+        width: 100%;
+        min-width: 0;
+        height: auto;
+        max-height: 38vh;
+        position: relative;
+        border-right: none;
+        border-bottom: 1px solid #eecfb8;
+      }
+    }
+    @media (max-width: 600px) {
+      #manual-main {
+        font-size: 0.9em;
+        padding: 12px 12px 40px 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      .manual-sidebar {
+        display: none;
+      }
+      #manual-main {
+        margin: 0;
+        max-width: none;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* 圖片點擊放大 */
+    #manual-main img {
+      cursor: zoom-in;
+      transition: opacity 0.15s;
+    }
+    #manual-main img:hover {
+      opacity: 0.85;
+    }
+    .img-lightbox {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 9999;
+      background: rgba(0,0,0,0.75);
+      justify-content: center;
+      align-items: center;
+      cursor: zoom-out;
+    }
+    .img-lightbox.active {
+      display: flex;
+    }
+    .img-lightbox img {
+      max-width: 92vw;
+      max-height: 92vh;
+      border-radius: 6px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+<div class="manual-shell">
+<nav id="manual-toc-nav" class="manual-sidebar" aria-label="Table of Contents">
+<p class="manual-toc-title">Table of Contents</p>
+</nav>
+<main id="manual-main">
+
+<p>TARS.ai User Manual (English)</p>
+<h1 class="TOC-Heading unnumbered" id="目錄">Table of Contents</h1>
+<p><a href="#簡介">1. Introduction <span>4</span></a></p>
+<p><a href="#基本設置">2. Basic Setup <span>4</span></a></p>
+<p><a href="#登入">2.1 Login <span>4</span></a></p>
+<p><a href="#系統存取">2.1.1 System Access <span>4</span></a></p>
+<p><a href="#使用條款與隱私聲明">2.1.2 Terms of Use &amp; Privacy Policy
+<span>4</span></a></p>
+<p><a href="#首次登入">2.1.3 First Login <span>4</span></a></p>
+<p><a href="#sso登入">2.1.4 SSO Login <span>6</span></a></p>
+<p><a href="#登入憑證逾期">2.1.5 Login Credential Expiry <span>6</span></a></p>
+<p><a href="#基本設定">2.2 Basic Settings <span>7</span></a></p>
+<p><a href="#語言選擇">2.2.1 Language Selection <span>7</span></a></p>
+<p><a href="#登出">2.2.2 Logout <span>8</span></a></p>
+<p><a href="#提示應用">3. Prompt Application <span>8</span></a></p>
+<p><a href="#通用腦操作">3.1 General Brain Operation <span>8</span></a></p>
+<p><a href="#模型選擇">3.1.1 Model Selection <span>9</span></a></p>
+<p><a href="#開始對話">3.1.2 Start Conversation <span>10</span></a></p>
+<p><a href="#進階設定">3.1.3 Advanced Settings <span>15</span></a></p>
+<p><a href="#專用腦操作">3.2 Dedicated Brain Operation <span>27</span></a></p>
+<p><a href="#專用腦與模型選擇">3.2.1 Dedicated Brain &amp; Model Selection
+<span>27</span></a></p>
+<p><a href="#開始對話-1">3.2.2 Start Conversation <span>28</span></a></p>
+<p><a href="#進階設定-1">3.2.3 Advanced Settings <span>33</span></a></p>
+<p><a href="#提示工程">3.3 Prompt Engineering <span>34</span></a></p>
+<p><a href="#模型管理">3.4 Model Management <span>38</span></a></p>
+<p><a href="#聊天模型設定">3.4.1 Chat Model Settings <span>38</span></a></p>
+<p><a href="#檢索模型設定">3.4.2 Retrieval Model Settings <span>42</span></a></p>
+<p><a href="#進階應用">3.5 Advanced Applications <span>46</span></a></p>
+<p><a href="#分析助手">3.5.1 Analysis Assistant <span>46</span></a></p>
+<p><a href="#微調模型">3.5.2 Fine-tuning Model <span>50</span></a></p>
+<p><a href="#mcp設定">3.5.3 MCP Settings <span>57</span></a></p>
+<p><a href="#知識庫管理">4. Knowledge Base Management <span>68</span></a></p>
+<p><a href="#知識庫清單">4.1 Knowledge Base List <span>68</span></a></p>
+<p><a href="#建立知識庫">4.1.1 Create Knowledge Base <span>69</span></a></p>
+<p><a href="#知識庫設定">4.1.2 Knowledge Base Settings <span>71</span></a></p>
+<p><a href="#排程維護">4.2 Schedule Maintenance <span>90</span></a></p>
+<p><a href="#資料源管理">5. Data Source Management <span>93</span></a></p>
+<p><a href="#應用資料庫">5.1 Application Database <span>93</span></a></p>
+<p><a href="#新增應用資料庫">5.1.1 Add Application Database
+<span>95</span></a></p>
+<p><a href="#編輯應用資料庫">5.1.2 Edit Application Database
+<span>99</span></a></p>
+<p><a href="#外部網站">5.2 External Website <span>102</span></a></p>
+<p><a href="#新增外部網站">5.2.1 Add External Website <span>104</span></a></p>
+<p><a href="#編輯外部網站">5.2.2 Edit External Website <span>107</span></a></p>
+<p><a href="#api">5.3 API <span>110</span></a></p>
+<p><a href="#新增api">5.3.1 Add API <span>112</span></a></p>
+<p><a href="#編輯api">5.3.2 Edit API <span>117</span></a></p>
+<p><a href="#文檔群組">5.4 Document Group <span>119</span></a></p>
+<p><a href="#建立文檔群組">5.4.1 Create Document Group <span>121</span></a></p>
+<p><a href="#編輯文檔群組">5.4.2 Edit Document Group <span>124</span></a></p>
+<p><a href="#系統管理">6. System Management <span>127</span></a></p>
+<p><a href="#專用腦管理">6.1 Dedicated Brain Management <span>128</span></a></p>
+<p><a href="#新增專用腦">6.1.1 Add Dedicated Brain <span>129</span></a></p>
+<p><a href="#編輯專用腦">6.1.2 Edit Dedicated Brain <span>132</span></a></p>
+<p><a href="#人員管理">6.2 User Management <span>134</span></a></p>
+<p><a href="#新增人員">6.2.1 Add User <span>138</span></a></p>
+<p><a href="#編輯人員">6.2.2 Edit User <span>143</span></a></p>
+<p><a href="#群組管理">6.3 Group Management <span>147</span></a></p>
+<p><a href="#新增群組">6.3.1 Add Group <span>148</span></a></p>
+<p><a href="#編輯群組">6.3.2 Edit Group <span>150</span></a></p>
+<p><a href="#權限管理">6.4 Permission Management <span>152</span></a></p>
+<p><a href="#新增權限">6.3.1 Add Permission <span>154</span></a></p>
+<p><a href="#編輯權限">6.3.2 Edit Permission <span>156</span></a></p>
+<p><a href="#訊息稽核表">6.5 Message Audit Log <span>159</span></a></p>
+<p><a href="#報表資料">6.5.1 Report Data <span>161</span></a></p>
+<p><a href="#回饋統計">6.5.2 Feedback Statistics <span>162</span></a></p>
+<p><a href="#圖表分析">6.5.3 Chart Analysis <span>163</span></a></p>
+<p><a href="#系統設定">6.6 System Settings <span>166</span></a></p>
+<p><a href="#選擇系統logo">6.6.1 System Logo <span>167</span></a></p>
+<p><a href="#語系設定">6.6.2 Language Settings <span>168</span></a></p>
+<p><a href="#時區設定">6.6.3 Timezone Settings <span>168</span></a></p>
+<p><a href="#sso設定">6.6.4 SSO Settings <span>168</span></a></p>
+<p><a href="#license-授權檔案上傳">6.6.5 License File Upload
+<span>169</span></a></p>
+<p><a href="#系統參數設定">6.7 System Parameters <span>169</span></a></p>
+<p><a href="#api-key-管理">6.8 API Key Management <span>172</span></a></p>
+<p><a href="#api-key設定">6.8.1 API Key Settings <span>172</span></a></p>
+<p><a href="#api-key使用量監控">6.8.2 API Key Usage Monitoring
+<span>174</span></a></p>
+<p><a href="#問題回報">6.9 Issue Report <span>179</span></a></p>
+<p><a href="#課程學習">7. Course Learning <span>181</span></a></p>
+<p><a href="#課程清單">7.1 Course List <span>182</span></a></p>
+<p><a href="#課程設定">7.2 Course Settings <span>190</span></a></p>
+<p><a href="#課程管理">7.2.1 Course Management <span>190</span></a></p>
+<p><a href="#學習管理">7.2.2 Learning Management <span>195</span></a></p>
+<p><a href="#其他設定">7.2.3 Other Settings <span>205</span></a></p>
+<p><a href="#關於">8. About <span>206</span></a></p>
+<h1 id="簡介">1. Introduction</h1>
+<p>This is the TARS.ai User Manual. It introduces how to use the main features of the system, enabling users to understand the basic settings before operating the system. This manual first explains the functions and usage of each module, then provides detailed descriptions of each menu path and operation.</p>
+<h1 class="unnumbered" id="基本設置">2. Basic Setup</h1>
+<h2 class="unnumbered" id="登入">2.1 Login</h2>
+<h3 class="unnumbered" id="系統存取">2.1.1 System Access</h3>
+<p><img src="../manual/media/image1.png" style="width:6in;height:3.38333in"
+alt="A screenshot of a web page Description automatically generated" /></p>
+<h3 class="unnumbered" id="使用條款與隱私聲明">2.1.2
+Terms of Use &amp; Privacy Policy</h3>
+<p>首次註冊時，請點擊註冊頁面的《服務條款》以瀏覽系統之使用條款與隱私權聲明。於註冊頁面勾選「同意服務條款」即表示使用者已閱讀並同意系統之使用條款與隱私權聲明。</p>
+<h3 class="unnumbered" id="首次登入">2.1.3 First Login</h3>
+<p>於登入頁面點選「立即註冊」，並在註冊頁面輸入使用者名稱，電子郵件帳號，設定初始密碼，並勾選「同意服務條款」，然後點擊「註冊」按鈕，即可註冊。</p>
+<p><img src="../manual/media/image2.png" style="width:3.5913in;height:3.38333in"
+alt="A screenshot of a computer screen Description automatically generated" /></p>
+<p>用戶於首次登入時須同意《服務條款》。</p>
+<p><img src="../manual/media/image3.png" style="width:3.4288in;height:3.41216in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>註冊完畢後，系統將跳轉至登入頁面，於登入頁面輸入帳號及密碼，即可登入。</p>
+<p><img src="../manual/media/image4.png"
+style="width:3.41532in;height:3.21768in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="sso登入">2.1.4 SSO Login</h3>
+<p>用戶於登入頁面勾選「使用 SSO
+登入（LDAP）」時，系統會使用公司單一登入機制驗證身份，使用者只需使用公司網域帳號與密碼即可登入
+TARS.ai，無需另外註冊一組帳號密碼。</p>
+<p><img src="../manual/media/image4.png"
+style="width:3.41532in;height:3.21768in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="登入憑證逾期">2.1.5 Login Credential Expiry</h3>
+<p>基於安全需求，系統已設定憑證失效時間，若使用者未在系統設定的時間內於頁面執行任何操作，系統將自動登出。</p>
+<h2 class="unnumbered" id="基本設定">2.2 Basic Settings</h2>
+<p>登入後，使用者名稱與使用者圖示將顯示於系統頁面右上角，點擊圖示即可展開下方選單，使用者可執行設定、語言選擇及登出的操作。</p>
+<p><img src="../manual/media/image5.png"
+style="width:2.70061in;height:3.58186in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<h3 class="unnumbered" id="語言選擇">2.2.1 Language Selection</h3>
+<p>系統中可設定語言，點擊頁面右上角的使用者圖示展開下拉式選單，再點擊「語言選擇」即可設定系統語言。</p>
+<p><img src="../manual/media/image5.png"
+style="width:2.70061in;height:3.58186in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<h3 class="unnumbered" id="登出">2.2.2 Logout</h3>
+<p>點擊頁面右上角的使用者圖示展開下拉式選單，再點擊「登出」即可返回登入頁面。</p>
+<p><img src="../manual/media/image6.png"
+style="width:3.54948in;height:2.88272in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h1 class="unnumbered" id="提示應用"><strong>3. Prompt Application</strong></h1>
+<h2 class="unnumbered" id="通用腦操作">3.1 General Brain Operation</h2>
+<p>於系統左側欄位點選「通用腦」，即可進入通用腦頁面。</p>
+<p><img src="../manual/media/image7.png" style="width:1.76069in;height:2.9608in"
+alt="A screenshot of a cell phone Description automatically generated" /></p>
+<p>點選後，您將進入以下儀表板，在開始操作前，請遵循以下指引：</p>
+<p><img src="../manual/media/image8.png" style="width:6in;height:3.40833in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="模型選擇">3.1.1 Model Selection</h3>
+<p>請點選如圖所示之下拉式選單，選取您欲使用的模型。</p>
+<p><img src="../manual/media/image9.png"
+style="width:5.33163in;height:3.10139in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="開始對話">3.1.2 Start Conversation</h3>
+<p>當使用者選定模型後，即可透過在提示框「詢問問題...」中輸入問題或提示內容開啟新對話，訊息內容可能因使用者選擇的模型而有所不同，輸入完畢後請點選右下角之送出鍵將問題發送至系統。</p>
+<p><img src="../manual/media/image10.png" style="width:6in;height:2.27708in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>(1) 建立新對話</p>
+<p>使用者可透過點選左上角的「+」圖示來創建新的對話視窗。</p>
+<p><img src="../manual/media/image11.png"
+style="width:5.93684in;height:2.40694in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(2) 管理對話</p>
+<p>使用者可透過左側的功能面板，將滑鼠懸停於對話上並點選「•••」選單，來重新命名、刪除或匯出對話。</p>
+<p><img src="../manual/media/image12.png"
+style="width:2.41016in;height:2.57187in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>(3) 搜尋對話</p>
+<p>使用者可在「新對話」所在之儀表板中搜尋訊息：點選左上角的「搜尋對話」標籤，輸入欲搜尋的短語或關鍵字，然後按下
+Enter 鍵。</p>
+<p><img src="../manual/media/image13.png"
+style="width:2.47923in;height:2.62954in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>(4) 隱藏側邊欄</p>
+<p>使用者可透過點選左側欄位右上角之圖示，隱藏左側的儀表板。</p>
+<p><img src="../manual/media/image13.png"
+style="width:2.47923in;height:2.62954in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>(5) 上傳檔案</p>
+<p>使用者可透過點選對話框左下角的迴紋針圖示上傳檔案，如下圖所示：</p>
+<p><img src="../manual/media/image14.png" style="width:6in;height:2.30069in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(6) 回覆設定</p>
+<p>使用者可透過對話框左下角的「關聯資料庫」、「網頁搜尋」、「知識檢索」及「檔案生成」按鈕，視需求開啟或關閉影響系統回覆方式的相關功能，如下圖所示：</p>
+<p><img src="../manual/media/image15.png" style="width:6in;height:2.30069in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>以下將依照由左至右之順序介紹該圖示之功能：</p>
+<ol type="1">
+<li><p>關聯資料庫：啟用後，系統可讀取已連結的結構化資料，並根據資料內容進行分析與回覆。</p></li>
+<li><p>網頁搜尋：啟用後，系統會透過網際網路取得相關資料，並依搜尋結果提供回應。</p></li>
+<li><p>知識檢索：啟用後，系統可讀取已綁定的知識庫文件，對其中內容進行檢索並根據結果產出回覆。</p></li>
+<li><p>檔案生成：啟用後，系統可依使用者需求自動生成檔案，例如 Word、PDF
+或 PowerPoint 等格式。</p></li>
+</ol>
+<p>(7) 語音輸入</p>
+<p>使用者可選擇「開啟麥克風」功能，透過語音轉文字的方式輸入訊息，使用該功能前需先允許
+TARS.ai存取您的麥克風。</p>
+<p><img src="../manual/media/image16.png" style="width:6in;height:2.24194in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>(8) 對話操作與回饋</p>
+<ol type="1">
+<li><p>訊息複製</p></li>
+</ol>
+<p>使用者可將訊息複製至剪貼板，以便在任何所需處分享或貼上。</p>
+<p><img src="../manual/media/image17.png" style="width:6in;height:1.74837in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<ol start="2" type="1">
+<li><p>訊息回饋</p></li>
+</ol>
+<p>使用者可針對系統回覆的內容選擇「回應良好」或「回應不佳」，亦可對該回覆「提供回饋」。所有回饋將一併記錄於系統管理中的「訊息稽核報表」(此部分可參閱6.5
+訊息稽核表)，供後續檢視與分析使用。</p>
+<p><img src="../manual/media/image17.png" style="width:6in;height:1.78325in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<h3 class="unnumbered" id="進階設定">3.1.3 Advanced Settings</h3>
+<p>點選右側工具列任一圖示可針對聊天內容進行進階設定，以下將依序進行介紹：</p>
+<p>(1) 建立提示與選取</p>
+<p>點選右側工具列最上方的圖示，可開啟「提示管理」視窗，以建立新的提示或選取既有提示。</p>
+<p><img src="../manual/media/image18.png"
+style="width:3.3932in;height:2.59053in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>開啟「提示管理」視窗後，可於視窗內進行以下功能：</p>
+<ol type="1">
+<li><blockquote>
+<p>「＋ 建立提示」：點選後可新增一筆提示，供後續快速套用。</p>
+</blockquote></li>
+<li><blockquote>
+<p>提示篩選下拉選單（預設為「全部」）：可依提示分類進行篩選，只顯示特定類型的提示。</p>
+</blockquote></li>
+<li><blockquote>
+<p>「搜尋提示」：輸入關鍵字即可搜尋既有提示，方便快速尋找並選取。</p>
+</blockquote></li>
+<li><blockquote>
+<p>視窗右上角的 「✕」 按鈕可用於關閉此視窗並返回聊天畫面。</p>
+</blockquote></li>
+</ol>
+<p><img src="../manual/media/image19.png" style="width:6in;height:2.30769in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>建立完成的提示會顯示於視窗下方，可直接點選欲套用的提示。</p>
+<p><img src="../manual/media/image20.png"
+style="width:5.51583in;height:3.13458in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>實際套用提示時，如有設定變數，系統會依這些變數名稱顯示於輸入欄位，如下圖所示，使用者只需填入內容即可重複使用同一提示。變數設定請參閱〈3.3提示工程〉。</p>
+<p><img src="../manual/media/image21.png"
+style="width:5.92928in;height:2.38384in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(2) 記憶資料管理</p>
+<p>點選右側工具列第二個圖示，可開啟「記憶資料管理」視窗，以上傳新的資料或檢視既有資料。</p>
+<p><img src="../manual/media/image18.png"
+style="width:3.3932in;height:2.59053in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>開啟「記憶資料管理」視窗後，可於視窗內之「上傳新資料」的分頁進行上傳檔案或網址連結的功能：</p>
+<ol type="1">
+<li><p>檔案上傳：點選「選擇檔案」自本機選取欲上傳之檔案，系統支援之檔案格式包括：Word（.doc、.docx）、PDF（.pdf）、簡報（.ppt、.pptx）、Markdown（.md）、圖片（.jpg、.png）。</p></li>
+</ol>
+<p><img src="../manual/media/image22.png"
+style="width:5.67985in;height:2.29549in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<ol start="2" type="1">
+<li><p>網址連結：於「網址」欄位輸入完整網址（URL），供使用者登錄外部網頁作為記憶資料來源。使用者可於「描述」欄位填寫該網址內容之簡要說明，方便日後辨識。輸入完畢後，點選右側
+「＋」 以新增。</p></li>
+</ol>
+<p><img src="../manual/media/image22.png"
+style="width:5.67994in;height:1.28795in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>以上資料新增完成後，請點選視窗下方
+「上傳資料」，系統即會將上述檔案與網址紀錄於該對話中，供後續檢索與回覆使用。</p>
+<p><img src="../manual/media/image22.png"
+style="width:5.67985in;height:3.5141in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>已上傳的檔案或連結可於「已上傳資料」之分頁查看，方便使用者檢視與管理。分頁之畫面依資料來源區分為：</p>
+<p>1.
+已上傳檔案：此區塊列出所有以檔案形式上傳的記憶資料，內容包括檔案名稱、檔案大小、檔案類型、上傳時間、摘要及操作，方便使用者快速了解檔案內容。</p>
+<p><img src="../manual/media/image23.png" style="width:6in;height:2.44722in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可點選操作欄位之左邊的按鈕，將該筆資料加入或移除長期記憶，如下圖所示。</p>
+<p><img src="../manual/media/image24.png" style="width:6in;height:2.44722in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>也可點選該欄位右邊「刪除」之按鈕將該筆資料移除，如下圖所示。</p>
+<p><img src="../manual/media/image25.png" style="width:6in;height:2.44722in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>2.
+已上傳網站：此區塊列出所有以網址形式建立的記憶資料，內容包括網站名稱、網址、描述、建立時間及操作，方便使用者快速了解網站內容。</p>
+<p><img src="../manual/media/image23.png" style="width:6in;height:2.44722in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可點選操作欄位「刪除」之按鈕將該筆資料移除，如下圖所示。</p>
+<p><img src="../manual/media/image26.png" style="width:6in;height:2.25972in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>此視窗之右上角的按鈕可用於縮放視窗及關閉視窗並返回聊天畫面，如下圖所示。</p>
+<p><img src="../manual/media/image22.png"
+style="width:5.67985in;height:1.10732in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(3) 模型生成與參數</p>
+<p>點選右側工具列第三個圖示，可開啟「模型與生成參數」視窗，以調整模型參數與生成參數。</p>
+<p><img src="../manual/media/image18.png"
+style="width:3.3932in;height:2.59053in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>開啟「模型與生成參數」視窗後，可於視窗內移動滑桿進行以下的基本設定：</p>
+<ol type="1">
+<li><p>Temperature：可調整生成內容的隨機性。將滑桿往左拉（數值變小），回覆會較穩定、保守、較少發散，適合需要嚴謹、固定格式的輸出，例如說明文件、程式碼、標準回覆等。將滑桿往右拉（數值變大），回覆會較有創意、表達方式更多變，適合發想點子、寫作等情境。</p></li>
+<li><p>最大生成長度（max
+tokens）：可設定模型輸出的最大字數限制，影響生成長度內容。將滑桿往右拉，允許產生較長的回覆，但生成時間也會隨之增加。將滑桿往左拉，限制回覆較短，適合需要簡短回答的情境。</p></li>
+</ol>
+<p><img src="../manual/media/image27.png"
+style="width:5.07551in;height:3.16867in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若使用者需更進階的參數設定，可於頁面中左下方勾選 「進階設定」
+，開啟進階設定後，系統會因應不同模型提供額外的參數設定，一般使用者若無特別需求，可維持預設值。</p>
+<p><img src="../manual/media/image28.png"
+style="width:4.97778in;height:4.94263in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>開啟「進階設定」後，可於視窗內移動滑桿進行以下的進階設定：</p>
+<ol type="1">
+<li><p>Top K：為一種採樣策略，當模型在生成下一個 token
+時，只會從機率最高的前 K 個候選詞中進行選擇。K
+值越小，模型可選擇的詞越少，輸出內容會更加集中、穩定；K
+值越大，候選詞範圍越廣，生成的文字就會較多樣、具變化。</p></li>
+<li><p>Top
+P：設定模型在產生文字時，可選擇詞彙的「累積機率範圍」。數值越小，模型只會從機率最高的少數詞中挑選，輸出內容會較集中、保守;
+數值越接近
+1，候選詞彙範圍越大，生成的文字就會越多樣、越具創意。</p></li>
+<li><p>Context
+Window：設定模型在產生回覆時，能同時讀取與記住的文字長度範圍。數值越大，模型可以參考的對話紀錄與文件內容就越多，較能理解長篇上下文；數值越小，可參考的內容較短，運算資源消耗也相對較低。</p></li>
+</ol>
+<p><img src="../manual/media/image29.png"
+style="width:4.77337in;height:2.90988in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成設定後，請點選「儲存設定」將上述所有參數的變更一併儲存。</p>
+<p><img src="../manual/media/image29.png"
+style="width:4.77337in;height:2.90988in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(4) MCP工具管理</p>
+<p>點選右側工具列最下方的圖示，可開啟「MCP工具管理」視窗，使用者可於此管理對話中可使用的MCP工具服務，以擴充系統查詢、搜尋與外部服務串接能力。</p>
+<p><img src="../manual/media/image18.png"
+style="width:3.3932in;height:2.59053in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>開啟「MCP 工具管理」視窗後，使用者可透過上方的「啟用 MCP
+工具」開關控制是否啟用 MCP 功能，啟用後即可於對話過程中使用已掛載的 MCP
+工具服務。</p>
+<p><img src="../manual/media/image30.png"
+style="width:3.4902in;height:3.15834in" alt="Uploaded image" /></p>
+<p>視窗中會顯示目前可用的 MCP
+服務列表，包含服務名稱、功能描述、服務類型及可使用的工具數量，使用者可依需求啟用或停用特定服務。當服務啟用後，系統將可於對話中自動調用對應工具，例如網路搜尋、天氣查詢、採購協助或內部查詢等功能，以提供更完整的資訊與操作能力。</p>
+<p><img src="../manual/media/image30.png"
+style="width:3.4902in;height:3.15834in" alt="Uploaded image" /></p>
+<p>視窗下方亦會顯示目前已啟用的 MCP
+服務數量，方便使用者確認當前工具使用狀態。</p>
+<p><img src="../manual/media/image30.png"
+style="width:3.4902in;height:3.15834in" alt="Uploaded image" /></p>
+<h2 class="unnumbered" id="專用腦操作">3.2 Dedicated Brain Operation</h2>
+<p>本系統提供「專用腦」功能，使用者可在此針對特定領域提出問題並獲得專業回覆。欲使用此功能時，請於系統左側提示應用點選
+「專用腦」，即可進入專用腦頁面進行操作。<img src="../manual/media/image31.png"
+style="width:1.62948in;height:2.4744in" /></p>
+<p>點選後，您將進入以下儀表板，在開始操作前，請遵循以下指引：</p>
+<p>（專用腦的新增與設定請參閱〈6.1專用腦管理〉，此部分僅介紹專用腦介面操作。）</p>
+<p><img src="../manual/media/image18.png"
+style="width:6in;height:3.61389in" /></p>
+<h3 class="unnumbered" id="專用腦與模型選擇">3.2.1 Dedicated Brain &amp; Model Selection</h3>
+<p>請根據您欲使用的專用腦助手，點選如圖所示之下拉式選單。</p>
+<p><img src="../manual/media/image32.png" style="width:6in;height:2.73611in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>選擇完畢後，請點選如圖所示之下拉式選單，選取您欲使用的模型。</p>
+<p><img src="../manual/media/image9.png"
+style="width:5.33163in;height:3.10139in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="開始對話-1">3.2.2 Start Conversation</h3>
+<p>當使用者選定專用腦與模型後，即可透過在提示框「詢問問題...」中輸入問題或提示內容開啟新對話，訊息內容可能因使用者選擇的模型而有所不同，並點選右下角之送出鍵將問題送至系統。</p>
+<p><img src="../manual/media/image10.png" style="width:6in;height:2.27708in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>(1) 建立新對話</p>
+<p>使用者可透過點選左上角的「+」圖示來創建新的對話視窗。</p>
+<p><img src="../manual/media/image11.png"
+style="width:5.93684in;height:2.40694in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(2) 管理對話</p>
+<p>使用者可透過「新對話」所在之儀表板上的功能面板，將滑鼠懸停於對話上並點選「•••」選單，來重新命名、刪除或匯出對話。</p>
+<p><img src="../manual/media/image12.png"
+style="width:2.58165in;height:2.75486in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>(3) 搜尋對話</p>
+<p>使用者可在「新對話」所在之儀表板中搜尋訊息：點選左上角的「搜尋對話」標籤，輸入欲搜尋的短語或關鍵字，然後按下
+Enter 鍵。</p>
+<p><img src="../manual/media/image13.png"
+style="width:2.47923in;height:2.62954in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>(4) 隱藏側邊欄</p>
+<p>使用者可透過點選左側欄位右上角之圖示，隱藏左側的儀表板。</p>
+<p><img src="../manual/media/image13.png"
+style="width:2.47923in;height:2.62954in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>(5) 上傳檔案</p>
+<p>使用者可透過點選對話框左下角的迴紋針圖示上傳檔案，如下圖所示。</p>
+<p><img src="../manual/media/image14.png" style="width:6in;height:2.30069in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(6) 回覆設定</p>
+<p>使用者可透過對話框左下角的「關聯資料庫」、「網頁搜尋」、「知識檢索」及「檔案生成」按鈕，視需求開啟或關閉影響系統回覆方式的相關功能，如下圖所示。</p>
+<p><img src="../manual/media/image15.png" style="width:6in;height:2.30069in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>以下將依照由左至右之順序介紹該圖示之功能：</p>
+<ol type="1">
+<li><p>關聯資料庫：啟用後，系統可讀取已連結的結構化資料，並根據資料內容進行分析與回覆。</p></li>
+<li><p>網頁搜尋：啟用後，系統會透過網際網路取得相關資料，並依搜尋結果提供回應。</p></li>
+<li><p>知識檢索：啟用後，系統可讀取已綁定的知識庫文件，對其中內容進行檢索並根據結果產出回覆。</p></li>
+<li><p>檔案生成：啟用後，系統可依使用者需求自動產生檔案，例如 Word、PDF
+或 PowerPoint 等格式。</p></li>
+</ol>
+<p>「專用腦」可預先設定各項功能的啟用狀態，此部分請參閱
+〈6.1專用腦管理〉。</p>
+<p>(7) 語音輸入</p>
+<p>使用者可選擇「開啟麥克風」功能，透過語音轉文字的方式輸入訊息，使用該功能前需先允許
+TARS.ai存取您的麥克風。</p>
+<p><img src="../manual/media/image16.png" style="width:6in;height:2.24194in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>(8) 對話操作與回饋</p>
+<ol type="1">
+<li><p>訊息複製</p></li>
+</ol>
+<p>使用者可將訊息複製至剪貼板，以便在任何所需處分享或貼上。</p>
+<p><img src="../manual/media/image17.png" style="width:6in;height:1.74837in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<ol start="2" type="1">
+<li><p>訊息回饋</p></li>
+</ol>
+<p>使用者可針對系統回覆的內容選擇「回應良好」或「回應不佳」，亦可對該回覆「提供回饋」。所有回饋將一併記錄於系統管理中的「訊息稽核報表」（此部分可參閱〈6.5訊息稽核表〉），供後續檢視與分析使用。</p>
+<p><img src="../manual/media/image17.png" style="width:6in;height:1.78325in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<h3 class="unnumbered" id="進階設定-1">3.2.3 Advanced Settings </h3>
+<p>點選右側工具列任一圖示可針對聊天內容進行進階設定，此部分請參閱〈3.1.3進階設定〉。</p>
+<p><img src="../manual/media/image18.png"
+style="width:3.51395in;height:2.02046in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<h2 class="unnumbered" id="提示工程">3.3 Prompt Engineering</h2>
+<p>「提示工程」提供建立、管理可重複使用的提示功能。透過提示，使用者在對話時可以快速套用固定格式的指令，並依使用者需求填入變數內容。使用者可於系統左側欄位點選「提示工程」，即可進入提示工程頁面。</p>
+<p><img src="../manual/media/image33.png"
+style="width:1.64676in;height:2.49279in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 設計 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>點選後，您將進入以下頁面。</p>
+<p><img src="../manual/media/image34.png" style="width:6in;height:3.47569in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>點選左側「
+建立提示」後會在右側開啟一個空白的提示編輯表單，用於新增提示。</p>
+<p><img src="../manual/media/image35.png"
+style="width:4.41985in;height:2.71111in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可於右側欄位輸入提示名稱、選擇類別、及提示文字，完成後點選「建立」，以建立提示。</p>
+<p><img src="../manual/media/image36.png" style="width:6in;height:2.38194in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>若需新增提示類別，可點選右側橘色 「＋」 按鈕建立新的類別名稱。</p>
+<p><img src="../manual/media/image37.png"
+style="width:5.5199in;height:2.19826in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>建立提示時，若提示中有需要在使用時變更的內容，可以用
+<strong>{{變數名稱}}</strong>
+將這些部分標記為變數，系統會自動偵測文字中所有該格式的標記，並在「變數」區列出對應的變數名稱。</p>
+<p><img src="../manual/media/image38.png"
+style="width:5.40172in;height:3.09348in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>提示建立完成後會顯示於左側欄位，並可於對話頁面中被選取與套用。使用者可透過「類別篩選下拉選單」（預設為「全部」）或「搜尋提示」快速找到欲編輯或套用的提示。</p>
+<p><img src="../manual/media/image36.png" style="width:6in;height:2.38194in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>使用者可點選任一提示，右側即會載入該提示內容供使用者檢視與編輯。點選提示右側之圖示可刪除該提示。</p>
+<p><img src="../manual/media/image39.png" style="width:6in;height:2.38194in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<h2 class="unnumbered" id="模型管理">3.4 Model Management</h2>
+<p>「模型管理」用於設定系統在不同情境下所使用的模型及其生成參數，此系統包含「聊天模型設定」及「檢索模型設定」兩個功能。使用者可於系統左側欄位點選「模型管理」，即可進入模型管理頁面。</p>
+<p><img src="../manual/media/image40.png"
+style="width:1.97206in;height:2.86523in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<h3 class="unnumbered" id="聊天模型設定">3.4.1 Chat Model Settings</h3>
+<p>在「聊天模型設定」中，使用者可以選擇預設的模型，並調整
+Temperature、最大生成長度（max
+tokens）等參數，以控制回覆的風格與篇幅。使用者可於進入模型管理頁面後點選聊天模型設定，即可進入該頁面。</p>
+<p><img src="../manual/media/image41.png"
+style="width:4.81966in;height:2.51498in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>在此設定中可分為以下兩個部分：</p>
+<p>(1) 模型與生成參數</p>
+<p>於「模型選擇」下拉選單中，選擇您欲作為預設聊天使用的模型。<img
+src="../manual/media/image42.png" style="width:6in;height:2.22778in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可於「Temperature」移動滑桿以設定生成內容的隨機性。數值較低，回答較穩定、保守、重複性較高;
+數值較高，則回答較有創意、表達方式多樣。</p>
+<p><img src="../manual/media/image42.png" style="width:6in;height:2.22778in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者亦可於「最大生成長度（max
+tokens）」移動滑桿以設定模型輸出的最大字數限制，避免回覆過短或過長。</p>
+<p><img src="../manual/media/image42.png" style="width:6in;height:2.22778in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若使用者需更進階的參數設定，可於頁面中左下方勾選 「進階設定」
+，開啟進階設定後，系統會因應不同模型提供額外的參數設定，一般使用者若無特別需求，可維持預設值。</p>
+<p><img src="../manual/media/image43.png" style="width:6in;height:2.24167in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(2) 安全與引導內容</p>
+<p>使用者可新增「提示語說明」，用於設定系統回覆時的整體風格與原則。（本系統預設為：「請使用繁體中文作答，並在回答前仔細思考，清楚表達你的分析過程與理由，避免直接給出簡單的答案，要求有深度的回答，並避免使用不雅詞彙。」）</p>
+<p><img src="../manual/media/image44.png" style="width:6in;height:1.77847in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者亦可新增「過濾條件」，用於定義需特別避免或過濾的內容。（本系統預設為：「請使用繁體中文回答問題，並確保回答中不包含任何色情、暴力、侮辱性語言或歧視性言論。請避免使用任何不雅的詞彙。」）</p>
+<p><img src="../manual/media/image44.png" style="width:6in;height:1.77847in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成以上所有設定後，請點選右下角的「儲存設定」，將上述之所有設定儲存於系統中。</p>
+<p><img src="../manual/media/image45.png"
+style="width:3.37884in;height:3.45314in"
+alt="A screenshot of a video chat Description automatically generated" /></p>
+<h3 class="unnumbered" id="檢索模型設定">3.4.2 Retrieval Model Settings</h3>
+<p>在「檢索模型設定」中，使用者可針對各個知識庫指定專用的檢索與回答模型，確保在查詢內部文件時能取得穩定且精準的結果。使用者可於進入模型管理頁面後點選聊天模型設定，即可進入該頁面。</p>
+<p><img src="../manual/media/image46.png"
+style="width:5.06299in;height:3.7867in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>在此設定中可分為以下四個部分：</p>
+<p>(1) 知識庫選取</p>
+<p>於「請選擇知識庫」中，選擇欲設定的知識庫。之後設定的所有模型與檢索參數，則會套用在此知識庫上。</p>
+<p><img src="../manual/media/image47.png" style="width:6in;height:1.22222in"
+alt="A white background with black lines Description automatically generated" /></p>
+<p>(2) 模型與生成參數</p>
+<p>於「模型選擇」中，選擇您欲作為該知識庫檢索與回答所使用的模型。</p>
+<p><img src="../manual/media/image48.png" style="width:6in;height:1.73194in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可於「Temperature」移動滑桿以設定生成內容的隨機性。數值較低，則回覆較穩定、重複性較高，適合需要一致答案的知識庫查詢;
+數值較高，則回覆較有創意、表達方式多樣。</p>
+<p><img src="../manual/media/image48.png" style="width:6in;height:1.73194in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者亦可於「最大生成長度（max
+tokens）」移動滑桿設定模型輸出的最大字數限制，以控制每次回答的篇幅，避免回覆過短或過長。</p>
+<p><img src="../manual/media/image48.png" style="width:6in;height:1.73194in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若使用者需更進階的參數設定，可於頁面中左下方勾選 「進階設定」
+，開啟進階設定後，系統會因應不同模型提供額外的參數設定，一般使用者若無特別需求，可維持預設值。</p>
+<p><img src="../manual/media/image49.png" style="width:6in;height:2.67708in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(3) 知識庫檢索與重試設定</p>
+<p>使用者可於「每次檢索數量」設定每次查詢時最多擷取的文件數量。數量較大，模型可參考的文件更多，答案可能較完整，但回應時間可能略長;
+數量較小，則回應速度較快，但參考資訊較少。</p>
+<p><img src="../manual/media/image50.png" style="width:6in;height:1.25903in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者亦可於「重試次數」移動滑桿以設定檢索失敗時系統最多可重新嘗試的次數。適度提高重試次數可提升容錯率與穩定性。<img
+src="../manual/media/image50.png" style="width:6in;height:1.25903in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(4) 安全與引導內容</p>
+<p>使用者可新增「提示語說明」，用於設定系統回覆時的整體風格與原則。（本系統預設為：「請使用繁體中文作答，並在回答前仔細思考，清楚表達你的分析過程與理由，避免直接給出簡單的答案，要求有深度的回答，並避免使用不雅詞彙。」）</p>
+<p><img src="../manual/media/image44.png" style="width:6in;height:1.77847in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者亦可新增「過濾條件」，用於定義需特別避免或過濾的內容。（本系統預設為：「請使用繁體中文回答問題，並確保回答中不包含任何色情、暴力、侮辱性語言或歧視性言論。請避免使用任何不雅的詞彙。」）</p>
+<p><img src="../manual/media/image44.png" style="width:6in;height:1.77847in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成以上所有設定後，請點選右下角的「儲存設定」，將上述之所有設定儲存於系統中。</p>
+<p><img src="../manual/media/image51.png"
+style="width:3.91428in;height:3.73623in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<h2 class="unnumbered" id="進階應用">3.5 Advanced Applications</h2>
+<h3 class="unnumbered" id="分析助手">3.5.1 Analysis Assistant</h3>
+<p>本系統提供「分析助手」功能，使用者可在此對話中上傳所需文件後，系統將自動進行內容分析，並提供摘要、重點整理及問答功能，以協助使用者快速掌握資料內容。欲使用此功能時，請於系統左側進階應用中點選
+「分析助手」，即可進入專用腦頁面進行操作。</p>
+<p><img src="../manual/media/image52.png"
+style="width:2.67753in;height:2.40978in" /></p>
+<p>點選後，您將進入以下儀表板，在開始操作前，請遵循以下指引：</p>
+<p><img src="../manual/media/image53.png"
+style="width:6in;height:3.4125in" /></p>
+<p>請點選如圖所示之下拉式選單，選取您欲使用的模型。</p>
+<p><img src="../manual/media/image54.png" style="width:6in;height:3.2875in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>選定模型後，請先於對話中的記憶資料管理上傳欲檢索的相關文件，文件類型請符合Word檔案
+(.doc, .docx)、PDF檔案 (.pdf)、PPT檔案 (.ppt, .pptx)、Markdown檔案
+(.md)、圖片檔案 (.jpg,
+.png)以上檔案類型，上傳方式可參照「3.1.3進階設定」。</p>
+<p><img src="../manual/media/image55.png" style="width:6in;height:2.36875in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>當上傳完文件後，即可透過在提示框「詢問問題...」中輸入問題或開啟新對話，訊息內容可能因使用者選擇的模型而有所不同，並點選右下角之送出鍵將問題送至系統，系統僅會針對上傳的文件進行檢索與回覆，若無法在該文件中檢索出相關內容，系統會要求提供更多資訊。</p>
+<p><img src="../manual/media/image56.png" style="width:6in;height:2.36875in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>(1) 建立新對話</p>
+<p>使用者可透過點選左上角的「+」圖示來創建新的對話視窗。</p>
+<p><img src="../manual/media/image53.png"
+style="width:2.90133in;height:1.82452in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(2) 管理對話</p>
+<p>使用者可透過「新對話」所在之儀表板上的功能面板，將滑鼠懸停於對話上並點選「•••」選單，來重新命名、刪除或匯出對話。</p>
+<p><img src="../manual/media/image12.png"
+style="width:2.58165in;height:2.75486in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>(3) 搜尋對話</p>
+<p>使用者可在「新對話」所在之儀表板中搜尋訊息：點選左上角的「搜尋對話」標籤，輸入欲搜尋的短語或關鍵字，然後按下
+Enter 鍵。</p>
+<p><img src="../manual/media/image13.png"
+style="width:2.47923in;height:2.62954in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>(4) 隱藏側邊欄</p>
+<p>使用者可透過點選左側欄位右上角之圖示，隱藏左側的儀表板。</p>
+<p><img src="../manual/media/image13.png"
+style="width:2.47923in;height:2.62954in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<h3 class="unnumbered" id="微調模型">3.5.2 Fine-tuning Model</h3>
+<p>於「微調模型」頁面中，使用者可透過 LoRA（Low-Rank
+Adaptation）方式對既有基礎模型進行參數微調，以建立符合特定需求或領域知識的專屬模型。請由「進階應用」選單中點選「微調模型」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image52.png"
+style="width:2.67753in;height:2.40978in" /></p>
+<p>開啟頁面後，使用者可先選擇欲微調的基礎模型，並依需求設定學習率（Learning
+Rate）、批次大小（Batch Size）、訓練輪數（Epochs）、預熱步數（Warmup
+Steps）及 LoRA Rank
+等訓練參數，以控制模型學習速度、訓練穩定性與資源使用情況。完成參數設定後，可上傳訓練資料集與驗證資料集，作為模型學習與效果評估使用。</p>
+<p><img src="../manual/media/image57.png" style="width:6in;height:2.55in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>於「訓練資料集」欄位中，使用者可上傳模型訓練所需的資料內容，作為模型學習特定知識、語氣或領域特徵的依據。</p>
+<p><img src="../manual/media/image58.png"
+style="width:6in;height:3.38333in" /></p>
+<p>系統提供範例檔案下載功能，使用者可依範例格式整理資料後再進行上傳，以確保訓練資料格式正確並提升模型訓練效果。</p>
+<p><img src="../manual/media/image58.png" style="width:6in;height:3.38333in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>於「驗證資料集」欄位中，使用者可上傳用於模型效果驗證的資料集，系統將於訓練過程中利用該資料評估模型泛化能力與訓練狀態，以協助判斷是否發生過擬合（Overfitting）現象。驗證資料僅用於模型評估，不會參與實際參數更新。</p>
+<p><img src="../manual/media/image58.png" style="width:6in;height:3.38333in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>系統提供範例檔案下載功能，使用者可依範例格式整理資料後再進行上傳，以確保驗證資料格式正確並提升模型訓練效果。</p>
+<p><img src="../manual/media/image58.png" style="width:6in;height:3.38333in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可於備註欄位中填寫備註，說明此次模型微調的用途或需求。</p>
+<p><img src="../manual/media/image58.png" style="width:6in;height:2.02333in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>確認資料與設定完成後，點擊「開始訓練」按鈕即可啟動模型微調作業。</p>
+<p><img src="../manual/media/image58.png" style="width:6in;height:2.02292in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>頁面下方亦提供「已訓練模型」列表，可檢視模型名稱、基礎模型、訓練時間、狀態、訓練進度、備註及部署時間等資訊。</p>
+<p><img src="../manual/media/image59.png" style="width:6in;height:2.78333in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可透過右側操作按鈕查看訓練日誌、模型訓練指標、部署模型或刪除模型。</p>
+<p><img src="../manual/media/image59.png" style="width:6in;height:2.78333in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>點選下圖中箭頭指示的「訓練日誌」按鈕後，可開啟「訓練日誌」視窗。</p>
+<p><img src="../manual/media/image59.png" style="width:6in;height:1.15in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>於「訓練日誌」視窗中，使用者可檢視模型訓練過程中的詳細執行紀錄，內容包含各步驟輸出資訊、Loss
+數值、學習率變化、Epoch 進度以及可能發生的錯誤訊息。</p>
+<p><img src="../manual/media/image60.png"
+style="width:4.5592in;height:4.3724in" /></p>
+<p>點選下圖中箭頭指示的「模型訓練指標」按鈕後，可開啟「模型訓練指標」視窗。</p>
+<p><img src="../manual/media/image59.png" style="width:6in;height:1.15in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>於「模型訓練指標」視窗中，系統會以圖表方式呈現模型訓練期間的 Loss
+變化情形，包含訓練資料 Loss 與驗證資料 Loss
+的趨勢，以協助使用者評估模型訓練效果與是否發生過擬合（Overfitting）現象。一般而言，Loss
+數值持續下降代表模型逐漸學習資料特徵，而若驗證資料 Loss 上升但訓練資料
+Loss
+持續下降，則可能表示模型過度擬合。使用者可透過圖表觀察模型收斂情況，作為後續調整訓練參數的重要依據。</p>
+<p><img src="../manual/media/image61.png"
+style="width:4.17647in;height:4.35291in"
+alt="A screen shot of a graph Description automatically generated" /></p>
+<p>點選下圖中箭頭指示的「開始」按鈕後，可啟用該模型訓練。</p>
+<p><img src="../manual/media/image59.png" style="width:6in;height:1.15in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>點選下圖中箭頭指示的「刪除」按鈕後，可刪除該模型訓練。</p>
+<p><img src="../manual/media/image59.png" style="width:6in;height:1.15in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="mcp設定">3.5.3 MCP Settings</h3>
+<p>於「MCP 設定」頁面中，使用者可管理與測試系統串接的 MCP（Model Context
+Protocol）服務，包含 MCP 伺服器設定、工具管理與工具測試聊天功能，以擴充
+AI Agent
+的外部工具使用能力與系統整合應用。請由「進階應用」選單中點選「MCP
+設定」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image52.png"
+style="width:2.67753in;height:2.40978in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>(1) 伺服器管理</p>
+<p>於「MCP 設定」中的「伺服器管理」頁面，使用者可集中管理系統所串接的
+MCP服務伺服器，以提供 AI Agent 對話過程中的外部工具與服務能力，系統支援
+OpenAPI 與 External 等不同類型的 MCP 服務。</p>
+<p><img src="../manual/media/image62.png" style="width:6in;height:3.07569in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>頁面上方會顯示目前已建立的 MCP
+伺服器列表，包含伺服器名稱、類型、連線狀態、工具數量、標籤、優先級等資訊。</p>
+<p><img src="../manual/media/image62.png" style="width:6in;height:3.07569in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>管理者可透過啟用開關控制該伺服器是否提供服務。</p>
+<p><img src="../manual/media/image62.png" style="width:6in;height:3.07569in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>管理者可於操作欄位中分別由右至左點選按鈕以執行「編輯、測試連線、同步工具、刪除」的功能，維護
+MCP 服務的可用性與工具內容。</p>
+<p><img src="../manual/media/image63.png" style="width:6in;height:1.52222in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可點選右上角的「重新整理」按鈕，更新資訊。</p>
+<p><img src="../manual/media/image63.png" style="width:6in;height:1.52222in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可點選頁面右上角的「解析OpenAPI」開啟「解析OpenAPI」視窗。</p>
+<p><img src="../manual/media/image62.png" style="width:6in;height:3.07569in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「解析 OpenAPI 規格」視窗後，使用者可透過輸入 OpenAPI JSON URL 或
+Swagger UI URL，自動解析 API 規格並建立對應的 MCP 工具。系統會依據
+OpenAPI 文件中的 API 定義，自動產生可供 AI Agent
+使用的工具內容，減少手動建立工具的設定流程。完成 URL
+輸入後，點擊「開始解析」按鈕即可執行 OpenAPI 規格解析。</p>
+<p><img src="../manual/media/image64.png"
+style="width:3.50806in;height:1.32258in" alt="Uploaded image" /></p>
+<p>使用者可點選頁面右上角的「新增伺服器」開啟「新增 MCP
+伺服器」視窗，建立新的 MCP 服務。</p>
+<p><img src="../manual/media/image62.png" style="width:6in;height:3.07569in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「新增 MCP 伺服器」視窗後，使用者可建立新的
+MCP服務。需先於「基本設定」頁籤中輸入伺服器名稱、伺服器代碼、伺服器類型及優先順序，其中伺服器代碼為系統識別用代碼，可留空由系統自動產生，使用者亦可設定標籤與描述資訊，以利後續管理與辨識。</p>
+<p><img src="../manual/media/image65.png" style="width:6in;height:3.62153in"
+alt="Uploaded image" /></p>
+<p>完成設定後，可透過下方的啟用開關控制該伺服器是否立即啟用。</p>
+<p><img src="../manual/media/image65.png" style="width:6in;height:1.34733in"
+alt="Uploaded image" /></p>
+<p>接著，於「連線設定」頁籤中，使用者可設定 MCP 伺服器與外部 API
+服務的連線資訊。使用者需輸入 OpenAPI URL，以指定 OpenAPI JSON 或 Swagger
+UI 文件位置，系統將依據該文件建立 API 工具內容；另可設定 API Base URL
+作為實際 API 呼叫的基礎網址，若未填寫，系統將自動嘗試由 OpenAPI
+文件中解析。管理者亦可設定請求逾時秒數，以控制系統等待 API
+回應的時間。</p>
+<p><img src="../manual/media/image66.png" style="width:6in;height:3.03472in"
+alt="Uploaded image" /></p>
+<p>完成設定後，點擊「新增」按鈕即可建立該 MCP 伺服器設定。</p>
+<p><img src="../manual/media/image66.png" style="width:6in;height:2.47827in"
+alt="Uploaded image" /></p>
+<p>最後，於「環境變數」頁籤中，使用者可設定 MCP
+服務執行時所需的環境變數內容，並以 JSON
+格式輸入相關設定值，本系統支援使用 ${VAR_NAME}
+語法引用系統環境變數。</p>
+<p><img src="../manual/media/image67.png" style="width:6in;height:2.90625in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成設定後，點擊「新增」按鈕即可儲存環境變數設定，供 MCP
+服務執行時使用。</p>
+<p><img src="../manual/media/image67.png" style="width:6in;height:2.18044in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>頁面下方另提供「工具清單詳情」區域，可點選該工具展開檢視各 MCP
+服務所提供的工具數量與內容，方便使用者確認目前可供 AI Agent
+使用的工具資源。</p>
+<p><img src="../manual/media/image68.png"
+style="width:6in;height:2.51458in" /></p>
+<p>(2) 工具測試聊天</p>
+<p>於「MCP 設定」頁面的「工具測試聊天」功能中，使用者可直接測試
+MCP（Model Context Protocol）工具與 AI
+模型的整合效果，確認工具是否能正常被 AI Agent
+呼叫與使用。請切換至「工具測試聊天」頁面即可開始測試。</p>
+<p><img src="../manual/media/image69.png" style="width:6in;height:3.49306in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>於「工具測試聊天」頁面中，使用者可先選擇欲使用的 AI 模型，再於「選擇
+MCP 伺服器」欄位中勾選欲啟用的 MCP 服務。</p>
+<p><img src="../manual/media/image70.png" style="width:6in;height:3.49306in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>系統將自動載入該服務所提供的工具清單，並於左側顯示目前可使用的工具名稱與功能描述。</p>
+<p><img src="../manual/media/image71.png" style="width:6in;height:3.42778in"
+alt="Uploaded image" /></p>
+<p>完成設定後，使用者可於下方輸入訊息內容並送出，AI Agent
+將依據對話需求自動選擇適合的 MCP
+工具執行查詢或操作，以驗證工具串接與回應結果是否正常。</p>
+<p><img src="../manual/media/image71.png" style="width:6in;height:3.42778in"
+alt="Uploaded image" /></p>
+<p>頁面中亦提供「清除對話」功能，可快速清除目前聊天紀錄並重新開始測試，以利進行不同工具或服務的驗證作業。</p>
+<p><img src="../manual/media/image71.png" style="width:6in;height:3.42778in"
+alt="Uploaded image" /></p>
+<h1 class="unnumbered" id="知識庫管理">4. Knowledge Base Management</h1>
+<p>「知識庫管理」用於集中管理系統在回答問題時所參考的各類文件與資料來源，管理者可在此建立不同主題或部門的知識庫並設定排程維護。使用者可於應用系統中點選「知識庫管理」。</p>
+<p><img src="../manual/media/image72.png"
+style="width:1.65154in;height:3.22903in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<h2 class="unnumbered" id="知識庫清單">4.1 Knowledge Base List</h2>
+<p>「知識庫清單」用於管理與建立知識庫，使用者可在此快速搜尋、建立或進入各個知識庫
+。於「知識庫管理」中點選「知識庫清單」以進入該頁面。</p>
+<p><img src="../manual/media/image73.png"
+style="width:1.92412in;height:1.81245in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>進入此頁面後，您將會看到所有已建立的知識庫，使用者可於左上角快速查詢欲查看的知識庫。</p>
+<p><img src="../manual/media/image74.png" style="width:6in;height:3.01528in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>已建立的知識庫會於該名稱下方顯示該知識庫目前綁定的模型、描述、各類資料源狀態以及資源使用現況，方便使用者查看。</p>
+<p><img src="../manual/media/image75.png"
+style="width:4.38885in;height:2.47736in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="建立知識庫">4.1.1 Create Knowledge Base</h3>
+<p>點選左上角的「＋」後會開啟建立知識庫的視窗，即可建立新的知識庫。</p>
+<p><img src="../manual/media/image76.png" style="width:6in;height:3.03542in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟視窗後，使用者可依序輸入知識庫名稱、描述，並選擇欲使用的LLM/Embedding/
+Rerank 模型。</p>
+<p><img src="../manual/media/image77.png"
+style="width:5.36486in;height:2.11304in"
+alt="一張含有 文字, 螢幕擷取畫面, 軟體, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>完成後點選「建立」，將該知識庫新增至知識庫清單，後續可在知識庫中上傳資料至該資料庫。</p>
+<p><img src="../manual/media/image77.png"
+style="width:5.36458in;height:2.11293in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="知識庫設定">4.1.2 Knowledge Base Settings</h3>
+<p>如需編輯或刪除特定知識庫，請點選該知識庫右上角的選單。</p>
+<p><img src="../manual/media/image78.png" style="width:6in;height:3.03542in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>如需編輯該資料庫，請點選「編輯」，系統會開啟該知識庫的編輯視窗，使用者可在此修改知識庫名稱與描述，完成編輯後請點選「儲存」以更新設定。</p>
+<p><img src="../manual/media/image79.png"
+style="width:3.69447in;height:3.4191in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>如需刪除該資料庫，請點選「刪除」，系統會開啟該知識庫的刪除視窗，如確定刪除該知識庫，請點選「刪除」，請注意若刪除該資料庫將一併移除關聯的文件與資料集。</p>
+<p><img src="../manual/media/image80.png" style="width:3.5189in;height:3.2448in"
+alt="一張含有 文字, 螢幕擷取畫面, 軟體, 多媒體 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>於知識庫清單中，點擊欲查看的知識庫，即可進入該知識庫的詳細頁面，執行進一步的操作。</p>
+<p><img src="../manual/media/image76.png" style="width:6in;height:3.03542in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(1)新增資料集</p>
+<p>進入該知識庫的詳細頁面後，點選右上角橘色 「＋」<strong> </strong>按鈕，即可新增資料至該知識庫。</p>
+<p><img src="../manual/media/image81.png" style="width:6in;height:2.05in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>點選後，請依資料來源類型選擇對應的圖示，由左至右依序為上傳文件、匯入網站、匯入API、應用資料庫、文檔群組，選取後將依類別開啟視窗以下將依序介紹：</p>
+<p><img src="../manual/media/image82.png" style="width:6in;height:1.72241in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<ol type="1">
+<li><p>上傳文件</p></li>
+</ol>
+<p>開啟「上傳文件」視窗後，請點選【Choose
+Files】，自本機選取欲上傳至資料庫的文件，本系統支援的檔案格式包括：TXT,
+PDF, DOCX, PPTX, PPT, CSV, MARKDOWN, RTF，且每個檔案大小上限為
+100MB。</p>
+<p><img src="../manual/media/image83.png"
+style="width:5.92248in;height:2.7288in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>系統在建立索引時，會依 Chunk Size
+設定將長文件切成多個文字區塊，數值越大每個區塊越長、可保留的上下文越多;
+數值越小則切分較細，使用者可於檔案選取完成後移動滑桿進行調整。</p>
+<p><img src="../manual/media/image83.png"
+style="width:5.92248in;height:2.7288in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>Overlap
+可用來設定相鄰區塊之間的重疊長度，數值越大越能保留前後文但索引量也會增加，使用者可於檔案選取完成後移動滑桿進行調整。</p>
+<p><img src="../manual/media/image83.png"
+style="width:5.92248in;height:2.7288in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成新增後，請點選「上傳」，上傳完畢後新的資料會出現在該知識庫的資料集列表中，並由系統進行後續索引與處理。</p>
+<p><img src="../manual/media/image83.png"
+style="width:5.92248in;height:2.7288in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<ol type="1">
+<li><p>匯入網站</p></li>
+</ol>
+<p>開啟「匯入網站」視窗後，請於對應的欄位輸入此網站資料集的名稱、URL及描述，輸入完畢後可點選URL欄位右側「預覽」圖示確認網址是否正確。</p>
+<p><img src="../manual/media/image84.png"
+style="width:5.20833in;height:3.94444in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可透過滑桿設定系統在擷取網站內容時，每個文字區塊的長度；數值越大，每塊文字越長，可保留較多上下文。</p>
+<p><img src="../manual/media/image84.png"
+style="width:5.20833in;height:3.94444in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若確定啟用此網站作為資料檢索，請勾選「是否啟用此之料集」，勾選後，系統在回答問題時會將此網站內容納入檢索範圍；若取消勾選，則暫停使用此資料集。</p>
+<p><img src="../manual/media/image84.png"
+style="width:5.20833in;height:2.29861in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若需由系統定期更新該網頁資訊，請勾選「啟用定期更新」。勾選後，使用者可自行設定更新頻率、頻率單位以及開始與結束時間，系統將依排程自動重新擷取該網址內容，以維持資料為最新狀態。</p>
+<p><img src="../manual/media/image85.png"
+style="width:5.45139in;height:2.4375in"
+alt="一張含有 文字, 螢幕擷取畫面, 軟體, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>完成新增後，請點選「匯入」，上傳完畢後新的資料會出現在該知識庫的資料集列表中，並由系統進行後續索引與處理，供日後檢索與回答使用。</p>
+<p><img src="../manual/media/image84.png"
+style="width:5.20833in;height:2.19444in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<ol start="2" type="1">
+<li><p>匯入API</p></li>
+</ol>
+<p>開啟「匯入 API」視窗後，請於「選取既有 API
+清單」下拉選單中選擇欲匯入的
+API；如尚未建立對應設定，可點選「新增API資料集」先新增一組 API
+設定（請參考〈 5.3 API 〉）。選取完成後，可點選右側「預覽」圖示確認
+API是否正確。</p>
+<p><img src="../manual/media/image86.png"
+style="width:4.77083in;height:3.64583in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可透過 Chunk Size 滑桿設定系統在處理 API
+回傳內容時，每個文字區塊的長度；數值越大，每塊文字越長，可保留較多上下文。</p>
+<p><img src="../manual/media/image87.png"
+style="width:5.17361in;height:1.85417in"
+alt="A line on a white surface Description automatically generated" /></p>
+<p>若需由系統定期透過該 API
+更新資料，請勾選「啟用定期更新」。勾選後，使用者可自行設定更新頻率、頻率單位以及開始與結束時間，系統將依排程自動重新擷取
+API 資料，確保內容維持為最新狀態。</p>
+<p><img src="../manual/media/image86.png"
+style="width:4.77083in;height:2.18056in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成設定後，請點選「匯入」，匯入成功後新的 API
+資料集會出現在該知識庫的資料集列表中，並由系統進行後續索引與處理，供日後檢索與回答使用。</p>
+<p><img src="../manual/media/image86.png"
+style="width:4.77083in;height:2.18056in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<ol start="3" type="1">
+<li><p>關聯資料庫</p></li>
+</ol>
+<p>開啟「關聯資料庫」視窗後，請先於「選取既有資料庫連線」下拉選單中選擇欲關聯的資料庫連線，選取完成後可點選右側「預覽」圖示，確認連線設定與內容是否正確。</p>
+<p><img src="../manual/media/image88.png"
+style="width:5.99306in;height:2.59722in"
+alt="A white rectangular object with a black border Description automatically generated" /></p>
+<p>若尚未建立對應資料庫，請點選「新增資料庫資料集」（請參考〈5.1應用資料庫〉），新增一組資料庫連線設定後，再回到此視窗進行選取。</p>
+<p><img src="../manual/media/image88.png"
+style="width:5.99306in;height:2.59722in"
+alt="A white rectangular object with a black border Description automatically generated" /></p>
+<p>確認欲關聯的資料庫連線無誤後，請點選「關聯」，系統即會將該資料庫加入目前知識庫的資料集列表，後續在檢索與回答時即可引用其中資料。</p>
+<p><img src="../manual/media/image88.png"
+style="width:5.9375in;height:2.59722in"
+alt="A white rectangular object with a black border Description automatically generated" /></p>
+<ol start="4" type="1">
+<li><p>文檔群組</p></li>
+</ol>
+<p>開啟「文檔群組」視窗後，請先於「顯示名稱」欄位輸入此文檔群組的名稱，接著可在「選取既有文檔群組」下拉選單中選擇已建立的文檔群組，選取完成後可點選右側「預覽」圖示確認設定是否正確。</p>
+<p><img src="../manual/media/image89.png" style="width:5.99306in;height:3in"
+alt="一張含有 文字, 螢幕擷取畫面, 軟體, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>若尚未建立文檔，請點選「新增文檔群組資料源」，依系統引導新增文檔群組（請參考〈5.4文檔群組〉），再回到此視窗進行選取。</p>
+<p><img src="../manual/media/image89.png" style="width:5.99306in;height:3in"
+alt="一張含有 文字, 螢幕擷取畫面, 軟體, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>使用者可透過 Chunk Size
+滑桿設定系統在處理群組內文件時，每個文字區塊的長度；數值越大，每塊文字越長，可保留較多上下文。</p>
+<p><img src="../manual/media/image89.png" style="width:5.99306in;height:3in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>Overlap用於設定相鄰文字區塊的重疊長度，數值越大越能保留前後文，但索引量也會增加，一般可維持預設值。</p>
+<p><img src="../manual/media/image89.png" style="width:5.99306in;height:3in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若需系統定期更新此文檔群組，請勾選「啟用定期更新」，並設定更新頻率、頻率單位以及開始與（選填）結束時間，系統即會依排程自動重新處理群組內文件，確保內容維持為最新狀態。</p>
+<p><img src="../manual/media/image90.png"
+style="width:5.99306in;height:2.77083in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>設定完成後，請點選「上傳所有文件」開始建立文檔群組並進行索引。</p>
+<p><img src="../manual/media/image90.png"
+style="width:5.99306in;height:2.77083in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(2) 檢視與設定檢索模型</p>
+<p>使用者可於知識庫內點選右上角的「檢視模型」，檢視或設定該知識庫的模型。</p>
+<p><img src="../manual/media/image91.png" style="width:6in;height:0.4483in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「檢視模型」視窗後，系統會顯示目前此知識庫所使用的各類模型設定，包含
+Embedding Model、Rerank Model 與 LLM
+Model。使用者可透過下拉選單調整對應的模型版本。</p>
+<p><img src="../manual/media/image92.png"
+style="width:3.43056in;height:3.33333in"
+alt="一張含有 文字, 電子產品, 螢幕擷取畫面, 軟體 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>若需進一步調整LLM模型的 Temperature、最大生成長度（max
+tokens）等進階設定，可點選「開啟 LLM
+設定」，系統會導引至對應的模型設定頁面進行詳細調整。</p>
+<p><img src="../manual/media/image92.png"
+style="width:3.40972in;height:3.31944in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「LLM
+設定」視窗後，使用者可於「Temperature」移動滑桿以設定生成內容的隨機性。數值較低，則回覆較穩定、重複性較高，適合需要一致答案的知識庫查詢;
+數值較高，則回覆較有創意、表達方式多樣。</p>
+<p><img src="../manual/media/image48.png" style="width:6in;height:1.72917in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者亦可於「最大生成長度（max
+tokens）」移動滑桿設定模型輸出的最大字數限制，以控制每次回答的篇幅，避免回覆過短或過長。</p>
+<p><img src="../manual/media/image48.png" style="width:6in;height:1.72917in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若使用者需更進階的參數設定，可於頁面中左下方勾選 「進階設定」
+，開啟進階設定後，系統會因應不同模型提供額外的參數設定，一般使用者若無特別需求，可維持預設值。</p>
+<p><img src="../manual/media/image49.png" style="width:6in;height:2.68056in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可於「每次檢索數量」設定每次查詢時最多擷取的文件數量。數量較大，模型可參考的文件更多，答案可能較完整，但回應時間可能略長;
+數量較小，則回應速度較快，但參考資訊較少。</p>
+<p><img src="../manual/media/image50.png" style="width:6in;height:1.25694in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者亦可於「重試次數」移動滑桿以設定檢索失敗時系統最多可重新嘗試的次數。適度提高重試次數可提升容錯率與穩定性。</p>
+<p><img src="../manual/media/image50.png" style="width:6in;height:1.25694in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可新增「提示語說明」，用於設定系統回覆時的整體風格與原則。</p>
+<p><img src="../manual/media/image93.png" style="width:6in;height:1.96319in"
+alt="A close-up of a computer screen Description automatically generated" /></p>
+<p>使用者亦可新增「過濾條件」，用於定義需特別避免或過濾的內容。</p>
+<p><img src="../manual/media/image93.png" style="width:6in;height:1.96319in"
+alt="A close-up of a computer screen Description automatically generated" /></p>
+<p>完成以上所有設定後，請點選右下角的「儲存設定」，將上述之所有設定儲存於系統中。</p>
+<p><img src="../manual/media/image94.png" style="width:6in;height:3.36389in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(3)檢索設定</p>
+<p>使用者可於知識庫內點選右上角的「檢索設定」，檢視或設定每次查詢時的最大檢索數量。</p>
+<p><img src="../manual/media/image91.png" style="width:6in;height:0.4483in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p><img src="../manual/media/image95.png"
+style="width:3.82961in;height:2.10052in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(4) 檢視排程</p>
+<p>使用者可於知識庫內點選右上角的「檢視排程」，檢視目前該知識庫中所有已啟用定期更新的資料集。</p>
+<p><img src="../manual/media/image91.png" style="width:6in;height:0.4483in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「檢視排程」視窗後，系統會列出目前此知識庫中所有已啟用定期更新的資料集，方便使用者檢查各資料集的排程狀態。包含資料集名稱、資料集類型、頻率、上次執行時間和下次執行時間。</p>
+<p><img src="../manual/media/image96.png"
+style="width:5.95833in;height:1.98611in"
+alt="一張含有 文字, 軟體, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>在「動作」欄位中，點選任一資料集的紅色「編輯」圖示，可開啟該資料集的排程設定視窗，調整排程相關設定。</p>
+<p><img src="../manual/media/image96.png"
+style="width:5.95833in;height:1.98611in"
+alt="一張含有 文字, 軟體, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>開啟該資料集的「排程管理」視窗後，可以看到該資料集的排程資訊，使用者可於此選擇以下操作：</p>
+<ol type="1">
+<li><p>立即執行：立刻執行一次排程更新。</p></li>
+<li><p>編輯排程：重新設定更新頻率、頻率單位、起始和結束時間。</p></li>
+<li><p>停止排程：停用此資料集的定期更新。</p></li>
+</ol>
+<p>完成操作後，點選視窗右下角「關閉」，即可返回排程狀態列表頁面。</p>
+<p><img src="../manual/media/image97.png"
+style="width:3.72917in;height:3.70139in"
+alt="一張含有 文字, 螢幕擷取畫面, 軟體, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<h2 class="unnumbered" id="排程維護">4.2 Schedule Maintenance</h2>
+<p>「排程維護」用於集中管理各知識庫中所有啟用定期更新的資料集排程，方便管理者檢查與更新設定。使用者可於應用系統中點選「排程維護」。</p>
+<p><img src="../manual/media/image73.png"
+style="width:1.99517in;height:1.87937in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>進入此頁面後，您將會看到所有已建立的排程，頁面上方的 「請選擇知識庫」
+下拉選單，用於篩選特定知識庫的排程。選取後，下方列表只會顯示該知識庫的排程資料。<img
+src="../manual/media/image98.png" style="width:6in;height:1.49123in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>右側 「＋」
+可新增排程，點選後會開啟該知識庫清單，請依指示新增排程，請參考〈4.1.1建立知識庫〉。</p>
+<p><img src="../manual/media/image98.png" style="width:6in;height:1.62986in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可查看所有項目的名稱、知識庫、資料及類型、更新頻率、排程狀態、下次執行時間及執行次數，如需查看更詳細的資料，可點選黃色「i」圖示，查看該排程的詳細設定與歷史資訊。</p>
+<p><img src="../manual/media/image98.png" style="width:6in;height:1.62986in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>點選動作欄位的紅色「編輯」圖示，可開啟「管理排程」視窗，進一步進行「立即執行」、「編輯排程」或「停止排程」的操作。</p>
+<p><img src="../manual/media/image98.png" style="width:6in;height:1.62986in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p><img src="../manual/media/image99.png"
+style="width:2.80414in;height:2.91059in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若排程狀態為「已停止」，使用者可點選該資料集的動作欄位，將該資料集重新加入或編輯排程以重新啟用。</p>
+<p><img src="../manual/media/image100.png" style="width:6in;height:1.44028in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p><img src="../manual/media/image101.png"
+style="width:3.381in;height:3.10942in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h1 class="unnumbered" id="資料源管理">5. Data Source Management</h1>
+<p>「資料源管理」用於集中管理各知識庫中所有的資料集，包括應用資料庫、外部網站、API、文檔群組，方便使用者查看與新增資料集。使用者可於應用系統中點選「資料源管理」以選擇欲查看的資料源。</p>
+<p><img src="../manual/media/image102.png"
+style="width:2.11185in;height:2.04902in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 設計 的圖片 AI 產生的內容可能不正確。" /></p>
+<h2 class="unnumbered" id="應用資料庫">5.1 Application Database</h2>
+<p>「應用資料庫」用於統一檢視與維護所有可供知識庫使用的資料庫連線。使用者可在此查看與編輯既有連線，或新增資料庫連線，供後續知識庫串接使用。請由「資料源管理」選單中點選「應用資料庫」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image103.png"
+style="width:1.69645in;height:3.30923in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>開啟頁面後，可於此查看資料庫連線資訊包括資料集名稱、資料庫類型、主機名稱、Port和資料庫名稱。</p>
+<p><img src="../manual/media/image104.png" style="width:6in;height:2.48125in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若需要了解更多細節，可以點選「詳細資料」欄位中的黃色「 i」
+圖示，查看更多內容。</p>
+<p><img src="../manual/media/image104.png" style="width:6in;height:1.18627in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可於頁面上方搜尋框，輸入關鍵字後即可篩選下方列表中的資料集名稱，方便快速定位。</p>
+<p><img src="../manual/media/image105.png" style="width:6in;height:2.84861in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="新增應用資料庫">5.1.1 Add Application Database</h3>
+<p>於頁面點選上方 「＋」
+，可打開「新增資料集」視窗，以建立一筆新的資料庫連線設定。</p>
+<p><img src="../manual/media/image105.png" style="width:6in;height:2.84861in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「新增資料集」視窗後，請先於「資料集名稱」欄位輸入此連線在系統中顯示的名稱，並於右側「描述」欄位簡要說明此資料集的用途或來源，以利後續辨識。接著在「資料庫類型」選單中選擇實際使用的資料庫種類，例如PostgreSQL、MySQL
+、MSSQL、Oracle、 SQLite或CSV。</p>
+<p><img src="../manual/media/image106.png"
+style="width:4.06536in;height:3.64894in"
+alt="一張含有 文字, 螢幕擷取畫面, 數字, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<ol type="1">
+<li><p>PostgreSQL / MySQL / MSSQL</p></li>
+</ol>
+<p>若選擇的資料庫類型是PostgreSQL、MySQL或MSSQL，請依序於「主機名稱」與「Port」欄位填入資料庫伺服器的位址與連接埠號碼，再於「資料庫名稱」欄位輸入欲連線的資料庫名稱。</p>
+<p><img src="../manual/media/image106.png"
+style="width:4.06536in;height:3.64894in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>並在「帳號」與「密碼」欄位填寫具備查詢權限的登入憑證。</p>
+<p><img src="../manual/media/image106.png"
+style="width:4.06536in;height:3.64894in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<ol start="2" type="1">
+<li><p>Oracle</p></li>
+</ol>
+<p>若使用的資料庫類型為
+Oracle，則上述欄位必須填寫外（除資料庫名稱），需額外選擇「連線方式」，可於「Service
+Name」或「SID」之間擇一設定，並輸入對應的服務名稱或SID。<img
+src="../manual/media/image107.png" style="width:6in;height:2.67778in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若希望建立後即可供系統使用，請保持勾選「是否啟用此資料集」，若僅暫存設定而尚未啟用，則可取消勾選。</p>
+<p><img src="../manual/media/image106.png"
+style="width:4.06536in;height:3.64894in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>所有欄位填寫完成後，建議先按下左下角的「測試連線」按鈕，系統會嘗試連線至指定資料庫並回報結果，以確認主機、Port、帳號密碼等資訊是否正確。</p>
+<p><img src="../manual/media/image106.png"
+style="width:4.72589in;height:1.74377in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>當連線測試成功且設定內容無誤時，請點選「建立資料集」將此連線儲存到系統中，完成後即會出現在「應用資料庫」清單中，可作為知識庫關聯使用。</p>
+<p><img src="../manual/media/image106.png"
+style="width:4.95929in;height:1.82989in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<ol start="3" type="1">
+<li><p>SQLite / CSV</p></li>
+</ol>
+<p>若選擇的資料庫類型是SQLite或CSV，請先輸入「資料集名稱」和「描述」，再點選<strong>【</strong>Choose
+File<strong>】</strong>，由本機選取欲匯入的檔案。</p>
+<p><img src="../manual/media/image108.png"
+style="width:5.63864in;height:3.12213in"
+alt="一張含有 文字, 螢幕擷取畫面, 數字, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>若當下不需建立或欲放棄本次設定，則可按「取消」離開此視窗。</p>
+<p><img src="../manual/media/image106.png"
+style="width:4.95929in;height:1.82989in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="編輯應用資料庫">5.1.2 Edit Application Database</h3>
+<p>若使用者需編輯連線資料庫，可點選「動作」欄位中的紅色編輯圖示。</p>
+<p><img src="../manual/media/image104.png" style="width:6in;height:1.18611in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟視窗後如需編輯資料庫請點選「編輯」，以開啟編輯視窗。</p>
+<p><img src="../manual/media/image109.png"
+style="width:3.80066in;height:2.45259in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>在「編輯資料集」視窗中，使用者可以調整既有資料庫連線的各項設定。左側區域顯示目前的連線資訊，使用者可於對應欄位編輯欲調整的內容，各欄位與功能的詳細說明，請參閱〈5.1.1
+新增應用資料庫〉。</p>
+<p><img src="../manual/media/image110.png"
+style="width:4.67789in;height:4.23543in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>完成修改後，建議先按下視窗左下方的「測試連線」按鈕，確認主機、連接埠、帳號密碼等資訊是否正確無誤。</p>
+<p><img src="../manual/media/image110.png"
+style="width:2.35882in;height:1.26737in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>右側的「資料表清單」會在連線成功後顯示目前資料庫中可見的資料表列表，並提供搜尋欄位協助快速查詢特定資料表。使用者可以透過此清單檢視連線是否已正確連到預期的資料庫與資料表結構。</p>
+<p><img src="../manual/media/image111.png"
+style="width:4.49105in;height:4.06312in"
+alt="一張含有 文字, 螢幕擷取畫面, 數字, 軟體 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>當測試成功且內容確認無誤時，再點選「儲存變更」，系統即會以最新設定更新此資料集。</p>
+<p><img src="../manual/media/image111.png"
+style="width:4.49105in;height:1.21276in"
+alt="一張含有 文字, 螢幕擷取畫面, 數字, 軟體 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>如需刪除資料集請開啟動作視窗，並請點選「刪除」，以開啟刪除視窗，如確定需刪除該資料庫請點選「刪除」，即可將該資料庫移除系統。</p>
+<p><img src="../manual/media/image109.png"
+style="width:3.78088in;height:2.4229in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h2 class="unnumbered" id="外部網站">5.2 External Website</h2>
+<p>「外部網站」頁面用於統一檢視與維護所有可供知識庫使用的外部網站連線。使用者可在此查看與編輯既有的網站連線，或新增外部網站來源，供後續知識庫擷取與串接使用。請由「資料源管理」選單中點選「外部網站」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image103.png"
+style="width:1.69645in;height:3.30923in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>開啟外部網站頁面後，可於此查看每個網站來源的相關資訊，包括資料集名稱、網址、所綁定的知識庫以及描述內容。</p>
+<p><img src="../manual/media/image112.png" style="width:6in;height:2.97083in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若需了解更多細節，可以點選「詳細資料」欄位中的黃色「 i」
+圖示，查看更多內容。</p>
+<p><img src="../manual/media/image112.png" style="width:6in;height:1.68376in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可於頁面上方搜尋框，輸入關鍵字後即可篩選下方列表中的資料集名稱，方便快速定位。</p>
+<p><img src="../manual/media/image112.png" style="width:6in;height:2.97083in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="新增外部網站">5.2.1 Add External Website</h3>
+<p>於頁面點選上方 「＋」 ，可打開「新增Website
+資料集」視窗，以新增一筆新的外部網站。</p>
+<p><img src="../manual/media/image112.png" style="width:6in;height:2.97083in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟視窗後，請先於上方的「知識庫」下拉選單中選擇此網站要綁定的知識庫。</p>
+<p><img src="../manual/media/image113.png"
+style="width:4.34093in;height:3.10698in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>接著在「資料集名稱」欄位輸入在系統中顯示的名稱，並於「URL」欄位填入欲擷取內容的完整網站連結。下方的「描述」欄位則可輸入簡短說明。</p>
+<p><img src="../manual/media/image113.png"
+style="width:4.45684in;height:3.18994in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若希望新增後立即納入檢索，請維持勾選「是否啟用此資料集」，若僅暫存設定而尚未啟用，可取消勾選。</p>
+<p><img src="../manual/media/image113.png"
+style="width:4.45684in;height:3.18994in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成基本資訊後，使用者可以先按下右下方的「網站預覽」按鈕，在新視窗中確認網址是否可正常開啟且內容正確。</p>
+<p><img src="../manual/media/image113.png"
+style="width:4.45684in;height:3.18994in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>當確認無誤時，再點選「確認新增」，系統便會建立對應的外部網站資料集，並將其掛載到所選知識庫中，供後續的知識檢索與回答使用。</p>
+<p><img src="../manual/media/image113.png"
+style="width:4.45684in;height:3.18994in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="編輯外部網站">5.2.2 Edit External Website</h3>
+<p>若使用者需編輯該筆資料，可點選「動作」欄位中的紅色編輯圖示。</p>
+<p><img src="../manual/media/image112.png" style="width:6in;height:1.66667in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟視窗後如需編輯資料庫請點選「編輯」，以開啟編輯視窗。</p>
+<p><img src="../manual/media/image114.png"
+style="width:4.07098in;height:2.6532in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>在「編輯URL」視窗中，使用者可以調整該資料集的名稱、URL以及描述，只需於欲調整的欄位輸入對應資訊即可變更，各欄位與功能的詳細說明，請參閱〈5.2.1
+新增外部網站〉。</p>
+<p><img src="../manual/media/image115.png"
+style="width:5.03708in;height:3.09454in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成變更後，請點選「儲存變更」，系統即會以最新設定更新此資料集。</p>
+<p><img src="../manual/media/image115.png"
+style="width:5.03708in;height:1.49394in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>如需刪除資料集請開啟動作視窗，並請點選「刪除」，以開啟刪除視窗，如確定需刪除該資料集請點選「刪除」，即可將該資料集移除系統。</p>
+<p><img src="../manual/media/image114.png"
+style="width:4.07098in;height:2.6532in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p><img src="../manual/media/image116.png"
+style="width:4.48887in;height:2.00233in"
+alt="A white background with a grey rectangle with white text Description automatically generated" /></p>
+<h2 class="unnumbered" id="api">5.3 API</h2>
+<p>「API」頁面用於統一檢視與維護所有可供知識庫使用的 API
+資料來源。使用者可在此查看與編輯既有的 API 連線設定，或新增 API
+資料集，供後續知識庫串接與使用。請由「資料源管理」選單中點選「API」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image103.png"
+style="width:1.69645in;height:3.30923in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>開啟API頁面後，可於此查看API資訊，包括資料集名稱和API Base
+URL。若需要了解關於該筆資料的更多細節，可以點選「詳細資料」欄位中的黃色「
+i」 圖示，查看更多內容。</p>
+<p><img src="../manual/media/image117.png" style="width:6in;height:1.58056in"
+alt="一張含有 文字, 字型, 數字, 軟體 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>使用者可於頁面上方搜尋框，輸入關鍵字後即可篩選下方列表中的資料集名稱，方便快速定位。</p>
+<p><img src="../manual/media/image118.png" style="width:6in;height:1.925in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="新增api">5.3.1 Add API</h3>
+<p>於頁面點選上方 「＋」
+，可打開「新增API資料集」視窗，以建立一筆新的API連線設定。</p>
+<p><img src="../manual/media/image118.png" style="width:6in;height:1.925in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「新增 API 資料集」視窗後，請於「API
+資料集名稱」欄位輸入API的名稱，接著在「API Endpoint」欄位填入實際呼叫的
+API 位址。</p>
+<p><img src="../manual/media/image119.png" style="width:6in;height:2.54306in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若該 API
+需要身分驗證，可於「認證方式」中選擇適用的機制，本系統提供Basic
+Auth、Bearer Token、API Key及OAuth
+2.0四種認證方式，請再根據選擇的認證方式依照畫面提示輸入必要的憑證資訊；若無需求可維持「無需驗證」。</p>
+<p><img src="../manual/media/image120.png" style="width:6in;height:1.64583in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若選取Basic Auth（帳號密碼）
+作為認證方式時會要求輸入使用者名稱及密碼。</p>
+<p><img src="../manual/media/image121.png" style="width:6in;height:0.92361in"
+alt="A screenshot of a login Description automatically generated" /></p>
+<p>若選取Bearer Token作為認證方式時會要求輸入Bearer Token。</p>
+<p><img src="../manual/media/image122.png" style="width:6in;height:0.92361in"
+alt="A white background with black lines Description automatically generated" /></p>
+<p>若選取API Key作為認證方式時會要求輸入API Key。</p>
+<p><img src="../manual/media/image123.png" style="width:6in;height:0.92361in"
+alt="A white line on a white surface Description automatically generated" /></p>
+<p>若選取OAuth 2.0（Client Credentials） 作為認證方式時，會要求輸入
+Client ID和Client Secret。</p>
+<p><img src="../manual/media/image124.png" style="width:6in;height:0.92361in"
+alt="A screenshot of a facebook page Description automatically generated" /></p>
+<p>若連線需透過代理伺服器，請在「網路代理設定」區塊中填入「Proxy
+URL」與對應的「Proxy Auth（如有）」。</p>
+<p><img src="../manual/media/image119.png" style="width:6in;height:2.54306in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>「請求標頭（可選）」欄位可填入標頭設定，每行一個標頭並以「Key:
+Value」格式輸入，系統預設為 Content-Type: application/json
+，使用者可自行更改。</p>
+<p><img src="../manual/media/image119.png" style="width:6in;height:2.54306in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>在回應相關設定中，請於「回傳格式」選擇 API
+回傳內容的型態（JSON或XML），並在「超時設定（秒）」選擇時間上限。</p>
+<p><img src="../manual/media/image125.png" style="width:6in;height:2.575in"
+alt="一張含有 螢幕擷取畫面, 文字, 行, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>於「請求方法」欄位選擇實際使用的 HTTP Method，如 GET、POST
+、PUT、DELETE、PATCH。</p>
+<p><img src="../manual/media/image125.png" style="width:6in;height:2.575in"
+alt="一張含有 螢幕擷取畫面, 文字, 行, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>若選擇的請求方法為POST、PUT或PATCH，系統會自動顯示「請求主體（JSON）」欄位，供使用者輸入要隨同請求一併送出的資料內容。</p>
+<p><img src="../manual/media/image126.png" style="width:6in;height:2.71875in"
+alt="一張含有 文字, 螢幕擷取畫面, 行, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>下方的「描述」欄位則可補充說明此 API 的用途或資料內容。</p>
+<p><img src="../manual/media/image125.png" style="width:6in;height:2.575in"
+alt="一張含有 螢幕擷取畫面, 文字, 行, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>完成上述設定後，如希望系統立即將此 API
+納入檢索範圍，請勾選「是否啟用資料集」。</p>
+<p><img src="../manual/media/image125.png" style="width:6in;height:2.575in"
+alt="一張含有 螢幕擷取畫面, 文字, 行, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>建議先點選「測試連線」，確認連線與回應皆正常無誤。</p>
+<p><img src="../manual/media/image125.png" style="width:6in;height:1.22115in"
+alt="一張含有 螢幕擷取畫面, 文字, 行, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>測試成功後，再按下「API 資料集建立」，系統便會儲存設定並於外部 API
+的資料集清單中顯示此連線，供後續知識庫使用。</p>
+<p><img src="../manual/media/image125.png" style="width:6in;height:1.22083in"
+alt="一張含有 螢幕擷取畫面, 文字, 行, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<h3 class="unnumbered" id="編輯api">5.3.2 Edit API</h3>
+<p>若使用者需編輯連線的API，可點選「動作」欄位中的紅色編輯圖示。</p>
+<p><img src="../manual/media/image117.png" style="width:6in;height:1.58056in"
+alt="一張含有 文字, 字型, 數字, 軟體 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>開啟視窗後如需編輯資料庫請點選「編輯」，以開啟編輯視窗。</p>
+<p><img src="../manual/media/image127.png"
+style="width:3.33934in;height:2.15781in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, Rectangle 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>開啟「編輯API資料集」視窗後，可於欲編輯的欄位輸入需變更的內容，各欄位與功能的詳細說明，請參閱〈5.3.1
+新增API〉。完成後，請點選「測試連線」，確認資訊是否有誤。</p>
+<p><img src="../manual/media/image128.png" style="width:6in;height:2.20625in"
+alt="一張含有 文字, 行, 數字, 螢幕擷取畫面 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>當測試成功且內容確認無誤時，再點選「儲存變更」，系統即會以最新設定更新此資料集。</p>
+<p><img src="../manual/media/image128.png" style="width:6in;height:2.20625in"
+alt="一張含有 文字, 行, 數字, 螢幕擷取畫面 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>如需刪除資料集請開啟動作視窗，並請點選「刪除」，以開啟刪除視窗，如確定需刪除該資料集請點選「刪除」，即可將該資料集移除系統。</p>
+<p><img src="../manual/media/image127.png"
+style="width:3.33934in;height:2.15781in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, Rectangle 的圖片 AI 產生的內容可能不正確。" /></p>
+<p><img src="../manual/media/image129.png"
+style="width:3.59875in;height:1.56737in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 標誌 的圖片 AI 產生的內容可能不正確。" /></p>
+<h2 class="unnumbered" id="文檔群組">5.4 Document Group</h2>
+<p>「文檔群組」頁面用於統一檢視與維護所有可供知識庫使用的檔案共享與文件來源。使用者可在此查看與編輯既有的文檔群組設定，或新增文檔群組，供後續知識庫讀取與建立索引。請由「資料源管理」選單中點選「文檔群組」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image103.png"
+style="width:1.69645in;height:3.30923in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>開啟「文檔群組」頁面後，可於此查看資料庫連線資訊包括資料集名稱、位址、協定、連線埠和路徑。若需要了解任一筆資料集的更多細節，可以點選「詳細資料」欄位中的黃色「
+i」 ，查看更多內容。</p>
+<p><img src="../manual/media/image130.png" style="width:6in;height:1.95764in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可於頁面上方搜尋框，輸入關鍵字後即可篩選下方列表中的資料集名稱，方便快速定位。</p>
+<p><img src="../manual/media/image131.png" style="width:6in;height:2.28542in"
+alt="一張含有 文字, 螢幕擷取畫面, 數字, 軟體 的圖片 AI 產生的內容可能不正確。" /></p>
+<h3 class="unnumbered" id="建立文檔群組">5.4.1 Create Document Group</h3>
+<p>於頁面點選上方 「＋」
+，可打開「建立文檔群組」視窗，以建立一筆新的文檔群組連線設定。</p>
+<p><img src="../manual/media/image131.png" style="width:6in;height:2.28542in"
+alt="一張含有 文字, 螢幕擷取畫面, 數字, 軟體 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>開啟「建立文檔群組」視窗後，請於「文檔群組名稱」欄位輸入該群組的名稱，接著在「伺服器位址」欄位填入檔案伺服器的
+IP 或網域名稱。</p>
+<p><img src="../manual/media/image132.png" style="width:6in;height:2.55278in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>於「連線協定」中選擇所使用的通訊協定，例如
+SMB、FTP、SFTP或NFS；系統會依協定自動帶入預設連接埠，若實際環境使用不同埠號，也可以在「連接埠」欄位中調整。</p>
+<p><img src="../manual/media/image132.png" style="width:6in;height:2.55278in"
+alt="A screenshot of a chat box Description automatically generated" /></p>
+<p>並在「共享資料夾」欄位輸入伺服器上實際的分享路徑，例如 /public
+或其他指定目錄。</p>
+<p><img src="../manual/media/image132.png" style="width:6in;height:2.55278in"
+alt="A screenshot of a chat box Description automatically generated" /></p>
+<p>若選擇的連線協定為SMB、FTP或SFTP，請於「帳號」與「密碼」輸入具有該使用權限的使用者憑證。</p>
+<p><img src="../manual/media/image132.png" style="width:6in;height:2.55278in"
+alt="A screenshot of a chat box Description automatically generated" /></p>
+<p>完成上述設定後，建議先按下「測試連線」檢查連線與權限是否正確。</p>
+<p><img src="../manual/media/image132.png" style="width:6in;height:2.55278in"
+alt="A screenshot of a chat box Description automatically generated" /></p>
+<p>確認測試成功後，再點選「建立」即可將此檔案共享註冊為文檔群組，後續即可作為知識庫的檔案來源使用。</p>
+<p><img src="../manual/media/image132.png" style="width:6in;height:2.55278in"
+alt="A screenshot of a chat box Description automatically generated" /></p>
+<h3 class="unnumbered" id="編輯文檔群組">5.4.2 Edit Document Group</h3>
+<p>若使用者需編輯連線資料庫，可點選「動作」欄位中的紅色編輯圖示。</p>
+<p><img src="../manual/media/image130.png" style="width:6in;height:1.95764in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟視窗後如需編輯資料庫請點選「編輯」，以開啟編輯視窗。</p>
+<p><img src="../manual/media/image133.png"
+style="width:4.88287in;height:3.13035in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 標誌 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>開啟「編輯文檔群組」視窗後，可於欲編輯的欄位輸入需變更的內容，各欄位與功能的詳細說明，請參閱〈5.4.1
+新增文檔群組〉。</p>
+<p><img src="../manual/media/image134.png"
+style="width:4.99397in;height:2.81084in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成後，請點選「測試連線」，確認資訊是否有誤。</p>
+<p><img src="../manual/media/image134.png"
+style="width:4.99397in;height:2.81084in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>當測試成功且內容確認無誤時，再點選「儲存變更」，系統即會以最新設定更新此資料集。</p>
+<p><img src="../manual/media/image134.png"
+style="width:4.99397in;height:2.81084in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>如需刪除資料集請開啟動作視窗，並請點選「刪除」，以開啟刪除視窗，如確定需刪除該資料集請點選「刪除」，即可將該資料集移除系統。</p>
+<p><img src="../manual/media/image133.png"
+style="width:4.0025in;height:2.56596in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p><img src="../manual/media/image135.png"
+style="width:4.19419in;height:1.84127in"
+alt="A close-up of a grey box Description automatically generated" /></p>
+<h1 class="unnumbered" id="系統管理">6. System Management</h1>
+<p>「系統管理」用於集中管理整個平台的各項設定與資源，包括專用腦管理、人員管理、群組管理、權限管理、訊息稽核報表及系統設定的功能，方便管理者統一查看與維護。使用者可於應用系統主介面中點選「系統管理」，再選擇欲管理的項目進行設定與調整。</p>
+<p><img src="../manual/media/image136.png"
+style="width:2.1452in;height:2.09667in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<h2 class="unnumbered" id="專用腦管理">6.1 Dedicated Brain Management</h2>
+<p>「專用腦管理」頁面用於集中檢視與維護系統內的所有專用腦。使用者可在此查看各專用腦的基本資料與設定，並進行新增、編輯或刪除等管理操作。請由「系統管理」選單中點選「專用腦管理」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image137.png"
+style="width:2.22049in;height:2.49435in" /></p>
+<p>開啟專用腦頁面後，可檢視所有已建立的專用腦，且可於此頁面查看該專用腦綁定的知識庫、描述及是否啟用。</p>
+<p>使用者可於頁面上方搜尋框，輸入關鍵字後即可篩選下方中的專用腦名稱，方便快速定位。</p>
+<p><img src="../manual/media/image138.png" style="width:6in;height:2.14306in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>點選下圖中箭頭所標示的圖示，即可開啟專用腦的提示工程頁面，建立與管理該專用腦中的提示，詳細操作說明可參閱3.3
+提示工程。</p>
+<p><img src="../manual/media/image138.png" style="width:6in;height:1.84073in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="新增專用腦">6.1.1 Add Dedicated Brain</h3>
+<p>如使用者需新增專用腦，請點選左上角的「＋」後會開啟新增專用腦的視窗，即可建立新的專用腦。</p>
+<p><img src="../manual/media/image138.png" style="width:6in;height:1.84073in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「新增專用腦」頁面後，請於對應欄位輸入專用腦名稱，右側的「描述」欄位可補充此專用腦的用途與服務範圍。</p>
+<p><img src="../manual/media/image139.png"
+style="width:5.39724in;height:3.89364in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>接著於「知識庫綁定」下拉選單中選擇此專用腦要使用的主要知識庫，系統會依選定的知識庫提供檢索與回答內容；若勾選旁邊的「是否啟用」，在儲存後該專用腦即會顯示於專用腦頁面中，若暫不勾選則會以關閉狀態建立，僅能於管理端看到。</p>
+<p><img src="../manual/media/image139.png"
+style="width:5.39724in;height:1.9492in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可從「權限設定」中選取可使用此專用腦的權限角色（權限管理請參閱〈6.4
+權限管理〉），選取後會以標籤方式顯示，可依需求新增或移除，藉此限制只有具備指定權限的使用者才能看到並啟用此專用腦。使用者可於搜尋欄位快速查找欲新增的群組，也可於左側方格中勾選即可全選群組。</p>
+<p><img src="../manual/media/image140.png" style="width:6in;height:3.6375in"
+alt="一張含有 文字, 螢幕擷取畫面, 數字, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>下方的「功能設定」則用來控制此專用腦可提供哪些功能，包括「附件上傳」、「網路查詢」、「RAG搜索」、「檔案生成」；在「是否顯示」欄位開啟開關時，該功能會出現在該專用腦對話介面中供選用，本系統預設為全部顯示。</p>
+<p><img src="../manual/media/image141.png" style="width:6in;height:2.67569in"
+alt="A white background with black lines Description automatically generated" /></p>
+<p>「預設開啟」則決定在進入專用腦對話時該功能是否預先啟用，本系統預設為全部開啟。</p>
+<p><img src="../manual/media/image141.png" style="width:6in;height:2.67569in"
+alt="A white background with black lines Description automatically generated" /></p>
+<p>完成設定後，點選「新增專用腦」即可建立新的專用腦，之後可於「專用腦管理」頁面進一步啟用、停用或調整設定。</p>
+<p><img src="../manual/media/image141.png" style="width:6in;height:2.67569in"
+alt="A white background with black lines Description automatically generated" /></p>
+<h3 class="unnumbered" id="編輯專用腦">6.1.2 Edit Dedicated Brain</h3>
+<p>於專用腦管理頁面中，使用者可點選欲編輯的專用腦以開啟編輯視窗。</p>
+<p><img src="../manual/media/image138.png" style="width:6in;height:1.84073in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「編輯專用腦」視窗後，使用者可在此調整專用腦名稱、綁定的知識庫、權限設定以及各項功能的顯示與預設開啟狀態。各欄位與功能的詳細說明，請參閱〈6.1.1
+新增專用腦〉。</p>
+<p><img src="../manual/media/image142.png"
+style="width:4.54545in;height:4.63173in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成變更後，請點選「儲存變更」，系統即會以最新設定更新此專用腦。</p>
+<p><img src="../manual/media/image142.png"
+style="width:4.54545in;height:2.62515in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>如欲刪除專用腦，請點選該專用腦右上角的圖示。點選後可開啟刪除視窗，如確定刪除請點選該圖示，點選後可開啟刪除視窗，如確定刪除請點選「刪除」。</p>
+<p><img src="../manual/media/image138.png" style="width:6in;height:1.84073in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p><img src="../manual/media/image143.png"
+style="width:4.26667in;height:1.82617in"
+alt="A white background with a grey rectangle with white text Description automatically generated" /></p>
+<h2 class="unnumbered" id="人員管理">6.2 User Management</h2>
+<p>「人員管理」頁面用於集中檢視與維護系統內的所有使用者帳號。使用者可在此查看各帳號的基本資料與權限設定，並進行新增、編輯或刪除等管理操作。請由「系統管理」選單中點選「人員管理」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image144.png"
+style="width:2.06312in;height:2.66335in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>開啟人員管理頁面後，可檢視所有已建立的使用者帳號，並在此查看每位使用者的帳號、權限角色、群組、帳號狀態、上次登入時間與在線狀態等詳細資訊，以方便後續管理與維護。</p>
+<p><img src="../manual/media/image145.png" style="width:6in;height:1.94952in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若需要了解任一使用者的更多細節，可以點選「詳細資料」欄位中的黃色「
+i」
+圖示，查看更多內容。使用者可於頁面上方搜尋框，輸入使用者帳號後即可篩選下方列表中的使用者，方便快速定位。</p>
+<p><img src="../manual/media/image145.png" style="width:6in;height:1.72174in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>點擊「批次上傳」按鈕後，選擇已完成填寫的批次匯入檔案進行上傳，系統將依據檔案內容自動建立或更新使用者資料。</p>
+<p><img src="../manual/media/image145.png" style="width:6in;height:1.72153in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>點擊「下載批次範本」按鈕即可下載標準匯入格式檔案，請依範本欄位規則填寫資料後，再進行批次上傳操作。</p>
+<p><img src="../manual/media/image145.png" style="width:6in;height:1.72153in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若需要將使用者名單匯出，可於使用者名稱右側的方格勾選欲加入於名單中的使用者，再點選右上方的「匯出Excel」，系統會依目前畫面上的篩選與排序條件，將所有符合條件的使用者資料匯出為
+Excel 檔案，下載後即可於試算表軟體中開啟與編輯。</p>
+<p><img src="../manual/media/image145.png" style="width:6in;height:1.72153in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>勾選欲修改的使用者後，點擊「批次修改」按鈕，於設定視窗中選擇需套用的權限、群組或帳號狀態，完成後點擊「儲存變更」即可一次更新多筆資料。</p>
+<p><img src="../manual/media/image145.png" style="width:6in;height:1.72153in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「批次修改設定」視窗後，畫面右上方會顯示目前已勾選的使用者數量。使用者可依需求勾選「套用權限」、「套用群組」與「套用狀態」，系統只會變更被勾選的項目。</p>
+<p><img src="../manual/media/image146.png"
+style="width:3.34375in;height:4.84186in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>若勾選「套用權限」，請在下方「權限」下拉選單中選擇欲套用的角色；若勾選「套用群組」，請於「群組」下拉選單中選擇要指定的群組；若勾選「套用狀態」，可透過「帳號狀態」的啟用開關，一次更新所有選取帳號的啟用狀態。群組及權限設定和說明請參閱〈6.3群組管理〉、〈6.4
+權限管理〉。</p>
+<p><img src="../manual/media/image146.png"
+style="width:3.35947in;height:2.6879in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>使用者可點選下方的使用者清單確認此次將被更新的所有帳號，確認無誤後點選「儲存變更」，系統即會將所選設定套用到清單中的全部使用者。</p>
+<p><img src="../manual/media/image146.png"
+style="width:3.35947in;height:2.01782in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<p>勾選欲刪除的使用者後，點擊「批次刪除」按鈕，系統將刪除所選使用者資料，請確認資料正確後再執行操作。</p>
+<p><img src="../manual/media/image145.png" style="width:6in;height:1.72153in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="新增人員">6.2.1 Add User</h3>
+<p>如管理者需新增單一使用人員，請點選左上角的「＋」後會開啟建立使用者的視窗。</p>
+<p><img src="../manual/media/image145.png" style="width:6in;height:1.72153in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「建立使用者資訊」視窗後，請依序輸入「使用者名稱」、「電子郵件」、「顯示名稱」，做為基本資料。</p>
+<p><img src="../manual/media/image147.png"
+style="width:5.5797in;height:3.7973in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>接著在「密碼」欄位設定登入密碼，並於「權限」下拉選單選擇該使用者所屬的角色，以決定可操作的功能範圍，權限相關設定可參閱〈6.4權限管理〉，請注意如有選擇群組，權限部分將跟隨該群組權限。</p>
+<p><img src="../manual/media/image147.png"
+style="width:5.5797in;height:3.7973in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若同時有設定群組機制，亦可在「群組」欄位選擇對應的群組，方便後續權限與管理歸類，群組相關設定可參閱〈6.3
+群組管理〉。</p>
+<p><img src="../manual/media/image147.png"
+style="width:5.5797in;height:3.7973in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>視窗下方的「是否啟用此人員」勾選框用來控制帳號是否生效，系統預設為開啟狀態，若取消勾選，該使用者將無法登入系統。</p>
+<p><img src="../manual/media/image147.png"
+style="width:5.5797in;height:3.7973in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>確認設定無誤後點選「新增使用者」，即可將該帳號加入系統成為正式使用者。</p>
+<p><img src="../manual/media/image148.png" style="width:6in;height:1.80588in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若有串接 AD 白名單，可勾選「是否搜尋 AD
+白名單使用者」，勾選後，系統會開啟以 AD 白名單為主的建置視窗。</p>
+<p><img src="../manual/media/image149.png" style="width:6in;height:2.30764in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 行 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>在勾選「是否搜尋 AD
+白名單使用者」後，接著在「使用者名稱」欄位點選右側的搜尋按鈕。系統會自動從
+AD
+白名單載入可用使用者清單，您只需在下方列表中點選欲加入的帳號即可。</p>
+<p><img src="../manual/media/image150.png" style="width:6in;height:3.80625in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>選定目標帳號後，管理者請在下方選擇此帳號所屬的「權限角色」與「群組」，群組及權限設定和說明請參閱〈6.3群組管理〉、〈6.4
+權限管理〉。</p>
+<p><img src="../manual/media/image151.png" style="width:6in;height:2.28403in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>確認設定無誤後點選「新增使用者」，即可將該 AD
+白名單帳號加入系統成為正式使用者。</p>
+<p><img src="../manual/media/image151.png" style="width:6in;height:2.28403in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="編輯人員">6.2.2 Edit User</h3>
+<p>若使用者需編輯人員設定，可於人員管理頁面點選「動作」欄位中的紅色編輯圖示。</p>
+<p><img src="../manual/media/image152.png" style="width:6in;height:1.70069in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟視窗後如需編輯使用者的電子郵件、權限或群組請點選「編輯」，以開啟編輯視窗。</p>
+<p><img src="../manual/media/image153.png"
+style="width:3.50174in;height:2.40339in"
+alt="A screenshot of a computer screen Description automatically generated" /></p>
+<p>開啟「編輯用戶資料」視窗後，可於欲編輯的欄位變更內容，各欄位與功能的詳細說明，請參閱〈6.2.1
+新增人員〉。</p>
+<p><img src="../manual/media/image154.png"
+style="width:2.81756in;height:3.17335in"
+alt="一張含有 文字, 螢幕擷取畫面, 數字, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>輸入完畢且確認內容無誤後，再點選「儲存變更」，系統即會以最新設定更新此用戶資訊。</p>
+<p><img src="../manual/media/image154.png"
+style="width:2.81756in;height:3.17335in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>如需刪除人員，請於動作視窗點選「刪除」，以開啟刪除視窗，如確定需刪除該人員請點選「刪除」，刪除後及無法用該帳號登入系統。</p>
+<p><img src="../manual/media/image153.png"
+style="width:3.50174in;height:2.40339in"
+alt="A screenshot of a computer screen Description automatically generated" /></p>
+<p><img src="../manual/media/image155.png"
+style="width:4.02661in;height:1.71411in"
+alt="A close-up of a sign Description automatically generated" /></p>
+<p>如需更改密碼，請於動作視窗點選「重設密碼」，以開啟重設密碼視窗。</p>
+<p><img src="../manual/media/image153.png"
+style="width:3.50174in;height:2.40339in"
+alt="A screenshot of a computer screen Description automatically generated" /></p>
+<p>開啟變更密碼視窗後，請在欄位中輸入新的密碼，並於「確認新密碼」欄再次輸入相同內容以確保無誤。確認完成後，點選「儲存變更」，系統即會更新並套用新的登入密碼。</p>
+<p><img src="../manual/media/image156.png"
+style="width:3.55359in;height:2.48258in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<h2 class="unnumbered" id="群組管理">6.3 Group Management</h2>
+<p>「群組管理」頁面用於集中檢視與維護系統內的所有群組設定。使用者可在此查看各群組的名稱、描述、對應的權限角色以及所包含的使用者數量，並進行新增、編輯或刪除等管理操作。請由「系統管理」選單中點選「群組管理」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image144.png"
+style="width:2.06312in;height:2.68345in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>開啟群組管理頁面後，可檢視所有已建立的群組，並在此查看群組名稱、描述、權限名稱、狀態、使用者數量等詳細資訊，以方便後續管理與維護。</p>
+<p><img src="../manual/media/image157.png" style="width:6in;height:1.33542in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若需要了解任一群組的更多細節或群組名單，可以點選「詳細資料」欄位中的黃色「
+i」 圖示，查看更多內容。</p>
+<p><img src="../manual/media/image157.png" style="width:6in;height:1.33542in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>點選詳細資料後，可開啟此視窗查看群組詳情，包含群組內的人員名單及啟用狀態。</p>
+<p><img src="../manual/media/image158.png"
+style="width:4.77749in;height:3.54497in"
+alt="一張含有 文字, 螢幕擷取畫面, 數字, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>使用者可於頁面上方搜尋框，輸入群組名稱後即可篩選下方列表中的群組，方便快速定位。</p>
+<p><img src="../manual/media/image157.png" style="width:6in;height:1.33542in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="新增群組">6.3.1 Add Group</h3>
+<p>如管理者需新增群組，請點選左上角的「＋」後會開啟建立使用者群組的視窗。</p>
+<p><img src="../manual/media/image157.png" style="width:6in;height:1.33542in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「建立使用者群組」視窗後，請依序輸入「群組名稱」與「描述」。</p>
+<p><img src="../manual/media/image159.png" style="width:6in;height:1.79236in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>並於「權限」選單選取該使用者群組的權限，權限相關設定請參閱〈6.4權限管理〉。</p>
+<p><img src="../manual/media/image159.png" style="width:6in;height:1.79236in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>如需立即啟用該群組，請勾選「是否啟用此群組」。</p>
+<p><img src="../manual/media/image159.png" style="width:6in;height:1.79236in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>確認設定無誤後點選「建立群組」，即可將該群組加入系統以利後續管理使用者。</p>
+<p><img src="../manual/media/image159.png" style="width:6in;height:1.79236in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="編輯群組">6.3.2 Edit Group</h3>
+<p>若使用者需編輯群組資訊，可於群組管理頁面點選「動作」欄位中的紅色編輯圖示。</p>
+<p><img src="../manual/media/image160.png" style="width:6in;height:1.94236in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟視窗後如需編輯群組名稱、描述或權限請點選「編輯」，以開啟編輯視窗。</p>
+<p><img src="../manual/media/image161.png"
+style="width:3.45641in;height:1.86242in"
+alt="A red and orange rectangular boxes Description automatically generated" /></p>
+<p>開啟「編輯群組」視窗後，可於欲編輯的欄位輸入需變更的內容，或更新群組的權限及啟用狀態，變更完畢且確認內容無誤後，再點選「儲存變更」，系統即會以最新設定更新此群組資訊。</p>
+<p><img src="../manual/media/image162.png"
+style="width:2.86405in;height:3.33344in" /></p>
+<p>如需刪除群組，請於動作視窗點選「刪除」，以開啟刪除視窗。</p>
+<p><img src="../manual/media/image161.png"
+style="width:3.45641in;height:1.86242in"
+alt="A red and orange rectangular boxes Description automatically generated" /></p>
+<p>如確定需刪除該群組請點選「刪除」，請注意刪除該群組後會解除所有群組成員的關聯且無法復原。</p>
+<p><img src="../manual/media/image163.png"
+style="width:4.07353in;height:2.59688in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<h2 class="unnumbered" id="權限管理">6.4 Permission Management</h2>
+<p>「權限管理」頁面用於集中檢視與維護系統內的所有權限角色設定。使用者可在此查看各權限的名稱、描述以及可存取的專用腦或功能範圍，並視需求進行新增、編輯或刪除等管理操作。請由「系統管理」選單中點選「權限管理」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image144.png"
+style="width:2.06312in;height:2.6734in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>開啟權限管理頁面後，可檢視所有已建立的權限角色，並在此查看權限名稱、描述及關聯的專用腦等詳細資訊，以方便後續管理與維護。</p>
+<p><img src="../manual/media/image164.png" style="width:6in;height:2.19583in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若需要了解任一權限角色的更多細節，可以點選「詳細資料」欄位中的黃色「
+i」 圖示，查看更多內容。</p>
+<p><img src="../manual/media/image164.png" style="width:6in;height:2.19583in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>點選詳細資料後，可開啟此視窗查看權限詳情，包含可使用的功能項目。</p>
+<p><img src="../manual/media/image165.png"
+style="width:4.51482in;height:2.47845in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可於頁面上方搜尋框，輸入權限名稱後即可篩選下方列表中的權限，方便快速定位。</p>
+<p><img src="../manual/media/image164.png" style="width:6in;height:2.19583in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="新增權限">6.3.1 Add Permission</h3>
+<p>如管理者需新增權限，請點選左上角的「＋」後會開啟新增權限的視窗。</p>
+<p><img src="../manual/media/image164.png" style="width:6in;height:2.19583in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟「新增權限」視窗後，請先在「權限名稱」欄位輸入此角色的名稱，再於「描述」欄位簡要說明此權限。</p>
+<p><img src="../manual/media/image166.png"
+style="width:5.72981in;height:2.31049in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>接著在「綁定專用腦」下拉選單中勾選此權限可使用的專用腦，專用腦相關設定請參閱〈6.1
+專用腦管理〉。</p>
+<p><img src="../manual/media/image167.png" style="width:6in;height:2.41944in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>畫面右側會顯示本系統的功能清單，依「提示應用」、「應用系統」、「AI
+知識」分類，可點選該分類以展開各項功能。管理者請勾選允許此權限存取的頁面與功能；未勾選的項目則代表此權限無法操作，各項功能的說明及操作請參閱本手冊對應的章節。</p>
+<p><img src="../manual/media/image166.png"
+style="width:5.72981in;height:2.31049in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>下方的「是否啟用此權限」預設為勾選，若僅先建立而不立即啟用，可取消勾選。完成所有設定後，點選左下角「新增權限」，系統便會建立新的權限角色並套用您所勾選的功能範圍。</p>
+<p><img src="../manual/media/image166.png"
+style="width:5.72981in;height:1.10401in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="編輯權限">6.3.2 Edit Permission</h3>
+<p>若使用者需編輯權限角色，可於權限管理頁面點選「動作」欄位中的紅色編輯圖示。</p>
+<p><img src="../manual/media/image164.png" style="width:6in;height:2.19583in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟視窗後如需編輯權限名稱、描述、專用腦綁定或可使用的功能選項請點選「編輯」，以開啟編輯視窗。</p>
+<p><img src="../manual/media/image161.png"
+style="width:3.45641in;height:1.86242in"
+alt="A red and orange rectangular boxes Description automatically generated" /></p>
+<p>開啟「編輯權限資料」視窗後，使用者可於畫面左側直接於對應的欄位修改權限名稱或描述內容。</p>
+<p><img src="../manual/media/image168.png"
+style="width:5.92035in;height:2.83819in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>下方的「選擇專用腦」列出目前已綁定的專用腦清單，若需調整可透過下拉選單新增或移除專用腦。</p>
+<p><img src="../manual/media/image168.png"
+style="width:5.92035in;height:2.83819in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>右側區塊則顯示此權限目前擁有的功能範圍，可依「提示應用」、「應用系統」、「AI
+知識」分類展開後，可勾選或取消勾選各項功能。</p>
+<p><img src="../manual/media/image168.png"
+style="width:5.92035in;height:2.83819in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>下方的「是否啟用此權限」可依照管理者需求變更。</p>
+<p><img src="../manual/media/image168.png"
+style="width:5.92035in;height:1.34257in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成所有修改後，請點選右下角「儲存變更」，系統即會更新該權限設定並套用至所有已指派此權限的使用者。</p>
+<p><img src="../manual/media/image168.png"
+style="width:5.92035in;height:1.34257in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>如需刪除權限，請於動作視窗點選「刪除」，以開啟刪除視窗，如確定需刪除該權限請點選「刪除」，本系統會將該權限移除。</p>
+<p><img src="../manual/media/image161.png"
+style="width:3.45641in;height:1.86242in"
+alt="A red and orange rectangular boxes Description automatically generated" /></p>
+<p><img src="../manual/media/image169.png"
+style="width:3.99223in;height:1.56362in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 標誌 的圖片 AI 產生的內容可能不正確。" /></p>
+<h2 class="unnumbered" id="訊息稽核表">6.5 Message Audit Log</h2>
+<p>「訊息稽核表」提供系統對話紀錄的集中查詢與稽核功能，方便管理者快速掌握使用狀況並追蹤互動歷程。此頁面同時整合「報表資料」「回饋統計」與「圖表分析」，便於檢視明細、彙整統計與進行分析。請由「系統管理」選單點選「訊息稽核表」進入此功能頁。</p>
+<p><img src="../manual/media/image144.png"
+style="width:2.06312in;height:2.68345in"
+alt="A screenshot of a cell phone Description automatically generated" /></p>
+<p>進入「訊息稽核報表」後，畫面上半部查詢條件區域，提供多種篩選條件協助管理者鎖定要檢視的對話紀錄，如不需篩選，請直接點選查詢以查看所有訊息紀錄。</p>
+<p><img src="../manual/media/image170.png" style="width:6in;height:1.21667in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>如需篩選訊息，於「使用者」選單中可選取欲查看的帳號;
+在「知識庫」欄位可以選擇通用腦綁定的知識庫來源;
+「助手」欄位則可指定哪一個專用腦助手的對話內容要被列出。</p>
+<p><img src="../manual/media/image170.png" style="width:6in;height:1.21667in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>下方的「開始日期」與「結束日期」用於設定查詢的時間區間，只會顯示在此期間內產生的對話紀錄。</p>
+<p><img src="../manual/media/image170.png" style="width:6in;height:1.21667in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若還需要進一步聚焦特定主題，可在「查詢內容」欄位輸入關鍵字，系統會只抓出問題或回答中包含該關鍵字的紀錄。</p>
+<p><img src="../manual/media/image170.png" style="width:6in;height:1.21667in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>設定完上述條件後，點選右側的「查詢」按鈕即可執行搜尋，下方列表會依據條件顯示對應的訊息稽核結果。</p>
+<p><img src="../manual/media/image170.png" style="width:6in;height:1.21667in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="報表資料">6.5.1 Report Data</h3>
+<p>在「訊息稽核報表」中的「報表資料」頁面，系統會依照上方設定的查詢條件列出符合條件的對話紀錄。系統預設每一筆資料都會顯示發問的「使用者」、「問題」、以及建立該筆紀錄的「建立時間」，方便管理者檢視。</p>
+<p><img src="../manual/media/image171.png"
+style="width:5.90476in;height:2.51458in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若需檢視完整系統回覆內容，可點選「內容」欄位中的圖示，系統便會開啟詳細視窗呈現該次問答的系統回應。</p>
+<p><img src="../manual/media/image172.png" style="width:6in;height:1.52153in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>如需進一步查看對話紀錄的詳細資訊，可點選表格右上角的圖示開啟「動態管理欄位」視窗，開啟後使用者可自行決定列表中要顯示哪些資料欄位。</p>
+<p><img src="../manual/media/image172.png" style="width:6in;height:1.52153in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>視窗內會列出可選欄位，包含對話名稱、知識庫、模型名稱、訊息檔案、網頁查詢、SQL
+查詢與 IP
+，使用者只需勾選想要顯示於報表資料的項目，未勾選的欄位便會自動從報表中隱藏。完成勾選後關閉視窗即可立即套用變更。</p>
+<p><img src="../manual/media/image173.png"
+style="width:2.68831in;height:2.48651in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>報表右上角的「匯出 Excel」按鈕可將目前查詢結果匯出為 Excel
+檔案，方便使用者後續做進一步統計或留存。</p>
+<p><img src="../manual/media/image172.png" style="width:6in;height:1.52153in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="回饋統計">6.5.2 Feedback Statistics</h3>
+<p>使用者可在「訊息稽核報表」中切換至「回饋統計」頁面，系統會依照上方設定的查詢條件，列出所有符合條件且有回饋紀錄的對話。列表中會顯示發問的「使用者」、「問題」、使用者的「回饋」，和每一筆紀錄收到的「Like」與「Dislike」次數，方便管理者快速了解使用者對回答品質的滿意度與回饋情形。</p>
+<p><img src="../manual/media/image174.png"
+style="width:5.82857in;height:2.30556in"
+alt="一張含有 文字, 螢幕擷取畫面, 字型, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>其餘欄位說明與操作方式包含檢視內容、Excel匯出、進階設定請參閱〈6.5.1
+報表資料〉。</p>
+<p><img src="../manual/media/image175.png"
+style="width:5.91964in;height:1.29444in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="圖表分析">6.5.3 Chart Analysis</h3>
+<p>使用者可在「訊息稽核報表」中切換至「圖表分析」頁面，系統會依照上方設定的查詢條件，將符合條件的對話與回饋紀錄加總後，以各式圖表呈現整體使用情況與滿意度概況。</p>
+<p><img src="../manual/media/image176.png" style="width:6in;height:3.44722in"
+alt="一張含有 文字, 螢幕擷取畫面, 圖表, 數字 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>左側的長條圖「助手對話與訊息數量」會以每個助手為一個橫軸項目，同時顯示其對話數與訊息數，協助判斷哪些助手被使用得最頻繁。使用者可將滑鼠停留於任一圖表中任一類別區塊以查看該區塊的實際對話或訊息數量。</p>
+<p><img src="../manual/media/image177.png"
+style="width:4.11735in;height:3.08166in"
+alt="A graph with red and orange lines Description automatically generated" /></p>
+<p>「助手訊息分布圖」則將所有訊息量依助手分類，透過圖表呈現各助手在整體訊息量中大約占的比例，可觀察不同助手之間的使用占比是否符合預期。使用者可將滑鼠停留於任一圖表中任一類別區塊以查看該區塊的實際訊息數量。</p>
+<p><img src="../manual/media/image178.png"
+style="width:4.02136in;height:3.01603in"
+alt="一張含有 文字, 螢幕擷取畫面, 圖表, 圓形 的圖片 AI 產生的內容可能不正確。" /></p>
+<p>「統計摘要」區塊會顯示設定的起訖日期、符合條件的「總助手數量」、以及對應期間內的「總對話數量」與「總訊息數量」，讓管理者快速掌握整體使用量。</p>
+<p><img src="../manual/media/image179.png"
+style="width:3.0318in;height:3.14982in"
+alt="A screenshot of a cellphone Description automatically generated" /></p>
+<p>在摘要旁的「助手統計資料」表格中，系統會依各個助手逐一列出其「助手名稱」、「對話數量」、「訊息數量」以及所綁定的「知識庫」，方便管理者比對不同助手之間的使用頻率與對應的知識來源。</p>
+<p><img src="../manual/media/image180.png" style="width:6in;height:2.93264in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>在頁面下方的「使用者回饋」區塊，系統會將同一段期間內所有對話的 Like
+與 Dislike
+數量彙整為圓餅圖，並在圖上標示各自的筆數與百分比，管理者可以透過此圖快速了解目前整體滿意度的分布情況供後續分析使用。</p>
+<p><img src="../manual/media/image181.png"
+style="width:4.04303in;height:3.07533in"
+alt="一張含有 文字, 螢幕擷取畫面, 圖表, 圓形 的圖片 AI 產生的內容可能不正確。" /></p>
+<h2 class="unnumbered" id="系統設定">6.6 System Settings</h2>
+<p>「系統設定」頁面用於設定系統基本功能，包括系統LOGO、語系設定、時區設定、SSO設定、及License上傳。請由「系統管理」選單中點選「系統設定」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image137.png"
+style="width:2.41175in;height:2.86324in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<h3 class="unnumbered" id="選擇系統logo">6.6.1 System Logo</h3>
+<p>於系統設定中的選擇系統LOGO，點選【Choose
+File】由本機選擇圖片檔案，上傳後即會在下方預覽區顯示。</p>
+<p><img src="../manual/media/image182.png"
+style="width:5.55971in;height:2.08103in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>如需恢復為無 Logo 狀態，可點選【移除Logo】移除目前使用的圖檔。</p>
+<p><img src="../manual/media/image182.png"
+style="width:5.55971in;height:2.08103in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="語系設定">6.6.2 Language Settings</h3>
+<p>於下拉選單中選擇系統語言，系統預設為中文，亦可切換為英文。語系變更後，系統介面文字將依所選語言顯示。</p>
+<p><img src="../manual/media/image183.png"
+style="width:5.84633in;height:1.75051in"
+alt="A screenshot of a chat Description automatically generated" /></p>
+<h3 class="unnumbered" id="時區設定">6.6.3 Timezone Settings</h3>
+<p>於下拉選單中選擇系統時區，預設為
+UTC+8（台灣）。設定完成後，系統中的時間（例如排程、建立時間與紀錄時間）皆會依所選時區顯示。</p>
+<p><img src="../manual/media/image184.png" style="width:6in;height:1.79653in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="sso設定">6.6.4 SSO Settings</h3>
+<p>於「請選擇SSO類型」下拉選單中，選擇欲使用的 SSO
+方案（本系統提供OpenID
+Connect驗證、SAML驗證、LDAP驗證），選取後，下方會顯示對應的白名單或連線設定欄位，請依企業
+IT 規範填寫必要資訊。完成設定並儲存後，使用者即可透過 SSO
+方式登入系統；若未設定，則維持一般帳號密碼登入機制。</p>
+<p><img src="../manual/media/image185.png" style="width:6in;height:1.44097in"
+alt="一張含有 文字, 行, 字型, 螢幕擷取畫面 的圖片 AI 產生的內容可能不正確。" /></p>
+<h3 class="unnumbered" id="license-授權檔案上傳">6.6.5 License File Upload</h3>
+<p>點選 【Choose File】，自本機選取供應商提供的 license.key
+檔案。確認檔名無誤後，點選右側
+「上傳」，系統會將授權檔案上傳並完成註冊驗證。完成後才能正式啟用系統功能。</p>
+<p><img src="../manual/media/image186.png"
+style="width:5.40879in;height:2.30312in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h2 class="unnumbered" id="系統參數設定">6.7 System Parameters</h2>
+<p>於「系統參數設定」頁面中，管理者可檢視與管理系統運作所需的各項參數設定，包含
+API
+endpoint、系統金鑰、檔案處理限制、服務主機資訊及其他系統功能相關設定。請由「系統管理」選單中點選「系統參數設定」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image137.png"
+style="width:2.41175in;height:2.86324in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>頁面中提供參數設定鍵、設定分類、描述、設定值及啟用狀態等資訊。</p>
+<p><img src="../manual/media/image187.png" style="width:6in;height:3.15208in"
+alt="Uploaded image" /></p>
+<p>管理者可透過搜尋欄位快速查找指定參數，並可依需求進行排序與分頁瀏覽。</p>
+<p><img src="../manual/media/image187.png" style="width:6in;height:3.15208in"
+alt="Uploaded image" /></p>
+<p>若需修改參數內容，可點擊列表右側的動作圖示開啟編輯視窗。</p>
+<p><img src="../manual/media/image187.png" style="width:6in;height:3.15208in"
+alt="Uploaded image" /></p>
+<p>開啟「編輯系統參數」視窗後，管理者可檢視參數設定鍵、設定分類與目前啟用狀態，並依需求調整設定值與描述內容。</p>
+<p><img src="../manual/media/image188.png"
+style="width:3.45631in;height:2.14563in" alt="Uploaded image" /></p>
+<p>若需停用該參數，可取消勾選啟用狀態；完成修改後，點擊「儲存變更」按鈕即可更新系統參數設定，若不需修改則可點擊「取消」或關閉視窗離開編輯畫面。</p>
+<p><img src="../manual/media/image188.png"
+style="width:3.45631in;height:2.14563in" alt="Uploaded image" /></p>
+<h2 class="unnumbered" id="api-key-管理">6.8 API Key Management</h2>
+<p>於「API Key 管理」頁面中，使用者可設定與管理系統串接外部 AI
+服務所需的 API Key，並查詢 API
+使用量與費用資訊，以利進行模型功能啟用與使用成本監控。請由「系統管理」選單中點選「API
+Key 管理」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image137.png"
+style="width:2.41175in;height:2.86324in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<h3 class="unnumbered" id="api-key設定">6.8.1 API Key Settings</h3>
+<p>於「API Key 設定」頁面中，使用者可設定與管理外部 AI 服務所需的 API
+金鑰，以啟用系統相關模型功能。使用者需輸入 OpenAI API
+Key，系統將透過該金鑰連接 OpenAI 模型服務。</p>
+<p><img src="../manual/media/image189.png" style="width:6in;height:2.825in"
+alt="Uploaded image" /></p>
+<p>若需查詢 API 使用量與費用資訊，則需另外輸入具有查詢權限的 OpenAI
+使用量查詢 API 金鑰。</p>
+<p><img src="../manual/media/image189.png" style="width:6in;height:2.825in"
+alt="Uploaded image" /></p>
+<p>另可於 Google Gemini API Key 欄位中輸入 Gemini API 金鑰，以啟用
+Google Gemini 模型功能。</p>
+<p><img src="../manual/media/image189.png" style="width:6in;height:2.825in"
+alt="Uploaded image" /></p>
+<p>各欄位右側提供顯示與隱藏功能，可切換 API Key
+的可視狀態，完成設定後點擊「儲存 API Key」按鈕即可保存設定內容。</p>
+<p><img src="../manual/media/image189.png" style="width:6in;height:2.825in"
+alt="Uploaded image" /></p>
+<h3 class="unnumbered" id="api-key使用量監控">6.8.2 API Key Usage Monitoring</h3>
+<p>於「API Key 使用量監控」頁面中，使用者可查詢指定 API Key
+的使用情況與費用資訊，以利進行成本管理與資源監控。</p>
+<p><img src="../manual/media/image190.png" style="width:6in;height:2.825in"
+alt="Uploaded image" /></p>
+<p>使用者需先選擇欲查詢的 API
+Key，並設定每月預算金額與查詢月份，系統將依據所輸入的條件，自 API
+官方取得對應期間的使用量與費用資料。完成條件設定後，點擊「查詢」按鈕即可檢視
+API 使用統計與相關監控資訊。</p>
+<p><img src="../manual/media/image190.png" style="width:6in;height:2.825in"
+alt="Uploaded image" /></p>
+<p>點選查詢後，系統會顯示多個圖表，其中「帳戶使用資訊」區塊用於顯示目前
+API Key
+在指定月份中的整體使用成本，若於上方輸入對應預算，系統會顯示剩餘額度。</p>
+<p><img src="../manual/media/image191.png" style="width:6in;height:2.97847in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>下方區塊用於摘要顯示目前 API 使用狀況，包含總費用、Completion
+Tokens、Embedding Tokens 以及圖片生成使用量的資訊。</p>
+<p><img src="../manual/media/image191.png" style="width:6in;height:2.97847in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>「費用分類」圖表用於分析不同模型與功能所產生的費用比例，系統會依模型類型、自動快取輸入（cached
+input）、Web Search 工具呼叫或 Embedding
+模型等項目進行統整。管理者可透過此圖表快速辨識主要成本來源，進一步優化模型使用策略與
+API 呼叫方式，以降低整體使用成本。</p>
+<p><img src="../manual/media/image192.png" style="width:6in;height:2.97847in"
+alt="A white and blue line with green lines Description automatically generated with medium confidence" /></p>
+<p>「趨勢圖」用於顯示指定期間內每日 API
+使用成本的變化情況，系統會以長條圖方式呈現每日花費金額，並提供平均花費參考線，方便管理者觀察流量高峰、異常使用狀況與整體成本變化趨勢。</p>
+<p><img src="../manual/media/image193.png" style="width:6in;height:1.59091in"
+alt="A screenshot of a graph Description automatically generated" /></p>
+<p>「Completion 模型使用量」表格用於統計各 Completion 模型的 Token
+使用情況與請求次數，包含輸入 Tokens、輸出 Tokens 與 Requests 數量。</p>
+<p><img src="../manual/media/image194.png"
+style="width:6.09487in;height:1.73779in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>「Embedding 模型使用量」表格用於顯示 Embedding 模型的 Token
+使用狀況與請求次數，方便管理者掌握向量化、搜尋或知識庫相關功能所消耗的資源情況。若系統尚未使用
+Embedding 功能，表格中則不會顯示相關資料。</p>
+<p><img src="../manual/media/image194.png"
+style="width:5.82838in;height:1.64799in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>「明細表格」中於左側詳細列出每日 API
+花費金額，右側顯示視覺化占比，方便管理者快速查看每日成本差異與資源消耗狀況。</p>
+<p><img src="../manual/media/image194.png"
+style="width:6.14661in;height:1.72129in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>最下方的「費用明細」表格用於顯示各模型、工具或功能所產生的詳細花費資訊，包含每項目對應的金額與成本占比，管理者可透過此區塊深入了解各
+API 功能的實際支出來源，方便進行成本追蹤、使用優化與內部費用分析。</p>
+<p><img src="../manual/media/image195.png"
+style="width:6.30578in;height:1.99989in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h2 class="unnumbered" id="問題回報">6.9 Issue Report</h2>
+<p>於「問題回報」頁面中，使用者可填寫系統使用過程中遇到的問題或異常情況，提交後將由管理人員進行確認與處理。請由「系統管理」選單中點選「問題回報」，即可開啟此頁面。</p>
+<p><img src="../manual/media/image137.png"
+style="width:2.41175in;height:2.86324in"
+alt="A screenshot of a phone Description automatically generated" /></p>
+<p>開啟該頁面後，請依序於對應欄位中輸入標題、問題分類、優先順序、問題描述。</p>
+<p><img src="../manual/media/image196.png" style="width:6in;height:2.96448in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者亦可上傳相關截圖、文件或其他附件作為輔助說明，單次最多可上傳 5
+個檔案，總容量限制為 20MB，支援 PDF、Word、Excel 與圖片格式。</p>
+<p><img src="../manual/media/image196.png"
+style="width:6.15308in;height:3.04022in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>確認資料填寫完成後，點擊「送出回報」按鈕即可提交問題。</p>
+<p><img src="../manual/media/image196.png" style="width:6in;height:2.96448in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若需重新填寫，可點擊「清除」按鈕移除目前輸入內容。</p>
+<p><img src="../manual/media/image196.png" style="width:6in;height:2.96389in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h1 class="unnumbered" id="課程學習">7. Course Learning</h1>
+<p>「課程學習」提供使用者進行AI線上課程學習與進度追蹤，使用者可於此瀏覽各類
+AI
+課程內容、觀看教學影片並掌握個人學習與測驗進度。系統會依據課程章節記錄學習狀態，協助使用者循序完成課程內容與相關測驗。使用者可於左側選單中點選「課程學習」。</p>
+<p><img src="../manual/media/image197.png"
+style="width:1.80874in;height:2.79892in"
+alt="A computer and glasses on a table Description automatically generated" /></p>
+<h2 class="unnumbered" id="課程清單">7.1 Course List</h2>
+<p>「課程清單」用於管理系統中的課程內容，使用者可在此查看各課程主題、學習進度與測驗資訊，並快速進入指定課程進行學習。於「課程學習」中點選「課程清單」即可進入該頁面。</p>
+<p><img src="../manual/media/image198.png"
+style="width:1.92158in;height:2.577in"
+alt="A computer and glasses on a table Description automatically generated" /></p>
+<p>於「課程清單」頁面中，使用者可瀏覽系統提供的各類課程主題，並查看目前的學習與測驗進度。右側區域提供個人學習進度，包含各課程完成比例以及最近觀看的課程內容，方便使用者快速接續先前的學習紀錄。</p>
+<p><img src="../manual/media/image199.png"
+style="width:6in;height:3.44583in" /></p>
+<p>點選繼續觀看中的影片，即可進入該影片的觀看頁面。</p>
+<p><img src="../manual/media/image199.png"
+style="width:1.92647in;height:3.06075in"
+alt="A computer and glasses on a table Description automatically generated" /></p>
+<p>頁面下方亦顯示測驗進度與下一個待完成測驗，協助使用者掌握目前課程完成狀態與後續學習安排。使用者可點選測驗中心，進行持續學習與能力評估。</p>
+<p><img src="../manual/media/image199.png"
+style="width:6in;height:3.44583in" /></p>
+<p>進入測驗中心後，可於此查看所有測驗完成進度及測驗狀態、分數、應考時間，如需進行測驗請點選開始測驗，每份測驗需於單元內的影片完成後才可解鎖，通過該測驗後可隨時查看詳細解析。</p>
+<p><img src="../manual/media/image200.png"
+style="width:6in;height:3.48056in" /></p>
+<p>課程清單頁面下方會顯示課程分類，使用者可依需求點選指定課程進入學習內容，包含
+AI 基礎知識、AI 應用與案例或 AI
+策略與規劃三個主題，點選任一主題即可進入該課程分類頁面。</p>
+<p><img src="../manual/media/image199.png"
+style="width:6in;height:3.44583in" /></p>
+<p>於課程分類頁面中，使用者可查看指定課程主題下的章節內容與學習進度，並依序進行各單元學習。頁面上方會顯示目前課程名稱、課程簡介、整體學習進度以及已學習的影片內容，使用者可透過進度條快速掌握目前完成狀態。</p>
+<p><img src="../manual/media/image201.png" style="width:6in;height:3.44583in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>右側亦會顯示課程總影片數量，方便確認課程內容規模。</p>
+<p><img src="../manual/media/image201.png" style="width:6in;height:1.9596in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>頁面下方則列出各章節單元，使用者可展開章節查看相關課程內容與影片數量，並點擊指定單元進入學習。系統會自動記錄使用者的觀看進度與最近學習內容，方便後續持續學習與進度追蹤。</p>
+<p><img src="../manual/media/image201.png"
+style="width:6in;height:2.05051in" /></p>
+<p>點擊指定單元後，會展開如下圖所示該章節中的所有影片，使用者可進一步查看各章節下的課程單元與學習狀態，並進行影片學習與測驗作業。頁面上方會顯示課程整體進度、最近學習內容及課程影片總數，方便使用者掌握目前學習情況。</p>
+<p><img src="../manual/media/image202.png" style="width:6in;height:3.44583in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>各章節可展開檢視詳細課程內容，系統會列出單元名稱、影片時長與學習完成狀態，並提供「課程問卷」與「測驗」功能，供使用者於完成學習後進行回饋填寫與能力測驗。</p>
+<p><img src="../manual/media/image202.png" style="width:6in;height:3.44583in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>當單元顯示為「完成」時，代表該課程內容已學習完成；若顯示已觀看數量，則表示目前章節的觀看進度。使用者可透過本頁面依序進行各課程單元學習，系統亦會自動記錄觀看進度與學習狀態，以利後續持續學習與進度追蹤。</p>
+<p><img src="../manual/media/image202.png" style="width:6in;height:3.44583in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>點選任一部課程影片，即可進入該課程的播放頁面。</p>
+<p><img src="../manual/media/image202.png" style="width:6in;height:2.30264in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>進入課程播放頁面後，使用者可觀看指定課程影片內容，並透過系統提供的相關功能進行學習與互動。頁面左側為影片播放區域，使用者可操作影片播放、暫停、調整音量與切換全螢幕模式，系統亦會自動記錄觀看進度與觀看次數。影片下方會顯示課程名稱與相關資訊，方便使用者確認目前學習內容。右側則提供「同系列課程」與其他推薦影片列表，使用者可快速切換至其他課程單元進行學習。頁面下方另提供留言互動區域，供使用者查看或參與課程討論。</p>
+<p><img src="../manual/media/image203.png" style="width:6in;height:3.48056in"
+alt="A screenshot of a video Description automatically generated" /></p>
+<p>課程頁面中亦整合「AI 助理」功能，使用者可於學習過程中直接向 AI
+助理提問課程相關問題。請點選畫面中右下角按鈕開啟AI助理。</p>
+<p><img src="../manual/media/image203.png"
+style="width:2.81651in;height:3.48056in" /></p>
+<p>開啟 AI
+助理後，使用者可於對話輸入框中輸入問題，系統將根據目前課程內容提供即時回覆與學習協助，以協助使用者更快速理解課程知識與重點內容。</p>
+<p><img src="../manual/media/image204.png"
+style="width:6in;height:3.48056in" /></p>
+<p>完成觀看影片後，可點選左上角按鈕可回到影片清單。</p>
+<p><img src="../manual/media/image203.png"
+style="width:4.89908in;height:1.91743in"
+alt="A screenshot of a video Description automatically generated" /></p>
+<h2 class="unnumbered" id="課程設定">7.2 Course Settings</h2>
+<p>「課程設定」用於管理系統中的課程內容與學習權限，管理者可在此維護課程分類、章節影片、課程狀態與觀看權限設定，並管理學習進度報表與相關課程資源。於「課程學習」中點選「課程設定」即可進入以下頁面。</p>
+<p><img src="../manual/media/image198.png"
+style="width:1.92158in;height:2.577in"
+alt="A computer and glasses on a table Description automatically generated" /></p>
+<h3 class="unnumbered" id="課程管理">7.2.1 Course Management</h3>
+<p>進入「課程設定」後左側會顯示所有設定項目，點選課程管理中的任一頁面後，管理者可維護該課程主題的相關課程內容與章節設定。此部分將以「A.
+AI基礎知識」作為範例。</p>
+<p><img src="../manual/media/image205.png" style="width:6in;height:3.45in"
+alt="Uploaded image" /></p>
+<p>頁面上方會顯示課程名稱、課程簡介及目前課程影片總數，方便管理者掌握整體課程規模。</p>
+<p><img src="../manual/media/image205.png"
+style="width:4.97778in;height:3.09167in" alt="Uploaded image" /></p>
+<p>各章節區塊可展開或收合檢視詳細內容，並顯示章節所屬權限群組、課程標籤、影片數量及目前發布狀態。</p>
+<p><img src="../manual/media/image205.png"
+style="width:4.97639in;height:3.09832in" alt="Uploaded image" /></p>
+<p>管理者可透過搜尋欄位快速查找指定影片內容，並使用「上傳影片」功能新增課程影片。</p>
+<p><img src="../manual/media/image205.png"
+style="width:4.97639in;height:3.09832in" alt="Uploaded image" /></p>
+<p>於各章節中，系統會列出影片標題、影片時長與發布狀態，管理者可點擊編輯圖示修改課程內容與設定。</p>
+<p><img src="../manual/media/image205.png"
+style="width:4.97639in;height:3.09832in" alt="Uploaded image" /></p>
+<p>點選編輯後，會開啟以下視窗，提供「編輯資訊」、「更新中文影片」、「更新英文影片」以及「刪除影片資源」的功能，管理者可依需求更新不同語系的影片檔案，或於影片不再使用時刪除相關資源。</p>
+<p><img src="../manual/media/image206.png"
+style="width:3.88372in;height:2.87323in" alt="Uploaded image" /></p>
+<p>點擊「編輯資訊」後，系統會開啟以下影片資訊編輯視窗，供管理者調整影片相關內容與狀態設定。</p>
+<p>於「編輯影片資訊」視窗中，管理者可修改影片標題、影片描述、影片摘要以及影片逐字稿內容，並透過「狀態設定」調整影片目前的發布狀態。</p>
+<p><img src="../manual/media/image207.png"
+style="width:4.05051in;height:3.49825in" alt="Uploaded image" /></p>
+<p>完成修改後，點擊「儲存」即可更新影片資訊；若不需變更，可點擊「取消」或右上角關閉按鈕離開視窗。</p>
+<p><img src="../manual/media/image207.png"
+style="width:4.05051in;height:3.49825in" alt="Uploaded image" /></p>
+<p>使用者亦可透過「設定權限」功能管理不同群組或使用者的觀看權限，點選設定權限後，即可開啟視窗。</p>
+<p><img src="../manual/media/image205.png"
+style="width:4.97639in;height:3.09832in" alt="Uploaded image" /></p>
+<p>開啟視窗後，可用勾選的方式調整權限設定，完成後點選儲存，將變更內容存取。</p>
+<p><img src="../manual/media/image208.png"
+style="width:5.20595in;height:4.49555in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="學習管理">7.2.2 Learning Management</h3>
+<p>(1) 權限管理</p>
+<p>「學習管理」中的「權限管理」頁面用於管理不同使用者群組可存取的課程模組與學習內容，管理者可依部門、角色或學習需求，快速設定各群組的課程觀看權限。進入頁面後，可先於「管理群組」下拉選單中選擇欲設定的群組，例如一般員工、主管或特定部門，系統將於下方自動載入目前該群組已開放的課程權限設定。</p>
+<p><img src="../manual/media/image209.png" style="width:6in;height:3.46528in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>頁面中會依課程分類顯示各主題模組與其底下的課程單元，管理者可透過勾選方式控制群組是否可存取指定課程內容。若需一次開放整個課程分類，可使用「全選此課程模組」功能；若只需開放某一主題底下的所有單元，則可使用「全選此主題」快速套用設定。當課程被勾選後，即代表該群組成員具備對應課程的學習權限，未勾選則無法於課程學習中查看或進入該內容。透過此頁面，管理者可更有效地依組織需求規劃不同對象的學習範圍與培訓內容，提升課程管理與權限控管效率。</p>
+<p><img src="../manual/media/image209.png"
+style="width:4.89945in;height:3.12182in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(2) 學習進度報表</p>
+<p>「學習管理」中的「學習進度報表」頁面用於追蹤與分析學員的課程學習狀況，管理者可透過群組與學員篩選功能，快速查看不同對象的學習進度與測驗完成情形。進入頁面後，可先選擇欲查詢的群組與指定學員，系統將依條件顯示對應的學習統計資料。</p>
+<p><img src="../manual/media/image210.png" style="width:6in;height:3.50903in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>系統會先顯示「報表資料」分頁，頁面上方會呈現整體分析資訊，包括學員人數、平均學習進度以及平均考試完成度，方便管理者快速掌握整體培訓狀況與課程參與程度。</p>
+<p><img src="../manual/media/image210.png"
+style="width:4.94949in;height:3.13528in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>於報表資料區域中，系統會列出各學員名稱、Email、影片觀看進度以及考試完成進度，並以百分比與進度條方式呈現學習成果，方便比較不同學員的學習狀況。管理者亦可點選欄位排序功能快速依學習進度或測驗完成度進行排序分析，找出學習進度較慢或尚未完成課程的對象。</p>
+<p><img src="../manual/media/image210.png"
+style="width:4.94949in;height:3.13528in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>若需進行後續彙整或製作管理報告，也可點擊「匯出
+Excel」將目前查詢結果下載保存，方便進行進一步統計與內部管理。</p>
+<p><img src="../manual/media/image210.png"
+style="width:4.94949in;height:3.13528in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>管理者也可切換至「圖表分析」頁籤，左側的長條圖會顯示各課程分類的學習進度比較結果，包含平均影片觀看進度與平均考試完成度，管理者可清楚比較不同課程主題之間的學習差異，快速找出完成度較高或較低的課程內容，以作為後續優化與輔導依據。右側的圓餅圖則呈現整體學習完成比例分布，顯示目前已完成與未完成課程的人數或比例，方便快速了解整體課程推動情況與學員參與程度。</p>
+<p><img src="../manual/media/image211.png" style="width:6in;height:3.50903in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>右側的「學習分析」功能可進一步查看個別學員的詳細學習紀錄與分析結果，以利後續追蹤與輔導，點選個別學員的「學習分析」功能後，系統將開啟該學員的個人學習分析頁面，用於查看更詳細的課程完成狀況與學習表現。</p>
+<p><img src="../manual/media/image210.png" style="width:6in;height:3.50903in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>開啟該學員的個人學習分析頁面後，上方會顯示學員名稱、Email
+與個人學習標籤，並提供返回群組總覽的功能，方便管理者於個人分析與整體報表之間快速切換。</p>
+<p><img src="../manual/media/image212.png"
+style="width:4.94949in;height:3.15548in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>管理者可使用「匯出
+Excel」功能將個人學習紀錄下載保存，以利後續追蹤與管理。</p>
+<p><img src="../manual/media/image212.png"
+style="width:4.94949in;height:3.15548in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>於「學習進度總覽」區域中，系統會顯示該學員的總體學習進度、已完成單元數以及尚未開始學習的單元數，協助管理者快速掌握學習狀況。</p>
+<p><img src="../manual/media/image212.png"
+style="width:4.94949in;height:3.15548in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>下方則依課程分類列出各課程單元的詳細進度資訊，包括影片觀看進度與單元測驗成績，管理者可清楚查看學員是否已完成指定課程與測驗要求，並找出尚未完成或學習不足的內容。</p>
+<p><img src="../manual/media/image212.png"
+style="width:4.94949in;height:3.15548in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p><img src="../manual/media/image213.png"
+style="width:4.9798in;height:3.04432in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>切換至「圖表分析」頁籤後，系統會以圖表方式呈現該學員的學習成果與完成比例。左側長條圖可比較不同課程分類的平均影片觀看進度與平均考試完成度，方便觀察學員在各主題領域的學習差異；右側圓餅圖則呈現整體學習完成比例，快速顯示已完成與未完成課程的分布情形。</p>
+<p><img src="../manual/media/image214.png"
+style="width:4.87879in;height:3.22618in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>(3) 問卷匯出</p>
+<p>「學習管理」中的「問卷匯出」頁面用於管理與匯出課程相關的問卷回覆資料，管理者可透過此功能，快速整理不同課程單元的問卷結果與學員填答內容。進入頁面後，系統會列出目前可匯出的課程單元與對應的問卷回覆數量，管理者可依需求選擇欲匯出的課程內容，系統將根據勾選結果整理相關問卷資料。</p>
+<p><img src="../manual/media/image215.png" style="width:6in;height:3.50903in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>使用者可透過單一課程勾選或使用「全選」功能快速選取多個課程單元，並於右側查看各課程目前累積的問卷回覆數量，方便管理者確認可匯出的資料範圍。</p>
+<p><img src="../manual/media/image215.png"
+style="width:4.81517in;height:3.14537in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>完成選擇後，點擊右上方的「匯出
+Excel」按鈕，即可將所選課程的問卷資料整理為 Excel
+檔案下載保存。系統亦會自動將相關資料壓縮為 ZIP
+檔，以利大量問卷資料的下載與後續管理。</p>
+<p><img src="../manual/media/image215.png"
+style="width:4.9697in;height:3.14537in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h3 class="unnumbered" id="其他設定">7.2.3 Other Settings</h3>
+<p>「其他設定」中的「上傳封面」頁面用於管理課程學習平台所使用的課程封面圖片，管理者可透過此頁面統一設定課程主視覺，提升課程頁面的一致性與整體呈現效果。進入頁面後，左側會顯示目前已使用的封面圖片，方便管理者確認現行設定；右側則提供新的封面圖片上傳區域，管理者可直接點擊或拖曳圖片至指定區域進行上傳。系統建議使用符合平台顯示比例的高品質圖片，以避免課程封面於不同裝置顯示時發生裁切或變形情況，確保最佳瀏覽效果。</p>
+<p><img src="../manual/media/image216.png" style="width:6in;height:3.50903in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<p>頁面右上方亦會顯示目前已上傳的圖片數量與可使用上限，方便管理者掌握封面資源使用狀況。完成圖片上傳後，系統將自動更新課程封面設定，並套用於課程學習相關頁面中。</p>
+<p><img src="../manual/media/image216.png"
+style="width:4.9899in;height:2.65488in"
+alt="A screenshot of a computer Description automatically generated" /></p>
+<h1 class="unnumbered" id="關於">8. About</h1>
+<p><strong>版本號碼</strong></p>
+<p>2026.04.28</p>
+<p><strong>系統介紹</strong></p>
+<p>我們的系統結合生成式AI、大語言模型與向量資料庫（RAG），提供智慧化的對話助手，幫助使用者依權限快速獲取資訊。使用者可與不同助手對話，查詢並管理部門知識庫。系統支持精細的權限管理，確保數據安全，並提升內部知識分享與協作效率。</p>
+<p><strong>聯絡資訊</strong></p>
+<p><a href="mailto:%20support@pwc.com">support@pwc.com</a></p>
+<p><strong>版權聲明</strong></p>
+<p>© 2017 - 2025 PwC. All rights reserved. refers to the PwC network
+and/or one or more of its member firms, each of which is a separate
+legal entity. Please see <a
+href="https://www.pwc.com/structure">www.pwc.com/structure</a> for
+further details.</p>
+<p><strong>隱私政策和使用條款</strong></p>
+<p><a
+href="https://www.pwc.tw/zh/legal-notices/privacy-statement-zh.html">隱私政策</a> | <a
+href="http://202.5.253.207/about">使用條款</a></p>
+
+</main>
+</div>
+<script>
+(function () {
+  var main = document.getElementById('manual-main');
+  var nav = document.getElementById('manual-toc-nav');
+  if (!main || !nav) return;
+
+  var tocH = main.querySelector('h1#目錄');
+  if (tocH) {
+    var n = tocH.nextElementSibling;
+    tocH.remove();
+    while (n && !(n.tagName === 'H1' && n.id === '簡介')) {
+      var nx = n.nextElementSibling;
+      n.remove();
+      n = nx;
+    }
+  }
+
+  var firstP = main.querySelector(':scope > p');
+  if (firstP && /^TARS\.ai/i.test((firstP.textContent || '').trim())) {
+    firstP.style.fontWeight = '600';
+    firstP.style.marginBottom = '0.5rem';
+  }
+
+  function scrollToId(raw) {
+    if (!raw || raw.charAt(0) !== '#') return;
+    var id = decodeURIComponent(raw.slice(1));
+    var el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  var heads = [].slice.call(main.querySelectorAll('h1[id], h2[id], h3[id], h4[id]')).filter(function (h) {
+    return h.id && h.id !== '目錄';
+  });
+  if (heads.length) {
+    var levels = heads.map(function (h) {
+      return parseInt(h.tagName.charAt(1), 10);
+    });
+    var base = Math.min.apply(null, levels);
+
+    var ul = document.createElement('ul');
+    ul.className = 'manual-toc-list';
+    heads.forEach(function (h) {
+      var lev = parseInt(h.tagName.charAt(1), 10);
+      var li = document.createElement('li');
+      li.style.paddingLeft = Math.max(0, lev - base) * 12 + 'px';
+      var a = document.createElement('a');
+      a.href = '#' + h.id;
+      a.textContent = h.textContent.replace(/\s+/g, ' ').trim();
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var tgt = document.getElementById(h.id);
+        if (tgt) tgt.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        try {
+          history.replaceState(null, '', '#' + h.id);
+        } catch (err) {}
+        var self = this;
+        requestAnimationFrame(function () {
+          self.blur();
+        });
+      });
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+    nav.appendChild(ul);
+  }
+
+  if (location.hash) scrollToId(location.hash);
+  window.addEventListener('hashchange', function () {
+    scrollToId(location.hash);
+  });
+})();
+
+(function () {
+  var overlay = document.createElement('div');
+  overlay.className = 'img-lightbox';
+  var bigImg = document.createElement('img');
+  overlay.appendChild(bigImg);
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', function () {
+    overlay.classList.remove('active');
+  });
+
+  document.getElementById('manual-main').addEventListener('click', function (e) {
+    if (e.target.tagName === 'IMG') {
+      bigImg.src = e.target.src;
+      overlay.classList.add('active');
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') overlay.classList.remove('active');
+  });
+})();
+</script>
+</body>
+</html>
