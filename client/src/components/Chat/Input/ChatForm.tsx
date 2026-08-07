@@ -51,8 +51,8 @@ import PendingSteerChips from './PendingSteerChips';
 import PendingQuoteChips from './PendingQuoteChips';
 import AttachFileChat from './Files/AttachFileChat';
 import CodeWorkspaceMenu from './CodeWorkspaceMenu';
-import { TarsPromptsButton } from './TarsPrompts';
 import useSteering from '~/hooks/Chat/useSteering';
+import { TarsPromptsButton } from './TarsPrompts';
 import CodeApprovalMenu from './CodeApprovalMenu';
 import FileFormChat from './Files/FileFormChat';
 import InFlightSteers from './InFlightSteers';
@@ -63,6 +63,7 @@ import AudioRecorder from './AudioRecorder';
 import AutoPlayAudio from './AutoPlayAudio';
 import CollapseChat from './CollapseChat';
 import QuoteButton from './QuoteButton';
+import Disclaimer from '../Disclaimer';
 import TokenUsage from './TokenUsage';
 import StopButton from './StopButton';
 import SendButton from './SendButton';
@@ -861,6 +862,7 @@ const ChatForm = memo(function ChatForm({
               {TextToSpeech && automaticPlayback && <AutoPlayAudio index={index} />}
             </div>
           </div>
+          <Disclaimer />
         </div>
       </div>
     </form>
