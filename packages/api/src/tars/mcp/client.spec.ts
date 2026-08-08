@@ -67,7 +67,7 @@ afterEach(() => {
 });
 
 describe('listTarsMcpTools', () => {
-  it('builds prefixed tool names and skips non-proxied server types', async () => {
+  it('builds prefixed tool names, includes external servers, and skips builtin', async () => {
     mockFetchRoutes({
       '/api/mcp/available-tools': {
         status: 200,
@@ -83,7 +83,12 @@ describe('listTarsMcpTools', () => {
             input_schema: { type: 'object', properties: { id: {} } },
           }),
           toolRow(),
-          toolRow({ server_type: 'external', tool_name: 'real_mcp_tool' }),
+          toolRow({
+            server_id: 'srv-ext-1',
+            server_code: 'fetcher',
+            server_type: 'external',
+            tool_name: 'real_mcp_tool',
+          }),
           toolRow({ server_type: 'builtin', tool_name: 'web_search' }),
         ]),
       },
@@ -91,6 +96,7 @@ describe('listTarsMcpTools', () => {
 
     const tools = await listTarsMcpTools(USER_ID);
     expect(tools.map((tool) => tool.name).sort()).toEqual([
+      'fetcher__real_mcp_tool',
       'issues__create_issue',
       'petstore__get_pet',
     ]);
@@ -106,6 +112,32 @@ describe('listTarsMcpTools', () => {
 
     const issueTool = tools.find((tool) => tool.name === 'issues__create_issue');
     expect(issueTool?.inputSchema).toEqual({ type: 'object', properties: {} });
+  });
+
+  it('scopes listing to one server with unprefixed tool names', async () => {
+    mockFetchRoutes({
+      '/api/mcp/available-tools': {
+        status: 200,
+        body: envelope([
+          toolRow(),
+          toolRow({ tool_id: 'tool-close', tool_name: 'close_issue' }),
+          toolRow({
+            server_id: 'srv-openapi-1',
+            server_code: 'petstore',
+            server_type: 'openapi',
+            tool_id: 'tool-pet',
+            tool_name: 'get_pet',
+          }),
+        ]),
+      },
+    });
+
+    const scoped = await listTarsMcpTools(USER_ID, 'srv-custom-1');
+    expect(scoped.map((tool) => tool.name).sort()).toEqual(['close_issue', 'create_issue']);
+    expect(scoped.every((tool) => tool.serverId === 'srv-custom-1')).toBe(true);
+
+    const unknown = await listTarsMcpTools(USER_ID, 'srv-none');
+    expect(unknown).toEqual([]);
   });
 
   it('passes the pwc_tars user id so filtering happens server-side', async () => {
@@ -238,6 +270,29 @@ describe('executeTarsMcpTool', () => {
       arguments: { title: 'bug' },
       user_id: USER_ID,
     });
+  });
+
+  it('resolves unprefixed names within the server scope and rejects cross-server names', async () => {
+    const fetchMock = mockFetchRoutes(
+      routesWithExecute({
+        status: 200,
+        body: envelope({ result: 'ok', duration_ms: 5 }),
+      }),
+    );
+
+    const outcome = await executeTarsMcpTool(USER_ID, 'create_issue', {}, 'srv-custom-1');
+    expect(outcome).toEqual({ result: 'ok', durationMs: 5 });
+    const executeCall = fetchMock.mock.calls.find(([input]) =>
+      String(input).includes('/api/mcp/execute'),
+    );
+    expect(JSON.parse(executeCall?.[1]?.body as string)).toMatchObject({
+      server_id: 'srv-custom-1',
+      tool_name: 'create_issue',
+    });
+
+    await expect(executeTarsMcpTool(USER_ID, 'create_issue', {}, 'srv-other')).rejects.toThrow(
+      'Unknown TARS MCP tool',
+    );
   });
 
   it('throws TarsRequestError carrying the pwc_tars failure message on HTTP 500', async () => {
