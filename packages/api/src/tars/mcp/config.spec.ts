@@ -9,14 +9,51 @@ jest.mock('@librechat/data-schemas', () => ({
 
 import type { AppConfig } from '@librechat/data-schemas';
 import {
-  TARS_MCP_SERVER_NAME,
   deriveTarsMcpGatewayKey,
+  tarsMcpInjectionFailed,
   withTarsMcpConfig,
   isTarsMcpEnabled,
   tarsMcpSelfUrl,
 } from './config';
 
 const BASE_URL = 'http://tars.test';
+
+const envelope = (data: unknown) => ({ success: true, message: '成功', data });
+
+const buildResponse = (status: number, body: unknown): Response =>
+  ({
+    status,
+    ok: status >= 200 && status < 300,
+    json: async () => body,
+  }) as Response;
+
+interface ServerRow {
+  id: string;
+  name: string;
+  code?: string | null;
+  description?: string | null;
+  type: string;
+  is_enabled: boolean;
+}
+
+const serverRow = (overrides: Partial<ServerRow> = {}): ServerRow => ({
+  id: 'srv-1',
+  name: 'Issue Tracker',
+  code: 'issues',
+  description: 'Issue tools',
+  type: 'custom_api',
+  is_enabled: true,
+  ...overrides,
+});
+
+const mockServerList = (rows: ServerRow[]) =>
+  jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.startsWith(`${BASE_URL}/api/mcp/servers`)) {
+      return buildResponse(200, envelope(rows));
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  });
 
 const ENV_KEYS = [
   'TARS_AUTH_URL',
@@ -101,50 +138,98 @@ describe('tarsMcpSelfUrl', () => {
 describe('withTarsMcpConfig', () => {
   const baseConfig = () => ({ mcpConfig: null, mcpSettings: null }) as unknown as AppConfig;
 
-  it('injects the gateway server entry and the loopback allowlist address', () => {
-    const appConfig = withTarsMcpConfig(baseConfig());
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
-    const entry = appConfig.mcpConfig?.[TARS_MCP_SERVER_NAME];
+  it('injects one per-server gateway entry and the loopback allowlist address', async () => {
+    mockServerList([
+      serverRow(),
+      serverRow({ id: 'srv-2', name: 'Weather', code: 'weather', type: 'openapi' }),
+      serverRow({ id: 'srv-3', name: 'Fetcher', code: 'fetcher', type: 'external' }),
+      serverRow({ id: 'srv-4', name: 'Builtin', code: 'builtin_ws', type: 'builtin' }),
+      serverRow({ id: 'srv-5', name: 'Disabled', code: 'off', is_enabled: false }),
+    ]);
+
+    const appConfig = await withTarsMcpConfig(baseConfig());
+
+    expect(Object.keys(appConfig.mcpConfig ?? {}).sort()).toEqual([
+      'tars_fetcher',
+      'tars_issues',
+      'tars_weather',
+    ]);
+    const entry = appConfig.mcpConfig?.tars_issues;
     expect(entry).toMatchObject({
       type: 'streamable-http',
-      url: 'http://localhost:3080/api/tars/mcp',
+      url: 'http://localhost:3080/api/tars/mcp/srv-1',
       startup: false,
       chatMenu: true,
+      title: 'Issue Tracker',
+      description: 'Issue tools',
     });
     const headers = (entry as { headers: Record<string, string> }).headers;
     expect(headers['X-Tars-User-Id']).toBe('{{LIBRECHAT_USER_ID}}');
     expect(headers['X-Tars-Gateway-Key']).toBe(deriveTarsMcpGatewayKey());
 
     expect(appConfig.mcpSettings?.allowedAddresses).toContain('localhost:3080');
+    expect(tarsMcpInjectionFailed()).toBe(false);
   });
 
-  it('keeps an admin-managed tars entry untouched', () => {
+  it('keeps a same-named admin-managed entry untouched', async () => {
+    mockServerList([serverRow()]);
     const adminEntry = { type: 'sse', url: 'http://elsewhere/sse' };
     const appConfig = {
-      mcpConfig: { [TARS_MCP_SERVER_NAME]: adminEntry },
+      mcpConfig: { tars_issues: adminEntry },
       mcpSettings: null,
     } as unknown as AppConfig;
 
-    expect(withTarsMcpConfig(appConfig).mcpConfig?.[TARS_MCP_SERVER_NAME]).toBe(adminEntry);
+    expect((await withTarsMcpConfig(appConfig)).mcpConfig?.tars_issues).toBe(adminEntry);
   });
 
-  it('is a no-op when the gateway is disabled or the key cannot be derived', () => {
+  it('suffixes the server id when sanitized codes collide', async () => {
+    mockServerList([
+      serverRow({ id: 'aaaa1111-x', code: 'my api' }),
+      serverRow({ id: 'bbbb2222-x', code: 'my_api' }),
+    ]);
+
+    const appConfig = await withTarsMcpConfig(baseConfig());
+    expect(Object.keys(appConfig.mcpConfig ?? {}).sort()).toEqual([
+      'tars_my_api',
+      'tars_my_api_bbbb2222',
+    ]);
+  });
+
+  it('is a no-op when the gateway is disabled or the key cannot be derived', async () => {
     process.env.TARS_MCP_ENABLED = 'false';
-    expect(withTarsMcpConfig(baseConfig()).mcpConfig).toBeNull();
+    expect((await withTarsMcpConfig(baseConfig())).mcpConfig).toBeNull();
 
     delete process.env.TARS_MCP_ENABLED;
     delete process.env.JWT_SECRET;
-    expect(withTarsMcpConfig(baseConfig()).mcpConfig).toBeNull();
+    expect((await withTarsMcpConfig(baseConfig())).mcpConfig).toBeNull();
   });
 
-  it('preserves existing mcp servers and allowed addresses', () => {
+  it('injects nothing and flags the failure when pwc_tars is unreachable', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
+
+    const appConfig = await withTarsMcpConfig(baseConfig());
+    expect(appConfig.mcpConfig).toBeNull();
+    expect(tarsMcpInjectionFailed()).toBe(true);
+
+    jest.restoreAllMocks();
+    mockServerList([serverRow()]);
+    await withTarsMcpConfig(baseConfig());
+    expect(tarsMcpInjectionFailed()).toBe(false);
+  });
+
+  it('preserves existing mcp servers and allowed addresses', async () => {
+    mockServerList([serverRow()]);
     const appConfig = {
       mcpConfig: { other: { type: 'sse', url: 'http://other/sse' } },
       mcpSettings: { allowedAddresses: ['langflow:7860'] },
     } as unknown as AppConfig;
 
-    const result = withTarsMcpConfig(appConfig);
-    expect(Object.keys(result.mcpConfig ?? {}).sort()).toEqual(['other', TARS_MCP_SERVER_NAME]);
+    const result = await withTarsMcpConfig(appConfig);
+    expect(Object.keys(result.mcpConfig ?? {}).sort()).toEqual(['other', 'tars_issues']);
     expect(result.mcpSettings?.allowedAddresses).toEqual(['langflow:7860', 'localhost:3080']);
   });
 });

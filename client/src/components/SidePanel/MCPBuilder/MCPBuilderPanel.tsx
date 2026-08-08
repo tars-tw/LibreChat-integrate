@@ -2,7 +2,12 @@ import { useState, useRef, useMemo, useEffect, useId } from 'react';
 import { Plus } from 'lucide-react';
 import { useRecoilValue } from 'recoil';
 import { useLocation } from 'react-router-dom';
-import { SystemRoles, PermissionTypes, Permissions } from 'librechat-data-provider';
+import {
+  SystemRoles,
+  PermissionTypes,
+  Permissions,
+  isTarsMcpServerName,
+} from 'librechat-data-provider';
 import { Button, FilterInput, OGDialogTrigger, TooltipAnchor } from '@librechat/client';
 import {
   useLocalize,
@@ -15,14 +20,12 @@ import { PanelFooter, PanelContent, PanelHeader } from '~/components/ui';
 import MCPConfigDialog from '~/components/MCP/MCPConfigDialog';
 import MCPServerCardSkeleton from './MCPServerCardSkeleton';
 import { useMCPRefresh } from '~/hooks/MCP/useMCPRefresh';
+import { useGetStartupConfig } from '~/data-provider';
 import MCPAdminSettings from './MCPAdminSettings';
 import MCPServerDialog from './MCPServerDialog';
 import MCPServerList from './MCPServerList';
 import store from '~/store';
 import TarsCard from './TarsCard';
-
-/** The auto-injected TARS gateway server; its card is replaced by {@link TarsCard}. */
-const TARS_SERVER_NAME = 'tars';
 
 export default function MCPBuilderPanel() {
   const localize = useLocalize();
@@ -39,21 +42,29 @@ export default function MCPBuilderPanel() {
     }
   }, [panelVisible]);
   const { user } = useAuthContext();
+  const { data: startupConfig } = useGetStartupConfig();
   const { availableMCPServers, isLoading, getServerStatusIconProps, getConfigDialogProps } =
     useMCPServerManager({ observeToolAuthorization: panelVisible });
   useMCPRefresh({ enabled: panelVisible && !isLoading && availableMCPServers.length > 0 });
 
-  const hasCreateAccess = useHasAccess({
-    permissionType: PermissionTypes.MCP_SERVERS,
-    permission: Permissions.CREATE,
-  });
+  /**
+   * pwc_tars as MCP source of truth: server management lives in TarsCard /
+   * `/mcp-settings`, so the native add-by-URL flow and server cards are hidden.
+   */
+  const tarsMcpEnabled = startupConfig?.tarsMcpEnabled === true;
+  const hasCreateAccess =
+    useHasAccess({
+      permissionType: PermissionTypes.MCP_SERVERS,
+      permission: Permissions.CREATE,
+    }) && !tarsMcpEnabled;
   const [showDialog, setShowDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const addButtonRef = useRef<HTMLButtonElement | null>(null);
   const configDialogProps = getConfigDialogProps();
 
   const filteredServers = useMemo(() => {
-    const servers = availableMCPServers.filter((server) => server.serverName !== TARS_SERVER_NAME);
+    /** The injected TARS gateway servers' cards are replaced by {@link TarsCard}. */
+    const servers = availableMCPServers.filter((server) => !isTarsMcpServerName(server.serverName));
     if (!searchQuery.trim()) {
       return servers;
     }
@@ -72,7 +83,7 @@ export default function MCPBuilderPanel() {
       aria-labelledby={headingId}
       className="flex h-full w-full flex-col overflow-hidden pt-2"
     >
-      {/* Sticky header: title, create, search */}
+      {/* Sticky header: title, create, search — search hidden when pwc_tars manages MCP servers */}
       <PanelHeader
         title={localize('com_ui_mcp_servers')}
         titleId={headingId}
@@ -105,12 +116,14 @@ export default function MCPBuilderPanel() {
           )
         }
         search={
-          <FilterInput
-            inputId="mcp-filter"
-            label={localize('com_ui_filter_mcp_servers')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          !tarsMcpEnabled && (
+            <FilterInput
+              inputId="mcp-filter"
+              label={localize('com_ui_filter_mcp_servers')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          )
         }
       />
 
@@ -120,17 +133,19 @@ export default function MCPBuilderPanel() {
       </div>
 
       {/* Only the list scrolls */}
-      <PanelContent
-        isLoading={isLoading}
-        skeleton={<MCPServerCardSkeleton />}
-        className="px-3 pb-3"
-      >
-        <MCPServerList
-          servers={filteredServers}
-          getServerStatusIconProps={getServerStatusIconProps}
-          isFiltered={searchQuery.trim().length > 0}
-        />
-      </PanelContent>
+      {!tarsMcpEnabled && (
+        <PanelContent
+          isLoading={isLoading}
+          skeleton={<MCPServerCardSkeleton />}
+          className="px-3 pb-3"
+        >
+          <MCPServerList
+            servers={filteredServers}
+            getServerStatusIconProps={getServerStatusIconProps}
+            isFiltered={searchQuery.trim().length > 0}
+          />
+        </PanelContent>
+      )}
 
       {/* Config Dialog for custom user vars */}
       {configDialogProps && <MCPConfigDialog {...configDialogProps} />}
