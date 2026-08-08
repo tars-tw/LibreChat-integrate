@@ -4,6 +4,7 @@ const {
   createAppConfigService,
   clearMcpConfigCache,
   withTarsMcpConfig,
+  tarsMcpInjectionFailed,
   hostPortFromUrl,
 } = require('@librechat/api');
 const { setCachedTools, invalidateCachedTools } = require('./getCachedTools');
@@ -36,6 +37,29 @@ function withLangflowAllowedAddress(appConfig) {
   return appConfig;
 }
 
+const TARS_MCP_RETRY_MS = 60_000;
+let tarsMcpRetryTimer = null;
+
+/**
+ * When the pwc_tars MCP server list could not be fetched at base-config load
+ * (pwc_tars down at boot), schedule a one-shot config-cache invalidation so the
+ * gateway entries appear without a restart once pwc_tars recovers. The module
+ * guard keeps repeated failing loads from stacking timers.
+ */
+function scheduleTarsMcpRetry() {
+  if (!tarsMcpInjectionFailed() || tarsMcpRetryTimer) {
+    return;
+  }
+  tarsMcpRetryTimer = setTimeout(() => {
+    tarsMcpRetryTimer = null;
+    logger.info('[tars-mcp] Retrying config load after failed pwc_tars server-list fetch');
+    invalidateConfigCaches().catch((error) =>
+      logger.error('[tars-mcp] Config invalidation retry failed:', error),
+    );
+  }, TARS_MCP_RETRY_MS);
+  tarsMcpRetryTimer.unref?.();
+}
+
 const loadBaseConfig = async () => {
   /** @type {TCustomConfig} */
   const config = (await loadCustomConfig()) ?? {};
@@ -45,9 +69,11 @@ const loadBaseConfig = async () => {
     adminIncluded: config.includedTools,
     directory: paths.structuredTools,
   });
-  return withTarsMcpConfig(
+  const appConfig = await withTarsMcpConfig(
     withLangflowAllowedAddress(await AppService({ config, paths, systemTools })),
   );
+  scheduleTarsMcpRetry();
+  return appConfig;
 };
 
 const { getAppConfig, clearAppConfigCache, clearOverrideCache } = createAppConfigService({
