@@ -14,11 +14,14 @@ import type {
   TTarsDocumentReprocess,
   TTarsKnowledgeBaseInput,
   TTarsKnowledgeBaseUpdate,
+  TTarsMcpTool,
   TTarsMcpServer,
   TTarsMcpSyncResult,
+  TTarsMcpToolUpdate,
   TTarsMcpParsedSpec,
   TTarsMcpServerInput,
   TTarsMcpUserServerUpdate,
+  TTarsDomainMcpSavePayload,
 } from 'librechat-data-provider';
 
 type DomainResponse = { domain: TTarsDomain };
@@ -358,6 +361,11 @@ export const useUpdateTarsSysConfigMutation = (
 const invalidateTarsMcp = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsMcpServers]);
   queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+  queryClient.invalidateQueries([QueryKeys.tarsMcpDomainServers]);
+  /** Admin mutations change the injected per-server gateway entries — refresh the native MCP surfaces too. */
+  queryClient.invalidateQueries([QueryKeys.mcpServers]);
+  queryClient.invalidateQueries([QueryKeys.mcpTools]);
+  queryClient.invalidateQueries([QueryKeys.mcpConnectionStatus]);
 };
 
 export const useCreateTarsMcpServerMutation = (
@@ -502,6 +510,53 @@ export const useClearTarsMcpUserCredentialsMutation = (
     ...options,
     onSuccess: (...args) => {
       queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useUpdateTarsMcpToolMutation = (
+  options?: UseMutationOptions<
+    { tool: TTarsMcpTool },
+    unknown,
+    { id: string; data: TTarsMcpToolUpdate }
+  >,
+): UseMutationResult<{ tool: TTarsMcpTool }, unknown, { id: string; data: TTarsMcpToolUpdate }> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: { id: string; data: TTarsMcpToolUpdate }) =>
+      dataService.updateTarsMcpTool(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateTarsMcp(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsMcpToolMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.deleteTarsMcpTool(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsMcp(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useSaveTarsDomainMcpMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, TTarsDomainMcpSavePayload>,
+): UseMutationResult<{ success: boolean }, unknown, TTarsDomainMcpSavePayload> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: TTarsDomainMcpSavePayload) => dataService.saveTarsDomainMcp(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsMcp(queryClient);
       options?.onSuccess?.(...args);
     },
   });
