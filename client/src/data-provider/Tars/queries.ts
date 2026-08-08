@@ -17,8 +17,12 @@ import type {
   TTarsDocumentsResponse,
   TTarsDomainPrepareData,
   TTarsSysConfigsResponse,
+  TTarsMcpLog,
+  TTarsMcpLogsResponse,
   TTarsMcpServersResponse,
+  TTarsDomainMcpRelation,
   TTarsMcpUserSettingsResponse,
+  TTarsDomainMcpServersResponse,
 } from 'librechat-data-provider';
 
 /** pwc_tars document status: 0 uploaded, 1 processing, 2 completed, 4 failed. */
@@ -159,6 +163,56 @@ export const useTarsMcpServersQuery = (
     () => dataService.getTarsMcpServers(),
     {
       select: (data) => data.servers ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: one pwc_tars MCP server's detail, including its `mcp_tools` rows. */
+export const useTarsMcpServerQuery = (
+  serverId: string | null,
+  config?: UseQueryOptions<{ server: TTarsMcpServer }, unknown, TTarsMcpServer | null>,
+): QueryObserverResult<TTarsMcpServer | null> => {
+  return useQuery<{ server: TTarsMcpServer }, unknown, TTarsMcpServer | null>(
+    [QueryKeys.tarsMcpServers, serverId],
+    () => dataService.getTarsMcpServer(serverId as string),
+    {
+      select: (data) => data.server ?? null,
+      enabled: serverId != null,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: existing domain↔MCP bindings (`sys_domain_mcp` rows) of one domain. */
+export const useTarsDomainMcpServersQuery = (
+  domainId: number | null,
+  config?: UseQueryOptions<TTarsDomainMcpServersResponse, unknown, TTarsDomainMcpRelation[]>,
+): QueryObserverResult<TTarsDomainMcpRelation[]> => {
+  return useQuery<TTarsDomainMcpServersResponse, unknown, TTarsDomainMcpRelation[]>(
+    [QueryKeys.tarsMcpDomainServers, domainId],
+    () => dataService.getTarsDomainMcpServers(domainId as number),
+    {
+      select: (data) => data.servers ?? [],
+      enabled: domainId != null,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: recent `mcp_logs` audit rows (newest first). */
+export const useTarsMcpLogsQuery = (
+  query?: { conversationId?: string; limit?: number },
+  config?: UseQueryOptions<TTarsMcpLogsResponse, unknown, TTarsMcpLog[]>,
+): QueryObserverResult<TTarsMcpLog[]> => {
+  return useQuery<TTarsMcpLogsResponse, unknown, TTarsMcpLog[]>(
+    [QueryKeys.tarsMcpLogs, query?.conversationId ?? '', query?.limit ?? 0],
+    () => dataService.getTarsMcpLogs(query),
+    {
+      select: (data) => data.logs ?? [],
       ...adminQueryOptions,
       ...config,
     },

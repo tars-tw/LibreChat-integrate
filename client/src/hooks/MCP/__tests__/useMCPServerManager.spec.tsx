@@ -28,6 +28,11 @@ jest.mock('~/data-provider', () => ({
   useGetStartupConfig: () => ({ data: {} }),
   useMCPServersQuery: () => ({ data: {}, isLoading: false }),
   useMCPToolsQuery: (options: unknown) => mockUseMCPToolsQuery(options),
+  useTarsMcpUserSettingsQuery: () => ({ data: undefined, isError: false }),
+}));
+
+jest.mock('~/hooks/AuthContext', () => ({
+  useAuthContext: () => ({ user: { id: 'user-1', provider: 'local' } }),
 }));
 
 jest.mock('librechat-data-provider/react-query', () => ({

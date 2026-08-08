@@ -7,6 +7,7 @@ const {
   getTarsSsoStatus,
   getTarsSysConfigValue,
   getCloudFrontConfig,
+  isTarsMcpEnabled,
   getAppConfigOptionsFromUser,
   resolveBuildInfo,
   resolveTitleTiming,
@@ -124,6 +125,7 @@ function buildPreLoginPayload() {
     serverDomain: process.env.DOMAIN_SERVER || 'http://localhost:3080',
     emailLoginEnabled,
     tarsAuth,
+    tarsMcpEnabled: isTarsMcpEnabled(),
     registrationEnabled: !tarsAuth && !ldap?.enabled && isEnabled(process.env.ALLOW_REGISTRATION),
     socialLoginEnabled: isEnabled(process.env.ALLOW_SOCIAL_LOGIN),
     emailEnabled:
