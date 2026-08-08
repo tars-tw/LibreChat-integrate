@@ -6,6 +6,7 @@ import { LayoutGrid, ListFilter, Wrench, Server, Workflow, Star, User, Plus } fr
 import type { ReactNode } from 'react';
 import type { AgentItemKind, ItemFilter } from './items/types';
 import { useLocalize, useHasAccess } from '~/hooks';
+import { useGetStartupConfig } from '~/data-provider';
 import { useAgentPanelContext } from '~/Providers';
 import { cn } from '~/utils';
 
@@ -64,10 +65,13 @@ export default function MarketplaceSidebar({
   const localize = useLocalize();
   const [createOpen, setCreateOpen] = useState(false);
   const { agentsConfig } = useAgentPanelContext();
-  const hasMcpCreateAccess = useHasAccess({
-    permissionType: PermissionTypes.MCP_SERVERS,
-    permission: Permissions.CREATE,
-  });
+  const { data: startupConfig } = useGetStartupConfig();
+  /** pwc_tars as MCP source of truth: servers are created in /mcp-settings, not here. */
+  const hasMcpCreateAccess =
+    useHasAccess({
+      permissionType: PermissionTypes.MCP_SERVERS,
+      permission: Permissions.CREATE,
+    }) && startupConfig?.tarsMcpEnabled !== true;
   const actionsEnabled = useMemo(
     () => agentsConfig?.capabilities?.includes(AgentCapabilities.actions) ?? false,
     [agentsConfig],

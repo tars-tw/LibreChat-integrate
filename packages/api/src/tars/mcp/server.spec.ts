@@ -52,8 +52,8 @@ const mockTarsBackend = (execute: { status: number; body: unknown }) =>
     throw new Error(`Unexpected fetch: ${url}`);
   });
 
-async function connectClient(tarsUserId: string | null): Promise<Client> {
-  const server = createTarsMcpServer(tarsUserId);
+async function connectClient(tarsUserId: string | null, serverId?: string): Promise<Client> {
+  const server = createTarsMcpServer(tarsUserId, serverId);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: 'spec-client', version: '1.0.0' });
@@ -132,6 +132,47 @@ describe('createTarsMcpServer', () => {
     expect(result.content).toEqual([
       { type: 'text', text: 'TARS tool call failed: 外部 API 逾時' },
     ]);
+    await client.close();
+  });
+
+  it('scopes tools/list and tools/call to one server with unprefixed names', async () => {
+    const fetchMock = mockTarsBackend({
+      status: 200,
+      body: envelope({ result: 'ok', duration_ms: 3 }),
+    });
+    const client = await connectClient(USER_ID, 'srv-custom-1');
+
+    const { tools } = await client.listTools();
+    expect(tools).toHaveLength(1);
+    expect(tools[0].name).toBe('create_issue');
+
+    const result = (await client.callTool({
+      name: 'create_issue',
+      arguments: { title: 'bug' },
+    })) as CallToolResult;
+    expect(result.isError).toBeFalsy();
+    const executeCall = fetchMock.mock.calls.find(([input]) =>
+      String(input).includes('/api/mcp/execute'),
+    );
+    expect(JSON.parse(executeCall?.[1]?.body as string)).toMatchObject({
+      server_id: 'srv-custom-1',
+      tool_name: 'create_issue',
+    });
+    await client.close();
+  });
+
+  it('exposes no tools for a server the user cannot see', async () => {
+    mockTarsBackend({ status: 200, body: envelope({ result: null, duration_ms: 1 }) });
+    const client = await connectClient(USER_ID, 'srv-unknown');
+
+    const { tools } = await client.listTools();
+    expect(tools).toEqual([]);
+
+    const result = (await client.callTool({
+      name: 'create_issue',
+      arguments: { title: 'bug' },
+    })) as CallToolResult;
+    expect(result.isError).toBe(true);
     await client.close();
   });
 

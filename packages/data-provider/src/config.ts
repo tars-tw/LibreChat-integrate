@@ -1678,6 +1678,8 @@ export type TStartupConfig = {
   };
   /** Whether login is delegated to the pwc_tars backend (username-based) */
   tarsAuth?: boolean;
+  /** Whether pwc_tars is the MCP server source of truth (hides native MCP server management UI) */
+  tarsMcpEnabled?: boolean;
   /** pwc_tars SSO status, used to offer the LDAP login option on the login page */
   tarsSso?: {
     enabled: boolean;
@@ -2991,6 +2993,32 @@ export function normalizeServerName(serverName: string): string {
     hash |= 0;
   }
   return `server_${Math.abs(hash)}`;
+}
+
+/** Prefix identifying MCP server entries injected from the pwc_tars gateway. */
+export const TARS_MCP_SERVER_PREFIX = 'tars_';
+
+/** Legacy aggregate gateway entry name (single "TARS" server, pre per-server injection). */
+export const TARS_MCP_LEGACY_SERVER_NAME = 'tars';
+
+/** Whether an MCP server name belongs to the pwc_tars gateway (per-server or legacy aggregate). */
+export function isTarsMcpServerName(serverName: string): boolean {
+  return (
+    serverName === TARS_MCP_LEGACY_SERVER_NAME || serverName.startsWith(TARS_MCP_SERVER_PREFIX)
+  );
+}
+
+/**
+ * Derives the injected MCP server name for a pwc_tars server code. The output
+ * alphabet is exactly `normalizeServerName`'s pass-through set, so
+ * `normalizeServerName(name) === name` always holds and injected entries never
+ * interact with alias/shadowing resolution. Client-side visibility filters and
+ * server-side config injection must both use this helper so they derive
+ * identical names.
+ */
+export function tarsMcpServerName(serverCode: string): string {
+  const sanitized = serverCode.replace(/[^a-zA-Z0-9_.-]/g, '_');
+  return `${TARS_MCP_SERVER_PREFIX}${sanitized}`;
 }
 
 /**

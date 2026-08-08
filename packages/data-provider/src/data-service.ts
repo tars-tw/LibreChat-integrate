@@ -832,6 +832,42 @@ export const parseTarsMcpOpenapi = (data: {
   return request.post(endpoints.tarsMcpAdminParseOpenapi(), data);
 };
 
+export const updateTarsMcpTool = (
+  id: string,
+  data: t.TTarsMcpToolUpdate,
+): Promise<{ tool: t.TTarsMcpTool }> => {
+  return request.put(endpoints.tarsMcpAdminTool(id), data);
+};
+
+export const deleteTarsMcpTool = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsMcpAdminTool(id));
+};
+
+export const getTarsDomainMcpServers = (
+  domainId: number,
+): Promise<t.TTarsDomainMcpServersResponse> => {
+  return request.get(endpoints.tarsMcpAdminDomainServers(domainId));
+};
+
+export const getTarsDomainMcpAvailableServers = (
+  domainId: number,
+): Promise<t.TTarsMcpServersResponse> => {
+  return request.get(endpoints.tarsMcpAdminDomainAvailableServers(domainId));
+};
+
+export const saveTarsDomainMcp = (
+  data: t.TTarsDomainMcpSavePayload,
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsMcpAdminDomainSave(), data);
+};
+
+export const getTarsMcpLogs = (query?: {
+  conversationId?: string;
+  limit?: number;
+}): Promise<t.TTarsMcpLogsResponse> => {
+  return request.get(endpoints.tarsMcpAdminLogs(query));
+};
+
 export const getTarsMcpUserSettings = (): Promise<t.TTarsMcpUserSettingsResponse> => {
   return request.get(endpoints.tarsMcpUserSettings());
 };
