@@ -10,6 +10,8 @@ import {
   Permissions,
   ResourceType,
   PermissionTypes,
+  tarsMcpServerName,
+  isTarsMcpServerName,
 } from 'librechat-data-provider';
 import {
   useCancelMCPOAuthMutation,
@@ -41,7 +43,12 @@ import {
   useCatalogReady,
   useMCPConnectionStatus,
 } from '~/hooks';
-import { useGetStartupConfig, useMCPServersQuery } from '~/data-provider';
+import {
+  useGetStartupConfig,
+  useMCPServersQuery,
+  useTarsMcpUserSettingsQuery,
+} from '~/data-provider';
+import { useAuthContext } from '~/hooks/AuthContext';
 import { mcpServerInitStatesAtom, getServerInitState } from '~/store/mcp';
 import { getMCPReinitializeErrorMessage } from './errors';
 
@@ -79,6 +86,45 @@ export function useMCPServerManager({
 
   const { data: loadedServers, isLoading } = useMCPServersQuery({ enabled: mcpEnabled });
 
+  /**
+   * Per-user visibility for the injected pwc_tars gateway entries (`tars_*`).
+   * Enforcement is server-side and fail-closed (pwc_tars filters tools by
+   * user); this only hides entries the user hasn't enabled. Non-tars users see
+   * none, and a failed query falls back to showing everything.
+   */
+  const { user } = useAuthContext();
+  const isTarsUser = user?.provider === 'tars';
+  const { data: tarsUserServers, isError: tarsSettingsFailed } = useTarsMcpUserSettingsQuery({
+    enabled: canUseMcp && isTarsUser,
+  });
+  const visibleTarsNames = useMemo(() => {
+    if (!isTarsUser || tarsSettingsFailed || tarsUserServers == null) {
+      return null;
+    }
+    const names = new Set<string>();
+    for (const server of tarsUserServers) {
+      if (server.user_enabled && server.code != null && server.code !== '') {
+        names.add(tarsMcpServerName(server.code));
+      }
+    }
+    return names;
+  }, [isTarsUser, tarsSettingsFailed, tarsUserServers]);
+  const isTarsServerVisible = useCallback(
+    (serverName: string): boolean => {
+      if (!isTarsMcpServerName(serverName)) {
+        return true;
+      }
+      if (!isTarsUser) {
+        return false;
+      }
+      if (visibleTarsNames == null) {
+        return true;
+      }
+      return visibleTarsNames.has(serverName);
+    },
+    [isTarsUser, visibleTarsNames],
+  );
+
   // Fetch effective permissions for all MCP servers
   const { data: permissionsMap } = useGetAllEffectivePermissionsQuery(ResourceType.MCPSERVER, {
     enabled: mcpEnabled,
@@ -92,6 +138,9 @@ export function useMCPServerManager({
     const definitions: MCPServerDefinition[] = [];
     if (loadedServers) {
       for (const [serverName, metadata] of Object.entries(loadedServers)) {
+        if (!isTarsServerVisible(serverName)) {
+          continue;
+        }
         const { dbId, consumeOnly, requestScoped, ...config } = metadata;
 
         // Get effective permissions from the permissions map using _id
@@ -109,7 +158,7 @@ export function useMCPServerManager({
       }
     }
     return definitions;
-  }, [loadedServers, permissionsMap]);
+  }, [loadedServers, permissionsMap, isTarsServerVisible]);
 
   // Memoize filtered servers for useMCPSelect to prevent infinite loops
   const selectableServers = useMemo(
