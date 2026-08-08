@@ -3,11 +3,17 @@ import { tarsFetch } from '~/tars/client';
 import type { TarsQuery } from '~/tars/client';
 
 /**
- * The pwc_tars MCP server types proxied through the LibreChat gateway. `external`
- * servers are real MCP servers (connect them to LibreChat directly) and `builtin`
- * tools are pwc_tars-internal, so both are excluded.
+ * The pwc_tars MCP server types proxied through the LibreChat gateway.
+ * `external` servers (real MCP servers reached via stdio / streamable-http) are
+ * executed by pwc_tars itself, so they proxy like the rest; only `builtin`
+ * (pwc_tars-internal LangChain tools, unsupported by `/api/mcp/execute`) is
+ * excluded.
  */
-const PROXIED_SERVER_TYPES = new Set(['openapi', 'custom_api']);
+export const PROXIED_SERVER_TYPES: ReadonlySet<string> = new Set([
+  'openapi',
+  'custom_api',
+  'external',
+]);
 
 const TOOLS_CACHE_TTL_MS = 30_000;
 const DEFAULT_EXECUTE_TIMEOUT_MS = 60_000;
@@ -58,9 +64,15 @@ export interface TarsMcpExecuteResult {
   durationMs?: number;
 }
 
-interface ToolsCacheEntry {
+/** Tool entries scoped to one lookup namespace (the aggregate gateway or a single server). */
+interface ScopedTools {
   entries: TarsMcpToolEntry[];
   byName: Map<string, TarsMcpToolEntry>;
+}
+
+interface ToolsCacheEntry {
+  aggregate: ScopedTools;
+  byServer: Map<string, ScopedTools>;
   cachedAt: number;
 }
 
@@ -105,9 +117,10 @@ function sanitizeNamePart(part: string): string {
 }
 
 /**
- * Builds the MCP-facing tool name `<serverPrefix>__<toolName>` (the gateway
- * aggregates every pwc_tars server, so names must be unique across servers).
- * Collisions after sanitizing/truncation get a short server-id suffix.
+ * Builds the aggregate-mode MCP tool name `<serverPrefix>__<toolName>` (the
+ * legacy single-entry gateway aggregates every pwc_tars server, so names must
+ * be unique across servers). Collisions after sanitizing/truncation get a short
+ * server-id suffix.
  */
 function buildToolName(row: TarsAvailableToolRow, taken: Set<string>): string | null {
   const prefix =
@@ -125,6 +138,25 @@ function buildToolName(row: TarsAvailableToolRow, taken: Set<string>): string | 
   return null;
 }
 
+/**
+ * Per-server mode drops the `<serverPrefix>__` prefix — the server identity
+ * lives in the `_mcp_tars_<code>` suffix LibreChat appends to the tool key.
+ * pwc_tars tool names are unique per server, so a collision only arises from
+ * sanitization; those get the short server-id suffix.
+ */
+function buildScopedToolName(row: TarsAvailableToolRow, taken: Set<string>): string | null {
+  const candidate = sanitizeNamePart(row.tool_name) || 'tool';
+  if (!taken.has(candidate)) {
+    return candidate;
+  }
+  const suffixed = `${candidate}_${sanitizeNamePart(row.server_id).slice(0, 8)}`;
+  if (!taken.has(suffixed)) {
+    return suffixed;
+  }
+  logger.warn(`[tars-mcp] Duplicate scoped tool name after suffixing, skipping: ${suffixed}`);
+  return null;
+}
+
 function toInputSchema(
   schema: Record<string, unknown> | null | undefined,
 ): Record<string, unknown> {
@@ -134,49 +166,80 @@ function toInputSchema(
   return { type: 'object', properties: {} };
 }
 
+function toToolEntry(name: string, row: TarsAvailableToolRow): TarsMcpToolEntry {
+  return {
+    name,
+    description: row.description || '',
+    inputSchema: toInputSchema(row.input_schema),
+    serverId: row.server_id,
+    serverName: row.server_name,
+    toolName: row.tool_name,
+  };
+}
+
+function enforceToolLimit(byName: Map<string, TarsMcpToolEntry>, scope: string): void {
+  const limit = maxTools();
+  if (byName.size <= limit) {
+    return;
+  }
+  logger.warn(
+    `[tars-mcp] pwc_tars exposes ${byName.size} tools for ${scope}; ` +
+      `truncating to ${limit}. Narrow the domain tool whitelist (mcp_tool_ids) or the ` +
+      `server's tool_config filters in pwc_tars instead of relying on truncation.`,
+  );
+  let index = 0;
+  for (const name of byName.keys()) {
+    index += 1;
+    if (index > limit) {
+      byName.delete(name);
+    }
+  }
+}
+
+function toScopedTools(byName: Map<string, TarsMcpToolEntry>): ScopedTools {
+  return { entries: [...byName.values()], byName };
+}
+
 async function loadTools(tarsUserId: string): Promise<ToolsCacheEntry> {
   const rows = await tarsMcpFetch<TarsAvailableToolRow[]>('/api/mcp/available-tools', {
     query: { user_id: tarsUserId },
   });
 
-  const byName = new Map<string, TarsMcpToolEntry>();
-  const taken = new Set<string>();
+  const aggregateByName = new Map<string, TarsMcpToolEntry>();
+  const aggregateTaken = new Set<string>();
+  const serverMaps = new Map<string, Map<string, TarsMcpToolEntry>>();
+  const serverTaken = new Map<string, Set<string>>();
   for (const row of rows ?? []) {
     if (!PROXIED_SERVER_TYPES.has(row.server_type)) {
       continue;
     }
-    const name = buildToolName(row, taken);
-    if (!name) {
-      continue;
+    const aggregateName = buildToolName(row, aggregateTaken);
+    if (aggregateName) {
+      aggregateTaken.add(aggregateName);
+      aggregateByName.set(aggregateName, toToolEntry(aggregateName, row));
     }
-    taken.add(name);
-    byName.set(name, {
-      name,
-      description: row.description || '',
-      inputSchema: toInputSchema(row.input_schema),
-      serverId: row.server_id,
-      serverName: row.server_name,
-      toolName: row.tool_name,
-    });
-  }
 
-  const limit = maxTools();
-  if (byName.size > limit) {
-    logger.warn(
-      `[tars-mcp] pwc_tars exposes ${byName.size} tools for user ${tarsUserId}; ` +
-        `truncating to ${limit}. Narrow the domain tool whitelist (mcp_tool_ids) or the ` +
-        `OpenAPI server's tool_config filters in pwc_tars instead of relying on truncation.`,
-    );
-    let index = 0;
-    for (const name of byName.keys()) {
-      index += 1;
-      if (index > limit) {
-        byName.delete(name);
-      }
+    let taken = serverTaken.get(row.server_id);
+    if (!taken) {
+      taken = new Set<string>();
+      serverTaken.set(row.server_id, taken);
+      serverMaps.set(row.server_id, new Map());
+    }
+    const scopedName = buildScopedToolName(row, taken);
+    if (scopedName) {
+      taken.add(scopedName);
+      serverMaps.get(row.server_id)?.set(scopedName, toToolEntry(scopedName, row));
     }
   }
 
-  return { entries: [...byName.values()], byName, cachedAt: Date.now() };
+  enforceToolLimit(aggregateByName, `user ${tarsUserId}`);
+  const byServer = new Map<string, ScopedTools>();
+  for (const [serverId, byName] of serverMaps) {
+    enforceToolLimit(byName, `user ${tarsUserId} server ${serverId}`);
+    byServer.set(serverId, toScopedTools(byName));
+  }
+
+  return { aggregate: toScopedTools(aggregateByName), byServer, cachedAt: Date.now() };
 }
 
 async function getTools(tarsUserId: string, forceRefresh = false): Promise<ToolsCacheEntry> {
@@ -202,28 +265,41 @@ async function getTools(tarsUserId: string, forceRefresh = false): Promise<Tools
   return load;
 }
 
+function scopeOf(entry: ToolsCacheEntry, serverId?: string): ScopedTools {
+  if (!serverId) {
+    return entry.aggregate;
+  }
+  return entry.byServer.get(serverId) ?? { entries: [], byName: new Map() };
+}
+
 /**
- * The OpenAPI / custom-API tools the pwc_tars user may access. pwc_tars applies
- * the full permission stack server-side (domain grants, `mcp_tool_ids` tool
- * whitelists, per-user enable/disable and tool overrides). Cached briefly so the
- * MCP handshake (initialize + tools/list) doesn't hammer pwc_tars.
+ * The pwc_tars tools the user may access, scoped to one server when `serverId`
+ * is given (per-server gateway entries) or aggregated across all servers
+ * (legacy single-entry gateway). pwc_tars applies the full permission stack
+ * server-side (domain grants, `mcp_tool_ids` tool whitelists, per-user
+ * enable/disable and tool overrides). Cached briefly so the MCP handshake
+ * (initialize + tools/list) doesn't hammer pwc_tars.
  */
-export async function listTarsMcpTools(tarsUserId: string): Promise<TarsMcpToolEntry[]> {
-  return (await getTools(tarsUserId)).entries;
+export async function listTarsMcpTools(
+  tarsUserId: string,
+  serverId?: string,
+): Promise<TarsMcpToolEntry[]> {
+  return scopeOf(await getTools(tarsUserId), serverId).entries;
 }
 
 /** Resolves a gateway tool name back to its pwc_tars server/tool, refreshing the cache on a miss. */
 export async function resolveTarsMcpTool(
   tarsUserId: string,
   name: string,
+  serverId?: string,
 ): Promise<TarsMcpToolEntry | null> {
   const cached = await getTools(tarsUserId);
-  const entry = cached.byName.get(name);
+  const entry = scopeOf(cached, serverId).byName.get(name);
   if (entry) {
     return entry;
   }
   const refreshed = await getTools(tarsUserId, true);
-  return refreshed.byName.get(name) ?? null;
+  return scopeOf(refreshed, serverId).byName.get(name) ?? null;
 }
 
 /**
@@ -238,8 +314,9 @@ export async function executeTarsMcpTool(
   tarsUserId: string,
   name: string,
   toolArguments: Record<string, unknown> | undefined,
+  serverId?: string,
 ): Promise<TarsMcpExecuteResult> {
-  const entry = await resolveTarsMcpTool(tarsUserId, name);
+  const entry = await resolveTarsMcpTool(tarsUserId, name, serverId);
   if (!entry) {
     throw new Error(`Unknown TARS MCP tool: ${name}`);
   }

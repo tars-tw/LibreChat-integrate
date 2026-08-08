@@ -18,8 +18,16 @@ const {
   updateUserTarsMcpServer,
   saveUserTarsMcpCredentials,
   clearUserTarsMcpCredentials,
+  invalidateTarsMcpToolsCache,
+  adminUpdateTarsMcpTool,
+  adminDeleteTarsMcpTool,
+  adminListTarsDomainMcpServers,
+  adminListTarsDomainAvailableServers,
+  adminSaveTarsDomainMcp,
+  adminGetTarsMcpLogs,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { invalidateConfigCaches } = require('~/server/services/Config');
 const { getUserById } = require('~/models');
 
 const router = express.Router();
@@ -60,33 +68,53 @@ async function resolveTarsUserId(headerValue) {
   }
 }
 
-/**
- * @route POST /api/tars/mcp
- * @desc Loopback MCP gateway proxying pwc_tars OpenAPI / custom-API tools.
- * @access Internal — LibreChat's own MCP client, authenticated by gateway key (not JWT).
- */
-router.post('/mcp', async (req, res) => {
+const gatewayHandler = (serverIdFrom) => async (req, res) => {
   if (!isTarsMcpEnabled()) {
     return jsonRpcError(res, 404, -32001, 'TARS MCP gateway is disabled');
   }
   if (!gatewayKeyMatches(req.headers['x-tars-gateway-key'])) {
     return jsonRpcError(res, 403, -32002, 'Forbidden');
   }
+  const serverId = serverIdFrom?.(req);
   try {
     const tarsUserId = await resolveTarsUserId(req.headers['x-tars-user-id']);
-    await handleTarsMcpRequest({ req, res, body: req.body, tarsUserId });
+    await handleTarsMcpRequest({ req, res, body: req.body, tarsUserId, serverId });
   } catch (error) {
     logger.error('[POST /api/tars/mcp] MCP gateway request failed', error);
     if (!res.headersSent) {
       return jsonRpcError(res, 500, -32603, 'Internal server error');
     }
   }
-});
+};
+
+/**
+ * @route POST /api/tars/mcp
+ * @deprecated Aggregate gateway (single `tars` entry exposing every server's
+ * tools). Kept for admin-managed YAML entries pinned to the old URL; the
+ * injected per-server entries use `POST /api/tars/mcp/:serverId`.
+ * @access Internal — LibreChat's own MCP client, authenticated by gateway key (not JWT).
+ */
+router.post('/mcp', gatewayHandler());
 
 /** Stateless gateway: no SSE stream to open (GET) and no session to delete (DELETE). */
 const methodNotAllowed = (req, res) => jsonRpcError(res, 405, -32000, 'Method not allowed');
 router.get('/mcp', methodNotAllowed);
 router.delete('/mcp', methodNotAllowed);
+
+/**
+ * Invalidates every cache a pwc_tars MCP mutation can affect: the gateway's
+ * per-user tool cache and LibreChat's config caches (so the injected per-server
+ * entries reflect the change on the next request). Best-effort — a failed
+ * invalidation only delays freshness until the TTL/restart.
+ */
+async function invalidateMcpCaches(label) {
+  invalidateTarsMcpToolsCache();
+  try {
+    await invalidateConfigCaches();
+  } catch (error) {
+    logger.error(`[${label}] Config cache invalidation failed`, error);
+  }
+}
 
 /**
  * Admin proxy for managing pwc_tars MCP servers (openapi / custom_api) from
@@ -140,17 +168,21 @@ router.get(
 router.post(
   '/mcp/admin/servers',
   adminMiddleware,
-  adminHandler('POST /api/tars/mcp/admin/servers', async (req) => ({
-    server: await adminCreateTarsMcpServer(req.body ?? {}),
-  })),
+  adminHandler('POST /api/tars/mcp/admin/servers', async (req) => {
+    const server = await adminCreateTarsMcpServer(req.body ?? {});
+    await invalidateMcpCaches('POST /api/tars/mcp/admin/servers');
+    return { server };
+  }),
 );
 
 router.put(
   '/mcp/admin/servers/:serverId',
   adminMiddleware,
-  adminHandler('PUT /api/tars/mcp/admin/servers/:serverId', async (req) => ({
-    server: await adminUpdateTarsMcpServer(req.params.serverId, req.body ?? {}),
-  })),
+  adminHandler('PUT /api/tars/mcp/admin/servers/:serverId', async (req) => {
+    const server = await adminUpdateTarsMcpServer(req.params.serverId, req.body ?? {});
+    await invalidateMcpCaches('PUT /api/tars/mcp/admin/servers/:serverId');
+    return { server };
+  }),
 );
 
 router.delete(
@@ -158,6 +190,7 @@ router.delete(
   adminMiddleware,
   adminHandler('DELETE /api/tars/mcp/admin/servers/:serverId', async (req) => {
     await adminDeleteTarsMcpServer(req.params.serverId);
+    await invalidateMcpCaches('DELETE /api/tars/mcp/admin/servers/:serverId');
     return { success: true };
   }),
 );
@@ -173,9 +206,11 @@ router.post(
 router.post(
   '/mcp/admin/servers/:serverId/sync',
   adminMiddleware,
-  adminHandler('POST /api/tars/mcp/admin/servers/:serverId/sync', async (req) => ({
-    result: await adminSyncTarsMcpServer(req.params.serverId),
-  })),
+  adminHandler('POST /api/tars/mcp/admin/servers/:serverId/sync', async (req) => {
+    const result = await adminSyncTarsMcpServer(req.params.serverId);
+    await invalidateMcpCaches('POST /api/tars/mcp/admin/servers/:serverId/sync');
+    return { result };
+  }),
 );
 
 router.post(
@@ -183,6 +218,75 @@ router.post(
   adminMiddleware,
   adminHandler('POST /api/tars/mcp/admin/parse-openapi', async (req) => ({
     parsed: await adminParseTarsOpenapi(req.body ?? {}),
+  })),
+);
+
+router.put(
+  '/mcp/admin/tools/:toolId',
+  adminMiddleware,
+  adminHandler('PUT /api/tars/mcp/admin/tools/:toolId', async (req) => {
+    const { is_enabled, description, input_schema } = req.body ?? {};
+    const tool = await adminUpdateTarsMcpTool(req.params.toolId, {
+      is_enabled,
+      description,
+      input_schema,
+    });
+    await invalidateMcpCaches('PUT /api/tars/mcp/admin/tools/:toolId');
+    return { tool };
+  }),
+);
+
+router.delete(
+  '/mcp/admin/tools/:toolId',
+  adminMiddleware,
+  adminHandler('DELETE /api/tars/mcp/admin/tools/:toolId', async (req) => {
+    await adminDeleteTarsMcpTool(req.params.toolId);
+    await invalidateMcpCaches('DELETE /api/tars/mcp/admin/tools/:toolId');
+    return { success: true };
+  }),
+);
+
+router.get(
+  '/mcp/admin/domains/:domainId/servers',
+  adminMiddleware,
+  adminHandler('GET /api/tars/mcp/admin/domains/:domainId/servers', async (req) => ({
+    servers: await adminListTarsDomainMcpServers(Number(req.params.domainId)),
+  })),
+);
+
+router.get(
+  '/mcp/admin/domains/:domainId/available-servers',
+  adminMiddleware,
+  adminHandler('GET /api/tars/mcp/admin/domains/:domainId/available-servers', async (req) => ({
+    servers: await adminListTarsDomainAvailableServers(Number(req.params.domainId)),
+  })),
+);
+
+router.post(
+  '/mcp/admin/domains/save',
+  adminMiddleware,
+  adminHandler('POST /api/tars/mcp/admin/domains/save', async (req) => {
+    const { domain_ids, servers } = req.body ?? {};
+    if (!Array.isArray(domain_ids) || domain_ids.length === 0 || !Array.isArray(servers)) {
+      const error = new Error('domain_ids and servers are required');
+      error.status = 400;
+      error.serverMessage = 'domain_ids and servers are required';
+      throw error;
+    }
+    await adminSaveTarsDomainMcp({ domain_ids, servers }, req.user.tarsId);
+    await invalidateMcpCaches('POST /api/tars/mcp/admin/domains/save');
+    return { success: true };
+  }),
+);
+
+router.get(
+  '/mcp/admin/logs',
+  adminMiddleware,
+  adminHandler('GET /api/tars/mcp/admin/logs', async (req) => ({
+    logs: await adminGetTarsMcpLogs({
+      conversation_id: req.query.conversation_id,
+      limit: req.query.limit ? Number(req.query.limit) : undefined,
+    }),
   })),
 );
 
@@ -243,5 +347,19 @@ router.delete(
     return { success: true };
   }),
 );
+
+/**
+ * @route POST /api/tars/mcp/:serverId
+ * @desc Per-server loopback MCP gateway — the target of the injected
+ * `tars_<code>` mcpConfig entries. Registered last so the literal
+ * `/mcp/admin/*` and `/mcp/user/*` paths always win.
+ * @access Internal — LibreChat's own MCP client, authenticated by gateway key (not JWT).
+ */
+router.post(
+  '/mcp/:serverId',
+  gatewayHandler((req) => req.params.serverId),
+);
+router.get('/mcp/:serverId', methodNotAllowed);
+router.delete('/mcp/:serverId', methodNotAllowed);
 
 module.exports = router;
