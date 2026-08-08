@@ -277,7 +277,7 @@ export type TTarsMcpServerInput = {
   name: string;
   code?: string;
   description?: string;
-  type: 'openapi' | 'custom_api';
+  type: 'openapi' | 'custom_api' | 'external';
   is_enabled?: boolean;
   priority?: number;
   tags?: string[];
@@ -285,6 +285,55 @@ export type TTarsMcpServerInput = {
   tool_config?: Record<string, unknown>;
   env_vars?: Record<string, string>;
 };
+
+/** Per-tool update payload (admin enable/disable or description/schema override). */
+export type TTarsMcpToolUpdate = {
+  is_enabled?: boolean;
+  description?: string;
+  input_schema?: Record<string, unknown>;
+};
+
+/** One `sys_domain_mcp` binding row (+ joined server) for the permissions tab. */
+export type TTarsDomainMcpRelation = {
+  id: string;
+  sys_domain_id: number;
+  mcp_server_id: string;
+  is_enabled: boolean;
+  mcp_tool_ids?: string[] | null;
+  config?: Record<string, unknown> | null;
+  server?: TTarsMcpServer | null;
+};
+
+export type TTarsDomainMcpServersResponse = { servers: TTarsDomainMcpRelation[] };
+
+/**
+ * Full-overwrite domain↔MCP binding payload: for every listed domain, unlisted
+ * servers get unbound and each server's tool whitelist is replaced
+ * (`mcp_tool_ids: []` = whole server).
+ */
+export type TTarsDomainMcpSavePayload = {
+  domain_ids: number[];
+  servers: Array<{ mcp_server_id: string; mcp_tool_ids?: string[] }>;
+};
+
+/** One `mcp_logs` audit row. */
+export type TTarsMcpLog = {
+  id: string;
+  sys_user_id: string;
+  sys_domain_id?: number | null;
+  conversation_id?: string | null;
+  message_id?: string | null;
+  mcp_server_id: string;
+  tool_name: string;
+  input_params?: Record<string, unknown> | null;
+  output_result?: unknown;
+  error_message?: string | null;
+  status: string;
+  duration_ms?: number | null;
+  created_at?: string | null;
+};
+
+export type TTarsMcpLogsResponse = { logs: TTarsMcpLog[] };
 
 export type TTarsMcpSyncResult = {
   synced?: number;
