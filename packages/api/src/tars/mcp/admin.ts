@@ -35,18 +35,64 @@ export interface TarsMcpToolDetail {
   is_enabled: boolean;
 }
 
-/** Create/update payload for a pwc_tars MCP server (openapi / custom_api). */
+/** Create/update payload for a pwc_tars MCP server (openapi / custom_api / external). */
 export interface TarsMcpServerInput {
   name: string;
   code?: string;
   description?: string;
-  type: 'openapi' | 'custom_api';
+  type: 'openapi' | 'custom_api' | 'external';
   is_enabled?: boolean;
   priority?: number;
   tags?: string[];
   connection_config: Record<string, unknown>;
   tool_config?: Record<string, unknown>;
   env_vars?: Record<string, string>;
+}
+
+/** Per-tool update payload (`PUT /api/mcp/tools/<id>`). */
+export interface TarsMcpToolInput {
+  description?: string;
+  is_enabled?: boolean;
+  input_schema?: Record<string, unknown>;
+}
+
+/** One `sys_domain_mcp` relation row (+ joined server) from the domain-binding endpoints. */
+export interface TarsDomainMcpRelation {
+  id: string;
+  sys_domain_id: number;
+  mcp_server_id: string;
+  is_enabled: boolean;
+  mcp_tool_ids?: string[] | null;
+  config?: Record<string, unknown> | null;
+  server?: TarsMcpServerDetail | null;
+  [key: string]: unknown;
+}
+
+/**
+ * Full-overwrite domain↔MCP binding payload (`POST /api/mcp/domain/save`):
+ * for every listed domain, unlisted servers get unbound and each listed
+ * server's tool whitelist is replaced (`mcp_tool_ids: []` = whole server).
+ */
+export interface TarsDomainMcpSavePayload {
+  domain_ids: number[];
+  servers: Array<{ mcp_server_id: string; mcp_tool_ids?: string[] }>;
+}
+
+/** One `mcp_logs` audit row. */
+export interface TarsMcpLogRow {
+  id: string;
+  sys_user_id: string;
+  sys_domain_id?: number | null;
+  conversation_id?: string | null;
+  message_id?: string | null;
+  mcp_server_id: string;
+  tool_name: string;
+  input_params?: Record<string, unknown> | null;
+  output_result?: unknown;
+  error_message?: string | null;
+  status: string;
+  duration_ms?: number | null;
+  created_at?: string | null;
 }
 
 export interface TarsMcpSyncResult {
@@ -130,4 +176,65 @@ export async function adminParseTarsOpenapi(body: {
     body,
     timeoutMs: 60_000,
   });
+}
+
+/** Per-tool enable/disable or description/schema override. */
+export async function adminUpdateTarsMcpTool(
+  toolId: string,
+  input: TarsMcpToolInput,
+): Promise<TarsMcpToolDetail | undefined> {
+  return tarsMcpFetch<TarsMcpToolDetail>(`/api/mcp/tools/${encodeURIComponent(toolId)}`, {
+    method: 'PUT',
+    body: input,
+  });
+}
+
+export async function adminDeleteTarsMcpTool(toolId: string): Promise<void> {
+  await tarsMcpFetch(`/api/mcp/tools/${encodeURIComponent(toolId)}`, { method: 'DELETE' });
+}
+
+/** The `sys_domain_mcp` bindings of one domain (existing whitelist state). */
+export async function adminListTarsDomainMcpServers(
+  domainId: number,
+): Promise<TarsDomainMcpRelation[]> {
+  const rows = await tarsMcpFetch<TarsDomainMcpRelation[]>(`/api/mcp/domain/${domainId}/servers`);
+  return rows ?? [];
+}
+
+/** The servers (with tools) a domain's whitelist currently exposes. */
+export async function adminListTarsDomainAvailableServers(
+  domainId: number,
+): Promise<TarsMcpServerDetail[]> {
+  const rows = await tarsMcpFetch<TarsMcpServerDetail[]>(
+    `/api/mcp/domain/${domainId}/available-servers`,
+  );
+  return rows ?? [];
+}
+
+/**
+ * Overwrites the domain↔MCP bindings for the given domains. `tarsUserId` (the
+ * acting admin) is forwarded so pwc_tars validates domain accessibility.
+ */
+export async function adminSaveTarsDomainMcp(
+  payload: TarsDomainMcpSavePayload,
+  tarsUserId: string,
+): Promise<void> {
+  await tarsMcpFetch('/api/mcp/domain/save', {
+    method: 'POST',
+    body: { ...payload, user_id: tarsUserId },
+  });
+}
+
+/** Recent `mcp_logs` audit rows (newest first; optional conversation filter). */
+export async function adminGetTarsMcpLogs(params: {
+  conversation_id?: string;
+  limit?: number;
+}): Promise<TarsMcpLogRow[]> {
+  const rows = await tarsMcpFetch<TarsMcpLogRow[]>('/api/mcp/logs', {
+    query: {
+      ...(params.conversation_id ? { conversation_id: params.conversation_id } : {}),
+      ...(params.limit ? { limit: params.limit } : {}),
+    },
+  });
+  return rows ?? [];
 }

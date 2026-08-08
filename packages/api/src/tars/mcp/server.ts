@@ -24,20 +24,22 @@ function toErrorMessage(error: unknown): string {
 }
 
 /**
- * An MCP server exposing the pwc_tars OpenAPI / custom-API tools visible to one
- * pwc_tars user. Listing and execution both proxy to the pwc_tars `/api/mcp`
- * REST API, so pwc_tars stays the source of truth for tool definitions and
- * domain permissions. A `null` user (LibreChat account not linked to pwc_tars)
- * fails closed to an empty tool list.
+ * An MCP server exposing the pwc_tars tools visible to one pwc_tars user,
+ * scoped to a single pwc_tars server when `serverId` is given (per-server
+ * gateway entries) or aggregated across all servers (legacy single entry).
+ * Listing and execution both proxy to the pwc_tars `/api/mcp` REST API, so
+ * pwc_tars stays the source of truth for tool definitions and domain
+ * permissions. A `null` user (LibreChat account not linked to pwc_tars) fails
+ * closed to an empty tool list.
  */
-export function createTarsMcpServer(tarsUserId: string | null): Server {
+export function createTarsMcpServer(tarsUserId: string | null, serverId?: string): Server {
   const server = new Server(SERVER_INFO, { capabilities: { tools: {} } });
 
   server.setRequestHandler(ListToolsRequestSchema, async (): Promise<ListToolsResult> => {
     if (!tarsUserId) {
       return { tools: [] };
     }
-    const entries = await listTarsMcpTools(tarsUserId);
+    const entries = await listTarsMcpTools(tarsUserId, serverId);
     return {
       tools: entries.map((entry) => ({
         name: entry.name,
@@ -56,7 +58,7 @@ export function createTarsMcpServer(tarsUserId: string | null): Server {
       };
     }
     try {
-      const { result } = await executeTarsMcpTool(tarsUserId, name, toolArguments);
+      const { result } = await executeTarsMcpTool(tarsUserId, name, toolArguments, serverId);
       return { content: [{ type: 'text', text: formatResult(result) }] };
     } catch (error) {
       logger.warn(
@@ -83,8 +85,9 @@ export async function handleTarsMcpRequest(args: {
   res: ServerResponse;
   body?: unknown;
   tarsUserId: string | null;
+  serverId?: string;
 }): Promise<void> {
-  const server = createTarsMcpServer(args.tarsUserId);
+  const server = createTarsMcpServer(args.tarsUserId, args.serverId);
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

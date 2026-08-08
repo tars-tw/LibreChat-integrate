@@ -36,16 +36,27 @@ interface AuthForm {
   credentialsJson: string;
 }
 
+type ServerType = 'openapi' | 'custom_api' | 'external';
+type ExternalTransport = 'streamable_http' | 'stdio';
+
 interface ServerForm {
   name: string;
   code: string;
   description: string;
-  type: 'openapi' | 'custom_api';
+  type: ServerType;
   enabled: boolean;
+  priority: string;
+  tags: string;
   openapiUrl: string;
   baseUrl: string;
   timeout: string;
   toolsJson: string;
+  transport: ExternalTransport;
+  externalUrl: string;
+  headersJson: string;
+  command: string;
+  argsText: string;
+  envVarsJson: string;
   auth: AuthForm;
 }
 
@@ -104,18 +115,34 @@ function buildAuth(form: AuthForm): Record<string, unknown> | undefined {
   };
 }
 
+function toServerType(type?: string): ServerType {
+  if (type === 'custom_api' || type === 'external') {
+    return type;
+  }
+  return 'openapi';
+}
+
 function toForm(server?: TTarsMcpServer): ServerForm {
   const config = server?.connection_config ?? {};
   return {
     name: server?.name ?? '',
     code: server?.code ?? '',
     description: server?.description ?? '',
-    type: server?.type === 'custom_api' ? 'custom_api' : 'openapi',
+    type: toServerType(server?.type),
     enabled: server?.is_enabled ?? true,
+    priority: server?.priority != null ? String(server.priority) : '',
+    tags: (server?.tags ?? []).join(', '),
     openapiUrl: String(config.openapi_url ?? ''),
     baseUrl: String(config.base_url ?? ''),
     timeout: String(config.timeout ?? 30),
     toolsJson: config.tools ? JSON.stringify(config.tools, null, 2) : '[]',
+    transport: config.transport === 'streamable_http' ? 'streamable_http' : 'stdio',
+    externalUrl: String(config.url ?? ''),
+    headersJson: config.headers ? JSON.stringify(config.headers, null, 2) : '{}',
+    command: String(config.command ?? ''),
+    argsText: Array.isArray(config.args) ? (config.args as string[]).join('\n') : '',
+    /** pwc_tars never returns stored `env_vars` (secret hygiene); an empty object means "keep unchanged". */
+    envVarsJson: '{}',
     auth: parseAuthForm(config as Record<string, unknown>),
   };
 }
@@ -182,6 +209,7 @@ export default function McpServerModal({
     }
 
     const connection: Record<string, unknown> = { ...(auth ? { auth } : {}) };
+    let envVars: Record<string, string> | undefined;
     if (form.type === 'openapi') {
       if (!form.openapiUrl.trim()) {
         showToast({ message: localize('com_ui_tars_mcp_openapi_url_required'), status: 'error' });
@@ -193,7 +221,7 @@ export default function McpServerModal({
       }
       const timeout = Number(form.timeout);
       connection.timeout = Number.isFinite(timeout) && timeout > 0 ? timeout : 30;
-    } else {
+    } else if (form.type === 'custom_api') {
       if (!form.baseUrl.trim()) {
         showToast({ message: localize('com_ui_tars_mcp_base_url_required'), status: 'error' });
         return null;
@@ -211,14 +239,63 @@ export default function McpServerModal({
       }
       connection.base_url = form.baseUrl.trim();
       connection.tools = tools;
+    } else {
+      connection.transport = form.transport;
+      if (form.transport === 'streamable_http') {
+        if (!form.externalUrl.trim()) {
+          showToast({ message: localize('com_ui_tars_mcp_url_required'), status: 'error' });
+          return null;
+        }
+        connection.url = form.externalUrl.trim();
+        try {
+          const headers = JSON.parse(form.headersJson || '{}') as Record<string, unknown>;
+          if (Object.keys(headers).length > 0) {
+            connection.headers = headers;
+          }
+        } catch {
+          showToast({ message: localize('com_ui_tars_mcp_invalid_json'), status: 'error' });
+          return null;
+        }
+      } else {
+        if (!form.command.trim()) {
+          showToast({ message: localize('com_ui_tars_mcp_command_required'), status: 'error' });
+          return null;
+        }
+        delete connection.auth;
+        connection.command = form.command.trim();
+        const args = form.argsText
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (args.length > 0) {
+          connection.args = args;
+        }
+        try {
+          const parsedEnv = JSON.parse(form.envVarsJson || '{}') as Record<string, string>;
+          if (Object.keys(parsedEnv).length > 0) {
+            envVars = parsedEnv;
+          }
+        } catch {
+          showToast({ message: localize('com_ui_tars_mcp_invalid_json'), status: 'error' });
+          return null;
+        }
+      }
     }
 
+    const priority = Number(form.priority);
+    const tags = form.tags
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
     return {
       name: form.name.trim(),
       code: form.code.trim() || undefined,
       description: form.description.trim() || undefined,
       type: form.type,
       is_enabled: form.enabled,
+      ...(form.priority.trim() !== '' && Number.isFinite(priority) ? { priority } : {}),
+      ...(tags.length > 0 ? { tags } : {}),
+      ...(envVars ? { env_vars: envVars } : {}),
       connection_config: connection,
     };
   };
@@ -253,6 +330,8 @@ export default function McpServerModal({
     }
   };
 
+  /** pwc_tars only injects bearer / api_key headers for external servers; stdio has no auth at all. */
+  const isExternal = form.type === 'external';
   const authFields = (
     <div className="space-y-3 rounded-lg border border-border-light p-3">
       <div className="flex items-center justify-between">
@@ -266,8 +345,12 @@ export default function McpServerModal({
           <option value="none">{localize('com_ui_tars_mcp_auth_none')}</option>
           <option value="bearer">{localize('com_ui_tars_mcp_auth_bearer')}</option>
           <option value="api_key">{localize('com_ui_tars_mcp_auth_api_key')}</option>
-          <option value="basic">{localize('com_ui_tars_mcp_auth_basic')}</option>
-          <option value="login">{localize('com_ui_tars_mcp_auth_login')}</option>
+          {!isExternal && (
+            <>
+              <option value="basic">{localize('com_ui_tars_mcp_auth_basic')}</option>
+              <option value="login">{localize('com_ui_tars_mcp_auth_login')}</option>
+            </>
+          )}
         </select>
       </div>
       {(form.auth.type === 'bearer' || form.auth.type === 'api_key') && (
@@ -291,7 +374,9 @@ export default function McpServerModal({
                   className="w-full rounded-lg border border-border-light bg-transparent px-2 py-1.5 text-sm text-text-primary"
                 >
                   <option value="header">{localize('com_ui_tars_mcp_auth_in_header')}</option>
-                  <option value="query">{localize('com_ui_tars_mcp_auth_in_query')}</option>
+                  {!isExternal && (
+                    <option value="query">{localize('com_ui_tars_mcp_auth_in_query')}</option>
+                  )}
                 </select>
               </div>
             </>
@@ -409,6 +494,27 @@ export default function McpServerModal({
                 onChange={(e) => set('description', e.target.value)}
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="tars-mcp-priority">{localize('com_ui_tars_mcp_priority')}</Label>
+                <Input
+                  id="tars-mcp-priority"
+                  type="number"
+                  value={form.priority}
+                  onChange={(e) => set('priority', e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <Label htmlFor="tars-mcp-tags">{localize('com_ui_tars_mcp_tags')}</Label>
+                <Input
+                  id="tars-mcp-tags"
+                  value={form.tags}
+                  onChange={(e) => set('tags', e.target.value)}
+                  placeholder={localize('com_ui_tars_mcp_tags_hint')}
+                />
+              </div>
+            </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Label>{localize('com_ui_tars_mcp_type')}</Label>
@@ -421,6 +527,7 @@ export default function McpServerModal({
                 >
                   <option value="openapi">{localize('com_ui_tars_mcp_type_openapi')}</option>
                   <option value="custom_api">{localize('com_ui_tars_mcp_type_custom')}</option>
+                  <option value="external">{localize('com_ui_tars_mcp_type_external')}</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
@@ -531,7 +638,99 @@ export default function McpServerModal({
               </div>
             )}
 
-            {authFields}
+            {form.type === 'external' && (
+              <div className="space-y-3 rounded-lg border border-border-light p-3">
+                <div className="flex items-center gap-4">
+                  <Label>{localize('com_ui_tars_mcp_transport')}</Label>
+                  <select
+                    value={form.transport}
+                    onChange={(e) => set('transport', e.target.value as ExternalTransport)}
+                    aria-label={localize('com_ui_tars_mcp_transport')}
+                    className="rounded-lg border border-border-light bg-transparent px-2 py-1 text-sm text-text-primary"
+                  >
+                    <option value="streamable_http">
+                      {localize('com_ui_tars_mcp_transport_http')}
+                    </option>
+                    <option value="stdio">{localize('com_ui_tars_mcp_transport_stdio')}</option>
+                  </select>
+                </div>
+                {form.transport === 'streamable_http' && (
+                  <>
+                    <div>
+                      <Label htmlFor="tars-mcp-external-url">
+                        {localize('com_ui_tars_mcp_url')}
+                      </Label>
+                      <Input
+                        id="tars-mcp-external-url"
+                        value={form.externalUrl}
+                        onChange={(e) => set('externalUrl', e.target.value)}
+                        placeholder="https://mcp.example.com/mcp"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="tars-mcp-headers">
+                        {localize('com_ui_tars_mcp_headers_json')}
+                      </Label>
+                      <textarea
+                        id="tars-mcp-headers"
+                        rows={4}
+                        value={form.headersJson}
+                        onChange={(e) => set('headersJson', e.target.value)}
+                        className={textareaClass}
+                        placeholder={'{\n  "X-Custom-Header": "value"\n}'}
+                      />
+                    </div>
+                  </>
+                )}
+                {form.transport === 'stdio' && (
+                  <>
+                    <p className="rounded-lg bg-surface-secondary p-2 text-xs text-text-secondary">
+                      {localize('com_ui_tars_mcp_stdio_warning')}
+                    </p>
+                    <div>
+                      <Label htmlFor="tars-mcp-command">
+                        {localize('com_ui_tars_mcp_command')}
+                      </Label>
+                      <Input
+                        id="tars-mcp-command"
+                        value={form.command}
+                        onChange={(e) => set('command', e.target.value)}
+                        placeholder="uvx"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="tars-mcp-args">{localize('com_ui_tars_mcp_args')}</Label>
+                      <textarea
+                        id="tars-mcp-args"
+                        rows={4}
+                        value={form.argsText}
+                        onChange={(e) => set('argsText', e.target.value)}
+                        className={textareaClass}
+                        placeholder={'mcp-server-fetch\n--option value'}
+                      />
+                      <p className="mt-1 text-xs text-text-secondary">
+                        {localize('com_ui_tars_mcp_args_hint')}
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="tars-mcp-env-vars">
+                        {localize('com_ui_tars_mcp_env_vars_json')}
+                      </Label>
+                      <textarea
+                        id="tars-mcp-env-vars"
+                        rows={4}
+                        value={form.envVarsJson}
+                        onChange={(e) => set('envVarsJson', e.target.value)}
+                        className={textareaClass}
+                        placeholder={'{\n  "API_TOKEN": "${MY_TOKEN}"\n}'}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {!(form.type === 'external' && form.transport === 'stdio') && authFields}
           </div>
         }
         buttons={
