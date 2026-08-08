@@ -1,15 +1,26 @@
 import { createHmac } from 'crypto';
 import { logger } from '@librechat/data-schemas';
+import { tarsMcpServerName } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
 import type { MCPOptions } from 'librechat-data-provider';
 import { hostPortFromUrl } from '~/auth/allowedAddresses';
 import { isTarsConfigured } from '~/tars/client';
+import { PROXIED_SERVER_TYPES, tarsMcpFetch } from './client';
+import type { TarsMcpServerDetail } from './admin';
 
 export const TARS_MCP_SERVER_NAME = 'tars';
 export const TARS_MCP_PATH = '/api/tars/mcp';
 
 const GATEWAY_KEY_CONTEXT = 'tars-mcp-gateway';
 const DEFAULT_TOOL_TIMEOUT_MS = 90_000;
+/**
+ * The server-list fetch is generous because pwc_tars's first `/api/mcp/servers`
+ * after a restart pays for its database connection pool warming up (measured
+ * ~23s against a remote DB; ~2s once warm). Too tight a bound turns every cold
+ * start into a failed injection + retry cycle. Override with
+ * `TARS_MCP_SERVER_LIST_TIMEOUT_MS`.
+ */
+const DEFAULT_SERVER_LIST_TIMEOUT_MS = 45_000;
 
 /** The gateway is on whenever pwc_tars is configured, unless explicitly disabled. */
 export function isTarsMcpEnabled(): boolean {
@@ -54,7 +65,11 @@ export function tarsMcpSelfUrl(): string {
   return `http://localhost:${port}${TARS_MCP_PATH}`;
 }
 
-function buildServerEntry(url: string, gatewayKey: string): MCPOptions {
+function buildServerEntry(
+  url: string,
+  gatewayKey: string,
+  server: TarsMcpServerDetail,
+): MCPOptions {
   return {
     type: 'streamable-http',
     url,
@@ -64,26 +79,55 @@ function buildServerEntry(url: string, gatewayKey: string): MCPOptions {
     },
     startup: false,
     chatMenu: true,
-    title: 'TARS',
-    description: 'pwc_tars OpenAPI / custom API tools',
+    title: server.name,
+    description: server.description || '',
     timeout: DEFAULT_TOOL_TIMEOUT_MS,
   };
 }
 
+function serverListTimeoutMs(): number {
+  const raw = Number(process.env.TARS_MCP_SERVER_LIST_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_SERVER_LIST_TIMEOUT_MS;
+}
+
+let injectionFailed = false;
+
 /**
- * Injects the loopback TARS MCP gateway server into the app config so admins
- * get it without touching `librechat.yaml`. Mirrors `withLangflowAllowedAddress`:
- * applied once at base-config load so every `getAppConfig` consumer (MCP
- * registry, per-tool domain checks, agent init) sees the same entry. The
- * `{{LIBRECHAT_USER_ID}}` header makes connections user-scoped, so each user's
- * tool list reflects their own pwc_tars domain permissions. A pre-existing
- * `tars` entry (admin-managed YAML) always wins. No-op when disabled.
+ * Whether the last {@link withTarsMcpConfig} run failed to reach pwc_tars.
+ * The caller (`loadBaseConfig`) uses this to schedule a config-cache
+ * invalidation retry so a pwc_tars outage at boot heals without a restart.
  */
-export function withTarsMcpConfig(appConfig: AppConfig): AppConfig {
-  if (!appConfig || !isTarsMcpEnabled()) {
-    return appConfig;
+export function tarsMcpInjectionFailed(): boolean {
+  return injectionFailed;
+}
+
+/**
+ * The unique injected entry name for a pwc_tars server: `tars_<sanitized code>`,
+ * falling back to a short server-id suffix when sanitization collides or the
+ * code is missing.
+ */
+function entryNameFor(server: TarsMcpServerDetail, taken: Set<string>): string {
+  const base = tarsMcpServerName(server.code?.trim() || server.id.slice(0, 8));
+  if (!taken.has(base)) {
+    return base;
   }
-  if (appConfig.mcpConfig?.[TARS_MCP_SERVER_NAME]) {
+  return `${base}_${server.id.replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 8)}`;
+}
+
+/**
+ * Injects one loopback gateway entry per pwc_tars MCP server into the app
+ * config so admins get them without touching `librechat.yaml`. Applied once at
+ * base-config load so every `getAppConfig` consumer (MCP registry, per-tool
+ * domain checks, agent init) sees the same entries. The `{{LIBRECHAT_USER_ID}}`
+ * header makes connections user-scoped, so each user's tool list reflects their
+ * own pwc_tars domain permissions. Pre-existing entries of the same name
+ * (admin-managed YAML) always win. When pwc_tars is unreachable nothing is
+ * injected and {@link tarsMcpInjectionFailed} flips true so the caller can
+ * schedule a retry. No-op when disabled.
+ */
+export async function withTarsMcpConfig(appConfig: AppConfig): Promise<AppConfig> {
+  injectionFailed = false;
+  if (!appConfig || !isTarsMcpEnabled()) {
     return appConfig;
   }
   const gatewayKey = deriveTarsMcpGatewayKey();
@@ -92,13 +136,49 @@ export function withTarsMcpConfig(appConfig: AppConfig): AppConfig {
     return appConfig;
   }
 
-  const url = tarsMcpSelfUrl();
-  appConfig.mcpConfig = {
-    ...(appConfig.mcpConfig ?? {}),
-    [TARS_MCP_SERVER_NAME]: buildServerEntry(url, gatewayKey),
-  };
+  let servers: TarsMcpServerDetail[];
+  try {
+    servers =
+      (await tarsMcpFetch<TarsMcpServerDetail[]>('/api/mcp/servers', {
+        timeoutMs: serverListTimeoutMs(),
+      })) ?? [];
+  } catch (error) {
+    injectionFailed = true;
+    logger.warn(
+      '[tars-mcp] Failed to fetch the pwc_tars MCP server list; no gateway entries injected',
+      error,
+    );
+    return appConfig;
+  }
 
-  const loopback = hostPortFromUrl(url);
+  const baseUrl = tarsMcpSelfUrl();
+  const mcpConfig = { ...(appConfig.mcpConfig ?? {}) };
+  const taken = new Set(Object.keys(mcpConfig));
+  let injected = 0;
+  for (const server of servers) {
+    if (!server.is_enabled || !PROXIED_SERVER_TYPES.has(server.type)) {
+      continue;
+    }
+    const name = entryNameFor(server, taken);
+    if (mcpConfig[name]) {
+      logger.warn(`[tars-mcp] mcpConfig already defines "${name}"; skipping injection (YAML wins)`);
+      continue;
+    }
+    taken.add(name);
+    mcpConfig[name] = buildServerEntry(
+      `${baseUrl}/${encodeURIComponent(server.id)}`,
+      gatewayKey,
+      server,
+    );
+    injected += 1;
+  }
+
+  if (injected === 0) {
+    return appConfig;
+  }
+  appConfig.mcpConfig = mcpConfig;
+
+  const loopback = hostPortFromUrl(baseUrl);
   if (!loopback) {
     return appConfig;
   }
