@@ -1,6 +1,15 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Pencil, Trash2, RefreshCw, PlugZap } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  PlugZap,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react';
 import {
   Input,
   Button,
@@ -17,9 +26,20 @@ import {
   useDeleteTarsMcpServerMutation,
 } from '~/data-provider';
 import { useLocalize, useIsTarsAdmin } from '~/hooks';
+import McpServerToolsPanel from './McpServerToolsPanel';
+import McpPermissionsTab from './McpPermissionsTab';
 import McpServerModal from './McpServerModal';
+import McpLogsTab from './McpLogsTab';
 
-const MANAGED_TYPES = new Set(['openapi', 'custom_api']);
+const MANAGED_TYPES = new Set(['openapi', 'custom_api', 'external']);
+
+const TYPE_LABEL_KEYS = {
+  openapi: 'com_ui_tars_mcp_type_openapi',
+  external: 'com_ui_tars_mcp_type_external',
+  custom_api: 'com_ui_tars_mcp_type_custom',
+} as const;
+
+type SettingsTab = 'servers' | 'permissions' | 'logs';
 
 export default function McpSettingsView() {
   const localize = useLocalize();
@@ -28,11 +48,13 @@ export default function McpSettingsView() {
   const { showToast } = useToastContext();
   const { data: servers = [], isLoading } = useTarsMcpServersQuery();
 
+  const [tab, setTab] = useState<SettingsTab>('servers');
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TTarsMcpServer | null>(null);
   const [deleting, setDeleting] = useState<TTarsMcpServer | null>(null);
   const [busyServerId, setBusyServerId] = useState<string | null>(null);
+  const [expandedServerId, setExpandedServerId] = useState<string | null>(null);
 
   const testMutation = useTestTarsMcpServerMutation();
   const syncMutation = useSyncTarsMcpServerMutation();
@@ -107,35 +129,71 @@ export default function McpSettingsView() {
           <h1 className="text-2xl font-semibold text-text-primary">
             {localize('com_ui_tars_mcp_settings')}
           </h1>
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="icon-sm mr-1" aria-hidden="true" />
-            {localize('com_ui_tars_mcp_add_server')}
-          </Button>
+          {tab === 'servers' && (
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="icon-sm mr-1" aria-hidden="true" />
+              {localize('com_ui_tars_mcp_add_server')}
+            </Button>
+          )}
         </div>
 
         <p className="text-sm text-text-secondary">{localize('com_ui_tars_mcp_settings_hint')}</p>
 
-        <div className="relative max-w-sm">
-          <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={localize('com_ui_tars_mcp_search')}
-            className="pl-9"
-          />
+        <div
+          role="tablist"
+          aria-label={localize('com_ui_tars_mcp_settings')}
+          className="flex gap-1 border-b border-border-light"
+        >
+          {(
+            [
+              ['servers', 'com_ui_tars_mcp_tab_servers'],
+              ['permissions', 'com_ui_tars_mcp_tab_permissions'],
+              ['logs', 'com_ui_tars_mcp_tab_logs'],
+            ] as const
+          ).map(([key, labelKey]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
+              className={`-mb-px border-b-2 px-4 py-2 text-sm transition-colors ${
+                tab === key
+                  ? 'border-text-primary font-medium text-text-primary'
+                  : 'border-transparent text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {localize(labelKey)}
+            </button>
+          ))}
         </div>
 
-        {isLoading && (
+        {tab === 'permissions' && <McpPermissionsTab />}
+        {tab === 'logs' && <McpLogsTab />}
+
+        {tab === 'servers' && (
+          <div className="relative max-w-sm">
+            <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={localize('com_ui_tars_mcp_search')}
+              className="pl-9"
+            />
+          </div>
+        )}
+
+        {tab === 'servers' && isLoading && (
           <div className="flex h-40 items-center justify-center">
             <Spinner />
           </div>
         )}
-        {!isLoading && rows.length === 0 && (
+        {tab === 'servers' && !isLoading && rows.length === 0 && (
           <p className="py-12 text-center text-sm text-text-secondary">
             {localize('com_ui_tars_mcp_empty')}
           </p>
         )}
-        {!isLoading && rows.length > 0 && (
+        {tab === 'servers' && !isLoading && rows.length > 0 && (
           <div className="overflow-hidden rounded-lg border border-border-light">
             <table className="w-full table-fixed text-sm">
               <thead className="bg-surface-secondary text-left text-text-secondary">
@@ -158,96 +216,122 @@ export default function McpSettingsView() {
               </thead>
               <tbody>
                 {rows.map((server) => (
-                  <tr
-                    key={server.id}
-                    className="border-t border-border-light hover:bg-surface-hover"
-                  >
-                    <td className="px-4 py-2">
-                      <span
-                        className="block truncate font-medium text-text-primary"
-                        title={server.name}
-                      >
-                        {server.name}
-                      </span>
-                      {server.code != null && server.code !== '' && (
-                        <span className="block truncate font-mono text-xs text-text-secondary">
-                          {server.code}
+                  <Fragment key={server.id}>
+                    <tr className="border-t border-border-light hover:bg-surface-hover">
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            aria-label={localize('com_ui_tars_mcp_toggle_tools')}
+                            aria-expanded={expandedServerId === server.id}
+                            onClick={() =>
+                              setExpandedServerId((prev) => (prev === server.id ? null : server.id))
+                            }
+                            className="rounded p-0.5 text-text-secondary hover:text-text-primary"
+                          >
+                            {expandedServerId === server.id ? (
+                              <ChevronDown className="icon-sm" />
+                            ) : (
+                              <ChevronRight className="icon-sm" />
+                            )}
+                          </button>
+                          <div className="min-w-0">
+                            <span
+                              className="block truncate font-medium text-text-primary"
+                              title={server.name}
+                            >
+                              {server.name}
+                            </span>
+                            {server.code != null && server.code !== '' && (
+                              <span className="block truncate font-mono text-xs text-text-secondary">
+                                {server.code}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className="inline-block rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
+                          {localize(
+                            TYPE_LABEL_KEYS[server.type as keyof typeof TYPE_LABEL_KEYS] ??
+                              'com_ui_tars_mcp_type_custom',
+                          )}
                         </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className="inline-block rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
-                        {server.type === 'openapi'
-                          ? localize('com_ui_tars_mcp_type_openapi')
-                          : localize('com_ui_tars_mcp_type_custom')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-text-secondary">
-                      <span className="block truncate" title={server.description ?? ''}>
-                        {server.description ?? '—'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-text-secondary">{server.tool_count ?? 0}</td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs ${
-                          server.is_enabled
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-                            : 'bg-surface-tertiary text-text-secondary'
-                        }`}
-                      >
-                        {server.is_enabled
-                          ? localize('com_ui_active')
-                          : localize('com_ui_tars_mcp_disabled')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="flex justify-end gap-1">
-                        {busyServerId === server.id ? (
-                          <Spinner className="icon-sm" />
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              aria-label={localize('com_ui_tars_mcp_test')}
-                              title={localize('com_ui_tars_mcp_test')}
-                              onClick={() => handleTest(server)}
-                              className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
-                            >
-                              <PlugZap className="icon-sm" />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label={localize('com_ui_tars_mcp_sync')}
-                              title={localize('com_ui_tars_mcp_sync')}
-                              onClick={() => handleSync(server)}
-                              className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
-                            >
-                              <RefreshCw className="icon-sm" />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label={localize('com_ui_edit')}
-                              title={localize('com_ui_edit')}
-                              onClick={() => setEditing(server)}
-                              className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
-                            >
-                              <Pencil className="icon-sm" />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label={localize('com_ui_delete')}
-                              title={localize('com_ui_delete')}
-                              onClick={() => setDeleting(server)}
-                              className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
-                            >
-                              <Trash2 className="icon-sm" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-4 py-2 text-text-secondary">
+                        <span className="block truncate" title={server.description ?? ''}>
+                          {server.description ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-text-secondary">{server.tool_count ?? 0}</td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`inline-block rounded-full px-2 py-0.5 text-xs ${
+                            server.is_enabled
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                              : 'bg-surface-tertiary text-text-secondary'
+                          }`}
+                        >
+                          {server.is_enabled
+                            ? localize('com_ui_active')
+                            : localize('com_ui_tars_mcp_disabled')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex justify-end gap-1">
+                          {busyServerId === server.id ? (
+                            <Spinner className="icon-sm" />
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                aria-label={localize('com_ui_tars_mcp_test')}
+                                title={localize('com_ui_tars_mcp_test')}
+                                onClick={() => handleTest(server)}
+                                className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                              >
+                                <PlugZap className="icon-sm" />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label={localize('com_ui_tars_mcp_sync')}
+                                title={localize('com_ui_tars_mcp_sync')}
+                                onClick={() => handleSync(server)}
+                                className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                              >
+                                <RefreshCw className="icon-sm" />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label={localize('com_ui_edit')}
+                                title={localize('com_ui_edit')}
+                                onClick={() => setEditing(server)}
+                                className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                              >
+                                <Pencil className="icon-sm" />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label={localize('com_ui_delete')}
+                                title={localize('com_ui_delete')}
+                                onClick={() => setDeleting(server)}
+                                className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                              >
+                                <Trash2 className="icon-sm" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {expandedServerId === server.id && (
+                      <tr className="border-t border-border-light">
+                        <td colSpan={6} className="bg-surface-secondary px-6 py-2">
+                          <McpServerToolsPanel serverId={server.id} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

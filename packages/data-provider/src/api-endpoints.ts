@@ -343,6 +343,24 @@ export const tarsMcpAdminServer = (id: string) =>
 export const tarsMcpAdminServerTest = (id: string) => `${tarsMcpAdminServer(id)}/test`;
 export const tarsMcpAdminServerSync = (id: string) => `${tarsMcpAdminServer(id)}/sync`;
 export const tarsMcpAdminParseOpenapi = () => `${BASE_URL}/api/tars/mcp/admin/parse-openapi`;
+export const tarsMcpAdminTool = (id: string) =>
+  `${BASE_URL}/api/tars/mcp/admin/tools/${encodeURIComponent(id)}`;
+export const tarsMcpAdminDomainServers = (domainId: number) =>
+  `${BASE_URL}/api/tars/mcp/admin/domains/${domainId}/servers`;
+export const tarsMcpAdminDomainAvailableServers = (domainId: number) =>
+  `${BASE_URL}/api/tars/mcp/admin/domains/${domainId}/available-servers`;
+export const tarsMcpAdminDomainSave = () => `${BASE_URL}/api/tars/mcp/admin/domains/save`;
+export const tarsMcpAdminLogs = (query?: { conversationId?: string; limit?: number }) => {
+  const params = new URLSearchParams();
+  if (query?.conversationId) {
+    params.append('conversation_id', query.conversationId);
+  }
+  if (query?.limit) {
+    params.append('limit', String(query.limit));
+  }
+  const qs = params.toString();
+  return qs ? `${BASE_URL}/api/tars/mcp/admin/logs?${qs}` : `${BASE_URL}/api/tars/mcp/admin/logs`;
+};
 export const tarsMcpUserSettings = () => `${BASE_URL}/api/tars/mcp/user/settings`;
 export const tarsMcpUserServer = (id: string) =>
   `${BASE_URL}/api/tars/mcp/user/servers/${encodeURIComponent(id)}`;
