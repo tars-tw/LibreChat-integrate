@@ -22,6 +22,7 @@ import {
   requiresEphemeralUserConnection,
   filterChatSelectableMCPServers,
   validateMCPServerConfig,
+  selectedMCPToolKeys,
 } from '~/mcp/utils';
 import { ASK_USER_QUESTION_TOOL_NAME } from '~/agents/hitl/askUserQuestionTool';
 import { resolveMCPClientCapabilityProfile } from '~/mcp/capabilities';
@@ -145,7 +146,14 @@ export async function loadEphemeralAgent(
           overlayConfig && requiresEphemeralUserConnection(overlayConfig)
             ? null
             : await deps.getMCPServerTools(userId, mcpServer, overlayConfig, capabilityProfile);
-        return serverTools ? Object.keys(serverTools) : [`${mcp_all}${mcp_delimiter}${mcpServer}`];
+        const selectedTools = selectedMCPToolKeys(ephemeralAgent?.mcp_tools, mcpServer);
+        if (!serverTools) {
+          /** Explicit keys skip `mcp_all` — the definitions loader fetches the
+           *  overlay server's tools and emits only the keys it can resolve. */
+          return selectedTools ? [...selectedTools] : [`${mcp_all}${mcp_delimiter}${mcpServer}`];
+        }
+        const toolKeys = Object.keys(serverTools);
+        return selectedTools ? toolKeys.filter((key) => selectedTools.has(key)) : toolKeys;
       },
     );
     for (const keys of serverToolKeys) {

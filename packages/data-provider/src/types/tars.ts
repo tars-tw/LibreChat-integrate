@@ -382,3 +382,24 @@ export type TTarsMcpUserServerUpdate = {
   is_enabled?: boolean;
   tool_config?: Record<string, boolean>;
 };
+
+/** One tool a domain (腦袋) may use, with the chat-facing LibreChat tool key. */
+export type TTarsMcpDomainTool = {
+  name: string;
+  description?: string | null;
+  /** Full LibreChat tool key (`<tool>_mcp_tars_<code>`) as loaded into agents. */
+  tool_key: string;
+};
+
+/** One gateway server visible to a domain, with its usable tools. */
+export type TTarsMcpDomainServer = {
+  id: string;
+  name: string;
+  code?: string | null;
+  type: string;
+  /** Injected `mcpConfig` entry name (`tars_<code>`) matching the chat dropdown. */
+  gateway_name: string;
+  tools: TTarsMcpDomainTool[];
+};
+
+export type TTarsMcpDomainToolsResponse = { servers: TTarsMcpDomainServer[] };
