@@ -16,7 +16,7 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
   ({ placeholder, className, ...props }, ref) => {
     const localize = useLocalize();
     const context = useBadgeRowContext();
-    const { storageContextKey, mcpServerManager } = context ?? {};
+    const { storageContextKey, mcpServerManager, tarsMcpTools } = context ?? {};
 
     const menuStore = Ariakit.useMenuStore({
       focusLoop: true,
@@ -41,7 +41,11 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
       getServerStatusIconProps,
     } = mcpServerManager;
 
-    if (!selectableServers || selectableServers.length === 0) {
+    const visibleServers = tarsMcpTools
+      ? selectableServers.filter((server) => tarsMcpTools.isServerAllowed(server.serverName))
+      : selectableServers;
+
+    if (!visibleServers || visibleServers.length === 0) {
       return null;
     }
 
@@ -98,7 +102,7 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
             )}
           >
             <div className="flex max-h-[320px] flex-col gap-1 overflow-y-auto">
-              {selectableServers.map((server) => (
+              {visibleServers.map((server) => (
                 <MCPServerMenuItem
                   key={server.serverName}
                   server={server}
@@ -107,6 +111,9 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
                   isInitializing={isInitializing}
                   statusIconProps={getServerStatusIconProps(server.serverName)}
                   onToggle={toggleServerSelection}
+                  toolList={tarsMcpTools?.getDomainTools(server.serverName)}
+                  selectedToolKeys={tarsMcpTools?.getSelectedToolKeys(server.serverName)}
+                  onToggleTool={tarsMcpTools?.toggleToolSelection}
                 />
               ))}
             </div>
