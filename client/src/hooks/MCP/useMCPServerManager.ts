@@ -103,8 +103,16 @@ export function useMCPServerManager({
     }
     const names = new Set<string>();
     for (const server of tarsUserServers) {
-      if (server.user_enabled && server.code != null && server.code !== '') {
-        names.add(tarsMcpServerName(server.code));
+      if (!server.user_enabled) {
+        continue;
+      }
+      /** The backend reports the entry name it actually injected; deriving from
+       *  `code` is the legacy fallback and cannot resolve a server without one. */
+      const name =
+        server.gateway_name ??
+        (server.code != null && server.code !== '' ? tarsMcpServerName(server.code) : null);
+      if (name != null) {
+        names.add(name);
       }
     }
     return names;
