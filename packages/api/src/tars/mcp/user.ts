@@ -1,11 +1,32 @@
 import { Constants, tarsMcpServerName } from 'librechat-data-provider';
+import type { TarsDomainMcpRelation } from './admin';
 import type { TarsAvailableToolRow } from './client';
+import { fetchTarsDomainsForUser } from '~/tars/domains';
+import { tarsMcpEntryName, hasTarsMcpEntryNames } from './config';
 import {
   tarsMcpFetch,
   buildScopedToolName,
   PROXIED_SERVER_TYPES,
   invalidateTarsMcpToolsCache,
 } from './client';
+
+/**
+ * The chat-facing `mcpConfig` entry name for a pwc_tars server. Reads the name
+ * injection actually used (the only place the collision suffix is known);
+ * derivation is the fallback for before/without a successful injection, and
+ * `null` means the server has no chat entry at all, so callers must drop it
+ * rather than advertise a name nothing will match.
+ */
+function gatewayNameFor(serverId: string, serverCode?: string | null): string | null {
+  const injected = tarsMcpEntryName(serverId);
+  if (injected != null) {
+    return injected;
+  }
+  if (hasTarsMcpEntryNames()) {
+    return null;
+  }
+  return tarsMcpServerName(serverCode?.trim() || serverId.slice(0, 8));
+}
 
 /**
  * Per-user proxy for the pwc_tars MCP user panel: aggregated settings
@@ -36,6 +57,8 @@ export interface TarsMcpUserServer {
   auth_type: string;
   login_fields: string[];
   tools: TarsMcpUserTool[];
+  /** Injected `mcpConfig` entry name; absent when the server has no chat entry. */
+  gateway_name?: string;
 }
 
 export interface TarsMcpCredentialsResult {
@@ -57,39 +80,78 @@ export interface TarsMcpDomainServer {
   code?: string | null;
   type: string;
   gateway_name: string;
+  /**
+   * Whether the user has opted this server in (`sys_user_mcp.is_enabled`).
+   * pwc_tars defaults servers to OFF, so a brain-approved server stays unusable
+   * until the user enables it — `false` entries carry no `tools` and exist so
+   * the chat menu can offer that opt-in instead of hiding the server.
+   */
+  user_enabled: boolean;
+  /** Tools the brain grants; only populated once `user_enabled` is true. */
   tools: TarsMcpDomainTool[];
+  /** How many tools the brain grants, known even while the server is opted out. */
+  tool_count?: number;
 }
 
 /**
- * The MCP tools one domain (腦袋) may use, double-filtered by pwc_tars
- * (`available-tools?user_id&domain_id`: domain whitelist incl. `mcp_tool_ids`,
- * plus the user's own `sys_user_mcp` toggles). Each tool carries the full
- * LibreChat tool key (`<scoped name>_mcp_<gateway name>`) — the same naming the
- * per-server gateway's `tools/list` produces — so the chat frontend can
- * whitelist tools on the ephemeral agent without further mapping.
+ * The MCP servers one domain (腦袋) grants, split by the user's opt-in state.
+ *
+ * Opted-in servers come from `available-tools?user_id&domain_id`, so their tool
+ * lists are exactly what pwc_tars authorizes (domain whitelist incl.
+ * `mcp_tool_ids`, plus the user's own `sys_user_mcp` server/tool toggles) —
+ * no filtering is reimplemented here. Each tool carries the full LibreChat tool
+ * key (`<scoped name>_mcp_<gateway name>`), matching what the per-server gateway
+ * advertises, so the chat frontend can whitelist tools on the ephemeral agent
+ * without further mapping.
+ *
+ * The brain's raw bindings are read separately to surface servers the user has
+ * NOT opted into (pwc_tars defaults them off and drops them from
+ * `available-tools`), which would otherwise vanish from chat with no hint that
+ * the brain allows them. That read is unscoped to the user, so it is gated on
+ * the domain being one of the user's own — an unauthorized id yields nothing.
  */
 export async function getUserTarsDomainMcpTools(
   tarsUserId: string,
   domainId: number,
 ): Promise<TarsMcpDomainServer[]> {
-  const rows = await tarsMcpFetch<TarsAvailableToolRow[]>('/api/mcp/available-tools', {
-    query: { user_id: tarsUserId, domain_id: domainId },
-  });
+  const [domains, rows, relations, settings] = await Promise.all([
+    fetchTarsDomainsForUser(tarsUserId),
+    tarsMcpFetch<TarsAvailableToolRow[]>('/api/mcp/available-tools', {
+      query: { user_id: tarsUserId, domain_id: domainId },
+    }),
+    tarsMcpFetch<TarsDomainMcpRelation[]>(`/api/mcp/domain/${domainId}/servers`).catch(() => []),
+    getUserTarsMcpSettings(tarsUserId).catch(() => []),
+  ]);
+  if (!domains.some((domain) => domain.id === domainId)) {
+    return [];
+  }
+  /** Authoritative opt-in state: a server can be enabled yet contribute no rows
+   *  above (every tool individually disabled), and that is not a pending server. */
+  const optedIn = new Set(
+    settings.filter((server) => server.user_enabled).map((server) => server.id),
+  );
 
   const servers = new Map<string, TarsMcpDomainServer>();
   const takenByServer = new Map<string, Set<string>>();
+  const skipped = new Set<string>();
   for (const row of rows ?? []) {
-    if (!PROXIED_SERVER_TYPES.has(row.server_type)) {
+    if (!PROXIED_SERVER_TYPES.has(row.server_type) || skipped.has(row.server_id)) {
       continue;
     }
     let server = servers.get(row.server_id);
     if (!server) {
+      const gatewayName = gatewayNameFor(row.server_id, row.server_code);
+      if (gatewayName == null) {
+        skipped.add(row.server_id);
+        continue;
+      }
       server = {
         id: row.server_id,
         name: row.server_name,
         code: row.server_code ?? null,
         type: row.server_type,
-        gateway_name: tarsMcpServerName(row.server_code?.trim() || row.server_id.slice(0, 8)),
+        gateway_name: gatewayName,
+        user_enabled: true,
         tools: [],
       };
       servers.set(row.server_id, server);
@@ -107,6 +169,36 @@ export async function getUserTarsDomainMcpTools(
       tool_key: `${scopedName}${Constants.mcp_delimiter}${server.gateway_name}`,
     });
   }
+
+  for (const relation of relations ?? []) {
+    const detail = relation.server;
+    if (!relation.is_enabled || detail == null || servers.has(relation.mcp_server_id)) {
+      continue;
+    }
+    if (optedIn.has(relation.mcp_server_id)) {
+      continue;
+    }
+    if (detail.is_enabled === false || !PROXIED_SERVER_TYPES.has(detail.type)) {
+      continue;
+    }
+    const gatewayName = gatewayNameFor(relation.mcp_server_id, detail.code);
+    if (gatewayName == null) {
+      continue;
+    }
+    /** An empty whitelist means the brain grants the whole server. */
+    const whitelisted = relation.mcp_tool_ids?.length ?? 0;
+    servers.set(relation.mcp_server_id, {
+      id: relation.mcp_server_id,
+      name: detail.name,
+      code: detail.code ?? null,
+      type: detail.type,
+      gateway_name: gatewayName,
+      user_enabled: false,
+      tools: [],
+      tool_count: whitelisted > 0 ? whitelisted : (detail.tool_count ?? undefined),
+    });
+  }
+
   return [...servers.values()];
 }
 
@@ -114,7 +206,12 @@ export async function getUserTarsMcpSettings(tarsUserId: string): Promise<TarsMc
   const servers = await tarsMcpFetch<TarsMcpUserServer[]>('/api/mcp/user-settings', {
     query: { user_id: tarsUserId },
   });
-  return servers ?? [];
+  /** The chat dropdown matches on the injected entry name, which a server
+   *  without a `code` cannot be derived back to — carry it explicitly. */
+  return (servers ?? []).map((server) => ({
+    ...server,
+    gateway_name: gatewayNameFor(server.id, server.code) ?? undefined,
+  }));
 }
 
 export async function updateUserTarsMcpServer(
