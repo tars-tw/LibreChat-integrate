@@ -13,18 +13,32 @@ import { cn } from '~/utils';
 function MCPSelectContent() {
   const localize = useLocalize();
   const context = useBadgeRowContext();
-  const { conversationId, storageContextKey, mcpServerManager: manager } = context ?? {};
+  const {
+    conversationId,
+    storageContextKey,
+    mcpServerManager: manager,
+    tarsMcpTools,
+  } = context ?? {};
 
   const menuStore = Ariakit.useMenuStore({ focusLoop: true });
   const isOpen = menuStore.useState('open');
+
+  /** Gateway entries the active brain (domain) may not use are hidden. */
+  const visibleServers = useMemo(() => {
+    const servers = manager?.selectableServers ?? [];
+    if (!tarsMcpTools) {
+      return servers;
+    }
+    return servers.filter((s) => tarsMcpTools.isServerAllowed(s.serverName));
+  }, [manager?.selectableServers, tarsMcpTools]);
 
   const selectedServers = useMemo(() => {
     if (!manager?.mcpValues || manager.mcpValues.length === 0) {
       return [];
     }
     const selectedSet = new Set(manager.mcpValues);
-    return manager.selectableServers?.filter((s) => selectedSet.has(s.serverName));
-  }, [manager?.selectableServers, manager?.mcpValues]);
+    return visibleServers.filter((s) => selectedSet.has(s.serverName));
+  }, [visibleServers, manager?.mcpValues]);
 
   const displayText = useMemo(() => {
     const selectedCount = manager?.mcpValues?.length ?? 0;
@@ -32,13 +46,11 @@ function MCPSelectContent() {
       return null;
     }
     if (selectedCount === 1) {
-      const server = manager?.selectableServers?.find(
-        (s) => s.serverName === manager?.mcpValues?.[0],
-      );
+      const server = visibleServers.find((s) => s.serverName === manager?.mcpValues?.[0]);
       return server?.config?.title || manager?.mcpValues?.[0];
     }
     return localize('com_ui_x_selected', { 0: selectedCount });
-  }, [manager?.selectableServers, manager?.mcpValues, localize]);
+  }, [visibleServers, manager?.mcpValues, localize]);
 
   if (!manager) {
     return null;
@@ -50,7 +62,6 @@ function MCPSelectContent() {
     isInitializing,
     placeholderText,
     connectionStatus,
-    selectableServers,
     getConfigDialogProps,
     toggleServerSelection,
     getServerStatusIconProps,
@@ -108,7 +119,7 @@ function MCPSelectContent() {
           )}
         >
           <div className="flex max-h-[320px] flex-col gap-1 overflow-y-auto">
-            {selectableServers.map((server) => (
+            {visibleServers.map((server) => (
               <MCPServerMenuItem
                 key={server.serverName}
                 server={server}
@@ -117,6 +128,9 @@ function MCPSelectContent() {
                 isInitializing={isInitializing}
                 statusIconProps={getServerStatusIconProps(server.serverName)}
                 onToggle={toggleServerSelection}
+                toolList={tarsMcpTools?.getDomainTools(server.serverName)}
+                selectedToolKeys={tarsMcpTools?.getSelectedToolKeys(server.serverName)}
+                onToggleTool={tarsMcpTools?.toggleToolSelection}
               />
             ))}
           </div>
