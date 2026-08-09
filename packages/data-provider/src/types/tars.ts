@@ -374,6 +374,11 @@ export type TTarsMcpUserServer = {
   auth_type: string;
   login_fields: string[];
   tools: TTarsMcpUserTool[];
+  /**
+   * Injected `mcpConfig` entry name (`tars_<code>`, plus a collision suffix when
+   * one was needed). Absent when the server has no chat entry at all.
+   */
+  gateway_name?: string;
 };
 
 export type TTarsMcpUserSettingsResponse = { servers: TTarsMcpUserServer[] };
@@ -391,7 +396,7 @@ export type TTarsMcpDomainTool = {
   tool_key: string;
 };
 
-/** One gateway server visible to a domain, with its usable tools. */
+/** One gateway server a domain grants, with its usable tools. */
 export type TTarsMcpDomainServer = {
   id: string;
   name: string;
@@ -399,7 +404,16 @@ export type TTarsMcpDomainServer = {
   type: string;
   /** Injected `mcpConfig` entry name (`tars_<code>`) matching the chat dropdown. */
   gateway_name: string;
+  /**
+   * Whether the user opted this server in. pwc_tars defaults servers to OFF, so
+   * `false` means the brain allows it but it is not usable yet — the chat menu
+   * offers the opt-in rather than hiding it.
+   */
+  user_enabled: boolean;
+  /** Tools the brain grants; only populated once `user_enabled` is true. */
   tools: TTarsMcpDomainTool[];
+  /** Tool count the brain grants, known even while opted out. */
+  tool_count?: number;
 };
 
 export type TTarsMcpDomainToolsResponse = { servers: TTarsMcpDomainServer[] };
