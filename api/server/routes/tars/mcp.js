@@ -15,6 +15,7 @@ const {
   adminSyncTarsMcpServer,
   adminParseTarsOpenapi,
   getUserTarsMcpSettings,
+  getUserTarsDomainMcpTools,
   updateUserTarsMcpServer,
   saveUserTarsMcpCredentials,
   clearUserTarsMcpCredentials,
@@ -315,6 +316,18 @@ router.get(
   userHandler('GET /api/tars/mcp/user/settings', async (req, tarsId) => ({
     servers: await getUserTarsMcpSettings(tarsId),
   })),
+);
+
+router.get(
+  '/mcp/user/domains/:domainId/tools',
+  userMiddleware,
+  userHandler('GET /api/tars/mcp/user/domains/:domainId/tools', async (req, tarsId) => {
+    const domainId = Number(req.params.domainId);
+    if (!Number.isInteger(domainId) || domainId <= 0) {
+      return { servers: [] };
+    }
+    return { servers: await getUserTarsDomainMcpTools(tarsId, domainId) };
+  }),
 );
 
 router.put(

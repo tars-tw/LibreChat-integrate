@@ -147,15 +147,17 @@ export default function McpPermissionsTab() {
   }, [singleDomainId, existingRelations]);
 
   const toggleDomain = (domainId: number) => {
-    setSelectedDomainIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(domainId)) {
-        next.delete(domainId);
-      } else {
-        next.add(domainId);
-      }
-      return next;
-    });
+    const next = new Set(selectedDomainIds);
+    if (next.has(domainId)) {
+      next.delete(domainId);
+    } else {
+      next.add(domainId);
+    }
+    setSelectedDomainIds(next);
+    /** No domain selected — the checked servers/tools belonged to the deselected one. */
+    if (next.size === 0) {
+      setSelection(new Map());
+    }
   };
 
   const toggleServer = useCallback((serverId: string, checked: boolean) => {
