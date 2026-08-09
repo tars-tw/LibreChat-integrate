@@ -21,6 +21,22 @@ export const mcpValuesAtomFamily = atomFamily((conversationId: string | null) =>
   return atomWithStorage<string[]>(storageKey, [], mcpTabIsolatedStorage, { getOnInit: true });
 });
 
+const mcpToolsTabIsolatedStorage = createTabIsolatedStorage<Record<string, string[]>>();
+
+/**
+ * Per-conversation per-server MCP tool whitelist (`serverName → tool keys`),
+ * mirrored into `ephemeralAgent.mcp_tools`. Servers without an entry equip
+ * every tool.
+ */
+export const mcpToolValuesAtomFamily = atomFamily((conversationId: string | null) => {
+  const key = conversationId ?? Constants.NEW_CONVO;
+  const storageKey = `${LocalStorageKeys.LAST_MCP_TOOLS_}${key}`;
+
+  return atomWithStorage<Record<string, string[]>>(storageKey, {}, mcpToolsTabIsolatedStorage, {
+    getOnInit: true,
+  });
+});
+
 /**
  * Global storage atom for MCP pinned state (shared across all conversations)
  */
