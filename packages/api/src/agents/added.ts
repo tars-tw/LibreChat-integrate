@@ -10,7 +10,11 @@ import {
 import type { Agent, AgentToolOptions, TConversation, TModelSpec } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
 import type { ParsedServerConfig } from '~/mcp/types';
-import { requiresEphemeralUserConnection, validateMCPServerConfig } from '~/mcp/utils';
+import {
+  selectedMCPToolKeys,
+  validateMCPServerConfig,
+  requiresEphemeralUserConnection,
+} from '~/mcp/utils';
 import { ASK_USER_QUESTION_TOOL_NAME } from '~/agents/hitl/askUserQuestionTool';
 import { synthesizeBackgroundToolOptions } from '~/agents/background';
 import { mergeSynthesizedToolOptions } from '~/agents/selection';
@@ -100,6 +104,7 @@ export async function loadAddedAgent(
     modelLabel?: string;
     ephemeralAgent?: {
       mcp?: string[];
+      mcp_tools?: Record<string, string[]>;
       execute_code?: boolean;
       file_search?: boolean;
       web_search?: boolean;
@@ -118,6 +123,7 @@ export async function loadAddedAgent(
   const ephemeralAgent = rest.ephemeralAgent as
     | {
         mcp?: string[];
+        mcp_tools?: Record<string, string[]>;
         execute_code?: boolean;
         file_search?: boolean;
         web_search?: boolean;
@@ -228,12 +234,20 @@ export async function loadAddedAgent(
       overlayConfig && requiresEphemeralUserConnection(overlayConfig)
         ? null
         : await deps.getMCPServerTools(userId, mcpServer, overlayConfig);
+    const selectedTools = selectedMCPToolKeys(ephemeralAgent?.mcp_tools, mcpServer);
     if (!serverTools) {
-      tools.push(`${mcp_all}${mcp_delimiter}${mcpServer}`);
+      /** Explicit keys skip `mcp_all` — the definitions loader fetches the
+       *  overlay server's tools and emits only the keys it can resolve. */
+      if (selectedTools) {
+        tools.push(...selectedTools);
+      } else {
+        tools.push(`${mcp_all}${mcp_delimiter}${mcpServer}`);
+      }
       addedServers.add(mcpServer);
       continue;
     }
-    tools.push(...Object.keys(serverTools));
+    const toolKeys = Object.keys(serverTools);
+    tools.push(...(selectedTools ? toolKeys.filter((key) => selectedTools.has(key)) : toolKeys));
     addedServers.add(mcpServer);
   }
 

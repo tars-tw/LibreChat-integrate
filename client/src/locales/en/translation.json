@@ -2292,6 +2292,7 @@
   "com_ui_tars_mcp_no_domains": "No domains available",
   "com_ui_tars_mcp_multi_domain_warning": "Multiple domains selected — saving applies the same bindings to every selected domain.",
   "com_ui_tars_mcp_tools_selected": "{{count}} tools selected",
+  "com_ui_tars_mcp_tools_count": "{{selected}}/{{total}} tools",
   "com_ui_tars_mcp_all_tools": "All tools",
   "com_ui_tars_mcp_permissions_saved": "Domain bindings saved",
   "com_ui_tars_mcp_domain_required": "Select at least one domain",
