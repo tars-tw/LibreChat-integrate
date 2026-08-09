@@ -922,6 +922,12 @@ export const getTarsMcpUserSettings = (): Promise<t.TTarsMcpUserSettingsResponse
   return request.get(endpoints.tarsMcpUserSettings());
 };
 
+export const getTarsMcpUserDomainTools = (
+  domainId: string | number,
+): Promise<t.TTarsMcpDomainToolsResponse> => {
+  return request.get(endpoints.tarsMcpUserDomainTools(domainId));
+};
+
 export const updateTarsMcpUserServer = (
   id: string,
   data: t.TTarsMcpUserServerUpdate,
