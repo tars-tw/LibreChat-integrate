@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAtom } from 'jotai';
 import isEqual from 'lodash/isEqual';
 import { useSetRecoilState } from 'recoil';
-import { Constants, LocalStorageKeys, TARS_MCP_SERVER_PREFIX } from 'librechat-data-provider';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  QueryKeys,
+  Constants,
+  LocalStorageKeys,
+  TARS_MCP_SERVER_PREFIX,
+} from 'librechat-data-provider';
 import type { TTarsMcpDomainTool, TTarsMcpDomainServer } from 'librechat-data-provider';
 import { ephemeralAgentByConvoId, mcpValuesAtomFamily, mcpToolValuesAtomFamily } from '~/store';
+import { useUpdateTarsMcpUserServerMutation } from '~/data-provider/Tars/mutations';
 import { useSelectedTarsDomain } from '~/components/Chat/Menus/Tars/domain';
 import { useTarsMcpDomainToolsQuery } from '~/data-provider';
 import { useAuthContext } from '~/hooks/AuthContext';
@@ -22,6 +29,11 @@ export interface TarsMcpToolsControl {
   /** Checked tool keys of one server; `null` means every tool is checked. */
   getSelectedToolKeys: (serverName: string) => Set<string> | null;
   toggleToolSelection: (serverName: string, toolKey: string) => void;
+  /** Servers the brain allows that the user has not opted into yet. */
+  pendingServers: TTarsMcpDomainServer[];
+  /** Opts a pending server in (`sys_user_mcp.is_enabled`), moving it into the usable list. */
+  enableServer: (serverId: string) => void;
+  enablingServerId: string | null;
 }
 
 /**
@@ -50,13 +62,39 @@ export default function useTarsMcpTools({
     isTarsUser && selectedId !== '' ? selectedId : null,
   );
 
+  /** Only opted-in servers are usable; the rest are offered as an opt-in below the list. */
   const serversByName = useMemo(() => {
     const map = new Map<string, TTarsMcpDomainServer>();
     for (const server of domainServers ?? []) {
-      map.set(server.gateway_name, server);
+      if (server.user_enabled) {
+        map.set(server.gateway_name, server);
+      }
     }
     return map;
   }, [domainServers]);
+
+  const pendingServers = useMemo(
+    () => (domainServers ?? []).filter((server) => !server.user_enabled),
+    [domainServers],
+  );
+
+  const queryClient = useQueryClient();
+  const [enablingServerId, setEnablingServerId] = useState<string | null>(null);
+  const updateUserServer = useUpdateTarsMcpUserServerMutation({
+    onSuccess: () => {
+      queryClient.invalidateQueries([QueryKeys.tarsMcpDomainTools]);
+      setEnablingServerId(null);
+    },
+    onError: () => setEnablingServerId(null),
+  });
+
+  const enableServer = useCallback(
+    (serverId: string) => {
+      setEnablingServerId(serverId);
+      updateUserServer.mutate({ id: serverId, data: { is_enabled: true } });
+    },
+    [updateUserServer],
+  );
 
   const [mcpValues, setMCPValuesRaw] = useAtom(mcpValuesAtomFamily(atomKey));
   const [toolValues, setToolValuesRaw] = useAtom(mcpToolValuesAtomFamily(atomKey));
@@ -189,5 +227,13 @@ export default function useTarsMcpTools({
     [serversByName, toolValues, mcpValues, commit],
   );
 
-  return { isServerAllowed, getDomainTools, getSelectedToolKeys, toggleToolSelection };
+  return {
+    isServerAllowed,
+    getDomainTools,
+    getSelectedToolKeys,
+    toggleToolSelection,
+    pendingServers,
+    enableServer,
+    enablingServerId,
+  };
 }
