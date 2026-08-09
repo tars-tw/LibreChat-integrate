@@ -144,7 +144,7 @@ function buildToolName(row: TarsAvailableToolRow, taken: Set<string>): string | 
  * pwc_tars tool names are unique per server, so a collision only arises from
  * sanitization; those get the short server-id suffix.
  */
-function buildScopedToolName(row: TarsAvailableToolRow, taken: Set<string>): string | null {
+export function buildScopedToolName(row: TarsAvailableToolRow, taken: Set<string>): string | null {
   const candidate = sanitizeNamePart(row.tool_name) || 'tool';
   if (!taken.has(candidate)) {
     return candidate;
