@@ -8,6 +8,7 @@ import {
   useGetAgentsConfig,
   useToolToggle,
 } from '~/hooks';
+import useTarsMcpTools from '~/hooks/MCP/useTarsMcpTools';
 import { getTimestampedValue } from '~/utils/timestamps';
 import { useGetStartupConfig } from '~/data-provider';
 import { ephemeralAgentByConvoId } from '~/store';
@@ -24,6 +25,7 @@ interface BadgeRowContextType {
   codeInterpreter: ReturnType<typeof useToolToggle>;
   searchApiKeyForm: ReturnType<typeof useSearchApiKeyForm>;
   mcpServerManager: ReturnType<typeof useMCPServerManager>;
+  tarsMcpTools: ReturnType<typeof useTarsMcpTools>;
 }
 
 const BadgeRowContext = createContext<BadgeRowContextType | undefined>(undefined);
@@ -279,6 +281,7 @@ export default function BadgeRowProvider({
     ownsChatSelection: true,
     observeToolAuthorization,
   });
+  const tarsMcpTools = useTarsMcpTools({ conversationId, storageContextKey });
 
   const value: BadgeRowContextType = {
     skills,
@@ -292,6 +295,7 @@ export default function BadgeRowProvider({
     codeInterpreter,
     searchApiKeyForm,
     mcpServerManager,
+    tarsMcpTools,
   };
 
   return <BadgeRowContext.Provider value={value}>{children}</BadgeRowContext.Provider>;
