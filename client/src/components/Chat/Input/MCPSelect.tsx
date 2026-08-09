@@ -3,6 +3,7 @@ import * as Ariakit from '@ariakit/react';
 import { ChevronDown } from 'lucide-react';
 import { TooltipAnchor } from '@librechat/client';
 import { PermissionTypes, Permissions } from 'librechat-data-provider';
+import MCPPendingServerItem from '~/components/MCP/MCPPendingServerItem';
 import MCPServerMenuItem from '~/components/MCP/MCPServerMenuItem';
 import MCPConfigDialog from '~/components/MCP/MCPConfigDialog';
 import StackedMCPIcons from '~/components/MCP/StackedMCPIcons';
@@ -136,6 +137,23 @@ function MCPSelectContent() {
                 onToggleTool={tarsMcpTools?.toggleToolSelection}
               />
             ))}
+            {(tarsMcpTools?.pendingServers?.length ?? 0) > 0 && (
+              <>
+                <div className="mt-1 border-t border-border-light pt-1.5">
+                  <span className="px-2.5 text-xs font-medium text-text-secondary">
+                    {localize('com_ui_tars_mcp_available_servers')}
+                  </span>
+                </div>
+                {tarsMcpTools?.pendingServers.map((server) => (
+                  <MCPPendingServerItem
+                    key={server.id}
+                    server={server}
+                    isEnabling={tarsMcpTools.enablingServerId === server.id}
+                    onEnable={tarsMcpTools.enableServer}
+                  />
+                ))}
+              </>
+            )}
           </div>
         </Ariakit.Menu>
       </Ariakit.MenuProvider>
@@ -158,7 +176,12 @@ function MCPSelect() {
     permission: Permissions.USE,
   });
 
-  if (!canUseMcp || !selectableServers || selectableServers.length === 0) {
+  /** Brain-approved servers awaiting opt-in still need the menu as their entry point. */
+  const hasEntries =
+    (selectableServers?.length ?? 0) > 0 ||
+    (context?.tarsMcpTools?.pendingServers?.length ?? 0) > 0;
+
+  if (!canUseMcp || !hasEntries) {
     return null;
   }
 
