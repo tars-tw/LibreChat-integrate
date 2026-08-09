@@ -43,6 +43,27 @@ export function isMCPAllPlaceholder(toolName: string): boolean {
   return toolName.startsWith(MCP_ALL_PLACEHOLDER_PREFIX);
 }
 
+/**
+ * The ephemeral agent's per-server tool whitelist (`ephemeralAgent.mcp_tools`),
+ * validated so only keys actually targeting `serverName` count — a crafted
+ * payload cannot smuggle another server's tool keys through this server's
+ * entry. Returns `null` (no filter → every tool, the legacy behavior) when the
+ * entry is absent, empty, or fully invalid; a stale-but-nonempty selection
+ * failing open beats silently stripping the whole server.
+ */
+export function selectedMCPToolKeys(
+  mcpTools: Record<string, string[]> | undefined,
+  serverName: string,
+): Set<string> | null {
+  const selected = mcpTools?.[serverName];
+  if (!Array.isArray(selected) || selected.length === 0) {
+    return null;
+  }
+  const suffix = `${Constants.mcp_delimiter}${serverName}`;
+  const valid = selected.filter((key) => typeof key === 'string' && key.endsWith(suffix));
+  return valid.length > 0 ? new Set(valid) : null;
+}
+
 /** Server-pin token (`sys__server__sys<delim><server>`) that keeps a server
  *  attached to an agent independent of its tool selection. */
 const MCP_SERVER_TOKEN_PREFIX: string = `${Constants.mcp_server}${Constants.mcp_delimiter}`;
