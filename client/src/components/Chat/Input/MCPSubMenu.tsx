@@ -2,6 +2,7 @@ import React from 'react';
 import * as Ariakit from '@ariakit/react';
 import { ChevronRight } from 'lucide-react';
 import { MCPIcon, PinIcon } from '@librechat/client';
+import MCPPendingServerItem from '~/components/MCP/MCPPendingServerItem';
 import MCPServerMenuItem from '~/components/MCP/MCPServerMenuItem';
 import MCPConfigDialog from '~/components/MCP/MCPConfigDialog';
 import { useBadgeRowContext } from '~/Providers';
@@ -44,8 +45,9 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
     const visibleServers = tarsMcpTools
       ? selectableServers.filter((server) => tarsMcpTools.isServerAllowed(server.serverName))
       : selectableServers;
+    const pendingServers = tarsMcpTools?.pendingServers ?? [];
 
-    if (!visibleServers || visibleServers.length === 0) {
+    if (visibleServers.length === 0 && pendingServers.length === 0) {
       return null;
     }
 
@@ -114,6 +116,23 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
                   onToggleTool={tarsMcpTools?.toggleToolSelection}
                 />
               ))}
+              {pendingServers.length > 0 && tarsMcpTools && (
+                <>
+                  <div className="mt-1 border-t border-border-light pt-1.5">
+                    <span className="px-2.5 text-xs font-medium text-text-secondary">
+                      {localize('com_ui_tars_mcp_available_servers')}
+                    </span>
+                  </div>
+                  {pendingServers.map((server) => (
+                    <MCPPendingServerItem
+                      key={server.id}
+                      server={server}
+                      isEnabling={tarsMcpTools.enablingServerId === server.id}
+                      onEnable={tarsMcpTools.enableServer}
+                    />
+                  ))}
+                </>
+              )}
             </div>
           </Ariakit.Menu>
         </Ariakit.MenuProvider>
