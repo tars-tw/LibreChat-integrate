@@ -366,6 +366,8 @@ export const tarsMcpAdminLogs = (query?: { conversationId?: string; limit?: numb
   return qs ? `${BASE_URL}/api/tars/mcp/admin/logs?${qs}` : `${BASE_URL}/api/tars/mcp/admin/logs`;
 };
 export const tarsMcpUserSettings = () => `${BASE_URL}/api/tars/mcp/user/settings`;
+export const tarsMcpUserDomainTools = (domainId: string | number) =>
+  `${BASE_URL}/api/tars/mcp/user/domains/${encodeURIComponent(String(domainId))}/tools`;
 export const tarsMcpUserServer = (id: string) =>
   `${BASE_URL}/api/tars/mcp/user/servers/${encodeURIComponent(id)}`;
 export const tarsMcpUserServerCredentials = (id: string) => `${tarsMcpUserServer(id)}/credentials`;

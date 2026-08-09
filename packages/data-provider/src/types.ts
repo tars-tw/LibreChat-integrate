@@ -105,6 +105,12 @@ export type TEndpointOption = Pick<
 
 export type TEphemeralAgent = {
   mcp?: string[];
+  /**
+   * Per-server MCP tool whitelist keyed by server name; values are full tool
+   * keys (`<tool>_mcp_<server>`). Absent/empty entry = every tool of the
+   * selected server (legacy behavior).
+   */
+  mcp_tools?: Record<string, string[]>;
   web_search?: boolean;
   file_search?: boolean;
   execute_code?: boolean;
