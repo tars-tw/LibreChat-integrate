@@ -1,4 +1,11 @@
-import { tarsMcpFetch, invalidateTarsMcpToolsCache } from './client';
+import { Constants, tarsMcpServerName } from 'librechat-data-provider';
+import type { TarsAvailableToolRow } from './client';
+import {
+  tarsMcpFetch,
+  buildScopedToolName,
+  PROXIED_SERVER_TYPES,
+  invalidateTarsMcpToolsCache,
+} from './client';
 
 /**
  * Per-user proxy for the pwc_tars MCP user panel: aggregated settings
@@ -36,6 +43,71 @@ export interface TarsMcpCredentialsResult {
   domain_id?: number;
   auth_check?: Record<string, unknown>;
   tools_synced?: Record<string, unknown>;
+}
+
+export interface TarsMcpDomainTool {
+  name: string;
+  description?: string | null;
+  tool_key: string;
+}
+
+export interface TarsMcpDomainServer {
+  id: string;
+  name: string;
+  code?: string | null;
+  type: string;
+  gateway_name: string;
+  tools: TarsMcpDomainTool[];
+}
+
+/**
+ * The MCP tools one domain (腦袋) may use, double-filtered by pwc_tars
+ * (`available-tools?user_id&domain_id`: domain whitelist incl. `mcp_tool_ids`,
+ * plus the user's own `sys_user_mcp` toggles). Each tool carries the full
+ * LibreChat tool key (`<scoped name>_mcp_<gateway name>`) — the same naming the
+ * per-server gateway's `tools/list` produces — so the chat frontend can
+ * whitelist tools on the ephemeral agent without further mapping.
+ */
+export async function getUserTarsDomainMcpTools(
+  tarsUserId: string,
+  domainId: number,
+): Promise<TarsMcpDomainServer[]> {
+  const rows = await tarsMcpFetch<TarsAvailableToolRow[]>('/api/mcp/available-tools', {
+    query: { user_id: tarsUserId, domain_id: domainId },
+  });
+
+  const servers = new Map<string, TarsMcpDomainServer>();
+  const takenByServer = new Map<string, Set<string>>();
+  for (const row of rows ?? []) {
+    if (!PROXIED_SERVER_TYPES.has(row.server_type)) {
+      continue;
+    }
+    let server = servers.get(row.server_id);
+    if (!server) {
+      server = {
+        id: row.server_id,
+        name: row.server_name,
+        code: row.server_code ?? null,
+        type: row.server_type,
+        gateway_name: tarsMcpServerName(row.server_code?.trim() || row.server_id.slice(0, 8)),
+        tools: [],
+      };
+      servers.set(row.server_id, server);
+      takenByServer.set(row.server_id, new Set());
+    }
+    const taken = takenByServer.get(row.server_id) as Set<string>;
+    const scopedName = buildScopedToolName(row, taken);
+    if (!scopedName) {
+      continue;
+    }
+    taken.add(scopedName);
+    server.tools.push({
+      name: row.tool_name,
+      description: row.description ?? null,
+      tool_key: `${scopedName}${Constants.mcp_delimiter}${server.gateway_name}`,
+    });
+  }
+  return [...servers.values()];
 }
 
 export async function getUserTarsMcpSettings(tarsUserId: string): Promise<TarsMcpUserServer[]> {

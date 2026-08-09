@@ -21,8 +21,10 @@ import type {
   TTarsMcpLogsResponse,
   TTarsMcpServersResponse,
   TTarsDomainMcpRelation,
+  TTarsMcpDomainServer,
   TTarsMcpUserSettingsResponse,
   TTarsDomainMcpServersResponse,
+  TTarsMcpDomainToolsResponse,
 } from 'librechat-data-provider';
 
 /** pwc_tars document status: 0 uploaded, 1 processing, 2 completed, 4 failed. */
@@ -231,6 +233,27 @@ export const useTarsMcpUserSettingsQuery = (
     () => dataService.getTarsMcpUserSettings(),
     {
       select: (data) => data.servers ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * The MCP servers/tools the given brain (domain) may use, filtered by pwc_tars
+ * with both the domain whitelist and the user's own toggles. Feeds the chat
+ * dropdown's per-tool selection.
+ */
+export const useTarsMcpDomainToolsQuery = (
+  domainId: string | number | null,
+  config?: UseQueryOptions<TTarsMcpDomainToolsResponse, unknown, TTarsMcpDomainServer[]>,
+): QueryObserverResult<TTarsMcpDomainServer[]> => {
+  return useQuery<TTarsMcpDomainToolsResponse, unknown, TTarsMcpDomainServer[]>(
+    [QueryKeys.tarsMcpDomainTools, String(domainId ?? '')],
+    () => dataService.getTarsMcpUserDomainTools(domainId as string | number),
+    {
+      select: (data) => data.servers ?? [],
+      enabled: domainId != null && domainId !== '',
       ...adminQueryOptions,
       ...config,
     },
