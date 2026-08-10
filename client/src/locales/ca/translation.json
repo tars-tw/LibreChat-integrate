@@ -78,7 +78,7 @@
   "com_agents_mcp_description_placeholder": "Explica què fa en poques paraules",
   "com_agents_mcp_icon_size": "Mida mínima 128 x 128 px",
   "com_agents_mcp_name_placeholder": "Eina personalitzada",
-  "com_agents_mcp_trust_subtext": "Els connectors personalitzats no estan verificats per LibreChat",
+  "com_agents_mcp_trust_subtext": "Els connectors personalitzats no estan verificats per TARS.ai",
   "com_agents_missing_name": "Escriu un nom abans de crear un agent.",
   "com_agents_missing_provider_model": "Selecciona un proveïdor i un model abans de crear un agent.",
   "com_agents_name_placeholder": "Opcional: El nom de l'agent",

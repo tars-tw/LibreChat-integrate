@@ -80,7 +80,7 @@
   "com_agents_mcp_description_placeholder": "Spiegate cosa fa in poche parole",
   "com_agents_mcp_icon_size": "Dimensione minima 128 x 128 px",
   "com_agents_mcp_name_placeholder": "Strumento personalizzato",
-  "com_agents_mcp_trust_subtext": "I connettori personalizzati non sono verificati da LibreChat",
+  "com_agents_mcp_trust_subtext": "I connettori personalizzati non sono verificati da TARS.ai",
   "com_agents_memory_info": "Se abilitato, l'agente può salvare, aggiornare ed eliminare ricordi sull'utente durante la conversazione usando gli strumenti set_memory e delete_memory.",
   "com_agents_memory_scope": "Mantieni le memorie separate per questo agente",
   "com_agents_memory_scope_info": "Se abilitato, questo agente legge e scrive le proprie memorie, isolate dalle tue memorie condivise e dagli altri agenti. Le memorie condivise esistenti non vengono mostrate a questo agente.",
