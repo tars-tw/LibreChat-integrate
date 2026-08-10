@@ -80,7 +80,7 @@
   "com_agents_mcp_description_placeholder": "Explain what it does in a few words",
   "com_agents_mcp_icon_size": "Minimum size 128 x 128 px",
   "com_agents_mcp_name_placeholder": "Custom Tool",
-  "com_agents_mcp_trust_subtext": "Custom connectors are not verified by LibreChat",
+  "com_agents_mcp_trust_subtext": "Custom connectors are not verified by TARS.ai",
   "com_agents_memory_info": "When enabled, the agent can save, update, and delete memories about the user during the conversation using the set_memory and delete_memory tools.",
   "com_agents_memory_scope": "Keep memories separate for this agent",
   "com_agents_memory_scope_info": "When enabled, this agent reads and writes its own memories, isolated from your shared memories and from other agents. Existing shared memories are not shown to this agent.",
