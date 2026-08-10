@@ -72,7 +72,7 @@
   "com_agents_mcp_description_placeholder": "역할을 간단히 소개해주세요",
   "com_agents_mcp_icon_size": "최소 크기 128 x 128 픽셀",
   "com_agents_mcp_name_placeholder": "커스텀 툴",
-  "com_agents_mcp_trust_subtext": "사용자 지정 커넥터는 LibreChat에서 확인되지 않습니다.",
+  "com_agents_mcp_trust_subtext": "사용자 지정 커넥터는 TARS.ai에서 확인되지 않습니다.",
   "com_agents_missing_name": "에이전트를 생성하기 전에 이름을 입력하십시오.",
   "com_agents_missing_provider_model": "에이전트를 생성하기 전에 제공업체와 모델을 선택해 주세요",
   "com_agents_name_placeholder": "선택 사항: 에이전트의 이름",

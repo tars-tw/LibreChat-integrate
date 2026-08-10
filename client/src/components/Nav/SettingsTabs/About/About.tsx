@@ -27,7 +27,7 @@ function buildDiagnosticsBlob(
   buildInfo: TStartupConfig['buildInfo'] | undefined,
 ): string {
   const lines: string[] = [
-    `LibreChat version: ${version}`,
+    `TARS.ai version: ${version}`,
     `Commit: ${buildInfo?.commit ?? UNKNOWN_PLACEHOLDER}`,
     `Branch: ${buildInfo?.branch ?? UNKNOWN_PLACEHOLDER}`,
     `Build date: ${formatBuildDate(buildInfo?.buildDate)}`,

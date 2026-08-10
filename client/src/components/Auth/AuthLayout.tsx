@@ -71,7 +71,7 @@ function AuthLayout({
         <img
           src="assets/logo.svg"
           className="absolute left-3 top-3 z-10 h-8 w-auto object-contain"
-          alt={localize('com_ui_logo', { 0: startupConfig?.appTitle ?? 'LibreChat' })}
+          alt={localize('com_ui_logo', { 0: startupConfig?.appTitle ?? 'TARS.ai' })}
         />
         <main className="flex w-full flex-col items-center justify-center px-6 py-10 md:w-3/5">
           <div className="w-full max-w-md text-center">
@@ -101,7 +101,7 @@ function AuthLayout({
           <img
             src="assets/logo.svg"
             className="h-full w-full object-contain"
-            alt={localize('com_ui_logo', { 0: startupConfig?.appTitle ?? 'LibreChat' })}
+            alt={localize('com_ui_logo', { 0: startupConfig?.appTitle ?? 'TARS.ai' })}
           />
         </div>
       </BlinkAnimation>
