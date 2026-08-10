@@ -139,6 +139,6 @@ describe('buildSharedLinkStartupPayload', () => {
       {},
     );
 
-    expect(payload).toEqual({ appTitle: 'LibreChat' });
+    expect(payload).toEqual({ appTitle: 'TARS.ai' });
   });
 });
