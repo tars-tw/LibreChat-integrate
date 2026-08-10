@@ -50,7 +50,7 @@ describe('document title', () => {
 
     setDocumentTitle('', true);
 
-    expect(document.title).toBe('LibreChat');
+    expect(document.title).toBe('TARS.ai');
   });
 
   it('uses the default app title when the stored app title is empty', () => {
@@ -58,7 +58,7 @@ describe('document title', () => {
 
     setDocumentTitle('', true);
 
-    expect(document.title).toBe('LibreChat');
+    expect(document.title).toBe('TARS.ai');
   });
 
   it('uses the default app title when storage is unavailable', () => {
@@ -68,7 +68,7 @@ describe('document title', () => {
 
     setDocumentTitle('', true);
 
-    expect(document.title).toBe('LibreChat');
+    expect(document.title).toBe('TARS.ai');
   });
 
   it('defaults to enabled when the stored setting is malformed', () => {
