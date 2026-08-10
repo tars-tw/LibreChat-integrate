@@ -75,7 +75,7 @@
   "com_agents_mcp_description_placeholder": "در چند کلمه توضیح دهید که چه کاری انجام می‌دهد",
   "com_agents_mcp_icon_size": "حداقل اندازه ۱۲۸ در ۱۲۸ پیکسل",
   "com_agents_mcp_name_placeholder": "ابزار سفارشی",
-  "com_agents_mcp_trust_subtext": "اتصال‌دهنده‌های سفارشی توسط LibreChat تأیید نشده‌اند",
+  "com_agents_mcp_trust_subtext": "اتصال‌دهنده‌های سفارشی توسط TARS.ai تأیید نشده‌اند",
   "com_agents_missing_name": "لطفاً قبل از ایجاد عامل، نامی وارد کنید.",
   "com_agents_missing_provider_model": "لطفاً یک ارائه دهنده و مدل را قبل از ایجاد یک کارگزار انتخاب کنید.",
   "com_agents_name_placeholder": "اختیاری: نام کارگزار",

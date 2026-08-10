@@ -19,7 +19,7 @@
   "com_agents_mcp_description_placeholder": "อธิบายการทำงานสั้นๆ",
   "com_agents_mcp_icon_size": "ขนาดขั้นต่ำคือ 128 x 128 px",
   "com_agents_mcp_name_placeholder": "เครื่องมือที่สร้างเอง",
-  "com_agents_mcp_trust_subtext": "LibreChat ไม่ตรวจสอบ หรือรับรองตัวเชื่อมต่อที่สร้างขึ้นเอง",
+  "com_agents_mcp_trust_subtext": "TARS.ai ไม่ตรวจสอบ หรือรับรองตัวเชื่อมต่อที่สร้างขึ้นเอง",
   "com_agents_missing_provider_model": "โปรดเลือกผู้ให้บริการและโมเดลก่อนสร้างเอเจนต์",
   "com_agents_name_placeholder": "ตัวเลือกเพิ่มเติม: ชื่อของเอเจนต์",
   "com_agents_no_access": "คุณไม่มีสิทธิ์แก้ไขเอเจนต์นี้",

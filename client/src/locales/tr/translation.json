@@ -79,7 +79,7 @@
   "com_agents_mcp_description_placeholder": "Birkaç kelimeyle ne yaptığını açıklayın",
   "com_agents_mcp_icon_size": "Minimum boyut 128 x 128 piksel",
   "com_agents_mcp_name_placeholder": "Özel Araç",
-  "com_agents_mcp_trust_subtext": "Özel bağlayıcılar LibreChat tarafından doğrulanmamıştır",
+  "com_agents_mcp_trust_subtext": "Özel bağlayıcılar TARS.ai tarafından doğrulanmamıştır",
   "com_agents_missing_name": "Lütfen bir ajan oluşturmadan önce bir ad girin.",
   "com_agents_missing_provider_model": "Lütfen bir ajan oluşturmadan önce bir sağlayıcı ve model seçin.",
   "com_agents_name_placeholder": "İsteğe bağlı: Ajanın adı",

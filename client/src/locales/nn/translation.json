@@ -79,7 +79,7 @@
   "com_agents_mcp_description_placeholder": "Forklar kva det gjer med nokre få ord.",
   "com_agents_mcp_icon_size": "Minimumsstorleik 128 x 128 pikslar",
   "com_agents_mcp_name_placeholder": "Egendefinert verktøy",
-  "com_agents_mcp_trust_subtext": "Eigendefinerte tilkoplingar er ikkje verifiserte av LibreChat.",
+  "com_agents_mcp_trust_subtext": "Eigendefinerte tilkoplingar er ikkje verifiserte av TARS.ai.",
   "com_agents_missing_name": "Ver venleg og skriv inn eit namn før du opprettar ein agent.",
   "com_agents_missing_provider_model": "Ver venleg og vel ein leverandør og ein modell før du opprettar ein agent.",
   "com_agents_name_placeholder": "Valfritt: Namnet på agenten.",

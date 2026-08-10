@@ -79,7 +79,7 @@
   "com_agents_mcp_description_placeholder": "Explica brevemente qué hace",
   "com_agents_mcp_icon_size": "Tamaño mínimo 128 x 128 px",
   "com_agents_mcp_name_placeholder": "Herramienta personalizada",
-  "com_agents_mcp_trust_subtext": "LibreChat no verifica los conectores personalizados",
+  "com_agents_mcp_trust_subtext": "TARS.ai no verifica los conectores personalizados",
   "com_agents_missing_name": "Por favor, escriba un nombre antes de crear un agente.",
   "com_agents_missing_provider_model": "Por favor, seleccione un proveedor y un modelo antes de crear un agente.",
   "com_agents_name_placeholder": "Opcional: El nombre del agente",

@@ -34,7 +34,7 @@ const AgentMarketplace: React.FC<AgentMarketplaceProps> = ({ className = '' }) =
   }, [searchParams]);
   const mine: 0 | 1 = searchParams.get('mine') === '1' ? 1 : 0;
 
-  useDocumentTitle(`${localize('com_agents_marketplace')} | LibreChat`);
+  useDocumentTitle(`${localize('com_agents_marketplace')} | TARS.ai`);
   useGetEndpointsQuery();
   const categoriesQuery = useGetAgentCategoriesQuery({
     staleTime: 1000 * 60 * 15,
