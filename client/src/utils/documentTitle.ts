@@ -1,7 +1,7 @@
 import { LocalStorageKeys } from 'librechat-data-provider';
 
 export const CHAT_TITLE_IN_TAB_KEY = 'chatTitleInTab';
-export const DEFAULT_APP_TITLE = 'LibreChat';
+export const DEFAULT_APP_TITLE = 'TARS.ai';
 let documentTitleRevision = 0;
 
 export const getDocumentTitleRevision = (): number => documentTitleRevision;

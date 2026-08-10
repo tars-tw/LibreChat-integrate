@@ -276,15 +276,7 @@ const AdminSettingsDialog: React.FC<AdminSettingsDialogProps> = ({
                         selectedRole === SystemRoles.ADMIN &&
                         permission === Permissions.USE && (
                           <div className="border-border-light text-text-destructive border-t px-4 py-3 text-sm break-words whitespace-normal">
-                            <span>{localize('com_ui_admin_access_warning')}</span>{' '}
-                            <a
-                              href="https://www.librechat.ai/docs/configuration/librechat_yaml/object_structure/interface"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-link underline"
-                            >
-                              {localize('com_ui_more_info')}
-                            </a>
+                            <span>{localize('com_ui_admin_access_warning')}</span>
                           </div>
                         )}
                     </div>
