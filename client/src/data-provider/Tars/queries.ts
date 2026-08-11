@@ -141,6 +141,16 @@ export const useTarsPromptsQuery = (
   );
 };
 
+/**
+ * The user's personal "我的提示" (`prompt` table) — the tier the prompts
+ * management page reads and writes. Omitting the brain makes the backend skip
+ * the specialized-brain and knowledge-base tiers.
+ */
+export const useTarsPersonalPromptsQuery = (
+  config?: UseQueryOptions<TTarsPromptsResponse>,
+): QueryObserverResult<TTarsPromptsResponse> =>
+  useTarsPromptsQuery(null, { enabled: true, ...config });
+
 /** Admin: pwc_tars 系統參數設定 rows. */
 export const useTarsSysConfigsQuery = (
   config?: UseQueryOptions<TTarsSysConfigsResponse, unknown, TTarsSysConfig[]>,
