@@ -68,6 +68,7 @@ jest.mock('@ariakit/react/menu', () => ({
 
 jest.mock('~/data-provider', () => ({
   useGetToolFavoritesQuery: () => ({ data: [] }),
+  useGetStartupConfig: () => ({ data: { tarsMcpEnabled: false } }),
 }));
 
 jest.mock('react-router-dom', () => ({

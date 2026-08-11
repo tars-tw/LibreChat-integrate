@@ -200,12 +200,16 @@ export type TTarsPromptsResponse = {
   knowledgeBases: TTarsPromptKnowledgeBase[];
 };
 
-/** Create/update payload for a "我的提示". */
+/**
+ * Create/update payload for a "我的提示". `command` is sent for the forthcoming
+ * pwc_tars column and is ignored by the current backend.
+ */
 export type TTarsPromptInput = {
   name: string;
   content: string;
   category: string;
   description?: string;
+  command?: string;
   status?: number;
   domain_id?: string | number;
   knowledge_base_id?: string;
