@@ -19,8 +19,8 @@ export const darkTheme: IThemeRGB = {
   'rgb-link': '96 165 250', // #60a5fa (blue-400)
   'rgb-link-hover': '147 197 253', // #93c5fd (blue-300)
   'rgb-link-visited': '192 132 252', // #c084fc (purple-400)
-  'rgb-accent-primary': '65 167 157', // #41a79d
-  'rgb-accent-primary-hover': '109 200 185', // #6dc8b9
+  'rgb-accent-primary': '254 124 57', // #fe7c39 (pwc-orange-400)
+  'rgb-accent-primary-hover': '255 170 114', // #ffaa72 (pwc-orange-300)
 
   // Ring colors (not defined in dark mode, using default)
   'rgb-ring-primary': '253 81 8', // #fd5108 (pwc-orange-500)
