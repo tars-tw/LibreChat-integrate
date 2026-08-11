@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { isAgentsEndpoint, isEphemeralAgentId } from 'librechat-data-provider';
 import type { TConversation, TTarsDomain } from 'librechat-data-provider';
 import { useTarsDomainsQuery } from '~/data-provider';
-import { useChatContext } from '~/Providers';
+/** Imported from the module, not the `~/Providers` barrel: the barrel re-exports
+ *  `BadgeRowContext`, which reaches back here through `useTarsMcpTools`. */
+import { useChatContext } from '~/Providers/ChatContext';
 import { useNewConvo } from '~/hooks';
 
 /**
