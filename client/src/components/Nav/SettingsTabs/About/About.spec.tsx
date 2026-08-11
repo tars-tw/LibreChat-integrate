@@ -80,7 +80,7 @@ describe('About', () => {
       expect(mockCopy).toHaveBeenCalledTimes(1);
       const [blob, options] = mockCopy.mock.calls[0] as [string, { format: string }];
       expect(options).toEqual({ format: 'text/plain' });
-      expect(blob).toContain(`LibreChat version: ${Constants.VERSION}`);
+      expect(blob).toContain(`TARS.ai version: ${Constants.VERSION}`);
       expect(blob).toContain(`Commit: ${populatedBuildInfo.commit}`);
       expect(blob).toContain(`Branch: ${populatedBuildInfo.branch}`);
       expect(blob).toContain('Build date: 2026-04-20 12:00:00 UTC');
