@@ -260,7 +260,6 @@ router.get('/', async function (req, res) {
       /** @type {Partial<TStartupConfig>} */
       const payload = {
         ...preLoginPayload,
-        ...(req.query.context === 'share' ? publicSharePayload : {}),
         ...(tarsSso ? { tarsSso } : {}),
         ...(tarsVersion ? { tarsVersion } : {}),
         socialLogins: baseConfig?.registration?.socialLogins ?? defaultSocialLogins,
