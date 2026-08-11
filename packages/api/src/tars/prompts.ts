@@ -30,12 +30,17 @@ interface PromptsResponse {
   prompts?: TarsPrompt[];
 }
 
-/** Create/update payload. pwc_tars routes the prompt by which id is present. */
+/**
+ * Create/update payload. pwc_tars routes the prompt by which id is present.
+ * `command` is forwarded for the forthcoming pwc_tars column; the current
+ * backend ignores unknown fields.
+ */
 export interface TarsPromptInput {
   name: string;
   content: string;
   category: string;
   description?: string;
+  command?: string;
   status?: number;
   domain_id?: string | number;
   knowledge_base_id?: string;

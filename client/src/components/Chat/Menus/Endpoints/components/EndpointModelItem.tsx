@@ -65,7 +65,6 @@ function EndpointModelItemComponent({
     modelName = endpoint.assistantNames[modelId];
   }
 
-
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!modelId) {

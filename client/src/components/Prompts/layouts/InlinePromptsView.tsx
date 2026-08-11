@@ -1,6 +1,6 @@
 import { useParams, Navigate } from 'react-router-dom';
 import { PermissionTypes, Permissions } from 'librechat-data-provider';
-import PromptForm from '../forms/PromptForm';
+import TarsPromptForm from '../Tars/Form';
 import { useHasAccess } from '~/hooks';
 
 export default function InlinePromptsView() {
@@ -17,7 +17,7 @@ export default function InlinePromptsView() {
 
   return (
     <div className="flex h-full w-full flex-col overflow-y-auto bg-presentation">
-      <PromptForm promptId={promptId} />
+      <TarsPromptForm promptId={promptId} />
     </div>
   );
 }
