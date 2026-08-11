@@ -35,6 +35,11 @@ jest.mock('~/Providers', () => ({
   useAssistantsMapContext: () => mockAssistantMap,
 }));
 
+/** `Tars/domain` reaches the module directly, not the barrel, to stay out of its import cycle. */
+jest.mock('~/Providers/ChatContext', () => ({
+  useChatContext: () => ({ conversation: mockConversation }),
+}));
+
 jest.mock('~/data-provider', () => ({
   useGetStartupConfig: () => ({ data: { interface: {} } }),
   useGetEndpointsQuery: () => ({ data: {} }),

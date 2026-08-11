@@ -196,8 +196,8 @@ html {
   --link: var(--blue-600);
   --link-hover: var(--blue-700);
   --link-visited: 147 51 234;
-  --accent-primary: 18 110 107;
-  --accent-primary-hover: 10 79 83;
+  --accent-primary: var(--pwc-orange-500);
+  --accent-primary-hover: var(--pwc-orange-600);
   --ring-primary: var(--pwc-primary);
   --header-primary: var(--white);
   --header-hover: var(--gray-50);
@@ -285,8 +285,8 @@ html {
   --link: var(--blue-400);
   --link-hover: var(--blue-300);
   --link-visited: 192 132 252;
-  --accent-primary: 65 167 157;
-  --accent-primary-hover: 109 200 185;
+  --accent-primary: var(--pwc-orange-400);
+  --accent-primary-hover: var(--pwc-orange-300);
   --header-primary: var(--gray-700);
   --header-hover: var(--gray-600);
   --header-button-hover: var(--gray-700);

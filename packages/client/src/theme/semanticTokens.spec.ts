@@ -103,8 +103,9 @@ describe('dark destructive text', () => {
 });
 
 describe('light brand text', () => {
-  it('uses the contrasting purple foreground in the default theme', () => {
-    expect(defaultTheme['rgb-brand-purple']).toBe('126 34 206');
+  /** pwc_tars retints the brand token to the platform orange (`--pwc-orange-500`). */
+  it('uses the pwc brand foreground in the default theme', () => {
+    expect(defaultTheme['rgb-brand-purple']).toBe('253 81 8');
   });
 });
 
