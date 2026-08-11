@@ -25,8 +25,14 @@ jest.mock('../../Endpoints/components/EndpointModelItem', () => ({
   ),
 }));
 
+const mockToggleFavoriteAgent = jest.fn();
+
 jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string) => key,
+  useFavorites: () => ({
+    isFavoriteAgent: () => false,
+    toggleFavoriteAgent: mockToggleFavoriteAgent,
+  }),
 }));
 
 const endpoint = {
