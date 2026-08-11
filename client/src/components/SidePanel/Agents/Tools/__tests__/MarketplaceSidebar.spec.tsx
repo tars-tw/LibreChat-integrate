@@ -5,6 +5,7 @@ import MarketplaceSidebar from '../MarketplaceSidebar';
 
 let mockHasMcpCreateAccess = true;
 let mockCapabilities: string[] = ['actions'];
+let mockTarsMcpEnabled = false;
 
 jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string) => key,
@@ -13,6 +14,10 @@ jest.mock('~/hooks', () => ({
 
 jest.mock('~/Providers', () => ({
   useAgentPanelContext: () => ({ agentsConfig: { capabilities: mockCapabilities } }),
+}));
+
+jest.mock('~/data-provider', () => ({
+  useGetStartupConfig: () => ({ data: { tarsMcpEnabled: mockTarsMcpEnabled } }),
 }));
 
 jest.mock('@ariakit/react/menu', () => ({
@@ -64,6 +69,7 @@ describe('MarketplaceSidebar', () => {
   beforeEach(() => {
     mockHasMcpCreateAccess = true;
     mockCapabilities = ['actions'];
+    mockTarsMcpEnabled = false;
   });
 
   test('shows the All entry with total count', () => {

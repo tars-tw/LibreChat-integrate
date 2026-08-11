@@ -146,7 +146,7 @@ function EndpointMenuContent({
 
   return (
     <>
-            {showMarketplace && (
+      {showMarketplace && (
         <MarketplaceItem
           label={localize('com_agents_marketplace')}
           posInSet={isVirtualized ? 1 : undefined}
