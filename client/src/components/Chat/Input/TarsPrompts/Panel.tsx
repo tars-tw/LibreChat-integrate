@@ -8,6 +8,7 @@ import type {
   TTarsPromptInput,
   TTarsPromptKnowledgeBase,
 } from 'librechat-data-provider';
+import type { TranslationKeys } from '~/hooks';
 import { useTarsPromptsQuery, useCreateTarsPromptMutation } from '~/data-provider';
 import { extractUniqueVariables, detectVariables } from '~/utils';
 import { useLocalize } from '~/hooks';
@@ -15,7 +16,7 @@ import { cn } from '~/utils';
 
 const SCOPE_ORDER: TTarsPromptScope[] = ['domain', 'knowledge_base', 'personal'];
 
-const SCOPE_META: Record<TTarsPromptScope, { icon: typeof Cloud; labelKey: string }> = {
+const SCOPE_META: Record<TTarsPromptScope, { icon: typeof Cloud; labelKey: TranslationKeys }> = {
   domain: { icon: Cloud, labelKey: 'com_ui_tars_prompts_domain' },
   knowledge_base: { icon: BookText, labelKey: 'com_ui_tars_prompts_kb' },
   personal: { icon: User, labelKey: 'com_ui_tars_prompts_personal' },
@@ -307,6 +308,7 @@ function CreateView({
           className="w-full rounded-lg bg-surface-secondary px-3 py-1.5 text-sm text-text-primary focus:outline-none"
         />
         <TextareaAutosize
+          aria-label={localize('com_ui_tars_prompts_content')}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder={localize('com_ui_tars_prompts_content_placeholder', { 0: variableToken })}

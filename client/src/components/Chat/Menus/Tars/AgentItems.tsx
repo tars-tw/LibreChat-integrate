@@ -1,11 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { VisuallyHidden } from '@ariakit/react';
 import { CheckCircle2, Workflow } from 'lucide-react';
 import type { Endpoint } from '~/common';
 import { CustomMenu as Menu } from '../Endpoints/CustomMenu';
 import { useModelSelectorContext } from '../Endpoints/ModelSelectorContext';
 import { EndpointModelItem } from '../Endpoints/components/EndpointModelItem';
-import { useLocalize } from '~/hooks';
+import { useFavorites, useLocalize } from '~/hooks';
 
 /**
  * Langflow flows are mirrored into agents with a deterministic id
@@ -25,6 +25,9 @@ function AgentItems({ endpoint }: { endpoint: Endpoint }) {
   const localize = useLocalize();
   const { selectedValues, endpointSearchValues, setEndpointSearchValue } =
     useModelSelectorContext();
+  /** Owned here rather than per row: each `useFavorites` call opens its own jotai and
+   *  React Query subscriptions, which at agent-list scale is thousands of live ones. */
+  const { isFavoriteAgent, toggleFavoriteAgent } = useFavorites();
   const { endpoint: selectedEndpoint, modelSpec: selectedSpec } = selectedValues;
 
   const searchValue = endpointSearchValues[endpoint.value] || '';
@@ -43,6 +46,11 @@ function AgentItems({ endpoint }: { endpoint: Endpoint }) {
   }, [endpoint.models, endpoint.agentNames, searchValue]);
 
   const isEndpointSelected = !selectedSpec && selectedEndpoint === endpoint.value;
+
+  const onToggleFavorite = useCallback(
+    (modelId: string) => toggleFavoriteAgent(modelId),
+    [toggleFavoriteAgent],
+  );
 
   return (
     <Menu
@@ -75,6 +83,8 @@ function AgentItems({ endpoint }: { endpoint: Endpoint }) {
           key={`agent-${agent.id}`}
           modelId={agent.id}
           endpoint={endpoint}
+          isFavorite={isFavoriteAgent(agent.id)}
+          onToggleFavorite={onToggleFavorite}
           icon={
             isLangflowAgent(agent.id) ? (
               <Workflow className="size-5 text-text-primary" aria-hidden="true" />
