@@ -218,6 +218,37 @@ rather than a retry — the repositories are simply not needed.
 out to apt and can hit the same 403. It is manual-dispatch only, so it was left
 alone; if a dispatched run fails this way, apply the same `rm -f` line before it.
 
+## The ESLint full-sweep gate, and why it stopped firing
+
+`static-checks.yml` carries an ESLint regression gate that lints `api client
+packages` **twice** — once under the PR's `eslint.config.mjs` and once under the
+base ref's — then fails if the new config stops covering files the old one linted
+or produces new diagnostics. It is the only way to catch a mis-scoped `ignores`
+or a silently disabled rule, because the normal changed-files lint would pass
+vacuously on a config-only PR.
+
+It also costs ~13 minutes, which was the whole of a 15m22s `Static checks` run.
+
+The trigger was too broad. Its filter was:
+
+```yaml
+eslint_config:
+  - 'eslint.config.mjs'
+  - '.github/workflows/static-checks.yml'   # ← removed
+```
+
+Editing this workflow file cannot change what ESLint reports, so every PR that
+touched the CI config paid the full double sweep for no signal — including the PR
+that introduced this document. The filter is now `eslint.config.mjs` only.
+
+Effect: `Static checks` drops to roughly two minutes on an ordinary PR, and the
+sweep still runs in full on the rare PR that actually edits the ESLint config,
+which is exactly when it is worth 13 minutes.
+
+If it ever needs to be faster on that path, the two sweeps are independent and
+could run concurrently — roughly halving it. Not done: it would restructure a
+script that runs a few times a year, for no benefit on any other PR.
+
 ## Fixed sleeps are the recurring flake pattern
 
 Two `data-schemas` failures so far had the same shape: a test that does the work,
