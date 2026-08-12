@@ -1,6 +1,14 @@
 import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Input,
+  Button,
+  Spinner,
+  OGDialog,
+  OGDialogTemplate,
+  useToastContext,
+} from '@librechat/client';
+import {
   Search,
   Plus,
   Pencil,
@@ -10,14 +18,6 @@ import {
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
-import {
-  Input,
-  Button,
-  Spinner,
-  OGDialog,
-  OGDialogTemplate,
-  useToastContext,
-} from '@librechat/client';
 import type { TTarsMcpServer } from 'librechat-data-provider';
 import {
   useTarsMcpServersQuery,
@@ -25,8 +25,8 @@ import {
   useSyncTarsMcpServerMutation,
   useDeleteTarsMcpServerMutation,
 } from '~/data-provider';
-import { useLocalize, useIsTarsAdmin } from '~/hooks';
 import McpServerToolsPanel from './McpServerToolsPanel';
+import { useLocalize, useIsTarsAdmin } from '~/hooks';
 import McpPermissionsTab from './McpPermissionsTab';
 import McpServerModal from './McpServerModal';
 import McpLogsTab from './McpLogsTab';

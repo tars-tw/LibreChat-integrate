@@ -1,18 +1,14 @@
 name: Static Checks
 
+# Deliberately unfiltered (fork policy, release/26P3_dev). A `paths:` filter here
+# means the workflow never starts on an unrelated PR, so it reports no check run at
+# all — and a required status check that never reports leaves the PR stuck on
+# "Expected — waiting for status to be reported", unmergeable by anyone including
+# admins. The per-check path detection lives in the `Detect affected checks` step
+# below instead: irrelevant steps are skipped, the job still reports, and a
+# docs-only PR passes in seconds. See .github/workflows/README.md.
 on:
   pull_request:
-    paths:
-      - 'api/**'
-      - 'client/**'
-      - 'config/**'
-      - 'packages/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'eslint.config.mjs'
-      - '.github/workflows/static-checks.yml'
-      - '!**.md'
 
 permissions:
   contents: read
@@ -65,33 +61,29 @@ jobs:
               - 'packages/**'
               - '.github/workflows/static-checks.yml'
               - '!**.md'
-            i18n:
-              - 'api/**'
-              - 'client/src/**'
-              - 'packages/client/**'
-              - 'packages/data-provider/src/**'
-              - 'packages/data-schemas/src/**'
-              - '.github/workflows/static-checks.yml'
-              - '!**.md'
             runner:
               - 'scripts/static-checks.mts'
               - '.github/workflows/static-checks.yml'
-            unused_packages:
-              - 'api/**'
-              - 'client/**'
-              - 'packages/api/**'
-              - 'packages/client/**'
-              # Every workspace manifest the JSON validation step covers, plus
-              # the ones whose dependencies feed the unused-package calculation
-              # through api/package.json's @librechat/data-schemas entry.
-              - 'packages/data-provider/package.json'
-              - 'packages/data-schemas/package.json'
-              - 'package.json'
-              - 'package-lock.json'
-              - '.github/workflows/static-checks.yml'
-              - '!**.md'
+
+      # Single source of truth for "does anything below need node_modules", so the
+      # setup and install steps stay in sync with the filters above. Without this,
+      # a docs-only PR — which now reaches this job because the trigger is
+      # unfiltered — would pay a full `npm ci` to run zero checks.
+      - name: Decide whether dependencies are needed
+        id: needs
+        run: |
+          if [[ "${{ steps.paths.outputs.eslint }}" == "true" \
+             || "${{ steps.paths.outputs.eslint_config }}" == "true" \
+             || "${{ steps.paths.outputs.config }}" == "true" \
+             || "${{ steps.paths.outputs.runner }}" == "true" ]]; then
+            echo "install=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "install=false" >> "$GITHUB_OUTPUT"
+            echo "No source paths affected; skipping dependency install."
+          fi
 
       - name: Set up Node.js 24.16.0
+        if: steps.needs.outputs.install == 'true'
         uses: actions/setup-node@v5
         with:
           node-version: '24.16.0'
@@ -99,6 +91,7 @@ jobs:
 
       - name: Install dependencies
         id: install_dependencies
+        if: steps.needs.outputs.install == 'true'
         continue-on-error: true
         run: npm ci
 
@@ -303,365 +296,6 @@ jobs:
         continue-on-error: true
         run: npm run test:config
 
-      - name: Find unused i18next keys
-        id: find_unused_i18n
-        if: always() && steps.paths.outputs.i18n == 'true'
-        continue-on-error: true
-        run: |
-          echo "🔍 Scanning for unused i18next keys..."
-
-          # Define paths
-          I18N_FILE="client/src/locales/en/translation.json"
-          SOURCE_DIRS=("client/src" "api" "packages/data-provider/src" "packages/client" "packages/data-schemas/src")
-
-          # Check if translation file exists
-          if [[ ! -f "$I18N_FILE" ]]; then
-            echo "::error title=Missing i18n File::Translation file not found: $I18N_FILE"
-            exit 1
-          fi
-
-          # Extract all keys from the JSON file
-          KEYS=$(jq -r 'keys[]' "$I18N_FILE")
-
-          # Track unused keys
-          UNUSED_KEYS=()
-
-          # Check if each key is used in the source code
-          for KEY in $KEYS; do
-            FOUND=false
-
-            # Special case for dynamically constructed special variable keys
-            if [[ "$KEY" == com_ui_special_var_* ]]; then
-              # Check if TSpecialVarLabel is used in the codebase
-              for DIR in "${SOURCE_DIRS[@]}"; do
-                if grep -r --include=\*.{js,jsx,ts,tsx} -q "TSpecialVarLabel" "$DIR"; then
-                  FOUND=true
-                  break
-                fi
-              done
-
-              # Also check if the key is directly used somewhere
-              if [[ "$FOUND" == false ]]; then
-                for DIR in "${SOURCE_DIRS[@]}"; do
-                  if grep -r --include=\*.{js,jsx,ts,tsx} -q "$KEY" "$DIR"; then
-                    FOUND=true
-                    break
-                  fi
-                done
-              fi
-            # Special case for agent category keys that are dynamically used from database
-            elif [[ "$KEY" == com_agents_category_* ]]; then
-              # Check if agent category localization is being used
-              for DIR in "${SOURCE_DIRS[@]}"; do
-                # Check for dynamic category label/description usage
-                if grep -r --include=\*.{js,jsx,ts,tsx} -E "category\.(label|description).*startsWith.*['\"]com_" "$DIR" > /dev/null 2>&1 || \
-                   # Check for the method that defines these keys
-                   grep -r --include=\*.{js,jsx,ts,tsx} "ensureDefaultCategories" "$DIR" > /dev/null 2>&1 || \
-                   # Check for direct usage in agentCategory.ts
-                   grep -r --include=\*.ts -E "label:.*['\"]$KEY['\"]" "$DIR" > /dev/null 2>&1 || \
-                   grep -r --include=\*.ts -E "description:.*['\"]$KEY['\"]" "$DIR" > /dev/null 2>&1; then
-                  FOUND=true
-                  break
-                fi
-              done
-
-              # Also check if the key is directly used somewhere
-              if [[ "$FOUND" == false ]]; then
-                for DIR in "${SOURCE_DIRS[@]}"; do
-                  if grep -r --include=\*.{js,jsx,ts,tsx} -q "$KEY" "$DIR"; then
-                    FOUND=true
-                    break
-                  fi
-                done
-              fi
-            else
-              # Regular check for other keys
-              for DIR in "${SOURCE_DIRS[@]}"; do
-                if grep -r --include=\*.{js,jsx,ts,tsx} -q "$KEY" "$DIR"; then
-                  FOUND=true
-                  break
-                fi
-              done
-            fi
-
-            if [[ "$FOUND" == false ]]; then
-              UNUSED_KEYS+=("$KEY")
-            fi
-          done
-
-          # Output results
-          if [[ ${#UNUSED_KEYS[@]} -gt 0 ]]; then
-            echo "🛑 Found ${#UNUSED_KEYS[@]} unused i18n keys:"
-            echo "unused_keys=$(echo "${UNUSED_KEYS[@]}" | jq -R -s -c 'split(" ")')" >> $GITHUB_ENV
-            for KEY in "${UNUSED_KEYS[@]}"; do
-              echo "::warning title=Unused i18n Key::'$KEY' is defined but not used in the codebase."
-            done
-          else
-            echo "✅ No unused i18n keys detected!"
-            echo "unused_keys=[]" >> $GITHUB_ENV
-          fi
-
-      - name: Fail workflow if unused keys found
-        id: i18n
-        if: >
-          always() &&
-          steps.paths.outputs.i18n == 'true' &&
-          (steps.find_unused_i18n.outcome == 'failure' || env.unused_keys != '[]')
-        continue-on-error: true
-        run: exit 1
-
-      - name: Install depcheck
-        id: install_depcheck
-        if: always() && steps.paths.outputs.unused_packages == 'true'
-        continue-on-error: true
-        run: npm install -g depcheck
-
-      - name: Validate JSON files
-        id: validate_package_json
-        if: always() && steps.paths.outputs.unused_packages == 'true'
-        continue-on-error: true
-        run: |
-          for FILE in package.json client/package.json api/package.json packages/api/package.json packages/client/package.json packages/data-provider/package.json packages/data-schemas/package.json; do
-            if [[ -f "$FILE" ]]; then
-              jq empty "$FILE" || (echo "::error title=Invalid JSON::$FILE is invalid" && exit 1)
-            fi
-          done
-
-      - name: Extract Dependencies Used in Scripts
-        if: always() && steps.paths.outputs.unused_packages == 'true'
-        id: extract-used-scripts
-        continue-on-error: true
-        run: |
-          extract_deps_from_scripts() {
-            local package_file=$1
-            if [[ -f "$package_file" ]]; then
-              jq -r '.scripts | to_entries[].value' "$package_file" | \
-                grep -oE '([a-zA-Z0-9_-]+)' | sort -u > used_scripts.txt
-            else
-              touch used_scripts.txt
-            fi
-          }
-
-          extract_deps_from_scripts "package.json"
-          mv used_scripts.txt root_used_deps.txt
-
-          extract_deps_from_scripts "client/package.json"
-          mv used_scripts.txt client_used_deps.txt
-
-          extract_deps_from_scripts "api/package.json"
-          mv used_scripts.txt api_used_deps.txt
-
-      - name: Extract Dependencies Used in Source Code
-        if: always() && steps.paths.outputs.unused_packages == 'true'
-        id: extract-used-code
-        continue-on-error: true
-        run: |
-          extract_deps_from_code() {
-            local folder=$1
-            local output_file=$2
-
-            # Initialize empty output file
-            > "$output_file"
-
-            if [[ -d "$folder" ]]; then
-              # Extract require() statements (use explicit includes for portability)
-              grep -rEho "require\\(['\"]([a-zA-Z0-9@/._-]+)['\"]\\)" "$folder" \
-                --include='*.js' --include='*.ts' --include='*.tsx' --include='*.jsx' --include='*.mjs' --include='*.cjs' 2>/dev/null | \
-                sed -E "s/require\\(['\"]([a-zA-Z0-9@/._-]+)['\"]\\)/\1/" >> "$output_file" || true
-
-              # Extract ES6 imports - import x from 'module'
-              grep -rEho "import .* from ['\"]([a-zA-Z0-9@/._-]+)['\"]" "$folder" \
-                --include='*.js' --include='*.ts' --include='*.tsx' --include='*.jsx' --include='*.mjs' --include='*.cjs' 2>/dev/null | \
-                sed -E "s/import .* from ['\"]([a-zA-Z0-9@/._-]+)['\"]/\1/" >> "$output_file" || true
-
-              # import 'module' (side-effect imports)
-              grep -rEho "import ['\"]([a-zA-Z0-9@/._-]+)['\"]" "$folder" \
-                --include='*.js' --include='*.ts' --include='*.tsx' --include='*.jsx' --include='*.mjs' --include='*.cjs' 2>/dev/null | \
-                sed -E "s/import ['\"]([a-zA-Z0-9@/._-]+)['\"]/\1/" >> "$output_file" || true
-
-              # export { x } from 'module' or export * from 'module'
-              grep -rEho "export .* from ['\"]([a-zA-Z0-9@/._-]+)['\"]" "$folder" \
-                --include='*.js' --include='*.ts' --include='*.tsx' --include='*.jsx' --include='*.mjs' --include='*.cjs' 2>/dev/null | \
-                sed -E "s/export .* from ['\"]([a-zA-Z0-9@/._-]+)['\"]/\1/" >> "$output_file" || true
-
-              # import type { x } from 'module' (TypeScript)
-              grep -rEho "import type .* from ['\"]([a-zA-Z0-9@/._-]+)['\"]" "$folder" \
-                --include='*.ts' --include='*.tsx' 2>/dev/null | \
-                sed -E "s/import type .* from ['\"]([a-zA-Z0-9@/._-]+)['\"]/\1/" >> "$output_file" || true
-
-              # Remove subpath imports but keep the base package
-              # For scoped packages: '@scope/pkg/subpath' -> '@scope/pkg'
-              # For regular packages: 'pkg/subpath' -> 'pkg'
-              # Scoped packages (must keep @scope/package, strip anything after)
-              sed -i -E 's|^(@[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+)/.*|\1|' "$output_file" 2>/dev/null || true
-              # Non-scoped packages (keep package name, strip subpath)
-              sed -i -E 's|^([a-zA-Z0-9_-]+)/.*|\1|' "$output_file" 2>/dev/null || true
-
-              sort -u "$output_file" -o "$output_file"
-            fi
-          }
-
-          extract_deps_from_code "." root_used_code.txt
-          extract_deps_from_code "client" client_used_code.txt
-          extract_deps_from_code "api" api_used_code.txt
-
-          # Extract dependencies used by workspace packages
-          # These packages are used in the workspace but dependencies are provided by parent package.json
-          extract_deps_from_code "packages/client" packages_client_used_code.txt
-          extract_deps_from_code "packages/api" packages_api_used_code.txt
-
-      - name: Get @librechat/client dependencies
-        if: always() && steps.paths.outputs.unused_packages == 'true'
-        id: get-librechat-client-deps
-        continue-on-error: true
-        run: |
-          if [[ -f "packages/client/package.json" ]]; then
-            # Get all dependencies from @librechat/client (dependencies, devDependencies, and peerDependencies)
-            DEPS=$(jq -r '.dependencies // {} | keys[]' packages/client/package.json 2>/dev/null || echo "")
-            DEV_DEPS=$(jq -r '.devDependencies // {} | keys[]' packages/client/package.json 2>/dev/null || echo "")
-            PEER_DEPS=$(jq -r '.peerDependencies // {} | keys[]' packages/client/package.json 2>/dev/null || echo "")
-
-            # Combine all dependencies
-            echo "$DEPS" > librechat_client_deps.txt
-            echo "$DEV_DEPS" >> librechat_client_deps.txt
-            echo "$PEER_DEPS" >> librechat_client_deps.txt
-
-            # Also include dependencies that are imported in packages/client
-            cat packages_client_used_code.txt >> librechat_client_deps.txt
-
-            # Remove empty lines and sort
-            grep -v '^$' librechat_client_deps.txt | sort -u > temp_deps.txt
-            mv temp_deps.txt librechat_client_deps.txt
-          else
-            touch librechat_client_deps.txt
-          fi
-
-      - name: Get @librechat/api dependencies
-        if: always() && steps.paths.outputs.unused_packages == 'true'
-        id: get-librechat-api-deps
-        continue-on-error: true
-        run: |
-          if [[ -f "packages/api/package.json" ]]; then
-            # Get all dependencies from @librechat/api (dependencies, devDependencies, and peerDependencies)
-            DEPS=$(jq -r '.dependencies // {} | keys[]' packages/api/package.json 2>/dev/null || echo "")
-            DEV_DEPS=$(jq -r '.devDependencies // {} | keys[]' packages/api/package.json 2>/dev/null || echo "")
-            PEER_DEPS=$(jq -r '.peerDependencies // {} | keys[]' packages/api/package.json 2>/dev/null || echo "")
-
-            # Combine all dependencies
-            echo "$DEPS" > librechat_api_deps.txt
-            echo "$DEV_DEPS" >> librechat_api_deps.txt
-            echo "$PEER_DEPS" >> librechat_api_deps.txt
-
-            # Also include dependencies that are imported in packages/api
-            cat packages_api_used_code.txt >> librechat_api_deps.txt
-
-            # Remove empty lines and sort
-            grep -v '^$' librechat_api_deps.txt | sort -u > temp_deps.txt
-            mv temp_deps.txt librechat_api_deps.txt
-          else
-            touch librechat_api_deps.txt
-          fi
-
-      - name: Extract Workspace Dependencies
-        if: always() && steps.paths.outputs.unused_packages == 'true'
-        id: extract-workspace-deps
-        continue-on-error: true
-        run: |
-          # Function to get dependencies from a workspace package that are used by another package
-          get_workspace_package_deps() {
-            local package_json=$1
-            local output_file=$2
-
-            # Get all workspace dependencies (starting with @librechat/)
-            if [[ -f "$package_json" ]]; then
-              local workspace_deps=$(jq -r '.dependencies // {} | to_entries[] | select(.key | startswith("@librechat/")) | .key' "$package_json" 2>/dev/null || echo "")
-
-              # For each workspace dependency, get its dependencies
-              for dep in $workspace_deps; do
-                # Convert @librechat/api to packages/api
-                local workspace_path=$(echo "$dep" | sed 's/@librechat\//packages\//')
-                local workspace_package_json="${workspace_path}/package.json"
-
-                if [[ -f "$workspace_package_json" ]]; then
-                  # Extract all dependencies from the workspace package
-                  jq -r '.dependencies // {} | keys[]' "$workspace_package_json" 2>/dev/null >> "$output_file"
-                  # Also extract peerDependencies
-                  jq -r '.peerDependencies // {} | keys[]' "$workspace_package_json" 2>/dev/null >> "$output_file"
-                fi
-              done
-            fi
-
-            if [[ -f "$output_file" ]]; then
-              sort -u "$output_file" -o "$output_file"
-            else
-              touch "$output_file"
-            fi
-          }
-
-          # Get workspace dependencies for each package
-          get_workspace_package_deps "package.json" root_workspace_deps.txt
-          get_workspace_package_deps "client/package.json" client_workspace_deps.txt
-          get_workspace_package_deps "api/package.json" api_workspace_deps.txt
-
-      - name: Run depcheck for root package.json
-        if: always() && steps.paths.outputs.unused_packages == 'true'
-        id: check-root
-        continue-on-error: true
-        run: |
-          if [[ -f "package.json" ]]; then
-            UNUSED=$(depcheck --json | jq -r '.dependencies | join("\n")' || echo "")
-            # Exclude dependencies used in scripts, code, and workspace packages
-            UNUSED=$(comm -23 <(echo "$UNUSED" | sort) <(cat root_used_deps.txt root_used_code.txt root_workspace_deps.txt | sort) || echo "")
-            echo "ROOT_UNUSED<<EOF" >> $GITHUB_ENV
-            echo "$UNUSED" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
-          fi
-
-      - name: Run depcheck for client/package.json
-        if: always() && steps.paths.outputs.unused_packages == 'true'
-        id: check-client
-        continue-on-error: true
-        run: |
-          if [[ -f "client/package.json" ]]; then
-            chmod -R 755 client
-            cd client
-            UNUSED=$(depcheck --json | jq -r '.dependencies | join("\n")' || echo "")
-            # Exclude dependencies used in scripts, code, workspace packages, and @librechat/client imports
-            UNUSED=$(comm -23 <(echo "$UNUSED" | sort) <(cat ../client_used_deps.txt ../client_used_code.txt ../client_workspace_deps.txt ../packages_client_used_code.txt ../librechat_client_deps.txt 2>/dev/null | sort -u) || echo "")
-            # Filter out false positives
-            UNUSED=$(echo "$UNUSED" | grep -v "^micromark-extension-llm-math$" || echo "")
-            echo "CLIENT_UNUSED<<EOF" >> $GITHUB_ENV
-            echo "$UNUSED" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
-            cd ..
-          fi
-
-      - name: Run depcheck for api/package.json
-        if: always() && steps.paths.outputs.unused_packages == 'true'
-        id: check-api
-        continue-on-error: true
-        run: |
-          if [[ -f "api/package.json" ]]; then
-            chmod -R 755 api
-            cd api
-            UNUSED=$(depcheck --json | jq -r '.dependencies | join("\n")' || echo "")
-            # Exclude dependencies used in scripts, code, workspace packages, and @librechat/api imports
-            UNUSED=$(comm -23 <(echo "$UNUSED" | sort) <(cat ../api_used_deps.txt ../api_used_code.txt ../api_workspace_deps.txt ../packages_api_used_code.txt ../librechat_api_deps.txt 2>/dev/null | sort -u) || echo "")
-            echo "API_UNUSED<<EOF" >> $GITHUB_ENV
-            echo "$UNUSED" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
-            cd ..
-          fi
-
-      - name: Fail workflow if unused dependencies found
-        id: unused_packages
-        if: >
-          always() &&
-          steps.paths.outputs.unused_packages == 'true' &&
-          (env.ROOT_UNUSED != '' || env.CLIENT_UNUSED != '' || env.API_UNUSED != '')
-        continue-on-error: true
-        run: exit 1
-
       - name: Summarize static check failures
         if: always()
         env:
@@ -680,19 +314,6 @@ jobs:
           CONFIG_AUTH_OUTCOME: ${{ steps.config_auth.outcome }}
           CONFIG_ENV_OUTCOME: ${{ steps.config_env.outcome }}
           CONFIG_TESTS_OUTCOME: ${{ steps.config_tests.outcome }}
-          FIND_I18N_OUTCOME: ${{ steps.find_unused_i18n.outcome }}
-          I18N_OUTCOME: ${{ steps.i18n.outcome }}
-          INSTALL_DEPCHECK_OUTCOME: ${{ steps.install_depcheck.outcome }}
-          VALIDATE_PACKAGE_JSON_OUTCOME: ${{ steps.validate_package_json.outcome }}
-          EXTRACT_USED_SCRIPTS_OUTCOME: ${{ steps.extract-used-scripts.outcome }}
-          EXTRACT_USED_CODE_OUTCOME: ${{ steps.extract-used-code.outcome }}
-          GET_CLIENT_DEPS_OUTCOME: ${{ steps.get-librechat-client-deps.outcome }}
-          GET_API_DEPS_OUTCOME: ${{ steps.get-librechat-api-deps.outcome }}
-          EXTRACT_WORKSPACE_DEPS_OUTCOME: ${{ steps.extract-workspace-deps.outcome }}
-          CHECK_ROOT_OUTCOME: ${{ steps.check-root.outcome }}
-          CHECK_CLIENT_OUTCOME: ${{ steps.check-client.outcome }}
-          CHECK_API_OUTCOME: ${{ steps.check-api.outcome }}
-          UNUSED_PACKAGES_OUTCOME: ${{ steps.unused_packages.outcome }}
         run: |
           failures=()
 
@@ -717,25 +338,6 @@ jobs:
           record_failure "Config auth preparation" "$CONFIG_AUTH_OUTCOME"
           record_failure "Config environment preparation" "$CONFIG_ENV_OUTCOME"
           record_failure "Config migration tests" "$CONFIG_TESTS_OUTCOME"
-          record_failure "Unused i18n scan" "$FIND_I18N_OUTCOME"
-          record_failure "Unused i18n keys" "$I18N_OUTCOME"
-          record_failure "depcheck installation" "$INSTALL_DEPCHECK_OUTCOME"
-          record_failure "Package JSON validation" "$VALIDATE_PACKAGE_JSON_OUTCOME"
-          record_failure "Package script dependency extraction" "$EXTRACT_USED_SCRIPTS_OUTCOME"
-          record_failure "Source dependency extraction" "$EXTRACT_USED_CODE_OUTCOME"
-          record_failure "Client dependency collection" "$GET_CLIENT_DEPS_OUTCOME"
-          record_failure "API dependency collection" "$GET_API_DEPS_OUTCOME"
-          record_failure "Workspace dependency extraction" "$EXTRACT_WORKSPACE_DEPS_OUTCOME"
-          record_failure "Root depcheck" "$CHECK_ROOT_OUTCOME"
-          record_failure "Client depcheck" "$CHECK_CLIENT_OUTCOME"
-          record_failure "API depcheck" "$CHECK_API_OUTCOME"
-          record_failure "Unused NPM packages" "$UNUSED_PACKAGES_OUTCOME"
-
-          if [[ "$UNUSED_PACKAGES_OUTCOME" == "failure" ]]; then
-            [[ -n "$ROOT_UNUSED" ]] && printf 'Root unused dependencies:\n%s\n' "$ROOT_UNUSED"
-            [[ -n "$CLIENT_UNUSED" ]] && printf 'Client unused dependencies:\n%s\n' "$CLIENT_UNUSED"
-            [[ -n "$API_UNUSED" ]] && printf 'API unused dependencies:\n%s\n' "$API_UNUSED"
-          fi
 
           if [[ ${#failures[@]} -eq 0 ]]; then
             echo "All affected static checks passed."

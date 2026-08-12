@@ -309,6 +309,87 @@ Recommended dev setup: two terminals — `npm run backend:dev` (terminal A) and 
 
 Fix all formatting lint errors (trailing spaces, tabs, newlines, indentation) using auto-fix when available. All TypeScript/ESLint warnings and errors **must** be resolved.
 
-`npm run sort-imports` with no arguments rewrites every file under `api/`, `client/src` and the four
-`packages/*/src` roots — far beyond what you touched. Always pass explicit paths:
-`npm run sort-imports -- path/to/file.ts`.
+---
+
+## Code Style Check — mandatory before every PR
+
+CI (`.github/workflows/static-checks.yml`) blocks a PR on **ESLint**, **Prettier**,
+and **import sorting**, each evaluated against the files your branch changed
+relative to the PR base. These are not advisory. Run them locally before pushing —
+never discover them from a red CI run.
+
+### Collect your changed files first
+
+From the repo root, on your feature branch. Diffing the merge-base against the
+working tree covers both committed and uncommitted work, so this is a superset
+of what CI inspects:
+
+```bash
+git diff --name-only --diff-filter=ACMRTUXB "$(git merge-base release/26P3_dev HEAD)" | grep -E '^(api|client|packages)/.*\.(js|jsx|ts|tsx)$' > /tmp/style-files.txt; wc -l < /tmp/style-files.txt
+```
+
+**If that file is empty, stop — do not run the commands below.** With no path
+arguments these tools operate on the entire repository, which is exactly the
+failure mode described under "Never run repo-wide formatters".
+
+### Then run the three blocking checks
+
+```bash
+node scripts/sort-imports.mts $(cat /tmp/style-files.txt)
+```
+
+```bash
+npx prettier --write $(cat /tmp/style-files.txt)
+```
+
+```bash
+npx eslint --config eslint.config.mjs --no-warn-ignored --max-warnings=0 -- $(cat /tmp/style-files.txt)
+```
+
+`sort-imports` and `prettier` rewrite in place; ESLint must exit 0 with **zero**
+warnings. Re-run after any fix. Then typecheck whatever you touched:
+
+```bash
+npx tsc --noEmit -p packages/data-provider/tsconfig.json
+npx tsc --noEmit -p packages/data-schemas/tsconfig.json
+npx tsc --noEmit -p packages/api/tsconfig.json
+cd client && npx tsc --noEmit
+```
+
+Typecheck is where our TARS code has historically broken CI: a missing
+`translation.json` key makes `localize()` reject the argument, a schema field
+added without extending its interface fails `data-schemas`, and a shared
+primitive's required ARIA prop fails `client`. All of those are caught here in
+seconds.
+
+### The pre-commit hook is the safety net, not the plan
+
+`.husky/pre-commit` runs `lint-staged` (Prettier + import sort on staged files).
+It is installed by the root `prepare` script on `npm install` / `npm ci`. Verify
+once per clone:
+
+```bash
+npm run prepare && git config core.hooksPath
+```
+
+It must print `.husky/_`. **Never commit with `--no-verify`.** The hook only
+covers staged files, so it is a backstop for the command above, not a substitute.
+
+### Never run repo-wide formatters
+
+`npm run sort-imports`, `npm run format`, and `eslint . --fix` with no path
+argument rewrite the whole tree — roughly 200 upstream files carry pre-existing
+import drift. Rewriting them creates a merge/rebase minefield against upstream
+LibreChat for zero benefit. **Always pass an explicit file list scoped to your
+own changes**, exactly as the command above does.
+
+### What `static-checks.yml` does and does not cover
+
+It gates on ESLint, Prettier, import sorting, the ESLint-config regression
+sweep, and the config-migration tests. The unused-i18n-key scan and the depcheck
+sweep were removed from this fork — they could not see TARS locale keys or
+TARS-only dependencies, and they cost more runtime than the rest of the workflow
+combined. Nothing checks for unused locale keys or stale dependencies on a PR
+now; audit those locally when it matters.
+
+See `.github/workflows/README.md` for the full CI policy of this fork.
