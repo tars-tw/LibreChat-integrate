@@ -52,9 +52,13 @@ jobs:
               - 'eslint.config.mjs'
               - '.github/workflows/static-checks.yml'
               - '!**.md'
+            # `eslint.config.mjs` only. The gates behind this filter lint the whole
+            # tree twice (once under the PR's config, once under the base ref's) —
+            # ~13 minutes. Only an actual config change can alter ESLint's results,
+            # so editing this workflow file must not trigger it; a workflow edit
+            # cannot mis-scope `ignores` or silently disable a rule.
             eslint_config:
               - 'eslint.config.mjs'
-              - '.github/workflows/static-checks.yml'
             config:
               - 'api/**'
               - 'config/**'
