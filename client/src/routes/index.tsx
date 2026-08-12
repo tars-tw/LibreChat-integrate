@@ -11,6 +11,7 @@ import {
 } from '~/components/Auth';
 import { OAuthSuccess, OAuthError } from '~/components/OAuth';
 import AdminPlaceholder from '~/components/Admin/Placeholder';
+import LangflowView from '~/components/Langflow/LangflowView';
 import { AuthContextProvider } from '~/hooks/AuthContext';
 import { importWithRecovery } from '~/lib/assets/lazy';
 import RouteErrorBoundary from './RouteErrorBoundary';
@@ -24,7 +25,6 @@ import ShareRoute from './ShareRoute';
 import ChatRoute from './ChatRoute';
 import Search from './Search';
 import Root from './Root';
-import LangflowView from '~/components/Langflow/LangflowView';
 
 const AuthLayout = () => (
   <AuthContextProvider>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Pencil, Trash2, RefreshCw, FileText, Layers } from 'lucide-react';
 import { Button, Spinner, useToastContext } from '@librechat/client';
+import { ArrowLeft, Plus, Pencil, Trash2, RefreshCw, FileText, Layers } from 'lucide-react';
 import type { TTarsDocument } from 'librechat-data-provider';
 import {
   useTarsKnowledgeBasesQuery,
@@ -10,9 +10,9 @@ import {
   useDeleteTarsDocumentMutation,
   useReprocessTarsDocumentMutation,
 } from '~/data-provider';
-import { useLocalize, useIsTarsAdmin } from '~/hooks';
-import UploadDocumentsModal from './UploadDocumentsModal';
 import EditKnowledgeBaseModal from './EditKnowledgeBaseModal';
+import UploadDocumentsModal from './UploadDocumentsModal';
+import { useLocalize, useIsTarsAdmin } from '~/hooks';
 import { getDocStatusMeta } from './status';
 import ChunkList from './ChunkList';
 

@@ -1,12 +1,12 @@
 import { createHmac } from 'crypto';
 import { logger } from '@librechat/data-schemas';
 import { tarsMcpServerName, sanitizeMCPTitle } from 'librechat-data-provider';
-import type { AppConfig } from '@librechat/data-schemas';
 import type { MCPOptions } from 'librechat-data-provider';
+import type { AppConfig } from '@librechat/data-schemas';
+import type { TarsMcpServerDetail } from './admin';
+import { PROXIED_SERVER_TYPES, tarsMcpFetch } from './client';
 import { hostPortFromUrl } from '~/auth/allowedAddresses';
 import { isTarsConfigured } from '~/tars/client';
-import { PROXIED_SERVER_TYPES, tarsMcpFetch } from './client';
-import type { TarsMcpServerDetail } from './admin';
 
 export const TARS_MCP_SERVER_NAME = 'tars';
 export const TARS_MCP_PATH = '/api/tars/mcp';

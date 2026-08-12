@@ -1,10 +1,10 @@
 import { useState, memo, useRef } from 'react';
 import { useSetAtom } from 'jotai';
-import { useSetRecoilState } from 'recoil';
-import { useNavigate } from 'react-router-dom';
 import * as Menu from '@ariakit/react/menu';
-import { GearIcon, Avatar } from '@librechat/client';
+import { useNavigate } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
+import { useSetRecoilState } from 'recoil';
+import { GearIcon, Avatar } from '@librechat/client';
 import {
   Archive,
   CircleHelp,
