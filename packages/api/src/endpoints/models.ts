@@ -22,8 +22,8 @@ import {
 } from '~/utils';
 import { getModelCacheTokenConfigKey, isScopedTokenConfigKey } from '~/endpoints/keys';
 import { createSSRFSafeAgents, validateEndpointURL } from '~/auth';
-import { getTarsProviderApiKey } from '~/tars';
 import { standardCache, tokenConfigCache } from '~/cache';
+import { getTarsProviderApiKey } from '~/tars';
 
 type SSRFSafeAgents = ReturnType<typeof createSSRFSafeAgents>;
 

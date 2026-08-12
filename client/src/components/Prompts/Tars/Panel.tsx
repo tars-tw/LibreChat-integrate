@@ -1,11 +1,11 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Plus, FileText, ListFilter } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { Plus, FileText, ListFilter } from 'lucide-react';
 import { Button, Dropdown, Skeleton, FilterInput, TooltipAnchor } from '@librechat/client';
 import type { Option } from '~/common';
 import AutoSendPrompt from '../buttons/AutoSendPrompt';
-import useTarsPrompts from './hooks';
 import { useLocalize } from '~/hooks';
+import useTarsPrompts from './hooks';
 import Item from './Item';
 
 const ALL_CATEGORIES = '__all__';

@@ -1,12 +1,10 @@
 name: Bombadil Property Exploration
 
+# Fork policy (release/26P3_dev): Bombadil is a randomised exploration run that
+# already carries `continue-on-error`, so it never gated a PR — it only spent 30
+# minutes of runner time per push. Manual dispatch only.
+# See .github/workflows/README.md.
 on:
-  pull_request:
-    paths:
-      - '**'
-      - '!**.md'
-      - '!.github/workflows/**'
-      - '.github/workflows/playwright-bombadil.yml'
   workflow_dispatch:
     inputs:
       reason:

@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, LayoutGrid, List, Search, FileText, Layers } from 'lucide-react';
 import { Button, Input, Spinner, useToastContext } from '@librechat/client';
+import { Plus, Trash2, LayoutGrid, List, Search, FileText, Layers } from 'lucide-react';
 import type { TTarsKnowledgeBase } from 'librechat-data-provider';
 import { useTarsKnowledgeBasesQuery, useDeleteTarsKnowledgeBaseMutation } from '~/data-provider';
-import { useLocalize, useIsTarsAdmin } from '~/hooks';
 import CreateKnowledgeBaseModal from './CreateKnowledgeBaseModal';
+import { useLocalize, useIsTarsAdmin } from '~/hooks';
 
 type ViewMode = 'grid' | 'table';
 

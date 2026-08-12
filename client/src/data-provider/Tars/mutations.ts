@@ -1,6 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { QueryKeys, dataService } from 'librechat-data-provider';
-import type { UseMutationResult, UseMutationOptions } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   TTarsDomain,
   TTarsChunk,
@@ -23,6 +22,7 @@ import type {
   TTarsMcpUserServerUpdate,
   TTarsDomainMcpSavePayload,
 } from 'librechat-data-provider';
+import type { UseMutationResult, UseMutationOptions } from '@tanstack/react-query';
 
 type DomainResponse = { domain: TTarsDomain };
 type KnowledgeResponse = { knowledgeBase: TTarsKnowledgeBase };

@@ -47,8 +47,15 @@ jobs:
       - name: Install Redis tools
         timeout-minutes: 10
         run: |
-          # Same runner apt contention that broke the MCP job in
-          # playwright-mock.yml: apt-daily/unattended-upgrades hold
+          # The GitHub-hosted runner image preconfigures Microsoft's apt repos
+          # (azure-cli, packages.microsoft.com/ubuntu prod). They have nothing to
+          # do with redis, but they intermittently answer 403 Forbidden, and one
+          # unreachable repo fails the whole `apt-get update` with exit 100 —
+          # taking this job down for a reason unrelated to the change under test.
+          # Drop them first; both .list and deb822 .sources names are covered.
+          sudo rm -f /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/*azure-cli*
+
+          # Runner apt contention: apt-daily/unattended-upgrades hold
           # /var/lib/apt/lists/lock at boot. Without a step timeout this hung
           # until the job-level one fired, taking the whole leg with it.
           sudo systemctl stop apt-daily.service apt-daily-upgrade.service \
