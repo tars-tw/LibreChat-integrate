@@ -1,6 +1,6 @@
-import { tarsFetch } from './client';
-import { fetchTarsDomainById } from './domains';
 import { fetchTarsKnowledgeBases } from './knowledge';
+import { fetchTarsDomainById } from './domains';
+import { tarsFetch } from './client';
 
 /** Which pwc_tars table a prompt lives in — its visibility tier. */
 export type TarsPromptScope = 'personal' | 'domain' | 'knowledge_base';
