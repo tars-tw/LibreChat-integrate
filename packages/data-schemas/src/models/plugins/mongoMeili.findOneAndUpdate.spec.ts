@@ -22,15 +22,27 @@ const savedMeiliEnv: Partial<Record<(typeof MEILI_ENV_KEYS)[number], string | un
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-const waitForMock = async (mock: jest.Mock, timeoutMs = 2000): Promise<void> => {
+/**
+ * Polls until `predicate` holds, then returns; on timeout it returns anyway so the
+ * caller's assertion produces the real diagnostic instead of a timeout error.
+ * Prefer this over a fixed sleep — a hard-coded delay that is long enough on a
+ * developer machine is not long enough on a loaded CI runner.
+ */
+const waitFor = async (
+  predicate: () => boolean | Promise<boolean>,
+  timeoutMs = 2000,
+): Promise<void> => {
   const start = Date.now();
-  while (mock.mock.calls.length === 0) {
+  while (!(await predicate())) {
     if (Date.now() - start > timeoutMs) {
       return;
     }
     await wait(10);
   }
 };
+
+const waitForMock = (mock: jest.Mock, timeoutMs = 2000): Promise<void> =>
+  waitFor(() => mock.mock.calls.length > 0, timeoutMs);
 
 const mockAddDocuments = jest.fn();
 const mockUpdateDocuments = jest.fn();
@@ -144,7 +156,17 @@ describe('mongoMeili findOneAndUpdate with includeResultMetadata (saveConvo path
 
     await updateTitle(conversationId, user, 'Indexed Conversation');
     await waitForMock(mockAddDocuments);
-    await wait(50);
+
+    /**
+     * The `_meiliIndex` write-back is a second async step after `addDocuments`
+     * resolves, and it is observable only through the collection — no mock to
+     * await. Poll for it rather than sleeping a fixed 50ms, which CI load can
+     * outrun.
+     */
+    await waitFor(async () => {
+      const doc = await conversationModel.collection.findOne({ conversationId });
+      return doc?._meiliIndex === true;
+    });
 
     const storedDoc = await conversationModel.collection.findOne({ conversationId });
     expect(storedDoc?._meiliIndex).toBe(true);
@@ -164,7 +186,13 @@ describe('mongoMeili findOneAndUpdate with includeResultMetadata (saveConvo path
 
     await updateTitle(conversationId, user, 'Same Title');
 
-    await wait(50);
+    /**
+     * `mockGetDocument` is the positive half of this assertion, so wait on it
+     * rather than on the clock; the negative assertions below then read a
+     * settled state. Mocks are cleared in `beforeEach`, so any call seen here
+     * belongs to this test.
+     */
+    await waitForMock(mockGetDocument);
     expect(mockGetDocument).toHaveBeenCalledWith(conversationId);
     expect(mockAddDocuments).not.toHaveBeenCalled();
     expect(mockUpdateDocuments).not.toHaveBeenCalled();

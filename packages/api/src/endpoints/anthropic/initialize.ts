@@ -1,8 +1,8 @@
 import { ErrorTypes, EModelEndpoint, AuthKeys } from 'librechat-data-provider';
 import type { BaseInitializeParams, InitializeResultBase, AnthropicConfigOptions } from '~/types';
-import { isEnabled, isNoUserKeyError, mergeHeaders } from '~/utils';
-import { loadAnthropicVertexCredentials, getVertexCredentialOptions } from './vertex';
 import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
+import { loadAnthropicVertexCredentials, getVertexCredentialOptions } from './vertex';
+import { isEnabled, isNoUserKeyError, mergeHeaders } from '~/utils';
 import { getLLMConfig } from './llm';
 
 /**

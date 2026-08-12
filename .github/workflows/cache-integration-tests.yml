@@ -46,6 +46,13 @@ jobs:
 
       - name: Install Redis tools
         run: |
+          # The GitHub-hosted runner image preconfigures Microsoft's apt repos
+          # (azure-cli, packages.microsoft.com/ubuntu prod). They have nothing to
+          # do with redis, but they intermittently answer 403 Forbidden, and one
+          # unreachable repo fails the whole `apt-get update` with exit 100 —
+          # taking this job down for a reason unrelated to the change under test.
+          # Drop them first; both .list and deb822 .sources names are covered.
+          sudo rm -f /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/*azure-cli*
           sudo apt-get update
           sudo apt-get install -y redis-server redis-tools
 

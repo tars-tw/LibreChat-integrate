@@ -2,9 +2,9 @@ import { useMemo, useCallback } from 'react';
 import { VisuallyHidden } from '@ariakit/react';
 import { CheckCircle2, Workflow } from 'lucide-react';
 import type { Endpoint } from '~/common';
-import { CustomMenu as Menu } from '../Endpoints/CustomMenu';
-import { useModelSelectorContext } from '../Endpoints/ModelSelectorContext';
 import { EndpointModelItem } from '../Endpoints/components/EndpointModelItem';
+import { useModelSelectorContext } from '../Endpoints/ModelSelectorContext';
+import { CustomMenu as Menu } from '../Endpoints/CustomMenu';
 import { useFavorites, useLocalize } from '~/hooks';
 
 /**
