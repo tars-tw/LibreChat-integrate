@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { User, Mail, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { User, Mail, Lock } from 'lucide-react';
 import {
   OGDialog,
   OGDialogContent,
