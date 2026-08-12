@@ -279,6 +279,8 @@ export interface IConversation extends Document {
   agentEventActorLegacyTurn?: IAgentEventActorLegacyTurn;
   /** Private current suspended invocation; see {@link IAgentEventActorSuspension}. */
   agentEventActorSuspension?: IAgentEventActorSuspension;
+  /** Linked pwc_tars conversation id (LibreChat → pwc_tars mirror mapping) */
+  tarsConversationId?: string;
   assistant_id?: string;
   instructions?: string;
   stop?: string[];
