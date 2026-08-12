@@ -1,6 +1,6 @@
 import { createHmac } from 'crypto';
 import { logger } from '@librechat/data-schemas';
-import { tarsMcpServerName } from 'librechat-data-provider';
+import { tarsMcpServerName, sanitizeMCPTitle } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
 import type { MCPOptions } from 'librechat-data-provider';
 import { hostPortFromUrl } from '~/auth/allowedAddresses';
@@ -79,7 +79,11 @@ function buildServerEntry(
     },
     startup: false,
     chatMenu: true,
-    title: server.name,
+    /** Every config consumer re-parses this entry through `MCPOptionsSchema` — the
+     * tool-cache generation hash does so on each `getMCPServerTools` call — so a
+     * pwc_tars name carrying characters the title alphabet rejects would throw on
+     * every read and silently drop the server's tools. */
+    title: sanitizeMCPTitle(server.name, server.code),
     description: server.description || '',
     timeout: DEFAULT_TOOL_TIMEOUT_MS,
   };
