@@ -53,6 +53,11 @@ jobs:
               - 'eslint-suppressions.json'
               - '.github/workflows/static-checks.yml'
               - '!**.md'
+            # `eslint.config.mjs` only. The gates behind this filter lint the whole
+            # tree twice (once under the PR's config, once under the base ref's) —
+            # ~13 minutes. Only an actual config change can alter ESLint's results,
+            # so editing this workflow file must not trigger it; a workflow edit
+            # cannot mis-scope `ignores` or silently disable a rule.
             eslint_config:
               - 'eslint.config.mjs'
               - 'scripts/eslint/**'
@@ -472,10 +477,14 @@ jobs:
         with:
           predicate-quantifier: 'some-with-excludes'
           filters: |
+            # `eslint.config.mjs` only. The gate behind this filter lints the whole
+            # tree twice (once under the PR's config, once under the base ref's) —
+            # ~13 minutes. Only an actual config change can alter ESLint's results,
+            # so editing this workflow file must not trigger it; a workflow edit
+            # cannot mis-scope `ignores` or silently disable a rule.
             eslint_config:
               - 'eslint.config.mjs'
               - 'scripts/eslint/**'
-              - '.github/workflows/static-checks.yml'
 
       - name: Set up Node.js 24.22.1
         if: steps.paths.outputs.eslint_config == 'true'
