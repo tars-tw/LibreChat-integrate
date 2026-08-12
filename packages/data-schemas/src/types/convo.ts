@@ -56,6 +56,8 @@ export interface IConversation extends Document {
   subagentThread?: TSubagentThreadLineage;
   /** Internal execution fence. Excluded from ordinary conversation reads. */
   subagentThreadLease?: ISubagentThreadLease;
+  /** Linked pwc_tars conversation id (LibreChat → pwc_tars mirror mapping) */
+  tarsConversationId?: string;
   assistant_id?: string;
   instructions?: string;
   stop?: string[];
