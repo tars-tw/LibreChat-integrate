@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wrench, Settings2, ChevronRight } from 'lucide-react';
 import { TooltipAnchor } from '@librechat/client';
+import { Wrench, Settings2, ChevronRight } from 'lucide-react';
 import McpToolsDialog from '~/components/Tars/McpToolsDialog';
-import { useAuthContext } from '~/hooks/AuthContext';
 import { useLocalize, useIsTarsAdmin } from '~/hooks';
+import { useAuthContext } from '~/hooks/AuthContext';
 
 /**
  * Entry card for the pwc_tars tool source inside the MCP panel — where users

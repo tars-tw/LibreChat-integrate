@@ -1,6 +1,6 @@
 import { logger } from '@librechat/data-schemas';
-import { tarsFetch } from '~/tars/client';
 import type { TarsQuery } from '~/tars/client';
+import { tarsFetch } from '~/tars/client';
 
 /**
  * The pwc_tars MCP server types proxied through the LibreChat gateway.

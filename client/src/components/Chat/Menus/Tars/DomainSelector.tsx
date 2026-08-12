@@ -2,11 +2,11 @@ import { useCallback, useMemo, useState } from 'react';
 import { Bot, Brain } from 'lucide-react';
 import { TooltipAnchor } from '@librechat/client';
 import type { TConversation } from 'librechat-data-provider';
-import { CustomMenu as Menu } from '../Endpoints/CustomMenu';
 import { useModelSelectorContext } from '../Endpoints/ModelSelectorContext';
+import { CustomMenu as Menu } from '../Endpoints/CustomMenu';
 import { DomainMenuItem } from './DomainItems';
-import AgentItems from './AgentItems';
 import { useTarsDomain } from './domain';
+import AgentItems from './AgentItems';
 import { useLocalize } from '~/hooks';
 
 /**
