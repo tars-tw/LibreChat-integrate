@@ -75,6 +75,8 @@ export interface IConversation extends Document {
   subagentThreadLease?: ISubagentThreadLease;
   /** Internal event-source identity. Excluded from ordinary conversation reads. */
   agentEventBinding?: IAgentEventBinding;
+  /** Linked pwc_tars conversation id (LibreChat → pwc_tars mirror mapping) */
+  tarsConversationId?: string;
   assistant_id?: string;
   instructions?: string;
   stop?: string[];
