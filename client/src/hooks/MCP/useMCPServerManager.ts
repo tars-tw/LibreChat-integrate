@@ -36,15 +36,15 @@ import {
   isTerminalMCPOAuthPollingError,
   shouldUseMCPConnectionStatus,
 } from './polling';
-import { useLocalize, useHasAccess, useMCPSelect, useMCPConnectionStatus } from '~/hooks';
 import {
   useGetStartupConfig,
   useMCPServersQuery,
   useTarsMcpUserSettingsQuery,
 } from '~/data-provider';
-import { useAuthContext } from '~/hooks/AuthContext';
+import { useLocalize, useHasAccess, useMCPSelect, useMCPConnectionStatus } from '~/hooks';
 import { mcpServerInitStatesAtom, getServerInitState } from '~/store/mcp';
 import { getMCPReinitializeErrorMessage } from './errors';
+import { useAuthContext } from '~/hooks/AuthContext';
 
 export interface MCPServerDefinition {
   serverName: string;
