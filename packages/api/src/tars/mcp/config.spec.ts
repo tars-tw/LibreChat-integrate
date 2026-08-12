@@ -7,6 +7,7 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
+import { MCPOptionsSchema } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
 import {
   deriveTarsMcpGatewayKey,
@@ -219,6 +220,29 @@ describe('withTarsMcpConfig', () => {
     mockServerList([serverRow()]);
     await withTarsMcpConfig(baseConfig());
     expect(tarsMcpInjectionFailed()).toBe(false);
+  });
+
+  it('emits titles MCPOptionsSchema accepts, falling back to the code then to none', async () => {
+    mockServerList([
+      serverRow({ id: 'srv-1', name: 'github-official', code: 'github-official' }),
+      serverRow({ id: 'srv-2', name: 'CUSTOM_API_REDMINE_GINA', code: 'redmine_gina' }),
+      serverRow({ id: 'srv-3', name: '天氣查詢 Weather', code: 'weather_check' }),
+      serverRow({ id: 'srv-4', name: '客服中心（測試）', code: 'support' }),
+      serverRow({ id: 'srv-5', name: '(@#$%)', code: '(!!)' }),
+    ]);
+
+    const mcpConfig = (await withTarsMcpConfig(baseConfig())).mcpConfig ?? {};
+    const titleOf = (name: string) => (mcpConfig[name] as { title?: string }).title;
+
+    expect(titleOf('tars_github-official')).toBe('github-official');
+    expect(titleOf('tars_redmine_gina')).toBe('CUSTOM_API_REDMINE_GINA');
+    expect(titleOf('tars_weather_check')).toBe('天氣查詢 Weather');
+    expect(titleOf('tars_support')).toBe('客服中心 測試');
+    expect(titleOf('tars_____')).toBeUndefined();
+
+    for (const entry of Object.values(mcpConfig)) {
+      expect(MCPOptionsSchema.safeParse(entry).success).toBe(true);
+    }
   });
 
   it('preserves existing mcp servers and allowed addresses', async () => {
