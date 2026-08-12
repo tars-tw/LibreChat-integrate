@@ -501,6 +501,32 @@ describe('userGroup methods', () => {
       return createUserGroupMethods(mongoose, { getCache: jest.fn(() => cache) });
     }
 
+    /**
+     * A `cache.get` that misses for every caller and releases all of them on a single
+     * promise resolution, so their continuations drain in the same microtask turn and
+     * reach the dedup check before the first build's `await` on the database resolves.
+     *
+     * Each concurrent caller previously awaited its own `setTimeout`. Under CI load a
+     * starved timer callback could fire after the first caller had already completed
+     * its build and cleared its `pendingGroupLookups` entry, so the late caller
+     * legitimately started a second build and the `cache.set` assertions flaked.
+     */
+    function createConcurrentMissGate(callers: number) {
+      let arrived = 0;
+      let release: () => void = () => undefined;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return async (): Promise<undefined> => {
+        arrived += 1;
+        if (arrived >= callers) {
+          release();
+        }
+        await gate;
+        return undefined;
+      };
+    }
+
     const groupPrincipalIds = (
       principals: Array<{ principalType: PrincipalType; principalId?: string | Types.ObjectId }>,
     ) =>
@@ -759,10 +785,7 @@ describe('userGroup methods', () => {
     it('deduplicates concurrent cache builds for the same member key', async () => {
       const user = await createTestUser({ idOnTheSource: 'dedup-ext-1' });
       const cache = {
-        get: jest.fn(async () => {
-          await new Promise((resolve) => setTimeout(resolve, 10));
-          return undefined;
-        }),
+        get: jest.fn(createConcurrentMissGate(3)),
         set: jest.fn(async () => undefined),
       };
       const cachedMethods = createUserGroupMethods(mongoose, { getCache: jest.fn(() => cache) });
@@ -787,10 +810,7 @@ describe('userGroup methods', () => {
     it('shares one lock and DB build across concurrent same-process callers', async () => {
       const user = await createTestUser({ idOnTheSource: 'lock-ext-1' });
       const cache = {
-        get: jest.fn(async () => {
-          await new Promise((resolve) => setTimeout(resolve, 10));
-          return undefined;
-        }),
+        get: jest.fn(createConcurrentMissGate(3)),
         set: jest.fn(async () => undefined),
         acquireLock: jest.fn(async () => 'lock-token'),
         releaseLock: jest.fn(async () => undefined),

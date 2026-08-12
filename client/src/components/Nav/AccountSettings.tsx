@@ -1,9 +1,9 @@
 import { useState, memo, useRef } from 'react';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
-import { useNavigate } from 'react-router-dom';
 import * as Menu from '@ariakit/react/menu';
-import { GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
+import { useNavigate } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
+import { useRecoilValue, useSetRecoilState } from 'recoil';
+import { GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import {
   Archive,
   CircleHelp,
