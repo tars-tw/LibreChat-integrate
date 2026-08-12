@@ -920,6 +920,11 @@ function workflowSelectsWhatItFilters(): string[] {
     return [`${path} could not be read; the lane it defines is what this check runs in`];
   }
   const { trigger, lane } = workflowFilters(workflow);
+  /** This fork's trigger carries no `paths:` at all, so every changed file starts the
+   *  workflow and whatever the lane selects is covered. */
+  if (lane.length > 0 && !/^ {4}paths:$/m.test(workflow.replace(/\r\n?/g, '\n'))) {
+    return [];
+  }
   if (trigger.length === 0 || lane.length === 0) {
     return [`${path}: the trigger or the suppressions filter could not be read`];
   }

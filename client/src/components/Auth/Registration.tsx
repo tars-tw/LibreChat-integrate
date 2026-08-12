@@ -16,9 +16,9 @@ import {
 import type { TRegisterUser, TError } from 'librechat-data-provider';
 import type { TLoginLayoutContext } from '~/common';
 import { useLocalize, TranslationKeys } from '~/hooks';
-import TarsRegister from './TarsRegister';
 import { ErrorMessage } from './ErrorMessage';
 import LegalConsent from './LegalConsent';
+import TarsRegister from './TarsRegister';
 
 const Registration: React.FC = () => {
   const navigate = useNavigate();

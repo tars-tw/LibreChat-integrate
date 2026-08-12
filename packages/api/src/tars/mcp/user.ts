@@ -1,14 +1,14 @@
 import { Constants, tarsMcpServerName } from 'librechat-data-provider';
 import type { TarsDomainMcpRelation } from './admin';
 import type { TarsAvailableToolRow } from './client';
-import { fetchTarsDomainsForUser } from '~/tars/domains';
-import { tarsMcpEntryName, hasTarsMcpEntryNames } from './config';
 import {
   tarsMcpFetch,
   buildScopedToolName,
   PROXIED_SERVER_TYPES,
   invalidateTarsMcpToolsCache,
 } from './client';
+import { tarsMcpEntryName, hasTarsMcpEntryNames } from './config';
+import { fetchTarsDomainsForUser } from '~/tars/domains';
 
 /**
  * The chat-facing `mcpConfig` entry name for a pwc_tars server. Reads the name

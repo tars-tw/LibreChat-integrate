@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
 import { Construction } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { TranslationKeys } from '~/hooks';
 import { useLocalize, useIsTarsAdmin } from '~/hooks';
 

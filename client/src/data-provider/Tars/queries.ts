@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { QueryKeys, dataService } from 'librechat-data-provider';
-import type { UseQueryOptions, QueryObserverResult } from '@tanstack/react-query';
 import type {
   TTarsDomain,
   TTarsChunk,
@@ -26,6 +25,7 @@ import type {
   TTarsDomainMcpServersResponse,
   TTarsMcpDomainToolsResponse,
 } from 'librechat-data-provider';
+import type { UseQueryOptions, QueryObserverResult } from '@tanstack/react-query';
 
 /** pwc_tars document status: 0 uploaded, 1 processing, 2 completed, 4 failed. */
 const PROCESSING_STATUSES = new Set([0, 1]);
