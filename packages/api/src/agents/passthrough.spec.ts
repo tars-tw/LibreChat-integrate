@@ -1,6 +1,6 @@
-import { resolvePassthroughModel, buildPassthroughGetAgent } from './passthrough';
 import type { AppConfig } from '@librechat/data-schemas';
 import type { LoadAgentDeps, LoadAgentParams } from './load';
+import { resolvePassthroughModel, buildPassthroughGetAgent } from './passthrough';
 
 jest.mock('@librechat/data-schemas', () => ({
   logger: { debug: jest.fn(), error: jest.fn(), info: jest.fn(), warn: jest.fn() },
