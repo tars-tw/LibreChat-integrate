@@ -154,16 +154,43 @@ const OboOptionsSchema = z.object({
   scopes: z.string().min(1),
 });
 
-export const MCP_SERVER_TITLE_PATTERN = new RegExp(
-  "^[\\p{L}\\p{N}][\\p{L}\\p{N}\\p{M}'’ -]*$",
-  'u',
-);
-export const MCP_SERVER_TITLE_ERROR =
-  'Title must start with a letter or number and can include spaces, hyphens, and apostrophes';
+/**
+ * Characters an MCP server display title may contain: any Unicode letter, number
+ * or combining mark — so CJK and accented names are representable — plus spaces
+ * and the `. _ -` separators. Deliberately excludes punctuation and symbols.
+ *
+ * `serverName` is never derived from these characters (`generateServerNameFromTitle`
+ * slugs the title down to `[a-z0-9-]` and falls back to `mcp-server`), so widening
+ * the title alphabet cannot leak non-ASCII into tool keys.
+ *
+ * Exported so the server-side schema, the MCP builder form, and the pwc_tars
+ * gateway injector all validate against one definition.
+ */
+const MCP_TITLE_ALLOWED_CHARS = '\\p{L}\\p{N}\\p{M} ._-';
+export const MCP_TITLE_PATTERN = new RegExp(`^[${MCP_TITLE_ALLOWED_CHARS}]+$`, 'u');
+const MCP_TITLE_DISALLOWED_CHARS = new RegExp(`[^${MCP_TITLE_ALLOWED_CHARS}]+`, 'gu');
+export const MCP_TITLE_INVALID_MESSAGE =
+  'Title can only contain letters, numbers, spaces, dots, hyphens, and underscores';
+
+/**
+ * Returns the first candidate that yields a non-empty {@link MCP_TITLE_PATTERN}-valid
+ * title once disallowed runs collapse to single spaces, or `undefined` when none does.
+ * Callers that synthesize titles from external systems use this so an unrepresentable
+ * name degrades to a fallback instead of failing schema validation downstream.
+ */
+export function sanitizeMCPTitle(...candidates: (string | null | undefined)[]): string | undefined {
+  for (const candidate of candidates) {
+    const cleaned = candidate?.replace(MCP_TITLE_DISALLOWED_CHARS, ' ').replace(/ +/g, ' ').trim();
+    if (cleaned && MCP_TITLE_PATTERN.test(cleaned)) {
+      return cleaned;
+    }
+  }
+  return undefined;
+}
 
 const BaseOptionsSchema = z.object({
-  /** Display name for the MCP server */
-  title: z.string().regex(MCP_SERVER_TITLE_PATTERN, MCP_SERVER_TITLE_ERROR).optional(),
+  /** Display name for the MCP server - see {@link MCP_TITLE_PATTERN} */
+  title: z.string().regex(MCP_TITLE_PATTERN, MCP_TITLE_INVALID_MESSAGE).optional(),
   /** Description of the MCP server */
   description: z.string().optional(),
   /**
