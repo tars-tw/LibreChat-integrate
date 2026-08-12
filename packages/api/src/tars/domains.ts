@@ -1,5 +1,5 @@
-import { tarsFetch } from './client';
 import type { TarsKnowledgeBase } from './knowledge';
+import { tarsFetch } from './client';
 
 /**
  * A pwc_tars specialized brain ("專用腦"). Mirrors `SysDomain.to_dict()`.
