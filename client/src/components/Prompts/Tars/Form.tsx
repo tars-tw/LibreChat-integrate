@@ -17,9 +17,9 @@ import VariablesDropdown from '../editor/VariablesDropdown';
 import PromptVariables from '../display/PromptVariables';
 import CategorySelector from './CategorySelector';
 import Description from '../fields/Description';
-import useTarsPrompts from './hooks';
 import Command from '../fields/Command';
 import { useLocalize } from '~/hooks';
+import useTarsPrompts from './hooks';
 import { cn } from '~/utils';
 
 type TarsPromptFormValues = {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import * as Ariakit from '@ariakit/react';
 import { Plus, Tag } from 'lucide-react';
+import * as Ariakit from '@ariakit/react';
 import {
   Input,
   Button,
