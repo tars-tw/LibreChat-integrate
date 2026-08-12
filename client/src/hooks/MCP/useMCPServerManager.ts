@@ -38,22 +38,22 @@ import {
   applyMCPDiscoveryAuthorizationState,
 } from './polling';
 import {
+  useGetStartupConfig,
+  useMCPServersQuery,
+  useMCPToolsQuery,
+  useTarsMcpUserSettingsQuery,
+} from '~/data-provider';
+import {
   useLocalize,
   useHasAccess,
   useMCPSelect,
   useCatalogReady,
   useMCPConnectionStatus,
 } from '~/hooks';
-import {
-  useGetStartupConfig,
-  useMCPServersQuery,
-  useMCPToolsQuery,
-  useTarsMcpUserSettingsQuery,
-} from '~/data-provider';
-import { useAuthContext } from '~/hooks/AuthContext';
 import { mcpServerInitStatesAtom, getServerInitState } from '~/store/mcp';
 import { getMCPReinitializeErrorMessage } from './errors';
 import { openInNewTab } from '~/utils';
+import { useAuthContext } from '~/hooks/AuthContext';
 
 export interface MCPServerDefinition {
   serverName: string;

@@ -8,11 +8,11 @@ import {
   renderSearchResults,
   renderCustomGroups,
 } from './components';
-import { useModelSelectorContext } from './ModelSelectorContext';
 import { useShortcutAriaKey, useShortcutHint } from '~/hooks/useKeyboardShortcuts';
+import { useModelSelectorContext } from './ModelSelectorContext';
 import { getSelectedIcon, getDisplayValue } from './utils';
-import { useTarsDomain } from '../Tars/domain';
 import { CustomMenu as Menu } from './CustomMenu';
+import { useTarsDomain } from '../Tars/domain';
 import DialogManager from './DialogManager';
 import { useLocalize } from '~/hooks';
 
