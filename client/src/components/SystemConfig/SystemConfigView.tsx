@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Input, Spinner } from '@librechat/client';
 import { Search, Pencil, ArrowUpDown } from 'lucide-react';
 import type { TTarsSysConfig } from 'librechat-data-provider';
-import { useLocalize, useIsTarsAdmin } from '~/hooks';
 import { useTarsSysConfigsQuery } from '~/data-provider';
+import { useLocalize, useIsTarsAdmin } from '~/hooks';
 import EditSysConfigModal from './EditSysConfigModal';
 
 type SortColumn = 'key' | 'category';
