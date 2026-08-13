@@ -1,5 +1,7 @@
 import { logger } from '@librechat/data-schemas';
+import { TARS_MCP_LEGACY_SERVER_NAME } from 'librechat-data-provider';
 import type { TarsQuery } from '~/tars/client';
+import { gatewayNameFor, derivedTarsMcpEntryName, fitToolName } from './names';
 import { tarsFetch } from '~/tars/client';
 
 /**
@@ -126,11 +128,15 @@ function buildToolName(row: TarsAvailableToolRow, taken: Set<string>): string | 
   const prefix =
     sanitizeNamePart(row.server_code?.trim() || row.server_name).slice(0, MAX_PREFIX_LENGTH) ||
     'server';
-  const candidate = `${prefix}__${sanitizeNamePart(row.tool_name)}`;
+  const base = `${prefix}__${sanitizeNamePart(row.tool_name)}`;
+  const candidate = fitToolName(base, TARS_MCP_LEGACY_SERVER_NAME);
   if (!taken.has(candidate)) {
     return candidate;
   }
-  const suffixed = `${candidate}_${sanitizeNamePart(row.server_id).slice(0, 8)}`;
+  const suffixed = fitToolName(
+    `${base}_${sanitizeNamePart(row.server_id).slice(0, 8)}`,
+    TARS_MCP_LEGACY_SERVER_NAME,
+  );
   if (!taken.has(suffixed)) {
     return suffixed;
   }
@@ -140,16 +146,23 @@ function buildToolName(row: TarsAvailableToolRow, taken: Set<string>): string | 
 
 /**
  * Per-server mode drops the `<serverPrefix>__` prefix — the server identity
- * lives in the `_mcp_tars_<code>` suffix LibreChat appends to the tool key.
- * pwc_tars tool names are unique per server, so a collision only arises from
- * sanitization; those get the short server-id suffix.
+ * lives in the `_mcp_tars_<code>` suffix LibreChat appends to the tool key,
+ * and `entryName` is that suffix's server half so the combined key stays
+ * within the provider limit ({@link fitToolName}). pwc_tars tool names are
+ * unique per server, so a collision only arises from sanitization or length
+ * fitting; those get the short server-id suffix.
  */
-export function buildScopedToolName(row: TarsAvailableToolRow, taken: Set<string>): string | null {
-  const candidate = sanitizeNamePart(row.tool_name) || 'tool';
+export function buildScopedToolName(
+  row: TarsAvailableToolRow,
+  taken: Set<string>,
+  entryName: string,
+): string | null {
+  const base = sanitizeNamePart(row.tool_name) || 'tool';
+  const candidate = fitToolName(base, entryName);
   if (!taken.has(candidate)) {
     return candidate;
   }
-  const suffixed = `${candidate}_${sanitizeNamePart(row.server_id).slice(0, 8)}`;
+  const suffixed = fitToolName(`${base}_${sanitizeNamePart(row.server_id).slice(0, 8)}`, entryName);
   if (!taken.has(suffixed)) {
     return suffixed;
   }
@@ -209,6 +222,7 @@ async function loadTools(tarsUserId: string): Promise<ToolsCacheEntry> {
   const aggregateTaken = new Set<string>();
   const serverMaps = new Map<string, Map<string, TarsMcpToolEntry>>();
   const serverTaken = new Map<string, Set<string>>();
+  const entryNames = new Map<string, string>();
   for (const row of rows ?? []) {
     if (!PROXIED_SERVER_TYPES.has(row.server_type)) {
       continue;
@@ -224,8 +238,13 @@ async function loadTools(tarsUserId: string): Promise<ToolsCacheEntry> {
       taken = new Set<string>();
       serverTaken.set(row.server_id, taken);
       serverMaps.set(row.server_id, new Map());
+      entryNames.set(
+        row.server_id,
+        gatewayNameFor(row.server_id, row.server_code) ??
+          derivedTarsMcpEntryName(row.server_id, row.server_code),
+      );
     }
-    const scopedName = buildScopedToolName(row, taken);
+    const scopedName = buildScopedToolName(row, taken, entryNames.get(row.server_id) as string);
     if (scopedName) {
       taken.add(scopedName);
       serverMaps.get(row.server_id)?.set(scopedName, toToolEntry(scopedName, row));
