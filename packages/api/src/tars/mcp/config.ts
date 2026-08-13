@@ -1,9 +1,10 @@
 import { createHmac } from 'crypto';
 import { logger } from '@librechat/data-schemas';
-import { tarsMcpServerName, sanitizeMCPTitle } from 'librechat-data-provider';
+import { sanitizeMCPTitle } from 'librechat-data-provider';
 import type { MCPOptions } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
 import type { TarsMcpServerDetail } from './admin';
+import { clearTarsMcpEntryNames, recordTarsMcpEntryName, derivedTarsMcpEntryName } from './names';
 import { PROXIED_SERVER_TYPES, tarsMcpFetch } from './client';
 import { hostPortFromUrl } from '~/auth/allowedAddresses';
 import { isTarsConfigured } from '~/tars/client';
@@ -97,25 +98,6 @@ function serverListTimeoutMs(): number {
 let injectionFailed = false;
 
 /**
- * The entry name {@link withTarsMcpConfig} actually injected for each pwc_tars
- * server id. Derivation alone is not reproducible elsewhere — the collision
- * suffix depends on the whole server list plus any pre-existing YAML entries —
- * so every consumer that needs a server's chat-facing name must read it from
- * here instead of re-deriving it.
- */
-const injectedEntryNames = new Map<string, string>();
-
-/** The injected `mcpConfig` entry name for a pwc_tars server id, if it was injected. */
-export function tarsMcpEntryName(serverId: string): string | undefined {
-  return injectedEntryNames.get(serverId);
-}
-
-/** Whether injection has run and produced entries; `false` means callers must fall back to derivation. */
-export function hasTarsMcpEntryNames(): boolean {
-  return injectedEntryNames.size > 0;
-}
-
-/**
  * Whether the last {@link withTarsMcpConfig} run failed to reach pwc_tars.
  * The caller (`loadBaseConfig`) uses this to schedule a config-cache
  * invalidation retry so a pwc_tars outage at boot heals without a restart.
@@ -130,7 +112,7 @@ export function tarsMcpInjectionFailed(): boolean {
  * code is missing.
  */
 function entryNameFor(server: TarsMcpServerDetail, taken: Set<string>): string {
-  const base = tarsMcpServerName(server.code?.trim() || server.id.slice(0, 8));
+  const base = derivedTarsMcpEntryName(server.id, server.code);
   if (!taken.has(base)) {
     return base;
   }
@@ -150,7 +132,7 @@ function entryNameFor(server: TarsMcpServerDetail, taken: Set<string>): string {
  */
 export async function withTarsMcpConfig(appConfig: AppConfig): Promise<AppConfig> {
   injectionFailed = false;
-  injectedEntryNames.clear();
+  clearTarsMcpEntryNames();
   if (!appConfig || !isTarsMcpEnabled()) {
     return appConfig;
   }
@@ -194,7 +176,7 @@ export async function withTarsMcpConfig(appConfig: AppConfig): Promise<AppConfig
       gatewayKey,
       server,
     );
-    injectedEntryNames.set(server.id, name);
+    recordTarsMcpEntryName(server.id, name);
     injected += 1;
   }
 
