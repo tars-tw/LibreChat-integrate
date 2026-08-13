@@ -4,6 +4,7 @@ import {
   EModelEndpoint,
   PermissionBits,
   isAgentsEndpoint,
+  getEndpointField,
   isAssistantsEndpoint,
 } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
@@ -49,6 +50,8 @@ const MODEL_ENDPOINT_ORDER: string[] = [
   EModelEndpoint.google,
   EModelEndpoint.anthropic,
 ];
+
+const ORDERED_MODEL_ENDPOINTS = new Set(MODEL_ENDPOINT_ORDER);
 
 const ModelSelectorContext = createContext<ModelSelectorContextType | undefined>(undefined);
 
@@ -157,11 +160,24 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   );
 
   /** Specialized brains replace agent selection, so the model picker exposes only the
-   *  raw providers, in the product's fixed order. */
+   *  raw providers, in the product's fixed order — followed by every custom endpoint
+   *  (e.g. the pwc_tars-discovered vLLM host), which is config-driven and so has no
+   *  slot in that fixed order. Custom endpoints are already availability-gated in
+   *  `useEndpoints`, so anything reaching here has at least one loaded model. */
   const mappedEndpoints = useMemo(() => {
-    const byValue = new Map(allowedEndpoints.map((endpoint) => [endpoint.value, endpoint]));
-    return MODEL_ENDPOINT_ORDER.flatMap((value) => byValue.get(value) ?? []);
-  }, [allowedEndpoints]);
+    const byValue = new Map<string, Endpoint>();
+    const custom: Endpoint[] = [];
+    for (const endpoint of allowedEndpoints) {
+      if (ORDERED_MODEL_ENDPOINTS.has(endpoint.value)) {
+        byValue.set(endpoint.value, endpoint);
+        continue;
+      }
+      if (getEndpointField(endpointsConfig, endpoint.value, 'type') === EModelEndpoint.custom) {
+        custom.push(endpoint);
+      }
+    }
+    return [...MODEL_ENDPOINT_ORDER.flatMap((value) => byValue.get(value) ?? []), ...custom];
+  }, [allowedEndpoints, endpointsConfig]);
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
