@@ -9,7 +9,6 @@ import {
   Archive,
   CircleHelp,
   Files,
-  FileText,
   Keyboard,
   LifeBuoy,
   LogOut,
