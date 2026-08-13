@@ -186,6 +186,53 @@ describe('listTarsMcpTools', () => {
     ]);
   });
 
+  it('fits long tool names into the 64-char provider limit including the gateway suffix', async () => {
+    const longName = 'toggle_comment_reaction_issues_issue_id_comments_comment_id_reactions';
+    mockFetchRoutes({
+      '/api/mcp/available-tools': {
+        status: 200,
+        body: envelope([
+          toolRow({
+            server_id: 'srv-openapi-2',
+            server_name: 'Issue_Tracker_API',
+            server_code: 'bug-issue-tracker',
+            server_type: 'openapi',
+            tool_id: 'tool-member',
+            tool_name: 'list_member_candidates_users_candidates',
+          }),
+          toolRow({
+            server_id: 'srv-openapi-2',
+            server_name: 'Issue_Tracker_API',
+            server_code: 'bug-issue-tracker',
+            server_type: 'openapi',
+            tool_id: 'tool-reaction',
+            tool_name: longName,
+          }),
+        ]),
+      },
+    });
+
+    const scoped = await listTarsMcpTools(USER_ID, 'srv-openapi-2');
+    const suffix = '_mcp_tars_bug-issue-tracker';
+    for (const tool of scoped) {
+      expect(tool.name.length + suffix.length).toBeLessThanOrEqual(64);
+    }
+
+    const shortened = scoped.find((tool) => tool.toolName === longName);
+    expect(shortened).toBeDefined();
+    expect(shortened?.name).not.toBe(longName);
+    expect(shortened?.name.startsWith('toggle_comment_reaction')).toBe(true);
+
+    invalidateTarsMcpToolsCache();
+    const reloaded = await listTarsMcpTools(USER_ID, 'srv-openapi-2');
+    expect(reloaded.map((tool) => tool.name).sort()).toEqual(
+      scoped.map((tool) => tool.name).sort(),
+    );
+
+    const resolved = await resolveTarsMcpTool(USER_ID, shortened?.name as string, 'srv-openapi-2');
+    expect(resolved?.toolName).toBe(longName);
+  });
+
   it('truncates the tool list to TARS_MCP_MAX_TOOLS keeping backend order', async () => {
     process.env.TARS_MCP_MAX_TOOLS = '2';
     mockFetchRoutes({
