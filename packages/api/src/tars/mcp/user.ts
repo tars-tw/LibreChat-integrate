@@ -1,4 +1,4 @@
-import { Constants, tarsMcpServerName } from 'librechat-data-provider';
+import { Constants } from 'librechat-data-provider';
 import type { TarsDomainMcpRelation } from './admin';
 import type { TarsAvailableToolRow } from './client';
 import {
@@ -7,26 +7,8 @@ import {
   PROXIED_SERVER_TYPES,
   invalidateTarsMcpToolsCache,
 } from './client';
-import { tarsMcpEntryName, hasTarsMcpEntryNames } from './config';
 import { fetchTarsDomainsForUser } from '~/tars/domains';
-
-/**
- * The chat-facing `mcpConfig` entry name for a pwc_tars server. Reads the name
- * injection actually used (the only place the collision suffix is known);
- * derivation is the fallback for before/without a successful injection, and
- * `null` means the server has no chat entry at all, so callers must drop it
- * rather than advertise a name nothing will match.
- */
-function gatewayNameFor(serverId: string, serverCode?: string | null): string | null {
-  const injected = tarsMcpEntryName(serverId);
-  if (injected != null) {
-    return injected;
-  }
-  if (hasTarsMcpEntryNames()) {
-    return null;
-  }
-  return tarsMcpServerName(serverCode?.trim() || serverId.slice(0, 8));
-}
+import { gatewayNameFor } from './names';
 
 /**
  * Per-user proxy for the pwc_tars MCP user panel: aggregated settings
@@ -158,7 +140,7 @@ export async function getUserTarsDomainMcpTools(
       takenByServer.set(row.server_id, new Set());
     }
     const taken = takenByServer.get(row.server_id) as Set<string>;
-    const scopedName = buildScopedToolName(row, taken);
+    const scopedName = buildScopedToolName(row, taken, server.gateway_name);
     if (!scopedName) {
       continue;
     }
