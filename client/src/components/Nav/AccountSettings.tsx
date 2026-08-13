@@ -7,7 +7,6 @@ import { GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import {
   Archive,
   CircleHelp,
-  FileText,
   Keyboard,
   LifeBuoy,
   LogOut,
