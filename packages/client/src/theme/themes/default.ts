@@ -90,16 +90,25 @@ export const defaultTheme: IThemeRGB = {
   // Brand colors
   'rgb-brand-purple': '253 81 8', // #fd5108 (pwc-orange-500)
 
-  /** Categorical series scale. Steps clear 3:1 against BOTH the popover surface
-   *  and the #ececec meter track, with worst adjacent CVD ΔE 12.4 and worst
-   *  adjacent normal-vision ΔE 19.0. Slot order is the CVD-safety mechanism. */
-  'rgb-series-1': '5 110 189', // #056ebd (cerulean)
-  'rgb-series-2': '233 86 13', // #e9560d (orange)
-  'rgb-series-3': '0 148 142', // #00948e (aqua)
-  'rgb-series-4': '182 123 5', // #b67b05 (amber)
-  'rgb-series-5': '216 90 142', // #d85a8e (magenta)
-  'rgb-series-6': '126 35 205', // #7e23cd (violet)
-  'rgb-series-7': '1 131 1', // #018301 (green)
+  /** Categorical series scale, led by the PwC brand hues: slot 1 is the brand
+   *  orange, slot 3 the brand gold. A brand colour is used at its own token
+   *  value wherever that clears the bar, and stepped along its own hue when it
+   *  does not — orange-500 and the true gold both fall under 3:1 on the #ececec
+   *  meter track in light. The remaining hues span the wheel so the scale stays
+   *  legible past seven categories.
+   *
+   *  Steps clear 3:1 against BOTH the popover surface and the #ececec track
+   *  (floor 3.08), with worst adjacent CVD ΔE 24.8 and worst adjacent
+   *  normal-vision ΔE 39.6. Slot order is the CVD-safety mechanism: adjacent
+   *  segments touch in the meter with no label between them, so the order is
+   *  solved for maximum separation under protan/deutan/tritan simulation. */
+  'rgb-series-1': '224 71 5', // #e04705 (pwc-orange-600)
+  'rgb-series-2': '5 110 189', // #056ebd (cerulean)
+  'rgb-series-3': '102 76 9', // #664c09 (pwc gold, stepped for the light track)
+  'rgb-series-4': '0 148 142', // #00948e (aqua)
+  'rgb-series-5': '126 35 205', // #7e23cd (violet)
+  'rgb-series-6': '1 131 1', // #018301 (green)
+  'rgb-series-7': '216 90 142', // #d85a8e (magenta)
 
   // Presentation
   'rgb-presentation': '255 255 255', // #fff (white)

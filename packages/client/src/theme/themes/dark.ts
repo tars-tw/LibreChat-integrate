@@ -90,15 +90,22 @@ export const darkTheme: IThemeRGB = {
   // Brand colors
   'rgb-brand-purple': '254 124 57', // #fe7c39 (pwc-orange-400)
 
-  /** Categorical series scale — the same seven hues stepped for the #212121
-   *  surface: worst adjacent CVD ΔE 13.0, normal-vision ΔE 19.0, all ≥ 3:1. */
-  'rgb-series-1': '9 140 238', // #098cee (cerulean)
-  'rgb-series-2': '217 87 35', // #d95723 (orange)
-  'rgb-series-3': '6 158 152', // #069e98 (aqua)
-  'rgb-series-4': '200 133 12', // #c8850c (amber)
-  'rgb-series-5': '213 82 130', // #d55282 (magenta)
-  'rgb-series-6': '171 104 254', // #ab68fe (violet)
-  'rgb-series-7': '80 167 49', // #50a731 (green)
+  /** Categorical series scale — the same seven hues in the same slot order as
+   *  the light theme, stepped for the #212121 surface. Slot order is shared so
+   *  a category keeps its hue when the theme flips; solving each theme's order
+   *  independently buys ~2 ΔE of adjacent headroom and costs the reader the
+   *  colour they had just learned, which is the worse trade.
+   *
+   *  The dark track is forgiving enough that both brand colours land on their
+   *  own token values: orange-400 in slot 1, the true PwC gold in slot 3.
+   *  Worst adjacent CVD ΔE 19.0, normal-vision ΔE 39.7, floor 3.42. */
+  'rgb-series-1': '254 124 57', // #fe7c39 (pwc-orange-400)
+  'rgb-series-2': '9 140 238', // #098cee (cerulean)
+  'rgb-series-3': '233 176 31', // #e9b01f (pwc gold)
+  'rgb-series-4': '6 158 152', // #069e98 (aqua)
+  'rgb-series-5': '171 104 254', // #ab68fe (violet)
+  'rgb-series-6': '80 167 49', // #50a731 (green)
+  'rgb-series-7': '213 82 130', // #d55282 (magenta)
 
   // Presentation
   'rgb-presentation': '33 33 33', // #212121 (gray-800)
