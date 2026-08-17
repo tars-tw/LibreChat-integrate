@@ -257,14 +257,16 @@ html {
   --status-neutral-border: var(--gray-300);
   --text-on-status: var(--white);
 
-  /* Categorical series scale — slot order is the CVD-safety mechanism */
-  --series-1: 5 110 189;
-  --series-2: 233 86 13;
-  --series-3: 0 148 142;
-  --series-4: 182 123 5;
-  --series-5: 216 90 142;
-  --series-6: 126 35 205;
-  --series-7: 1 131 1;
+  /* Categorical series scale, PwC-led — slot order is the CVD-safety mechanism.
+     Brand orange leads, brand gold takes slot 3 stepped down to clear the
+     #ececec track. See theme/themes/default.ts for the measured figures. */
+  --series-1: 224 71 5;
+  --series-2: 5 110 189;
+  --series-3: 102 76 9;
+  --series-4: 0 148 142;
+  --series-5: 126 35 205;
+  --series-6: 1 131 1;
+  --series-7: 216 90 142;
 
   --surface-inverted: var(--gray-850);
   --surface-inverted-hover: var(--gray-700);
@@ -362,14 +364,16 @@ html {
   --status-neutral-border: var(--gray-700);
   --text-on-status: var(--white);
 
-  /* Categorical series scale — same hues, stepped for the dark surface */
-  --series-1: 9 140 238;
-  --series-2: 217 87 35;
-  --series-3: 6 158 152;
-  --series-4: 200 133 12;
-  --series-5: 213 82 130;
-  --series-6: 171 104 254;
-  --series-7: 80 167 49;
+  /* Categorical series scale — same hues in the same slot order as light, so a
+     category keeps its colour across the theme flip. Both brand colours land on
+     their own token values here. */
+  --series-1: 254 124 57;
+  --series-2: 9 140 238;
+  --series-3: 233 176 31;
+  --series-4: 6 158 152;
+  --series-5: 171 104 254;
+  --series-6: 80 167 49;
+  --series-7: 213 82 130;
 
   --surface-inverted: var(--white);
   --surface-inverted-hover: var(--gray-100);
