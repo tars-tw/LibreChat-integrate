@@ -38,6 +38,7 @@
     "b:build": "bun run b:clean && bun run tsdown",
     "build:watch": "tsdown --watch",
     "typecheck": "node ../../scripts/typecheck.mts",
+    "series": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' scripts/series.ts",
     "dev": "tsdown --watch",
     "test": "jest",
     "test:ci": "jest --ci"
