@@ -694,6 +694,60 @@ export const deleteTarsDomain = (id: string | number): Promise<{ success: boolea
   return request.delete(endpoints.tarsDomain(id));
 };
 
+export const getTarsUsers = (): Promise<t.TTarsUsersResponse> => {
+  return request.get(endpoints.tarsUsers());
+};
+
+export const getTarsUserPrepareData = (): Promise<t.TTarsUserPrepareData> => {
+  return request.get(endpoints.tarsUserPrepareData());
+};
+
+export const getTarsAdWhitelist = (): Promise<t.TTarsAdWhitelistResponse> => {
+  return request.get(endpoints.tarsUserAdWhitelist());
+};
+
+export const createTarsUser = (data: t.TTarsUserInput): Promise<{ user: t.TTarsUser }> => {
+  return request.post(endpoints.tarsUsers(), data);
+};
+
+export const updateTarsUser = (
+  id: string,
+  data: t.TTarsUserUpdate,
+): Promise<{ user: t.TTarsUser }> => {
+  return request.put(endpoints.tarsUser(id), data);
+};
+
+export const deleteTarsUser = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsUser(id));
+};
+
+export const bulkUpdateTarsUsers = (
+  data: t.TTarsBulkUserUpdatePayload,
+): Promise<t.TTarsUsersResponse> => {
+  return request.put(endpoints.tarsUsersBulk(), data);
+};
+
+export const bulkDeleteTarsUsers = (
+  ids: string[],
+): Promise<{ success: boolean; deletedCount: number }> => {
+  return request.post(endpoints.tarsUsersBulkDelete(), { ids });
+};
+
+export const resetTarsUserPassword = (
+  id: string,
+  password: string,
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsUserResetPassword(id), { password });
+};
+
+export const importTarsUsers = (data: FormData): Promise<t.TTarsUserImportResult> => {
+  return request.postMultiPart(endpoints.tarsUsersImport(), data);
+};
+
+export const downloadTarsUserImportTemplate = (): Promise<ArrayBuffer> => {
+  return request.get(endpoints.tarsUsersImportTemplate(), { responseType: 'arraybuffer' });
+};
+
 export const getTarsKnowledgeBases = (): Promise<t.TTarsKnowledgeBasesResponse> => {
   return request.get(endpoints.tarsKnowledgeBases());
 };
