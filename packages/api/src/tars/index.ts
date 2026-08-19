@@ -6,5 +6,6 @@ export * from './mcp';
 export * from './mirror';
 export * from './models';
 export * from './prompts';
+export * from './roles';
 export * from './sysconfig';
 export * from './users';
