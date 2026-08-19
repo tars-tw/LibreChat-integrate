@@ -694,6 +694,25 @@ export const deleteTarsDomain = (id: string | number): Promise<{ success: boolea
   return request.delete(endpoints.tarsDomain(id));
 };
 
+export const getTarsRoles = (): Promise<t.TTarsRolePrepareData> => {
+  return request.get(endpoints.tarsRoles());
+};
+
+export const createTarsRole = (data: t.TTarsRoleInput): Promise<{ role: t.TTarsRoleDetail }> => {
+  return request.post(endpoints.tarsRoles(), data);
+};
+
+export const updateTarsRole = (
+  id: string | number,
+  data: t.TTarsRoleInput,
+): Promise<{ role: t.TTarsRoleDetail }> => {
+  return request.put(endpoints.tarsRole(id), data);
+};
+
+export const deleteTarsRole = (id: string | number): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsRole(id));
+};
+
 export const getTarsUserGroups = (): Promise<t.TTarsGroupPrepareData> => {
   return request.get(endpoints.tarsUserGroups());
 };
