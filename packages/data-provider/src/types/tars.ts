@@ -518,3 +518,37 @@ export type TTarsUserImportResult = {
   error?: string;
   details?: string[];
 };
+
+/** A member row of the `user_list` pwc_tars attaches to each group. */
+export type TTarsGroupMember = {
+  id: string;
+  username: string;
+  email: string | null;
+  status: string;
+};
+
+/**
+ * A pwc_tars user group as the group admin page sees it: the group row plus the
+ * `user_count` / `user_list` that `user_group_prepare_data` computes.
+ * `role_id` is a comma-separated id string — a group may grant several roles.
+ */
+export type TTarsUserGroupWithMembers = TTarsUserGroup & {
+  user_count?: number;
+  user_list?: TTarsGroupMember[];
+  description?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type TTarsGroupPrepareData = {
+  roles: TTarsRole[];
+  groups: TTarsUserGroupWithMembers[];
+};
+
+/** Create/update payload. `status` is pwc_tars' numeric 1/0 for groups. */
+export type TTarsUserGroupInput = {
+  name: string;
+  description?: string;
+  roleIds?: string;
+  status?: number;
+};
