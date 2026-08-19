@@ -130,6 +130,7 @@
     "tailwindcss": "^4.3.3",
     "tailwindcss-animate": "^1.0.5",
     "tsdown": "^0.22.2",
+    "unrun": "^0.3.1",
     "typescript": "^5.9.3"
   }
 }

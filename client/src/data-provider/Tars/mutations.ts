@@ -21,6 +21,12 @@ import type {
   TTarsMcpServerInput,
   TTarsMcpUserServerUpdate,
   TTarsDomainMcpSavePayload,
+  TTarsUser,
+  TTarsUserInput,
+  TTarsUserUpdate,
+  TTarsUsersResponse,
+  TTarsUserImportResult,
+  TTarsBulkUserUpdatePayload,
 } from 'librechat-data-provider';
 import type { UseMutationResult, UseMutationOptions } from '@tanstack/react-query';
 
@@ -557,6 +563,103 @@ export const useSaveTarsDomainMcpMutation = (
     ...options,
     onSuccess: (...args) => {
       invalidateTarsMcp(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+type UserResponse = { user: TTarsUser };
+
+const invalidateUsers = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsUsers]);
+};
+
+export const useCreateTarsUserMutation = (
+  options?: UseMutationOptions<UserResponse, unknown, TTarsUserInput>,
+): UseMutationResult<UserResponse, unknown, TTarsUserInput> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: TTarsUserInput) => dataService.createTarsUser(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateUsers(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useUpdateTarsUserMutation = (
+  options?: UseMutationOptions<UserResponse, unknown, { id: string; data: TTarsUserUpdate }>,
+): UseMutationResult<UserResponse, unknown, { id: string; data: TTarsUserUpdate }> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: { id: string; data: TTarsUserUpdate }) => dataService.updateTarsUser(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateUsers(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsUserMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.deleteTarsUser(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateUsers(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useBulkUpdateTarsUsersMutation = (
+  options?: UseMutationOptions<TTarsUsersResponse, unknown, TTarsBulkUserUpdatePayload>,
+): UseMutationResult<TTarsUsersResponse, unknown, TTarsBulkUserUpdatePayload> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: TTarsBulkUserUpdatePayload) => dataService.bulkUpdateTarsUsers(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateUsers(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useBulkDeleteTarsUsersMutation = (
+  options?: UseMutationOptions<{ success: boolean; deletedCount: number }, unknown, string[]>,
+): UseMutationResult<{ success: boolean; deletedCount: number }, unknown, string[]> => {
+  const queryClient = useQueryClient();
+  return useMutation((ids: string[]) => dataService.bulkDeleteTarsUsers(ids), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateUsers(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useResetTarsUserPasswordMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, { id: string; password: string }>,
+): UseMutationResult<{ success: boolean }, unknown, { id: string; password: string }> => {
+  return useMutation(
+    ({ id, password }: { id: string; password: string }) =>
+      dataService.resetTarsUserPassword(id, password),
+    options,
+  );
+};
+
+export const useImportTarsUsersMutation = (
+  options?: UseMutationOptions<TTarsUserImportResult, unknown, FormData>,
+): UseMutationResult<TTarsUserImportResult, unknown, FormData> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: FormData) => dataService.importTarsUsers(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateUsers(queryClient);
       options?.onSuccess?.(...args);
     },
   });
