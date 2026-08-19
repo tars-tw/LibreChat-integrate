@@ -27,6 +27,8 @@ import type {
   TTarsUsersResponse,
   TTarsUserImportResult,
   TTarsBulkUserUpdatePayload,
+  TTarsUserGroupInput,
+  TTarsUserGroupWithMembers,
 } from 'librechat-data-provider';
 import type { UseMutationResult, UseMutationOptions } from '@tanstack/react-query';
 
@@ -663,4 +665,93 @@ export const useImportTarsUsersMutation = (
       options?.onSuccess?.(...args);
     },
   });
+};
+
+type GroupResponse = { group: TTarsUserGroupWithMembers };
+
+/**
+ * Group edits also change what the user admin page shows (a user's groups and
+ * the roles those groups grant), so both caches are refreshed together.
+ */
+const invalidateUserGroups = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsUserGroups]);
+  queryClient.invalidateQueries([QueryKeys.tarsUsers]);
+  queryClient.invalidateQueries([QueryKeys.tarsUserPrepareData]);
+};
+
+export const useCreateTarsUserGroupMutation = (
+  options?: UseMutationOptions<GroupResponse, unknown, TTarsUserGroupInput>,
+): UseMutationResult<GroupResponse, unknown, TTarsUserGroupInput> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: TTarsUserGroupInput) => dataService.createTarsUserGroup(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateUserGroups(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useUpdateTarsUserGroupMutation = (
+  options?: UseMutationOptions<GroupResponse, unknown, { id: string; data: TTarsUserGroupInput }>,
+): UseMutationResult<GroupResponse, unknown, { id: string; data: TTarsUserGroupInput }> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: { id: string; data: TTarsUserGroupInput }) =>
+      dataService.updateTarsUserGroup(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateUserGroups(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsUserGroupMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.deleteTarsUserGroup(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateUserGroups(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useAddTarsUserGroupMembersMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, { id: string; userIds: string[] }>,
+): UseMutationResult<{ success: boolean }, unknown, { id: string; userIds: string[] }> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, userIds }: { id: string; userIds: string[] }) =>
+      dataService.addTarsUserGroupMembers(id, userIds),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateUserGroups(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useRemoveTarsUserGroupMemberMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, { id: string; userId: string }>,
+): UseMutationResult<{ success: boolean }, unknown, { id: string; userId: string }> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, userId }: { id: string; userId: string }) =>
+      dataService.removeTarsUserGroupMember(id, userId),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateUserGroups(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
 };
