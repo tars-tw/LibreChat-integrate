@@ -42,6 +42,7 @@ export enum QueryKeys {
   tarsSysConfigs = 'tarsSysConfigs',
   tarsUsers = 'tarsUsers',
   tarsUserGroups = 'tarsUserGroups',
+  tarsRoles = 'tarsRoles',
   tarsUserPrepareData = 'tarsUserPrepareData',
   tarsAdWhitelist = 'tarsAdWhitelist',
   tarsMcpServers = 'tarsMcpServers',

@@ -552,3 +552,36 @@ export type TTarsUserGroupInput = {
   roleIds?: string;
   status?: number;
 };
+
+/**
+ * A pwc_tars role as the permission admin page sees it. `domain_ids` / `menu_ids`
+ * are comma-separated id strings and `status` is numeric 1/0 like the group
+ * table. `librechat_menu_keys` holds the LibreChat menu permission set — comma
+ * separated stable keys, `null` meaning "not configured" (every menu visible).
+ */
+export type TTarsRoleDetail = TTarsRole & {
+  description: string | null;
+  domain_ids: string | null;
+  menu_ids: string | null;
+  librechat_menu_keys: string | null;
+  status: number;
+  is_default_role: boolean;
+  created_by?: string | null;
+  updated_by?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type TTarsRolePrepareData = {
+  roles: TTarsRoleDetail[];
+  domains: TTarsDomain[];
+};
+
+export type TTarsRoleInput = {
+  name: string;
+  description?: string;
+  domainIds?: string;
+  librechatMenuKeys?: string;
+  isEnabled?: boolean;
+  isDefaultRole?: boolean;
+};

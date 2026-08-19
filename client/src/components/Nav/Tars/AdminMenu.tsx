@@ -27,14 +27,23 @@ import {
   User,
   Users,
   UsersRound,
+  Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TranslationKeys } from '~/hooks';
 import { useLocalize } from '~/hooks';
 
+/**
+ * A node of the pwc_tars administration menu. `key` is the stable identifier a
+ * pwc_tars role stores in `sys_role.librechat_menu_keys` — deliberately not the
+ * route or the translation key, so renaming either never invalidates a saved
+ * permission set. Only leaves carry a `key`; a branch is shown when any of its
+ * descendants is permitted.
+ */
 export type AdminMenuNode = {
   labelKey: TranslationKeys;
   icon: LucideIcon;
+  key?: string;
   path?: string;
   children?: AdminMenuNode[];
 };
@@ -48,21 +57,42 @@ export const ADMIN_MENU: AdminMenuNode[] = [
         labelKey: 'com_ui_tars_nav_kb_mgmt',
         icon: Library,
         children: [
-          { labelKey: 'com_ui_tars_nav_kb_list', icon: List, path: '/knowledge-bases' },
-          { labelKey: 'com_ui_tars_nav_kb_schedule', icon: CalendarClock, path: '/kb-schedules' },
+          {
+            labelKey: 'com_ui_tars_nav_kb_list',
+            icon: List,
+            key: 'kb.list',
+            path: '/knowledge-bases',
+          },
+          {
+            labelKey: 'com_ui_tars_nav_kb_schedule',
+            icon: CalendarClock,
+            key: 'kb.schedules',
+            path: '/kb-schedules',
+          },
         ],
       },
       {
         labelKey: 'com_ui_tars_nav_datasource',
         icon: Boxes,
         children: [
-          { labelKey: 'com_ui_tars_nav_app_db', icon: Server, path: '/data-sources/databases' },
+          {
+            labelKey: 'com_ui_tars_nav_app_db',
+            icon: Server,
+            key: 'datasource.databases',
+            path: '/data-sources/databases',
+          },
           {
             labelKey: 'com_ui_tars_nav_doc_groups',
             icon: FolderOpen,
+            key: 'datasource.documents',
             path: '/data-sources/documents',
           },
-          { labelKey: 'com_ui_tars_nav_websites', icon: Globe, path: '/data-sources/websites' },
+          {
+            labelKey: 'com_ui_tars_nav_websites',
+            icon: Globe,
+            key: 'datasource.websites',
+            path: '/data-sources/websites',
+          },
         ],
       },
     ],
@@ -75,10 +105,30 @@ export const ADMIN_MENU: AdminMenuNode[] = [
         labelKey: 'com_ui_tars_nav_users_permissions',
         icon: Users,
         children: [
-          { labelKey: 'com_ui_tars_nav_users', icon: User, path: '/admin/users' },
-          { labelKey: 'com_ui_tars_nav_groups', icon: UsersRound, path: '/admin/groups' },
-          { labelKey: 'com_ui_tars_nav_permissions', icon: KeyRound, path: '/admin/permissions' },
-          { labelKey: 'com_ui_tars_nav_domains', icon: BrainCircuit, path: '/admin/domains' },
+          {
+            labelKey: 'com_ui_tars_nav_users',
+            icon: User,
+            key: 'admin.users',
+            path: '/admin/users',
+          },
+          {
+            labelKey: 'com_ui_tars_nav_groups',
+            icon: UsersRound,
+            key: 'admin.groups',
+            path: '/admin/groups',
+          },
+          {
+            labelKey: 'com_ui_tars_nav_permissions',
+            icon: KeyRound,
+            key: 'admin.permissions',
+            path: '/admin/permissions',
+          },
+          {
+            labelKey: 'com_ui_tars_nav_domains',
+            icon: BrainCircuit,
+            key: 'admin.domains',
+            path: '/admin/domains',
+          },
         ],
       },
       {
@@ -88,16 +138,33 @@ export const ADMIN_MENU: AdminMenuNode[] = [
           {
             labelKey: 'com_ui_tars_nav_system_settings',
             icon: Settings,
+            key: 'admin.system_settings',
             path: '/admin/system-settings',
           },
-          { labelKey: 'com_ui_tars_sys_config', icon: SlidersHorizontal, path: '/system-config' },
-          { labelKey: 'com_ui_tars_nav_model_keys', icon: KeySquare, path: '/admin/model-keys' },
+          {
+            labelKey: 'com_ui_tars_sys_config',
+            icon: SlidersHorizontal,
+            key: 'admin.system_config',
+            path: '/system-config',
+          },
+          {
+            labelKey: 'com_ui_tars_nav_model_keys',
+            icon: KeySquare,
+            key: 'admin.model_keys',
+            path: '/admin/model-keys',
+          },
           {
             labelKey: 'com_ui_tars_nav_issues',
             icon: MessageSquareWarning,
+            key: 'admin.issues',
             path: '/admin/issues',
           },
-          { labelKey: 'com_ui_tars_nav_about', icon: Info, path: '/admin/about' },
+          {
+            labelKey: 'com_ui_tars_nav_about',
+            icon: Info,
+            key: 'admin.about',
+            path: '/admin/about',
+          },
         ],
       },
     ],
@@ -109,18 +176,72 @@ export const ADMIN_MENU: AdminMenuNode[] = [
       {
         labelKey: 'com_ui_tars_nav_audit_messages',
         icon: MessageSquareText,
+        key: 'audit.messages',
         path: '/audit/messages',
       },
-      { labelKey: 'com_ui_tars_nav_audit_operations', icon: History, path: '/audit/operations' },
-      { labelKey: 'com_ui_tars_nav_audit_tokens', icon: Coins, path: '/audit/tokens' },
+      {
+        labelKey: 'com_ui_tars_nav_audit_operations',
+        icon: History,
+        key: 'audit.operations',
+        path: '/audit/operations',
+      },
+      {
+        labelKey: 'com_ui_tars_nav_audit_tokens',
+        icon: Coins,
+        key: 'audit.tokens',
+        path: '/audit/tokens',
+      },
       {
         labelKey: 'com_ui_tars_nav_audit_governance',
         icon: ShieldCheck,
+        key: 'audit.governance',
         path: '/audit/governance',
       },
     ],
   },
 ];
+
+/**
+ * Admin entries the account menu renders outside {@link ADMIN_MENU} but which
+ * are still permission-controlled, so the permission editor can offer them.
+ */
+export const STANDALONE_ADMIN_MENU: AdminMenuNode[] = [
+  {
+    labelKey: 'com_ui_tars_mcp_settings',
+    icon: Wrench,
+    key: 'admin.mcp_settings',
+    path: '/mcp-settings',
+  },
+];
+
+/** Every permission-controlled admin entry, as one tree for the permission editor. */
+export const ADMIN_MENU_TREE: AdminMenuNode[] = [...ADMIN_MENU, ...STANDALONE_ADMIN_MENU];
+
+/** Depth-first leaf keys of a menu tree — the values a role actually stores. */
+export function adminMenuLeafKeys(nodes: AdminMenuNode[] = ADMIN_MENU_TREE): string[] {
+  const keys: string[] = [];
+  const walk = (items: AdminMenuNode[]) => {
+    for (const item of items) {
+      if (item.children?.length) {
+        walk(item.children);
+        continue;
+      }
+      if (item.key != null) {
+        keys.push(item.key);
+      }
+    }
+  };
+  walk(nodes);
+  return keys;
+}
+
+/** The leaf keys one node covers — a leaf covers only itself. */
+export function adminMenuNodeKeys(node: AdminMenuNode): string[] {
+  if (node.children?.length) {
+    return adminMenuLeafKeys(node.children);
+  }
+  return node.key == null ? [] : [node.key];
+}
 
 export function SubmenuGroup({
   icon: Icon,
