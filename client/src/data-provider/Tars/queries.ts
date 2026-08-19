@@ -4,6 +4,7 @@ import type {
   TTarsDomain,
   TTarsChunk,
   TTarsDocument,
+  TTarsUser,
   TTarsSysConfig,
   TTarsMcpServer,
   TTarsModelOptions,
@@ -16,6 +17,9 @@ import type {
   TTarsDocumentsResponse,
   TTarsDomainPrepareData,
   TTarsSysConfigsResponse,
+  TTarsUsersResponse,
+  TTarsUserPrepareData,
+  TTarsAdWhitelistResponse,
   TTarsMcpLog,
   TTarsMcpLogsResponse,
   TTarsMcpServersResponse,
@@ -298,5 +302,51 @@ export const useTarsModelOptionsQuery = (
     [QueryKeys.tarsModelOptions],
     () => dataService.getTarsKnowledgeBaseModels(),
     { ...adminQueryOptions, ...config },
+  );
+};
+
+/** Admin: every pwc_tars account, with online state and resolved role names. */
+export const useTarsUsersQuery = (
+  config?: UseQueryOptions<TTarsUsersResponse, unknown, TTarsUser[]>,
+): QueryObserverResult<TTarsUser[]> => {
+  return useQuery<TTarsUsersResponse, unknown, TTarsUser[]>(
+    [QueryKeys.tarsUsers],
+    () => dataService.getTarsUsers(),
+    {
+      select: (data) => data.users ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: roles, user groups and SSO status for the user admin editors. */
+export const useTarsUserPrepareDataQuery = (
+  config?: UseQueryOptions<TTarsUserPrepareData>,
+): QueryObserverResult<TTarsUserPrepareData> => {
+  return useQuery<TTarsUserPrepareData>(
+    [QueryKeys.tarsUserPrepareData],
+    () => dataService.getTarsUserPrepareData(),
+    { ...adminQueryOptions, ...config },
+  );
+};
+
+/**
+ * Admin: the LDAP whitelist usernames selectable when creating an AD-backed
+ * account. Disabled until the create form actually switches to AD mode.
+ */
+export const useTarsAdWhitelistQuery = (
+  enabled: boolean,
+  config?: UseQueryOptions<TTarsAdWhitelistResponse, unknown, string[]>,
+): QueryObserverResult<string[]> => {
+  return useQuery<TTarsAdWhitelistResponse, unknown, string[]>(
+    [QueryKeys.tarsAdWhitelist],
+    () => dataService.getTarsAdWhitelist(),
+    {
+      enabled,
+      select: (data) => data.usernames ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
   );
 };
