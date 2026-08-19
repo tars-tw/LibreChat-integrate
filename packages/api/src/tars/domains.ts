@@ -14,6 +14,8 @@ export interface TarsDomain {
   role_ids: string | null;
   knowledge_base_ids: string | null;
   domain_functions: string | null;
+  prompt_instruction: string | null;
+  iframe_url: string | null;
   status: boolean;
   created_by?: string | null;
   updated_by?: string | null;
@@ -79,6 +81,8 @@ export interface TarsDomainInput {
   role_ids?: string;
   knowledge_base_ids?: string;
   domain_functions?: string;
+  prompt_instruction?: string;
+  iframe_url?: string;
   status?: number | boolean;
 }
 
@@ -124,9 +128,20 @@ export async function updateTarsDomain(
   return data.domain;
 }
 
-export async function deleteTarsDomain(domainId: number | string, baseUrl?: string): Promise<void> {
+/**
+ * Deletes a specialized brain. pwc_tars strips the id out of every role's
+ * `domain_ids` in the same request and records the operator in its audit log,
+ * so `operator_id` must be passed even though the deletion itself would succeed
+ * without it.
+ */
+export async function deleteTarsDomain(
+  tarsId: string,
+  domainId: number | string,
+  baseUrl?: string,
+): Promise<void> {
   await tarsFetch(`/api/domain_settings/delete_domain/${encodeURIComponent(String(domainId))}`, {
     method: 'DELETE',
+    query: { operator_id: tarsId },
     baseUrl,
   });
 }
