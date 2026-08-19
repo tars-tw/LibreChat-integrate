@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useLocalize, useIsTarsAdmin } from '~/hooks';
-import DomainManager from './DomainManager';
+import DomainManager from './Manager';
 
-/** Full-page specialized-brain (domain) administration, replacing the former dialog. */
+/** Full-page pwc_tars specialized-brain administration (專用腦管理). */
 export default function DomainsView() {
   const localize = useLocalize();
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export default function DomainsView() {
 
   return (
     <div className="h-full w-full overflow-y-auto bg-presentation">
-      <div className="mx-auto max-w-4xl space-y-6 p-6">
+      <div className="mx-auto max-w-7xl space-y-6 p-6">
         <h1 className="text-2xl font-semibold text-text-primary">
           {localize('com_ui_tars_nav_domains')}
         </h1>
