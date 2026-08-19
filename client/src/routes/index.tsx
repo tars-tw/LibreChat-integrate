@@ -90,8 +90,8 @@ const loadUsersView = () =>
   }));
 
 const loadDomainsView = () =>
-  import('~/components/Admin/Tars/DomainsView').then((m) => ({
-    Component: m.default,
+  import('~/components/Admin/Tars/Domains').then((m) => ({
+    Component: m.DomainsView,
   }));
 
 const placeholderRoute = (path: string, titleKey: TranslationKeys) => ({
