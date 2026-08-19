@@ -84,7 +84,7 @@ router.put('/domains/:id', requireTarsAdmin, async (req, res) => {
  */
 router.delete('/domains/:id', requireTarsAdmin, async (req, res) => {
   try {
-    await deleteTarsDomain(req.params.id);
+    await deleteTarsDomain(req.user.tarsId, req.params.id);
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/domains/:id] Failed to delete pwc_tars domain', error);
