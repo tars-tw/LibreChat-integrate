@@ -1,5 +1,6 @@
 export * from './client';
 export * from './domains';
+export * from './groups';
 export * from './knowledge';
 export * from './mcp';
 export * from './mirror';

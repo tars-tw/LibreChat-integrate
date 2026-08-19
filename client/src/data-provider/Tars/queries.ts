@@ -20,6 +20,7 @@ import type {
   TTarsUsersResponse,
   TTarsUserPrepareData,
   TTarsAdWhitelistResponse,
+  TTarsGroupPrepareData,
   TTarsMcpLog,
   TTarsMcpLogsResponse,
   TTarsMcpServersResponse,
@@ -348,5 +349,16 @@ export const useTarsAdWhitelistQuery = (
       ...adminQueryOptions,
       ...config,
     },
+  );
+};
+
+/** Admin: every pwc_tars user group (with its member list) plus all roles. */
+export const useTarsUserGroupsQuery = (
+  config?: UseQueryOptions<TTarsGroupPrepareData>,
+): QueryObserverResult<TTarsGroupPrepareData> => {
+  return useQuery<TTarsGroupPrepareData>(
+    [QueryKeys.tarsUserGroups],
+    () => dataService.getTarsUserGroups(),
+    { ...adminQueryOptions, ...config },
   );
 };
