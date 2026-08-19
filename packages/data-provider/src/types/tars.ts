@@ -11,6 +11,8 @@ export type TTarsDomain = {
   role_ids: string | null;
   knowledge_base_ids: string | null;
   domain_functions: string | null;
+  prompt_instruction: string | null;
+  iframe_url: string | null;
   status: boolean;
   created_by?: string | null;
   updated_by?: string | null;
@@ -66,6 +68,8 @@ export type TTarsDomainInput = {
   role_ids?: string;
   knowledge_base_ids?: string;
   domain_functions?: string;
+  prompt_instruction?: string;
+  iframe_url?: string;
   status?: number | boolean;
 };
 
