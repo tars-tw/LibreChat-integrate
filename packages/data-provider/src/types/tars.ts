@@ -421,3 +421,100 @@ export type TTarsMcpDomainServer = {
 };
 
 export type TTarsMcpDomainToolsResponse = { servers: TTarsMcpDomainServer[] };
+
+/**
+ * A pwc_tars account as surfaced to the LibreChat client. Mirrors the backend
+ * `TarsUser` (pwc_tars `SysUser.to_dict()`) plus the two fields the listing
+ * computes: `is_online` and `roles_names` (the union of the account's own role
+ * and every role its groups grant, comma separated).
+ */
+export type TTarsUser = {
+  id: string;
+  username: string;
+  email: string | null;
+  role_id: number | null;
+  user_group_id: string | null;
+  display_name: string | null;
+  avatar?: string | null;
+  interface_language?: string | null;
+  interface_theme?: string | null;
+  timezone?: string | null;
+  last_login_at?: string | null;
+  last_login_ip?: string | null;
+  status: string;
+  initialized_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  last_active_at?: string | null;
+  is_sso_user?: boolean;
+  is_syncbyad?: boolean;
+  sso_config_id?: string | null;
+  is_online?: boolean;
+  roles_names?: string | null;
+};
+
+export type TTarsUsersResponse = {
+  users: TTarsUser[];
+};
+
+/** A pwc_tars user group (`SysUserGroup.to_dict()`). */
+export type TTarsUserGroup = {
+  id: string;
+  name: string;
+  description?: string | null;
+  role_id?: string | null;
+  status?: number | boolean | null;
+  is_syncbyad?: boolean;
+  sso_config_id?: string | null;
+};
+
+/** Roles, groups and SSO status the user admin page needs before rendering. */
+export type TTarsUserPrepareData = {
+  roles: TTarsRole[];
+  userGroups: TTarsUserGroup[];
+  sso: { enabled: boolean; type: string | null };
+};
+
+export type TTarsAdWhitelistResponse = {
+  usernames: string[];
+};
+
+/** Create payload. `email`/`password` are omitted for AD-backed accounts. */
+export type TTarsUserInput = {
+  username: string;
+  email?: string;
+  password?: string;
+  display_name?: string;
+  role_id?: string | number | null;
+  user_group_id?: string | null;
+  status?: string;
+  is_sso_user?: boolean;
+};
+
+/** Partial update — pwc_tars only touches the keys that are present. */
+export type TTarsUserUpdate = {
+  email?: string;
+  display_name?: string;
+  role_id?: string | number | null;
+  user_group_id?: string | null;
+  status?: string;
+};
+
+/** The subset of fields the bulk editor may apply to many accounts at once. */
+export type TTarsBulkUserUpdate = {
+  role_id?: string | number | null;
+  user_group_id?: string | null;
+  status?: string;
+};
+
+export type TTarsBulkUserUpdatePayload = {
+  ids: string[];
+  updates: TTarsBulkUserUpdate;
+};
+
+/** pwc_tars import result: a summary `message`, or per-row `details` on failure. */
+export type TTarsUserImportResult = {
+  message?: string;
+  error?: string;
+  details?: string[];
+};

@@ -6,3 +6,4 @@ export * from './mirror';
 export * from './models';
 export * from './prompts';
 export * from './sysconfig';
+export * from './users';

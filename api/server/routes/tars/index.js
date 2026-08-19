@@ -5,6 +5,7 @@ const mcp = require('./mcp');
 const models = require('./models');
 const prompts = require('./prompts');
 const sysconfig = require('./sysconfig');
+const users = require('./users');
 
 const router = express.Router();
 /** First: the MCP gateway authenticates by gateway key, and the sibling routers'
@@ -15,5 +16,6 @@ router.use('/', knowledge);
 router.use('/', models);
 router.use('/', prompts);
 router.use('/', sysconfig);
+router.use('/', users);
 
 module.exports = router;
