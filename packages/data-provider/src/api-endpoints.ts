@@ -367,6 +367,12 @@ export const tarsPrompt = (id: string, query?: { domainId?: string; knowledgeBas
   return qs ? `${BASE_URL}/api/tars/prompts/${id}?${qs}` : `${BASE_URL}/api/tars/prompts/${id}`;
 };
 export const tarsSysConfigs = () => `${BASE_URL}/api/tars/sys-configs`;
+export const tarsUserGroups = () => `${BASE_URL}/api/tars/groups`;
+export const tarsUserGroup = (id: string) =>
+  `${BASE_URL}/api/tars/groups/${encodeURIComponent(id)}`;
+export const tarsUserGroupMembers = (id: string) => `${tarsUserGroup(id)}/members`;
+export const tarsUserGroupMember = (id: string, userId: string) =>
+  `${tarsUserGroupMembers(id)}/${encodeURIComponent(userId)}`;
 export const tarsUsers = () => `${BASE_URL}/api/tars/users`;
 export const tarsUser = (id: string) => `${BASE_URL}/api/tars/users/${encodeURIComponent(id)}`;
 export const tarsUserPrepareData = () => `${BASE_URL}/api/tars/users/prepare-data`;
