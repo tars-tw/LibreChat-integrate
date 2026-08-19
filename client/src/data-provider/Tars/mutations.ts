@@ -29,6 +29,8 @@ import type {
   TTarsBulkUserUpdatePayload,
   TTarsUserGroupInput,
   TTarsUserGroupWithMembers,
+  TTarsRoleInput,
+  TTarsRoleDetail,
 } from 'librechat-data-provider';
 import type { UseMutationResult, UseMutationOptions } from '@tanstack/react-query';
 
@@ -754,4 +756,65 @@ export const useRemoveTarsUserGroupMemberMutation = (
       },
     },
   );
+};
+
+type RoleResponse = { role: TTarsRoleDetail };
+
+/**
+ * Roles feed the user and group editors, and marking one the default role makes
+ * pwc_tars clear the flag on every other role — so the whole listing plus both
+ * dependent pages are refreshed after any role change.
+ */
+const invalidateRoles = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsRoles]);
+  queryClient.invalidateQueries([QueryKeys.tarsUserPrepareData]);
+  queryClient.invalidateQueries([QueryKeys.tarsUserGroups]);
+  queryClient.invalidateQueries([QueryKeys.tarsUsers]);
+};
+
+export const useCreateTarsRoleMutation = (
+  options?: UseMutationOptions<RoleResponse, unknown, TTarsRoleInput>,
+): UseMutationResult<RoleResponse, unknown, TTarsRoleInput> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: TTarsRoleInput) => dataService.createTarsRole(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateRoles(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useUpdateTarsRoleMutation = (
+  options?: UseMutationOptions<
+    RoleResponse,
+    unknown,
+    { id: string | number; data: TTarsRoleInput }
+  >,
+): UseMutationResult<RoleResponse, unknown, { id: string | number; data: TTarsRoleInput }> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: { id: string | number; data: TTarsRoleInput }) =>
+      dataService.updateTarsRole(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateRoles(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsRoleMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string | number>,
+): UseMutationResult<{ success: boolean }, unknown, string | number> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string | number) => dataService.deleteTarsRole(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateRoles(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
 };
