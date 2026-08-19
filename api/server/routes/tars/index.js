@@ -1,5 +1,6 @@
 const express = require('express');
 const domains = require('./domains');
+const groups = require('./groups');
 const knowledge = require('./knowledge');
 const mcp = require('./mcp');
 const models = require('./models');
@@ -12,6 +13,7 @@ const router = express.Router();
  *  pathless `router.use(requireJwtAuth)` would otherwise intercept `/mcp`. */
 router.use('/', mcp);
 router.use('/', domains);
+router.use('/', groups);
 router.use('/', knowledge);
 router.use('/', models);
 router.use('/', prompts);
