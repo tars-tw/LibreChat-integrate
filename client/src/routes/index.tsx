@@ -79,6 +79,11 @@ const loadMcpSettingsView = () =>
     Component: m.McpSettingsView,
   }));
 
+const loadGroupsView = () =>
+  import('~/components/Admin/Tars/Groups').then((m) => ({
+    Component: m.GroupsView,
+  }));
+
 const loadUsersView = () =>
   import('~/components/Admin/Tars/Users').then((m) => ({
     Component: m.UsersView,
@@ -250,7 +255,10 @@ export const router = createBrowserRouter(
               path: 'admin/users',
               lazy: loadUsersView,
             },
-            placeholderRoute('admin/groups', 'com_ui_tars_nav_groups'),
+            {
+              path: 'admin/groups',
+              lazy: loadGroupsView,
+            },
             placeholderRoute('admin/permissions', 'com_ui_tars_nav_permissions'),
             placeholderRoute('admin/system-settings', 'com_ui_tars_nav_system_settings'),
             placeholderRoute('admin/model-keys', 'com_ui_tars_nav_model_keys'),
