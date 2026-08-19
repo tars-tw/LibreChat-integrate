@@ -694,6 +694,41 @@ export const deleteTarsDomain = (id: string | number): Promise<{ success: boolea
   return request.delete(endpoints.tarsDomain(id));
 };
 
+export const getTarsUserGroups = (): Promise<t.TTarsGroupPrepareData> => {
+  return request.get(endpoints.tarsUserGroups());
+};
+
+export const createTarsUserGroup = (
+  data: t.TTarsUserGroupInput,
+): Promise<{ group: t.TTarsUserGroupWithMembers }> => {
+  return request.post(endpoints.tarsUserGroups(), data);
+};
+
+export const updateTarsUserGroup = (
+  id: string,
+  data: t.TTarsUserGroupInput,
+): Promise<{ group: t.TTarsUserGroupWithMembers }> => {
+  return request.put(endpoints.tarsUserGroup(id), data);
+};
+
+export const deleteTarsUserGroup = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsUserGroup(id));
+};
+
+export const addTarsUserGroupMembers = (
+  id: string,
+  userIds: string[],
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsUserGroupMembers(id), { userIds });
+};
+
+export const removeTarsUserGroupMember = (
+  id: string,
+  userId: string,
+): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsUserGroupMember(id, userId));
+};
+
 export const getTarsUsers = (): Promise<t.TTarsUsersResponse> => {
   return request.get(endpoints.tarsUsers());
 };
