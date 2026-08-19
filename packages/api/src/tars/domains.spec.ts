@@ -7,7 +7,7 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
-import { fetchTarsDomainById, fetchTarsDomainsForUser } from './domains';
+import { deleteTarsDomain, fetchTarsDomainById, fetchTarsDomainsForUser } from './domains';
 import type { TarsDomain } from './domains';
 
 const BASE_URL = 'http://tars.test';
@@ -26,6 +26,8 @@ const domain = (id: number, name: string): TarsDomain => ({
   role_ids: '1,2',
   knowledge_base_ids: 'kb-1',
   domain_functions: '{}',
+  prompt_instruction: null,
+  iframe_url: null,
   status: true,
 });
 
@@ -92,5 +94,25 @@ describe('fetchTarsDomainById', () => {
       .mockResolvedValue(buildResponse(200, { sys_domains: [domain(1, 'Finance')] }));
 
     await expect(fetchTarsDomainById('u1', 999, BASE_URL)).resolves.toBeNull();
+  });
+});
+
+describe('deleteTarsDomain', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  /** pwc_tars records the operator in its audit log from the query string. */
+  it('passes the operator id as a query param', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { message: 'ok' }));
+
+    await deleteTarsDomain('admin', 7, BASE_URL);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${BASE_URL}/api/domain_settings/delete_domain/7?operator_id=admin`,
+      expect.objectContaining({ method: 'DELETE' }),
+    );
   });
 });
