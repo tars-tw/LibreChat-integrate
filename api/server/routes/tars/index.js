@@ -5,6 +5,7 @@ const knowledge = require('./knowledge');
 const mcp = require('./mcp');
 const models = require('./models');
 const prompts = require('./prompts');
+const roles = require('./roles');
 const sysconfig = require('./sysconfig');
 const users = require('./users');
 
@@ -17,6 +18,7 @@ router.use('/', groups);
 router.use('/', knowledge);
 router.use('/', models);
 router.use('/', prompts);
+router.use('/', roles);
 router.use('/', sysconfig);
 router.use('/', users);
 
