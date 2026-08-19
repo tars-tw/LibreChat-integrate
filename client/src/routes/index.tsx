@@ -79,6 +79,11 @@ const loadMcpSettingsView = () =>
     Component: m.McpSettingsView,
   }));
 
+const loadUsersView = () =>
+  import('~/components/Admin/Tars/Users').then((m) => ({
+    Component: m.UsersView,
+  }));
+
 const loadDomainsView = () =>
   import('~/components/Admin/Tars/DomainsView').then((m) => ({
     Component: m.default,
@@ -241,7 +246,10 @@ export const router = createBrowserRouter(
             placeholderRoute('data-sources/databases', 'com_ui_tars_nav_app_db'),
             placeholderRoute('data-sources/documents', 'com_ui_tars_nav_doc_groups'),
             placeholderRoute('data-sources/websites', 'com_ui_tars_nav_websites'),
-            placeholderRoute('admin/users', 'com_ui_tars_nav_users'),
+            {
+              path: 'admin/users',
+              lazy: loadUsersView,
+            },
             placeholderRoute('admin/groups', 'com_ui_tars_nav_groups'),
             placeholderRoute('admin/permissions', 'com_ui_tars_nav_permissions'),
             placeholderRoute('admin/system-settings', 'com_ui_tars_nav_system_settings'),

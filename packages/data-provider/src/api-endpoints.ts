@@ -371,6 +371,15 @@ export const tarsPrompt = (id: string, query?: { domainId?: string; knowledgeBas
   return qs ? `${BASE_URL}/api/tars/prompts/${id}?${qs}` : `${BASE_URL}/api/tars/prompts/${id}`;
 };
 export const tarsSysConfigs = () => `${BASE_URL}/api/tars/sys-configs`;
+export const tarsUsers = () => `${BASE_URL}/api/tars/users`;
+export const tarsUser = (id: string) => `${BASE_URL}/api/tars/users/${encodeURIComponent(id)}`;
+export const tarsUserPrepareData = () => `${BASE_URL}/api/tars/users/prepare-data`;
+export const tarsUserAdWhitelist = () => `${BASE_URL}/api/tars/users/ad-whitelist`;
+export const tarsUsersBulk = () => `${BASE_URL}/api/tars/users/bulk`;
+export const tarsUsersBulkDelete = () => `${BASE_URL}/api/tars/users/bulk-delete`;
+export const tarsUserResetPassword = (id: string) => `${tarsUser(id)}/reset-password`;
+export const tarsUsersImport = () => `${BASE_URL}/api/tars/users/import`;
+export const tarsUsersImportTemplate = () => `${BASE_URL}/api/tars/users/import-template`;
 export const tarsModels = () => `${BASE_URL}/api/tars/models`;
 export const tarsMcpAdminServers = () => `${BASE_URL}/api/tars/mcp/admin/servers`;
 export const tarsMcpAdminServer = (id: string) =>

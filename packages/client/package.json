@@ -120,6 +120,7 @@
     "tailwindcss": "^3.4.1",
     "tailwindcss-radix": "^2.8.0",
     "tsdown": "^0.22.2",
+    "unrun": "^0.3.1",
     "typescript": "^5.9.3"
   }
 }
