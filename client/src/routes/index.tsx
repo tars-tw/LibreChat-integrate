@@ -74,6 +74,11 @@ const loadSystemSettingsView = () =>
     Component: m.SystemSettingsView,
   }));
 
+const loadIssuesView = () =>
+  import('~/components/Admin/Tars/Issues').then((m) => ({
+    Component: m.IssuesView,
+  }));
+
 const loadSysConfigView = () =>
   import('~/components/Admin/Tars/SysConfig').then((m) => ({
     Component: m.SysConfigView,
@@ -278,7 +283,10 @@ export const router = createBrowserRouter(
               lazy: loadSystemSettingsView,
             },
             placeholderRoute('admin/model-keys', 'com_ui_tars_nav_model_keys'),
-            placeholderRoute('admin/issues', 'com_ui_tars_nav_issues'),
+            {
+              path: 'admin/issues',
+              lazy: loadIssuesView,
+            },
             placeholderRoute('admin/about', 'com_ui_tars_nav_about'),
             placeholderRoute('audit/messages', 'com_ui_tars_nav_audit_messages'),
             placeholderRoute('audit/operations', 'com_ui_tars_nav_audit_operations'),
