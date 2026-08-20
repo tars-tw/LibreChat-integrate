@@ -149,8 +149,11 @@ Multi-line imports count total character length across all lines. Consolidate va
 ### Localization
 
 - All user-facing text must use `useLocalize()`.
-- Only update English keys in `client/src/locales/en/translation.json` (other languages are automated externally).
+- Every new or changed key must be written to **both** `client/src/locales/en/translation.json` and `client/src/locales/zh-Hant/translation.json` in the same change. Traditional Chinese is the product's primary display language and is maintained by hand here; leaving it out ships an English string to users. All other languages are automated externally — do not edit them.
+- Match the Traditional Chinese wording pwc_tars already uses (專用腦, 使用者群組, 供應商, 額度, 配額, 專案 …) rather than translating the English literally; check the existing `com_ui_tars_*` entries in `zh-Hant` for the established term before inventing one.
+- Insert keys in their sorted position and never reorder or reformat the surrounding entries — the locale files are not fully sorted, so rewriting them produces a diff that buries the real change.
 - Semantic key prefixes: `com_ui_`, `com_assistants_`, etc.
+- To find gaps: compare the two files' key sets (e.g. every `com_ui_tars_*` key present in `en` must exist in `zh-Hant`).
 
 ### Components
 
