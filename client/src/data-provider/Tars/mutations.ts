@@ -31,6 +31,11 @@ import type {
   TTarsUserGroupWithMembers,
   TTarsRoleInput,
   TTarsRoleDetail,
+  TTarsSystemSettings,
+  TTarsLdapConfigInput,
+  TTarsWhitelistUser,
+  TTarsLdapTreeNode,
+  TTarsSyncScheduleInput,
 } from 'librechat-data-provider';
 import type { UseMutationResult, UseMutationOptions } from '@tanstack/react-query';
 
@@ -814,6 +819,219 @@ export const useDeleteTarsRoleMutation = (
     ...options,
     onSuccess: (...args) => {
       invalidateRoles(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+const invalidateSystemLogo = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsSystemSettings]);
+};
+
+export const useUploadTarsSystemLogoMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, FormData>,
+): UseMutationResult<{ success: boolean }, unknown, FormData> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: FormData) => dataService.uploadTarsSystemLogo(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateSystemLogo(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useRemoveTarsSystemLogoMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, void>,
+): UseMutationResult<{ success: boolean }, unknown, void> => {
+  const queryClient = useQueryClient();
+  return useMutation(() => dataService.removeTarsSystemLogo(), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateSystemLogo(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useImportTarsLicenseMutation = (
+  options?: UseMutationOptions<TTarsSystemSettings, unknown, FormData>,
+): UseMutationResult<TTarsSystemSettings, unknown, FormData> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: FormData) => dataService.importTarsLicense(data), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsSystemSettings]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+/**
+ * An LDAP change can add, remove or disable pwc_tars accounts and groups, so
+ * the user and group listings are refreshed alongside the configurations.
+ */
+const invalidateSsoConfigs = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsSsoConfigs]);
+  queryClient.invalidateQueries([QueryKeys.tarsUsers]);
+  queryClient.invalidateQueries([QueryKeys.tarsUserGroups]);
+};
+
+export const useCreateTarsSsoConfigMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, TTarsLdapConfigInput>,
+): UseMutationResult<{ success: boolean }, unknown, TTarsLdapConfigInput> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: TTarsLdapConfigInput) => dataService.createTarsSsoConfig(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateSsoConfigs(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useUpdateTarsSsoConfigMutation = (
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { id: string; data: TTarsLdapConfigInput }
+  >,
+): UseMutationResult<{ success: boolean }, unknown, { id: string; data: TTarsLdapConfigInput }> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: { id: string; data: TTarsLdapConfigInput }) =>
+      dataService.updateTarsSsoConfig(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateSsoConfigs(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsSsoConfigMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.deleteTarsSsoConfig(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateSsoConfigs(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useTestTarsSsoConnectionMutation = (
+  options?: UseMutationOptions<
+    { message: string },
+    unknown,
+    { config_id?: string } & TTarsLdapConfigInput
+  >,
+): UseMutationResult<
+  { message: string },
+  unknown,
+  { config_id?: string } & TTarsLdapConfigInput
+> => {
+  return useMutation((data) => dataService.testTarsSsoConnection(data), options);
+};
+
+export const useTarsLdapTreeMutation = (
+  options?: UseMutationOptions<
+    { nodes: TTarsLdapTreeNode[] },
+    unknown,
+    { config_id?: string } & TTarsLdapConfigInput
+  >,
+): UseMutationResult<
+  { nodes: TTarsLdapTreeNode[] },
+  unknown,
+  { config_id?: string } & TTarsLdapConfigInput
+> => {
+  return useMutation((data) => dataService.getTarsLdapTree(data), options);
+};
+
+export const useTarsSsoWhitelistMutation = (
+  options?: UseMutationOptions<
+    { users: TTarsWhitelistUser[] },
+    unknown,
+    { whitelist_users: string } & TTarsLdapConfigInput
+  >,
+): UseMutationResult<
+  { users: TTarsWhitelistUser[] },
+  unknown,
+  { whitelist_users: string } & TTarsLdapConfigInput
+> => {
+  return useMutation((data) => dataService.getTarsSsoWhitelist(data), options);
+};
+
+export const useImportTarsAdDataMutation = (
+  options?: UseMutationOptions<{ message: string }, unknown, { id: string; enableUsers: boolean }>,
+): UseMutationResult<{ message: string }, unknown, { id: string; enableUsers: boolean }> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, enableUsers }: { id: string; enableUsers: boolean }) =>
+      dataService.importTarsAdData(id, enableUsers),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateSsoConfigs(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsAdDataMutation = (
+  options?: UseMutationOptions<{ message: string }, unknown, string>,
+): UseMutationResult<{ message: string }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.deleteTarsAdData(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateSsoConfigs(queryClient);
+      queryClient.invalidateQueries([QueryKeys.tarsSyncSchedule]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useSaveTarsSyncScheduleMutation = (
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { id: string; data: TTarsSyncScheduleInput }
+  >,
+): UseMutationResult<
+  { success: boolean },
+  unknown,
+  { id: string; data: TTarsSyncScheduleInput }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: { id: string; data: TTarsSyncScheduleInput }) =>
+      dataService.saveTarsSyncSchedule(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsSyncSchedule]);
+        queryClient.invalidateQueries([QueryKeys.tarsSsoConfigs]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsSyncScheduleMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.deleteTarsSyncSchedule(id), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsSyncSchedule]);
+      queryClient.invalidateQueries([QueryKeys.tarsSsoConfigs]);
       options?.onSuccess?.(...args);
     },
   });

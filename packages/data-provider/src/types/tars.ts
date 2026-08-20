@@ -589,3 +589,99 @@ export type TTarsRoleInput = {
   isEnabled?: boolean;
   isDefaultRole?: boolean;
 };
+
+/** pwc_tars licence state, surfaced on the system settings page. */
+export type TTarsSystemSettings = {
+  licenseStatus: string;
+  licenseStartDate: string;
+  licenseEndDate: string;
+};
+
+/**
+ * A pwc_tars SSO configuration row. One table holds every provider, so the LDAP
+ * field group is optional and only populated when `sso_type_id` is '1'.
+ */
+export type TTarsSsoConfig = {
+  id: string;
+  sso_type_id: string;
+  sso_type_name: string;
+  status: number;
+  ldap_name?: string | null;
+  ldap_server_address?: string | null;
+  ldap_server_port?: string | null;
+  ldap_base_dn?: string | null;
+  ldap_search_attribute?: string | null;
+  ldap_admin_dn?: string | null;
+  ldap_admin_password?: string | null;
+  ldap_whitelist_users?: string | null;
+  ldap_whitelist_groups?: string | null;
+  ldap_enable_whitelist?: boolean;
+  frequency?: number | null;
+  frequency_unit?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  last_execute_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type TTarsSsoConfigsResponse = {
+  configs: TTarsSsoConfig[];
+};
+
+/** Create/update payload for an LDAP configuration. */
+export type TTarsLdapConfigInput = {
+  ldap_name?: string;
+  ldap_server_address?: string;
+  ldap_server_port?: string;
+  ldap_base_dn?: string;
+  ldap_search_attribute?: string;
+  ldap_admin_dn?: string;
+  ldap_admin_password?: string;
+  ldap_whitelist_users?: string;
+  ldap_enable_whitelist?: boolean;
+  status?: number;
+};
+
+/** A node of the pwc_tars LDAP directory tree. */
+export type TTarsLdapTreeNode = {
+  key: string;
+  label: string;
+  type?: string | null;
+  children?: TTarsLdapTreeNode[];
+};
+
+export type TTarsLdapTreeResponse = {
+  nodes: TTarsLdapTreeNode[];
+};
+
+/** A whitelist entry resolved against the directory. */
+export type TTarsWhitelistUser = {
+  username: string;
+  ou?: string | null;
+  display_name?: string | null;
+  email?: string | null;
+};
+
+export type TTarsWhitelistResponse = {
+  users: TTarsWhitelistUser[];
+};
+
+export type TTarsSyncSchedule = {
+  frequency: number;
+  frequency_unit: string;
+  start_time: string | null;
+  end_time: string | null;
+  last_execute_at?: string | null;
+};
+
+export type TTarsSyncScheduleResponse = {
+  schedule: TTarsSyncSchedule | null;
+};
+
+export type TTarsSyncScheduleInput = {
+  frequency: number;
+  frequency_unit: string;
+  start_time?: string;
+  end_time?: string;
+};
