@@ -8,6 +8,7 @@ const prompts = require('./prompts');
 const roles = require('./roles');
 const settings = require('./settings');
 const sysconfig = require('./sysconfig');
+const tickets = require('./tickets');
 const users = require('./users');
 
 const router = express.Router();
@@ -25,6 +26,7 @@ router.use('/', models);
 router.use('/', prompts);
 router.use('/', roles);
 router.use('/', sysconfig);
+router.use('/', tickets);
 router.use('/', users);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 import { QueryKeys, dataService } from 'librechat-data-provider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
+  TTarsTicket,
   TTarsDomain,
   TTarsChunk,
   TTarsPrompt,
@@ -1033,6 +1034,47 @@ export const useDeleteTarsSyncScheduleMutation = (
       queryClient.invalidateQueries([QueryKeys.tarsSyncSchedule]);
       queryClient.invalidateQueries([QueryKeys.tarsSsoConfigs]);
       options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useCreateTarsTicketMutation = (
+  options?: UseMutationOptions<{ ticket: TTarsTicket }, unknown, FormData>,
+): UseMutationResult<{ ticket: TTarsTicket }, unknown, FormData> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: FormData) => dataService.createTarsTicket(data), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsTickets]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useUpdateTarsTicketMutation = (
+  options?: UseMutationOptions<{ ticket: TTarsTicket }, unknown, { id: string; data: FormData }>,
+): UseMutationResult<{ ticket: TTarsTicket }, unknown, { id: string; data: FormData }> => {
+  const queryClient = useQueryClient();
+  return useMutation(({ id, data }) => dataService.updateTarsTicket(id, data), {
+    ...options,
+    onSuccess: (result, variables, context) => {
+      queryClient.invalidateQueries([QueryKeys.tarsTickets]);
+      queryClient.invalidateQueries([QueryKeys.tarsTicket, variables.id]);
+      options?.onSuccess?.(result, variables, context);
+    },
+  });
+};
+
+/** A reply lands on the Issue Tracker, so only the detail needs re-reading. */
+export const useCreateTarsTicketCommentMutation = (
+  options?: UseMutationOptions<{ id: string | null }, unknown, { id: string; body: string }>,
+): UseMutationResult<{ id: string | null }, unknown, { id: string; body: string }> => {
+  const queryClient = useQueryClient();
+  return useMutation(({ id, body }) => dataService.createTarsTicketComment(id, body), {
+    ...options,
+    onSuccess: (result, variables, context) => {
+      queryClient.invalidateQueries([QueryKeys.tarsTicket, variables.id]);
+      options?.onSuccess?.(result, variables, context);
     },
   });
 };
