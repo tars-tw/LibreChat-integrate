@@ -677,6 +677,87 @@ export const deleteTarsDomain = (id: string | number): Promise<{ success: boolea
   return request.delete(endpoints.tarsDomain(id));
 };
 
+export const getTarsSystemSettings = (): Promise<t.TTarsSystemSettings> => {
+  return request.get(endpoints.tarsSystemSettings());
+};
+
+export const uploadTarsSystemLogo = (data: FormData): Promise<{ success: boolean }> => {
+  return request.postMultiPart(endpoints.tarsSystemLogo(), data);
+};
+
+export const removeTarsSystemLogo = (): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsSystemLogo());
+};
+
+export const importTarsLicense = (data: FormData): Promise<t.TTarsSystemSettings> => {
+  return request.postMultiPart(endpoints.tarsSystemLicense(), data);
+};
+
+export const getTarsSsoConfigs = (): Promise<t.TTarsSsoConfigsResponse> => {
+  return request.get(endpoints.tarsSsoConfigs());
+};
+
+export const createTarsSsoConfig = (
+  data: t.TTarsLdapConfigInput,
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsSsoConfigs(), data);
+};
+
+export const updateTarsSsoConfig = (
+  id: string,
+  data: t.TTarsLdapConfigInput,
+): Promise<{ success: boolean }> => {
+  return request.put(endpoints.tarsSsoConfig(id), data);
+};
+
+export const deleteTarsSsoConfig = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsSsoConfig(id));
+};
+
+export const testTarsSsoConnection = (
+  data: { config_id?: string } & t.TTarsLdapConfigInput,
+): Promise<{ message: string }> => {
+  return request.post(endpoints.tarsSsoTest(), data);
+};
+
+export const getTarsLdapTree = (
+  data: { config_id?: string } & t.TTarsLdapConfigInput,
+): Promise<t.TTarsLdapTreeResponse> => {
+  return request.post(endpoints.tarsSsoTree(), data);
+};
+
+export const getTarsSsoWhitelist = (
+  data: { whitelist_users: string } & t.TTarsLdapConfigInput,
+): Promise<t.TTarsWhitelistResponse> => {
+  return request.post(endpoints.tarsSsoWhitelist(), data);
+};
+
+export const importTarsAdData = (
+  id: string,
+  enableUsers: boolean,
+): Promise<{ message: string }> => {
+  return request.post(endpoints.tarsSsoImport(id), { enableUsers });
+};
+
+export const deleteTarsAdData = (id: string): Promise<{ message: string }> => {
+  return request.delete(endpoints.tarsSsoImport(id));
+};
+
+export const getTarsSyncSchedule = (id: string): Promise<t.TTarsSyncScheduleResponse> => {
+  return request.get(endpoints.tarsSsoSchedule(id));
+};
+
+export const saveTarsSyncSchedule = (
+  id: string,
+  data: t.TTarsSyncScheduleInput,
+): Promise<{ success: boolean }> => {
+  return request.put(endpoints.tarsSsoSchedule(id), data);
+};
+
+export const deleteTarsSyncSchedule = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsSsoSchedule(id));
+};
+
 export const getTarsRoles = (): Promise<t.TTarsRolePrepareData> => {
   return request.get(endpoints.tarsRoles());
 };

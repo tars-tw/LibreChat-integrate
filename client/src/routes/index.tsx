@@ -64,6 +64,11 @@ const loadKnowledgeBaseDetail = () =>
     Component: m.KnowledgeBaseDetail,
   }));
 
+const loadSystemSettingsView = () =>
+  import('~/components/Admin/Tars/SystemSettings').then((m) => ({
+    Component: m.SystemSettingsView,
+  }));
+
 const loadSysConfigView = () =>
   import('~/components/Admin/Tars/SysConfig').then((m) => ({
     Component: m.SysConfigView,
@@ -259,7 +264,10 @@ export const router = createBrowserRouter(
               path: 'admin/permissions',
               lazy: loadRolesView,
             },
-            placeholderRoute('admin/system-settings', 'com_ui_tars_nav_system_settings'),
+            {
+              path: 'admin/system-settings',
+              lazy: loadSystemSettingsView,
+            },
             placeholderRoute('admin/model-keys', 'com_ui_tars_nav_model_keys'),
             placeholderRoute('admin/issues', 'com_ui_tars_nav_issues'),
             placeholderRoute('admin/about', 'com_ui_tars_nav_about'),
