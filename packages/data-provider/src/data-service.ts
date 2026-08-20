@@ -867,6 +867,115 @@ export const getTarsAuditReport = (query: t.TTarsAuditQuery): Promise<t.TTarsAud
   return request.post(endpoints.tarsAuditMessages(), query);
 };
 
+/** Admin: one month of provider spend, straight from the provider's admin API. */
+export const getTarsProviderUsage = (query: t.TTarsUsageQuery): Promise<t.TTarsProviderUsage> => {
+  const params = new URLSearchParams({ month: query.month });
+  if (query.budget != null) {
+    params.set('budget', String(query.budget));
+  }
+  return request.get(`${endpoints.tarsProviderUsage(query.provider)}?${params.toString()}`);
+};
+
+const tarsTokenQuery = (filters: Record<string, string | boolean | undefined>): string => {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value != null && value !== '') {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  return qs === '' ? '' : `?${qs}`;
+};
+
+export const getTarsTokenPrepareData = (): Promise<t.TTarsTokenPrepareData> => {
+  return request.get(endpoints.tarsTokenPrepareData());
+};
+
+export const searchTarsTokenUsers = (keyword: string): Promise<t.TTarsTokenUsersResponse> => {
+  return request.get(`${endpoints.tarsTokenUsers()}?q=${encodeURIComponent(keyword)}`);
+};
+
+export const getTarsTokenConfigs = (
+  filters: t.TTarsTokenConfigFilters = {},
+): Promise<t.TTarsTokenConfigsResponse> => {
+  return request.get(`${endpoints.tarsTokenConfigs()}${tarsTokenQuery(filters)}`);
+};
+
+export const createTarsTokenConfig = (
+  data: t.TTarsTokenConfigInput,
+): Promise<{ config: t.TTarsTokenConfig }> => {
+  return request.post(endpoints.tarsTokenConfigs(), data);
+};
+
+export const updateTarsTokenConfig = (
+  id: string,
+  data: t.TTarsTokenConfigInput,
+): Promise<{ config: t.TTarsTokenConfig }> => {
+  return request.put(endpoints.tarsTokenConfig(id), data);
+};
+
+export const deleteTarsTokenConfig = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsTokenConfig(id));
+};
+
+export const getTarsTokenQuotas = (
+  filters: t.TTarsTokenQuotaFilters = {},
+): Promise<t.TTarsTokenQuotasResponse> => {
+  return request.get(`${endpoints.tarsTokenQuotas()}${tarsTokenQuery(filters)}`);
+};
+
+export const createTarsTokenQuota = (
+  data: t.TTarsTokenQuotaInput,
+): Promise<{ quota: t.TTarsTokenUserQuota }> => {
+  return request.post(endpoints.tarsTokenQuotas(), data);
+};
+
+export const updateTarsTokenQuota = (
+  id: string,
+  data: t.TTarsTokenQuotaInput,
+): Promise<{ quota: t.TTarsTokenUserQuota }> => {
+  return request.put(endpoints.tarsTokenQuota(id), data);
+};
+
+export const deleteTarsTokenQuota = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsTokenQuota(id));
+};
+
+/** Admin: group totals plus the brain and model splits for one period. */
+export const getTarsTokenReportOverview = (
+  range: t.TTarsTokenReportRange,
+): Promise<t.TTarsTokenReportOverview> => {
+  return request.post(endpoints.tarsTokenReportOverview(), range);
+};
+
+export const getTarsTokenReportMembers = (
+  query: t.TTarsTokenReportMembersQuery,
+): Promise<t.TTarsTokenReportMembersResponse> => {
+  return request.post(endpoints.tarsTokenReportMembers(), query);
+};
+
+export const getTarsTokenReportUser = (
+  query: t.TTarsTokenReportUserQuery,
+): Promise<t.TTarsTokenReportUserResponse> => {
+  return request.post(endpoints.tarsTokenReportUser(), query);
+};
+
+export const getTarsTokenReportExport = (
+  range: t.TTarsTokenReportRange,
+): Promise<t.TTarsTokenReportExport> => {
+  return request.post(endpoints.tarsTokenReportExport(), range);
+};
+
+export const getTarsTokenSystemDefaults = (): Promise<t.TTarsTokenDefaultsResponse> => {
+  return request.get(endpoints.tarsTokenSystemDefaults());
+};
+
+export const updateTarsTokenSystemDefault = (
+  data: t.TTarsTokenSystemDefaultInput,
+): Promise<{ config: t.TTarsTokenConfig }> => {
+  return request.put(endpoints.tarsTokenSystemDefaults(), data);
+};
+
 export const getTarsTickets = (): Promise<t.TTarsTicketsResponse> => {
   return request.get(endpoints.tarsTickets());
 };
