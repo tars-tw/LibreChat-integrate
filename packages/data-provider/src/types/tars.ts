@@ -784,3 +784,80 @@ export type TTarsTicketInput = {
   severity?: string;
   component_id?: string;
 };
+
+/** One message audit row (`POST /api/tars/audit/messages`). */
+export type TTarsAuditMessage = {
+  message_id: string;
+  user_id: string | null;
+  username: string | null;
+  domain_name: string | null;
+  user_query: string | null;
+  model_response: string | null;
+  conversation_id: string | null;
+  conversation_name: string | null;
+  knowledge_base_name: string | null;
+  model_name: string | null;
+  created_at: string | null;
+  upload_files: string | null;
+  memory_document: string | null;
+  memory_website: string | null;
+  is_web_search: boolean | null;
+  is_sql_agent: boolean | null;
+  ip_address: string | null;
+  like_counts: number;
+  dislike_counts: number;
+  comments: string | null;
+  is_deleted: boolean;
+};
+
+/** A raw feedback record, kept so a rating outside the message's own window still counts. */
+export type TTarsAuditFeedback = {
+  id?: string;
+  message_id: string;
+  like_count?: number;
+  dislike_count?: number;
+  feedback?: string | null;
+  created_at?: string | null;
+  created_by?: string | null;
+};
+
+/** Per-specialized-brain rollup for the statistics tab. */
+export type TTarsAuditDomainStat = {
+  domain_name: string;
+  conversation_count: number;
+  message_count: number;
+  knowledge_bases: { id?: string | number; name: string }[];
+};
+
+export type TTarsAuditSummary = {
+  total_domains: number;
+  total_conversations: number;
+  total_messages: number;
+  date_range: { start_date: string; end_date: string };
+};
+
+/** pwc_tars pages nothing: the whole period arrives at once, response text included. */
+export type TTarsAuditReport = {
+  total_count: number;
+  data: TTarsAuditMessage[];
+  feedback_data: TTarsAuditFeedback[];
+  summary: TTarsAuditSummary | null;
+  details: TTarsAuditDomainStat[];
+};
+
+/** Filters the operator submits. Dates are `YYYY-MM-DD`, interpreted in Asia/Taipei. */
+export type TTarsAuditQuery = {
+  start_date: string;
+  end_date: string;
+  filter_user_ids?: string[];
+  knowledge_base_ids?: string[];
+  domain_id?: string | null;
+  query_filter?: string;
+};
+
+/** The three pickers that drive the audit filter bar. */
+export type TTarsAuditOptionsResponse = {
+  users: { id: string; username: string }[];
+  domains: { id: string; name: string }[];
+  knowledge_bases: { id: string; name: string }[];
+};
