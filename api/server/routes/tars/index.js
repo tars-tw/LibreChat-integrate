@@ -9,6 +9,7 @@ const prompts = require('./prompts');
 const roles = require('./roles');
 const settings = require('./settings');
 const sysconfig = require('./sysconfig');
+const syslogs = require('./syslogs');
 const tickets = require('./tickets');
 const users = require('./users');
 
@@ -28,6 +29,7 @@ router.use('/', models);
 router.use('/', prompts);
 router.use('/', roles);
 router.use('/', sysconfig);
+router.use('/', syslogs);
 router.use('/', tickets);
 router.use('/', users);
 
