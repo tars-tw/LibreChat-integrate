@@ -951,3 +951,287 @@ export type TTarsActionLogQuery = {
   page?: number;
   page_size?: number;
 };
+
+/** The two providers whose spend pwc_tars can bill from an admin API key. */
+export type TTarsUsageProvider = 'openai' | 'anthropic';
+
+export type TTarsUsageModelStat = {
+  input_tokens: number;
+  output_tokens: number;
+  requests: number;
+};
+
+export type TTarsUsageCompletions = {
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_requests: number;
+  by_model: Record<string, TTarsUsageModelStat>;
+};
+
+export type TTarsUsageCosts = {
+  total: number;
+  currency: string;
+  by_line_item: Record<string, number>;
+};
+
+export type TTarsUsageDailyCost = {
+  date: string;
+  cost: number;
+};
+
+export type TTarsUsageBilling = {
+  budget: number | null;
+  usage_this_month: {
+    total_cost: number;
+    currency: string;
+    period: { start: string; end: string };
+  } | null;
+  remaining_balance: number | null;
+};
+
+/** One month of provider spend; both providers answer this same shape. */
+export type TTarsProviderUsage = {
+  period: { start_date: string; end_date: string };
+  completions: TTarsUsageCompletions;
+  costs: TTarsUsageCosts;
+  daily_costs: TTarsUsageDailyCost[];
+  billing: TTarsUsageBilling;
+};
+
+/** `month` is `YYYY-MM`; a budget only drives the remaining-balance card. */
+export type TTarsUsageQuery = {
+  provider: TTarsUsageProvider;
+  month: string;
+  budget?: number;
+};
+
+/** A group-level quota rule (`TokenConfig.to_dict()`) plus pwc_tars' joined names. */
+export type TTarsTokenConfig = {
+  id: string;
+  domain_id: string | null;
+  user_group_id: string | null;
+  provider: string | null;
+  system_total_limit: number | null;
+  default_user_limit: number | null;
+  reset_type: string | null;
+  reset_day: number | null;
+  last_reset_at: string | null;
+  warning_threshold: number | null;
+  is_active: boolean;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+  domain_name?: string;
+  group_name?: string;
+};
+
+/** A per-person override (`TokenUserQuota.to_dict()`) plus the joined names. */
+export type TTarsTokenUserQuota = {
+  id: string;
+  domain_id: string | null;
+  user_group_id: string | null;
+  user_id: string | null;
+  provider: string | null;
+  custom_limit: number | null;
+  used_amount: number | null;
+  total_used_amount: number | null;
+  last_reset_at: string | null;
+  status: string | null;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+  domain_name?: string;
+  group_name?: string;
+  username?: string;
+  display_name?: string;
+  email?: string;
+};
+
+/** A user group with the specialized brains its roles grant. */
+export type TTarsTokenGroup = {
+  id: string;
+  name: string;
+  allowed_domains: string[];
+};
+
+export type TTarsTokenPrepareData = {
+  groups: TTarsTokenGroup[];
+  domains: { id: string; name: string }[];
+};
+
+/** A hit from the personal-quota user picker; pwc_tars caps the list at 20. */
+export type TTarsTokenUser = {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  email: string | null;
+  allowed_domains: string[];
+  group_id: string | null;
+};
+
+export type TTarsTokenConfigsResponse = { configs: TTarsTokenConfig[] };
+export type TTarsTokenQuotasResponse = { quotas: TTarsTokenUserQuota[] };
+export type TTarsTokenDefaultsResponse = { defaults: TTarsTokenConfig[] };
+export type TTarsTokenUsersResponse = { users: TTarsTokenUser[] };
+
+export type TTarsTokenConfigFilters = {
+  domain_id?: string;
+  user_group_id?: string;
+  provider?: string;
+  is_active?: boolean;
+};
+
+export type TTarsTokenQuotaFilters = {
+  domain_id?: string;
+  user_group_id?: string;
+  user_id?: string;
+  provider?: string;
+  status?: string;
+};
+
+export type TTarsTokenConfigInput = {
+  domain_id?: string | null;
+  user_group_id?: string | null;
+  provider?: string;
+  system_total_limit?: number | null;
+  default_user_limit?: number | null;
+  reset_type?: string;
+  reset_day?: number;
+  warning_threshold?: number;
+  is_active?: boolean;
+};
+
+export type TTarsTokenQuotaInput = {
+  user_id?: string;
+  provider?: string;
+  domain_id?: string | null;
+  user_group_id?: string | null;
+  custom_limit?: number | null;
+  status?: string;
+};
+
+/** The per-provider fallback rule — a config row with neither brain nor group. */
+export type TTarsTokenSystemDefaultInput = {
+  provider: string;
+  system_total_limit?: number | null;
+  default_user_limit?: number | null;
+  reset_type?: string;
+  reset_day?: number;
+  warning_threshold?: number;
+};
+
+/** One day of a token report series; pwc_tars pre-fills every date in the range. */
+export type TTarsTokenDailyUsage = {
+  date: string;
+  log_count: number;
+  total_tokens: number;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+};
+
+/** A user group's usage for the queried period. */
+export type TTarsTokenGroupUsage = {
+  user_group_id: string | number | null;
+  user_group_name: string | null;
+  user_count: number;
+  log_count: number;
+  total_tokens: number;
+  daily_usage: TTarsTokenDailyUsage[];
+};
+
+export type TTarsTokenDomainUsage = {
+  domain_id: string | null;
+  domain_name: string | null;
+  total_tokens: number;
+};
+
+/** `usage_rate` is already a percentage of the period's model tokens. */
+export type TTarsTokenModelUsage = {
+  model_name: string;
+  total_tokens: number;
+  usage_rate: number;
+};
+
+export type TTarsTokenReportOverview = {
+  group_overview: TTarsTokenGroupUsage[];
+  domain_usage: TTarsTokenDomainUsage[];
+  model_usage: TTarsTokenModelUsage[];
+  date_range: { start_date: string; end_date: string };
+};
+
+/** One member's usage inside the selected groups. */
+export type TTarsTokenUserUsage = {
+  user_id: string | number | null;
+  username: string | null;
+  display_name: string | null;
+  user_group_ids: string[];
+  log_count: number;
+  total_tokens: number;
+};
+
+/** One person's period totals plus the day-by-day series behind them. */
+export type TTarsTokenUserUsageDetail = {
+  user_id: string;
+  log_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  daily_usage: TTarsTokenDailyUsage[];
+};
+
+/** Every account's period totals, group-agnostic. */
+export type TTarsTokenAccountUsage = {
+  user_id: string | number | null;
+  username: string | null;
+  display_name: string | null;
+  log_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+};
+
+/** A row of the raw `token_usage_log` dump, used only by the export. */
+export type TTarsTokenUsageLogRow = {
+  id: string;
+  user_id: string | null;
+  username: string | null;
+  display_name: string | null;
+  domain_id: string | null;
+  user_group_id: string | null;
+  user_group_name: string | null;
+  provider: string | null;
+  model_id: string | null;
+  conversation_id: string | null;
+  message_id: string | null;
+  ref_type: string | null;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  created_at: string | null;
+};
+
+export type TTarsTokenReportExport = {
+  group_usage: TTarsTokenGroupUsage[];
+  usage_summary: TTarsTokenAccountUsage[];
+  user_usage_log: TTarsTokenUsageLogRow[];
+  date_range: { start_date: string; end_date: string };
+};
+
+/** Dates are `YYYY-MM-DD`; pwc_tars reads them as whole days in Asia/Taipei. */
+export type TTarsTokenReportRange = {
+  start_date: string;
+  end_date: string;
+};
+
+export type TTarsTokenReportMembersQuery = TTarsTokenReportRange & {
+  user_group_ids: string[];
+};
+
+export type TTarsTokenReportUserQuery = TTarsTokenReportRange & {
+  user_id: string;
+};
+
+export type TTarsTokenReportMembersResponse = { members: TTarsTokenUserUsage[] };
+export type TTarsTokenReportUserResponse = { usage: TTarsTokenUserUsageDetail | null };

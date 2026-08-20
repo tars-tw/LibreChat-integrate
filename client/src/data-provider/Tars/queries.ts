@@ -47,6 +47,21 @@ import type {
   TTarsTicketsResponse,
   TTarsTicketResponse,
   TTarsTicketOptionsResponse,
+  TTarsUsageQuery,
+  TTarsProviderUsage,
+  TTarsTokenPrepareData,
+  TTarsTokenConfigFilters,
+  TTarsTokenQuotaFilters,
+  TTarsTokenConfigsResponse,
+  TTarsTokenQuotasResponse,
+  TTarsTokenDefaultsResponse,
+  TTarsTokenUsersResponse,
+  TTarsTokenReportRange,
+  TTarsTokenReportOverview,
+  TTarsTokenReportMembersQuery,
+  TTarsTokenReportMembersResponse,
+  TTarsTokenReportUserQuery,
+  TTarsTokenReportUserResponse,
 } from 'librechat-data-provider';
 import type { UseQueryOptions, QueryObserverResult } from '@tanstack/react-query';
 
@@ -562,6 +577,183 @@ export const useTarsUserOperationLogsQuery = (
     {
       enabled: userId != null && userId !== '',
       select: (data) => data.logs ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Admin: one month of provider spend.
+ *
+ * Disabled until the operator presses Search — pwc_tars pages the provider's
+ * admin API a day at a time, so it must never fire on a half-typed budget.
+ */
+export const useTarsProviderUsageQuery = (
+  query: TTarsUsageQuery | null,
+  config?: UseQueryOptions<TTarsProviderUsage>,
+): QueryObserverResult<TTarsProviderUsage> => {
+  return useQuery<TTarsProviderUsage>(
+    [QueryKeys.tarsProviderUsage, query],
+    () => dataService.getTarsProviderUsage(query as TTarsUsageQuery),
+    {
+      enabled: query != null,
+      keepPreviousData: true,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: the groups and specialized brains the quota forms pick from. */
+export const useTarsTokenPrepareDataQuery = (
+  config?: UseQueryOptions<TTarsTokenPrepareData>,
+): QueryObserverResult<TTarsTokenPrepareData> => {
+  return useQuery<TTarsTokenPrepareData>(
+    [QueryKeys.tarsTokenPrepareData],
+    () => dataService.getTarsTokenPrepareData(),
+    { ...adminQueryOptions, ...config },
+  );
+};
+
+/**
+ * Admin: users matching the personal-quota picker's term. Upstream caps the
+ * result at 20 rows, so this stays a search rather than a full listing.
+ */
+export const useTarsTokenUsersQuery = (
+  keyword: string,
+  config?: UseQueryOptions<TTarsTokenUsersResponse, unknown, TTarsTokenUsersResponse['users']>,
+): QueryObserverResult<TTarsTokenUsersResponse['users']> => {
+  return useQuery<TTarsTokenUsersResponse, unknown, TTarsTokenUsersResponse['users']>(
+    [QueryKeys.tarsTokenUsers, keyword],
+    () => dataService.searchTarsTokenUsers(keyword),
+    {
+      select: (data) => data.users ?? [],
+      keepPreviousData: true,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: the group-level quota rules, optionally narrowed by the filter bar. */
+export const useTarsTokenConfigsQuery = (
+  filters: TTarsTokenConfigFilters = {},
+  config?: UseQueryOptions<
+    TTarsTokenConfigsResponse,
+    unknown,
+    TTarsTokenConfigsResponse['configs']
+  >,
+): QueryObserverResult<TTarsTokenConfigsResponse['configs']> => {
+  return useQuery<TTarsTokenConfigsResponse, unknown, TTarsTokenConfigsResponse['configs']>(
+    [QueryKeys.tarsTokenConfigs, filters],
+    () => dataService.getTarsTokenConfigs(filters),
+    {
+      select: (data) => data.configs ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: the per-person quota overrides. */
+export const useTarsTokenQuotasQuery = (
+  filters: TTarsTokenQuotaFilters = {},
+  config?: UseQueryOptions<TTarsTokenQuotasResponse, unknown, TTarsTokenQuotasResponse['quotas']>,
+): QueryObserverResult<TTarsTokenQuotasResponse['quotas']> => {
+  return useQuery<TTarsTokenQuotasResponse, unknown, TTarsTokenQuotasResponse['quotas']>(
+    [QueryKeys.tarsTokenQuotas, filters],
+    () => dataService.getTarsTokenQuotas(filters),
+    {
+      select: (data) => data.quotas ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: the per-provider fallback rules used when no group rule matches. */
+export const useTarsTokenDefaultsQuery = (
+  config?: UseQueryOptions<
+    TTarsTokenDefaultsResponse,
+    unknown,
+    TTarsTokenDefaultsResponse['defaults']
+  >,
+): QueryObserverResult<TTarsTokenDefaultsResponse['defaults']> => {
+  return useQuery<TTarsTokenDefaultsResponse, unknown, TTarsTokenDefaultsResponse['defaults']>(
+    [QueryKeys.tarsTokenDefaults],
+    () => dataService.getTarsTokenSystemDefaults(),
+    {
+      select: (data) => data.defaults ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Admin: the token usage report for one period.
+ *
+ * Disabled until a range is submitted — pwc_tars scans the whole usage log, so
+ * it must never fire while the operator is still picking dates.
+ */
+export const useTarsTokenReportOverviewQuery = (
+  range: TTarsTokenReportRange | null,
+  config?: UseQueryOptions<TTarsTokenReportOverview>,
+): QueryObserverResult<TTarsTokenReportOverview> => {
+  return useQuery<TTarsTokenReportOverview>(
+    [QueryKeys.tarsTokenReportOverview, range],
+    () => dataService.getTarsTokenReportOverview(range as TTarsTokenReportRange),
+    {
+      enabled: range != null,
+      keepPreviousData: true,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: member totals inside the drilled-into user groups. */
+export const useTarsTokenReportMembersQuery = (
+  query: TTarsTokenReportMembersQuery | null,
+  config?: UseQueryOptions<
+    TTarsTokenReportMembersResponse,
+    unknown,
+    TTarsTokenReportMembersResponse['members']
+  >,
+): QueryObserverResult<TTarsTokenReportMembersResponse['members']> => {
+  return useQuery<
+    TTarsTokenReportMembersResponse,
+    unknown,
+    TTarsTokenReportMembersResponse['members']
+  >(
+    [QueryKeys.tarsTokenReportMembers, query],
+    () => dataService.getTarsTokenReportMembers(query as TTarsTokenReportMembersQuery),
+    {
+      enabled: query != null && query.user_group_ids.length > 0,
+      select: (data) => data.members ?? [],
+      keepPreviousData: true,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: one person's daily token usage, loaded when their row is opened. */
+export const useTarsTokenReportUserQuery = (
+  query: TTarsTokenReportUserQuery | null,
+  config?: UseQueryOptions<
+    TTarsTokenReportUserResponse,
+    unknown,
+    TTarsTokenReportUserResponse['usage']
+  >,
+): QueryObserverResult<TTarsTokenReportUserResponse['usage']> => {
+  return useQuery<TTarsTokenReportUserResponse, unknown, TTarsTokenReportUserResponse['usage']>(
+    [QueryKeys.tarsTokenReportUser, query],
+    () => dataService.getTarsTokenReportUser(query as TTarsTokenReportUserQuery),
+    {
+      enabled: query != null,
+      select: (data) => data.usage ?? null,
       ...adminQueryOptions,
       ...config,
     },

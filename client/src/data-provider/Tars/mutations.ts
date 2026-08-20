@@ -37,6 +37,11 @@ import type {
   TTarsWhitelistUser,
   TTarsLdapTreeNode,
   TTarsSyncScheduleInput,
+  TTarsTokenConfig,
+  TTarsTokenUserQuota,
+  TTarsTokenConfigInput,
+  TTarsTokenQuotaInput,
+  TTarsTokenSystemDefaultInput,
 } from 'librechat-data-provider';
 import type { UseMutationResult, UseMutationOptions } from '@tanstack/react-query';
 
@@ -1077,4 +1082,125 @@ export const useCreateTarsTicketCommentMutation = (
       options?.onSuccess?.(result, variables, context);
     },
   });
+};
+
+type TokenConfigResponse = { config: TTarsTokenConfig };
+type TokenQuotaResponse = { quota: TTarsTokenUserQuota };
+
+/** Every quota surface reads from the same three tables, so they refresh together. */
+const invalidateTarsTokenQuotas = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsTokenConfigs]);
+  queryClient.invalidateQueries([QueryKeys.tarsTokenQuotas]);
+  queryClient.invalidateQueries([QueryKeys.tarsTokenDefaults]);
+};
+
+export const useCreateTarsTokenConfigMutation = (
+  options?: UseMutationOptions<TokenConfigResponse, unknown, TTarsTokenConfigInput>,
+): UseMutationResult<TokenConfigResponse, unknown, TTarsTokenConfigInput> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: TTarsTokenConfigInput) => dataService.createTarsTokenConfig(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsTokenQuotas(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useUpdateTarsTokenConfigMutation = (
+  options?: UseMutationOptions<
+    TokenConfigResponse,
+    unknown,
+    { id: string; data: TTarsTokenConfigInput }
+  >,
+): UseMutationResult<TokenConfigResponse, unknown, { id: string; data: TTarsTokenConfigInput }> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: { id: string; data: TTarsTokenConfigInput }) =>
+      dataService.updateTarsTokenConfig(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateTarsTokenQuotas(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsTokenConfigMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.deleteTarsTokenConfig(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsTokenQuotas(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useCreateTarsTokenQuotaMutation = (
+  options?: UseMutationOptions<TokenQuotaResponse, unknown, TTarsTokenQuotaInput>,
+): UseMutationResult<TokenQuotaResponse, unknown, TTarsTokenQuotaInput> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: TTarsTokenQuotaInput) => dataService.createTarsTokenQuota(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsTokenQuotas(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useUpdateTarsTokenQuotaMutation = (
+  options?: UseMutationOptions<
+    TokenQuotaResponse,
+    unknown,
+    { id: string; data: TTarsTokenQuotaInput }
+  >,
+): UseMutationResult<TokenQuotaResponse, unknown, { id: string; data: TTarsTokenQuotaInput }> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: { id: string; data: TTarsTokenQuotaInput }) =>
+      dataService.updateTarsTokenQuota(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateTarsTokenQuotas(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsTokenQuotaMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.deleteTarsTokenQuota(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsTokenQuotas(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+/** Upserts the fallback rule for one provider. */
+export const useUpdateTarsTokenDefaultMutation = (
+  options?: UseMutationOptions<TokenConfigResponse, unknown, TTarsTokenSystemDefaultInput>,
+): UseMutationResult<TokenConfigResponse, unknown, TTarsTokenSystemDefaultInput> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    (data: TTarsTokenSystemDefaultInput) => dataService.updateTarsTokenSystemDefault(data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateTarsTokenQuotas(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
 };
