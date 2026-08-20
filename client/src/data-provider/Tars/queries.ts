@@ -35,6 +35,11 @@ import type {
   TTarsMcpUserSettingsResponse,
   TTarsDomainMcpServersResponse,
   TTarsMcpDomainToolsResponse,
+  TTarsTicket,
+  TTarsTicketDetail,
+  TTarsTicketsResponse,
+  TTarsTicketResponse,
+  TTarsTicketOptionsResponse,
 } from 'librechat-data-provider';
 import type { UseQueryOptions, QueryObserverResult } from '@tanstack/react-query';
 
@@ -419,5 +424,53 @@ export const useTarsSyncScheduleQuery = (
       ...adminQueryOptions,
       ...config,
     },
+  );
+};
+
+/** Admin: ticket history for the operator, with live Issue Tracker status. */
+export const useTarsTicketsQuery = (
+  config?: UseQueryOptions<TTarsTicketsResponse, unknown, TTarsTicket[]>,
+): QueryObserverResult<TTarsTicket[]> => {
+  return useQuery<TTarsTicketsResponse, unknown, TTarsTicket[]>(
+    [QueryKeys.tarsTickets],
+    () => dataService.getTarsTickets(),
+    {
+      select: (data) => data.tickets ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Admin: one ticket with its Issue Tracker status, comments and attachments.
+ * Disabled until a ticket is selected, and never cached — the remote status
+ * decides whether the form is editable, so a stale value would mislead.
+ */
+export const useTarsTicketQuery = (
+  ticketId: string | null,
+  config?: UseQueryOptions<TTarsTicketResponse, unknown, TTarsTicketDetail | null>,
+): QueryObserverResult<TTarsTicketDetail | null> => {
+  return useQuery<TTarsTicketResponse, unknown, TTarsTicketDetail | null>(
+    [QueryKeys.tarsTicket, ticketId ?? ''],
+    () => dataService.getTarsTicket(ticketId as string),
+    {
+      enabled: ticketId != null && ticketId !== '',
+      select: (data) => data.ticket ?? null,
+      staleTime: 0,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: type / priority / severity domains plus Issue Tracker components. */
+export const useTarsTicketOptionsQuery = (
+  config?: UseQueryOptions<TTarsTicketOptionsResponse>,
+): QueryObserverResult<TTarsTicketOptionsResponse> => {
+  return useQuery<TTarsTicketOptionsResponse>(
+    [QueryKeys.tarsTicketOptions],
+    () => dataService.getTarsTicketOptions(),
+    { ...adminQueryOptions, ...config },
   );
 };

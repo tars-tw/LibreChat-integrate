@@ -685,3 +685,102 @@ export type TTarsSyncScheduleInput = {
   start_time?: string;
   end_time?: string;
 };
+
+/** A local attachment copy pwc_tars keeps alongside the remote ticket. */
+export type TTarsTicketAttachment = {
+  id?: string;
+  filename?: string;
+  original_name?: string;
+  size?: number | null;
+  uploader?: string | null;
+};
+
+/** One comment on the Issue Tracker ticket, as pwc_tars relays it. */
+export type TTarsTicketComment = {
+  id: string;
+  body: string;
+  author?: string | null;
+  author_email?: string | null;
+  side?: string | null;
+  created_at?: string | null;
+  edited_at?: string | null;
+};
+
+/** A pwc_tars support ticket (`SysSupportTicket.to_dict()`). */
+export type TTarsTicket = {
+  id: string;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  priority?: string | null;
+  attachments?: TTarsTicketAttachment[] | null;
+  user_id?: string | null;
+  user_name?: string | null;
+  user_email?: string | null;
+  jira_ticket_key?: string | null;
+  jira_sync_at?: string | null;
+  status?: string | null;
+  error_message?: string | null;
+  source?: string | null;
+  is_resolved?: boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  /** Live Issue Tracker status; null when the remote lookup failed. */
+  remote_status?: string | null;
+  attach_warning?: string | null;
+};
+
+/**
+ * A ticket enriched with everything pwc_tars reads back from the Issue Tracker.
+ * Each remote lookup fails independently, so `*_error` degrades one section.
+ */
+export type TTarsTicketDetail = TTarsTicket & {
+  editable: boolean;
+  remote_error?: string | null;
+  comments: TTarsTicketComment[];
+  comments_error?: string | null;
+  remote_attachments?: TTarsTicketAttachment[] | null;
+  attachments_error?: string | null;
+  remote_fields?: {
+    title?: string | null;
+    description?: string | null;
+    type?: string | null;
+    priority?: string | null;
+    severity?: string | null;
+    component_id?: string | number | null;
+  } | null;
+};
+
+export type TTarsTicketsResponse = {
+  tickets: TTarsTicket[];
+};
+
+export type TTarsTicketResponse = {
+  ticket: TTarsTicketDetail;
+};
+
+/** An Issue Tracker component the ticket can be filed against. */
+export type TTarsTicketComponent = {
+  id: string;
+  name: string;
+};
+
+/** Field domains plus components, fetched together for the report form. */
+export type TTarsTicketOptionsResponse = {
+  types: string[];
+  priorities: string[];
+  severities: string[];
+  components: TTarsTicketComponent[];
+  /** Set when pwc_tars fell back to its built-in domains; the form still works. */
+  warning?: string | null;
+};
+
+/** Editable ticket fields. pwc_tars requires `title`, `description` and `component_id`. */
+export type TTarsTicketInput = {
+  title: string;
+  description: string;
+  type?: string;
+  priority?: string;
+  severity?: string;
+  component_id?: string;
+};
