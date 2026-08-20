@@ -758,6 +758,14 @@ export const deleteTarsSyncSchedule = (id: string): Promise<{ success: boolean }
   return request.delete(endpoints.tarsSsoSchedule(id));
 };
 
+export const getTarsAuditOptions = (): Promise<t.TTarsAuditOptionsResponse> => {
+  return request.get(endpoints.tarsAuditMessageOptions());
+};
+
+export const getTarsAuditReport = (query: t.TTarsAuditQuery): Promise<t.TTarsAuditReport> => {
+  return request.post(endpoints.tarsAuditMessages(), query);
+};
+
 export const getTarsTickets = (): Promise<t.TTarsTicketsResponse> => {
   return request.get(endpoints.tarsTickets());
 };
