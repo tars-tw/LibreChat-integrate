@@ -355,6 +355,23 @@ export const tarsOperationLogOptions = () => `${BASE_URL}/api/tars/audit/operati
 export const tarsOperationLogsByUser = (userId: string) =>
   `${BASE_URL}/api/tars/audit/operations/user/${encodeURIComponent(userId)}`;
 
+export const tarsProviderUsage = (provider: string) =>
+  `${BASE_URL}/api/tars/usage/${encodeURIComponent(provider)}`;
+
+export const tarsTokenPrepareData = () => `${BASE_URL}/api/tars/token/prepare-data`;
+export const tarsTokenUsers = () => `${BASE_URL}/api/tars/token/users`;
+export const tarsTokenConfigs = () => `${BASE_URL}/api/tars/token/configs`;
+export const tarsTokenConfig = (id: string) =>
+  `${BASE_URL}/api/tars/token/configs/${encodeURIComponent(id)}`;
+export const tarsTokenQuotas = () => `${BASE_URL}/api/tars/token/quotas`;
+export const tarsTokenQuota = (id: string) =>
+  `${BASE_URL}/api/tars/token/quotas/${encodeURIComponent(id)}`;
+export const tarsTokenSystemDefaults = () => `${BASE_URL}/api/tars/token/system-defaults`;
+export const tarsTokenReportOverview = () => `${BASE_URL}/api/tars/token/report/overview`;
+export const tarsTokenReportMembers = () => `${BASE_URL}/api/tars/token/report/members`;
+export const tarsTokenReportUser = () => `${BASE_URL}/api/tars/token/report/user`;
+export const tarsTokenReportExport = () => `${BASE_URL}/api/tars/token/report/export`;
+
 export const tarsTickets = () => `${BASE_URL}/api/tars/tickets`;
 export const tarsTicketOptions = () => `${BASE_URL}/api/tars/tickets/options`;
 export const tarsTicket = (id: string) => `${BASE_URL}/api/tars/tickets/${encodeURIComponent(id)}`;
