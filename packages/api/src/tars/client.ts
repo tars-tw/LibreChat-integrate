@@ -82,9 +82,12 @@ export async function tarsFetch<T>(path: string, options: TarsFetchOptions = {})
       logger.error(`[tarsFetch] Unexpected status ${response.status} from ${method} ${url}`);
       let serverMessage: string | undefined;
       try {
-        const errorBody = (await response.json()) as { message?: unknown };
+        /** Most pwc_tars blueprints answer `{message}`; the audit-log one uses `{error}`. */
+        const errorBody = (await response.json()) as { message?: unknown; error?: unknown };
         if (typeof errorBody?.message === 'string') {
           serverMessage = errorBody.message;
+        } else if (typeof errorBody?.error === 'string') {
+          serverMessage = errorBody.error;
         }
       } catch {
         /* non-JSON error body */
