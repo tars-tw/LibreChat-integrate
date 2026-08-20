@@ -74,6 +74,11 @@ const loadAuditMessagesView = () =>
     Component: m.AuditView,
   }));
 
+const loadAuditOperationsView = () =>
+  import('~/components/Admin/Tars/Operations').then((m) => ({
+    Component: m.OperationsView,
+  }));
+
 const loadIssuesView = () =>
   import('~/components/Admin/Tars/Issues').then((m) => ({
     Component: m.IssuesView,
@@ -288,7 +293,10 @@ export const router = createBrowserRouter(
               path: 'audit/messages',
               lazy: loadAuditMessagesView,
             },
-            placeholderRoute('audit/operations', 'com_ui_tars_nav_audit_operations'),
+            {
+              path: 'audit/operations',
+              lazy: loadAuditOperationsView,
+            },
             placeholderRoute('audit/tokens', 'com_ui_tars_nav_audit_tokens'),
             placeholderRoute('audit/governance', 'com_ui_tars_nav_audit_governance'),
             {
