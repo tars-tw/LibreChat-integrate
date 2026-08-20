@@ -1376,6 +1376,34 @@ button {
   background-color: rgb(var(--border-heavy) / var(--border-heavy-alpha, 1));
 }
 
+/* Admin data tables scroll sideways when many columns are shown, and the app's
+   0.5rem scrollbar is a hard target to grab at the foot of a tall table. Native
+   scrollbar sizing has no utility-class equivalent, so it is set here. */
+.data-table-scroll {
+  overscroll-behavior-x: contain;
+  scrollbar-color: rgb(var(--border-heavy) / var(--border-heavy-alpha, 1)) transparent;
+  scrollbar-width: auto;
+}
+
+.data-table-scroll::-webkit-scrollbar {
+  height: 0.875rem;
+}
+
+.data-table-scroll::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--border-heavy) / var(--border-heavy-alpha, 1));
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 9999px;
+}
+
+.data-table-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--text-secondary) / 1);
+}
+
+.data-table-scroll::-webkit-scrollbar-track {
+  background-color: rgb(var(--surface-tertiary) / 1);
+}
+
 /* Show scrollbar only on hover */
 .scrollbar-hover {
   scrollbar-width: thin;
