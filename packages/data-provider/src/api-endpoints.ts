@@ -361,6 +361,11 @@ export const tarsSsoSchedule = (id: string) => `${tarsSsoConfig(id)}/schedule`;
 export const tarsAuditMessages = () => `${BASE_URL}/api/tars/audit/messages`;
 export const tarsAuditMessageOptions = () => `${BASE_URL}/api/tars/audit/messages/options`;
 
+export const tarsOperationLogs = () => `${BASE_URL}/api/tars/audit/operations`;
+export const tarsOperationLogOptions = () => `${BASE_URL}/api/tars/audit/operations/options`;
+export const tarsOperationLogsByUser = (userId: string) =>
+  `${BASE_URL}/api/tars/audit/operations/user/${encodeURIComponent(userId)}`;
+
 export const tarsTickets = () => `${BASE_URL}/api/tars/tickets`;
 export const tarsTicketOptions = () => `${BASE_URL}/api/tars/tickets/options`;
 export const tarsTicket = (id: string) => `${BASE_URL}/api/tars/tickets/${encodeURIComponent(id)}`;
