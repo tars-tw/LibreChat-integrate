@@ -12,7 +12,7 @@ import type { TTarsSysConfig } from 'librechat-data-provider';
 import { useUpdateTarsSysConfigMutation } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 
-export default function EditSysConfigModal({
+export default function SysConfigModal({
   config,
   open,
   onOpenChange,
