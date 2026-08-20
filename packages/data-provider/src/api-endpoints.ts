@@ -383,6 +383,11 @@ export const tarsSsoTree = () => `${BASE_URL}/api/tars/settings/sso/tree`;
 export const tarsSsoWhitelist = () => `${BASE_URL}/api/tars/settings/sso/whitelist`;
 export const tarsSsoImport = (id: string) => `${tarsSsoConfig(id)}/import`;
 export const tarsSsoSchedule = (id: string) => `${tarsSsoConfig(id)}/schedule`;
+
+export const tarsTickets = () => `${BASE_URL}/api/tars/tickets`;
+export const tarsTicketOptions = () => `${BASE_URL}/api/tars/tickets/options`;
+export const tarsTicket = (id: string) => `${BASE_URL}/api/tars/tickets/${encodeURIComponent(id)}`;
+export const tarsTicketComments = (id: string) => `${tarsTicket(id)}/comments`;
 export const tarsRoles = () => `${BASE_URL}/api/tars/roles`;
 export const tarsRole = (id: string | number) =>
   `${BASE_URL}/api/tars/roles/${encodeURIComponent(String(id))}`;
