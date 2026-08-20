@@ -35,6 +35,9 @@ import type {
   TTarsMcpUserSettingsResponse,
   TTarsDomainMcpServersResponse,
   TTarsMcpDomainToolsResponse,
+  TTarsAuditQuery,
+  TTarsAuditReport,
+  TTarsAuditOptionsResponse,
   TTarsTicket,
   TTarsTicketDetail,
   TTarsTicketsResponse,
@@ -472,5 +475,40 @@ export const useTarsTicketOptionsQuery = (
     [QueryKeys.tarsTicketOptions],
     () => dataService.getTarsTicketOptions(),
     { ...adminQueryOptions, ...config },
+  );
+};
+
+/** Admin: the users / specialized brains / knowledge bases the audit filters offer. */
+export const useTarsAuditOptionsQuery = (
+  config?: UseQueryOptions<TTarsAuditOptionsResponse>,
+): QueryObserverResult<TTarsAuditOptionsResponse> => {
+  return useQuery<TTarsAuditOptionsResponse>(
+    [QueryKeys.tarsAuditOptions],
+    () => dataService.getTarsAuditOptions(),
+    { ...adminQueryOptions, ...config },
+  );
+};
+
+/**
+ * Admin: the message audit report for one submitted filter set.
+ *
+ * Keyed on the filters so re-running an earlier search is free, but disabled
+ * until the operator presses Search — the query is expensive upstream and
+ * returns the full response text of every message in the period, so it must
+ * never fire on a half-typed filter.
+ */
+export const useTarsAuditReportQuery = (
+  query: TTarsAuditQuery | null,
+  config?: UseQueryOptions<TTarsAuditReport>,
+): QueryObserverResult<TTarsAuditReport> => {
+  return useQuery<TTarsAuditReport>(
+    [QueryKeys.tarsAuditReport, query],
+    () => dataService.getTarsAuditReport(query as TTarsAuditQuery),
+    {
+      enabled: query != null,
+      keepPreviousData: true,
+      ...adminQueryOptions,
+      ...config,
+    },
   );
 };
