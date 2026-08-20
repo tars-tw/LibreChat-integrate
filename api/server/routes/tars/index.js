@@ -11,6 +11,8 @@ const settings = require('./settings');
 const sysconfig = require('./sysconfig');
 const syslogs = require('./syslogs');
 const tickets = require('./tickets');
+const token = require('./token');
+const usage = require('./usage');
 const users = require('./users');
 
 const router = express.Router();
@@ -31,6 +33,8 @@ router.use('/', roles);
 router.use('/', sysconfig);
 router.use('/', syslogs);
 router.use('/', tickets);
+router.use('/', token);
+router.use('/', usage);
 router.use('/', users);
 
 module.exports = router;
