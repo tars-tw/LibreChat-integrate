@@ -5,6 +5,7 @@ import { TranslationKeys, useLocalize } from '~/hooks';
 import SocialLoginRender from './SocialLoginRender';
 import { BlinkAnimation } from './BlinkAnimation';
 import TarsBrandPanel from './TarsBrandPanel';
+import BrandLogo from './BrandLogo';
 import { Banner } from '../Banners';
 import Footer from './Footer';
 
@@ -68,11 +69,7 @@ function AuthLayout({
     return (
       <div className="relative flex min-h-screen bg-white">
         <Banner />
-        <img
-          src="assets/logo.svg"
-          className="absolute left-3 top-3 z-10 h-8 w-auto object-contain"
-          alt={localize('com_ui_logo', { 0: startupConfig?.appTitle ?? 'TARS.ai' })}
-        />
+        <BrandLogo className="absolute left-3 top-3 z-10 h-8 w-auto object-contain" />
         <main className="flex w-full flex-col items-center justify-center px-6 py-10 md:w-3/5">
           <div className="w-full max-w-md text-center">
             <h1 className="font-serif text-5xl font-extrabold tracking-[0.1em] text-gray-900">
