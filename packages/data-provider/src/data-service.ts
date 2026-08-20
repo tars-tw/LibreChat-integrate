@@ -781,6 +781,57 @@ export const deleteTarsSyncSchedule = (id: string): Promise<{ success: boolean }
   return request.delete(endpoints.tarsSsoSchedule(id));
 };
 
+/** Multi-value filters travel as repeated params; the route re-joins them. */
+const tarsActionLogParams = (query: t.TTarsActionLogQuery): string => {
+  const params = new URLSearchParams();
+  const append = (key: string, values?: string[]) => {
+    if (values != null && values.length > 0) {
+      params.set(key, values.join(','));
+    }
+  };
+  if (query.start_date != null && query.start_date !== '') {
+    params.set('start_date', query.start_date);
+  }
+  if (query.end_date != null && query.end_date !== '') {
+    params.set('end_date', query.end_date);
+  }
+  append('user_ids', query.user_ids);
+  append('action_types', query.action_types);
+  append('modules', query.modules);
+  if (query.keyword != null && query.keyword !== '') {
+    params.set('keyword', query.keyword);
+  }
+  params.set('page', String(query.page ?? 1));
+  params.set('page_size', String(query.page_size ?? 20));
+  return params.toString();
+};
+
+export const getTarsOperationLogOptions = (): Promise<t.TTarsActionLogOptionsResponse> => {
+  return request.get(endpoints.tarsOperationLogOptions());
+};
+
+export const getTarsOperationLogs = (
+  query: t.TTarsActionLogQuery,
+): Promise<t.TTarsActionLogPage> => {
+  return request.get(`${endpoints.tarsOperationLogs()}?${tarsActionLogParams(query)}`);
+};
+
+export const getTarsOperationLogsByUser = (
+  userId: string,
+  window: { start_date?: string; end_date?: string },
+): Promise<{ logs: t.TTarsActionLog[] }> => {
+  const params = new URLSearchParams();
+  if (window.start_date != null && window.start_date !== '') {
+    params.set('start_date', window.start_date);
+  }
+  if (window.end_date != null && window.end_date !== '') {
+    params.set('end_date', window.end_date);
+  }
+  const qs = params.toString();
+  const url = endpoints.tarsOperationLogsByUser(userId);
+  return request.get(qs === '' ? url : `${url}?${qs}`);
+};
+
 export const getTarsAuditOptions = (): Promise<t.TTarsAuditOptionsResponse> => {
   return request.get(endpoints.tarsAuditMessageOptions());
 };

@@ -35,6 +35,10 @@ import type {
   TTarsMcpUserSettingsResponse,
   TTarsDomainMcpServersResponse,
   TTarsMcpDomainToolsResponse,
+  TTarsActionLog,
+  TTarsActionLogPage,
+  TTarsActionLogQuery,
+  TTarsActionLogOptionsResponse,
   TTarsAuditQuery,
   TTarsAuditReport,
   TTarsAuditOptionsResponse,
@@ -507,6 +511,57 @@ export const useTarsAuditReportQuery = (
     {
       enabled: query != null,
       keepPreviousData: true,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: users, action types and modules for the operation-audit filter bar. */
+export const useTarsOperationLogOptionsQuery = (
+  config?: UseQueryOptions<TTarsActionLogOptionsResponse>,
+): QueryObserverResult<TTarsActionLogOptionsResponse> => {
+  return useQuery<TTarsActionLogOptionsResponse>(
+    [QueryKeys.tarsOperationLogOptions],
+    () => dataService.getTarsOperationLogOptions(),
+    { ...adminQueryOptions, ...config },
+  );
+};
+
+/**
+ * Admin: one page of the system operation audit trail.
+ *
+ * pwc_tars pages this server-side, so the page number belongs in the key —
+ * turning a page is a new request, and each one stays cached on its own.
+ */
+export const useTarsOperationLogsQuery = (
+  query: TTarsActionLogQuery | null,
+  config?: UseQueryOptions<TTarsActionLogPage>,
+): QueryObserverResult<TTarsActionLogPage> => {
+  return useQuery<TTarsActionLogPage>(
+    [QueryKeys.tarsOperationLogs, query],
+    () => dataService.getTarsOperationLogs(query as TTarsActionLogQuery),
+    {
+      enabled: query != null,
+      keepPreviousData: true,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: one operator's whole activity in the window, for the timeline panel. */
+export const useTarsUserOperationLogsQuery = (
+  userId: string | null,
+  window: { start_date?: string; end_date?: string },
+  config?: UseQueryOptions<{ logs: TTarsActionLog[] }, unknown, TTarsActionLog[]>,
+): QueryObserverResult<TTarsActionLog[]> => {
+  return useQuery<{ logs: TTarsActionLog[] }, unknown, TTarsActionLog[]>(
+    [QueryKeys.tarsOperationLogsByUser, userId ?? '', window],
+    () => dataService.getTarsOperationLogsByUser(userId as string, window),
+    {
+      enabled: userId != null && userId !== '',
+      select: (data) => data.logs ?? [],
       ...adminQueryOptions,
       ...config,
     },
