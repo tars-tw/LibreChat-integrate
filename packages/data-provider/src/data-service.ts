@@ -758,6 +758,36 @@ export const deleteTarsSyncSchedule = (id: string): Promise<{ success: boolean }
   return request.delete(endpoints.tarsSsoSchedule(id));
 };
 
+export const getTarsTickets = (): Promise<t.TTarsTicketsResponse> => {
+  return request.get(endpoints.tarsTickets());
+};
+
+export const getTarsTicketOptions = (): Promise<t.TTarsTicketOptionsResponse> => {
+  return request.get(endpoints.tarsTicketOptions());
+};
+
+export const getTarsTicket = (id: string): Promise<t.TTarsTicketResponse> => {
+  return request.get(endpoints.tarsTicket(id));
+};
+
+export const createTarsTicket = (data: FormData): Promise<{ ticket: t.TTarsTicket }> => {
+  return request.postMultiPart(endpoints.tarsTickets(), data);
+};
+
+export const updateTarsTicket = (
+  id: string,
+  data: FormData,
+): Promise<{ ticket: t.TTarsTicket }> => {
+  return request.putMultiPart(endpoints.tarsTicket(id), data);
+};
+
+export const createTarsTicketComment = (
+  id: string,
+  body: string,
+): Promise<{ id: string | null }> => {
+  return request.post(endpoints.tarsTicketComments(id), { body });
+};
+
 export const getTarsRoles = (): Promise<t.TTarsRolePrepareData> => {
   return request.get(endpoints.tarsRoles());
 };
