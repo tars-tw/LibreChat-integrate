@@ -1,4 +1,5 @@
 const express = require('express');
+const audit = require('./audit');
 const domains = require('./domains');
 const groups = require('./groups');
 const knowledge = require('./knowledge');
@@ -19,6 +20,7 @@ router.use('/', mcp);
  *  before anyone signs in, and the sibling routers' pathless `requireJwtAuth`
  *  would otherwise intercept it. */
 router.use('/', settings);
+router.use('/', audit);
 router.use('/', domains);
 router.use('/', groups);
 router.use('/', knowledge);
