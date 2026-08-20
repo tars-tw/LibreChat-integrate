@@ -64,9 +64,9 @@ const loadKnowledgeBaseDetail = () =>
     Component: m.KnowledgeBaseDetail,
   }));
 
-const loadSystemConfigView = () =>
-  import('~/components/SystemConfig').then((m) => ({
-    Component: m.SystemConfigView,
+const loadSysConfigView = () =>
+  import('~/components/Admin/Tars/SysConfig').then((m) => ({
+    Component: m.SysConfigView,
   }));
 
 const loadMcpSettingsView = () =>
@@ -233,7 +233,7 @@ export const router = createBrowserRouter(
             },
             {
               path: 'system-config',
-              lazy: loadSystemConfigView,
+              lazy: loadSysConfigView,
             },
             {
               path: 'mcp-settings',
