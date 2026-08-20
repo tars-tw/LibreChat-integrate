@@ -358,6 +358,9 @@ export const tarsSsoWhitelist = () => `${BASE_URL}/api/tars/settings/sso/whiteli
 export const tarsSsoImport = (id: string) => `${tarsSsoConfig(id)}/import`;
 export const tarsSsoSchedule = (id: string) => `${tarsSsoConfig(id)}/schedule`;
 
+export const tarsAuditMessages = () => `${BASE_URL}/api/tars/audit/messages`;
+export const tarsAuditMessageOptions = () => `${BASE_URL}/api/tars/audit/messages/options`;
+
 export const tarsTickets = () => `${BASE_URL}/api/tars/tickets`;
 export const tarsTicketOptions = () => `${BASE_URL}/api/tars/tickets/options`;
 export const tarsTicket = (id: string) => `${BASE_URL}/api/tars/tickets/${encodeURIComponent(id)}`;
