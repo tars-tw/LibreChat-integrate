@@ -11,5 +11,6 @@ export * from './roles';
 export * from './settings';
 export * from './sso';
 export * from './sysconfig';
+export * from './syslogs';
 export * from './tickets';
 export * from './users';
