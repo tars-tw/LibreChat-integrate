@@ -22,6 +22,11 @@ import type {
   TTarsAdWhitelistResponse,
   TTarsGroupPrepareData,
   TTarsRolePrepareData,
+  TTarsSsoConfig,
+  TTarsSsoConfigsResponse,
+  TTarsSystemSettings,
+  TTarsSyncSchedule,
+  TTarsSyncScheduleResponse,
   TTarsMcpLog,
   TTarsMcpLogsResponse,
   TTarsMcpServersResponse,
@@ -372,4 +377,47 @@ export const useTarsRolesQuery = (
     ...adminQueryOptions,
     ...config,
   });
+};
+
+/** Admin: pwc_tars licence status and validity window. */
+export const useTarsSystemSettingsQuery = (
+  config?: UseQueryOptions<TTarsSystemSettings>,
+): QueryObserverResult<TTarsSystemSettings> => {
+  return useQuery<TTarsSystemSettings>(
+    [QueryKeys.tarsSystemSettings],
+    () => dataService.getTarsSystemSettings(),
+    { ...adminQueryOptions, ...config },
+  );
+};
+
+/** Admin: every stored LDAP configuration. */
+export const useTarsSsoConfigsQuery = (
+  config?: UseQueryOptions<TTarsSsoConfigsResponse, unknown, TTarsSsoConfig[]>,
+): QueryObserverResult<TTarsSsoConfig[]> => {
+  return useQuery<TTarsSsoConfigsResponse, unknown, TTarsSsoConfig[]>(
+    [QueryKeys.tarsSsoConfigs],
+    () => dataService.getTarsSsoConfigs(),
+    {
+      select: (data) => data.configs ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: one configuration's sync schedule. Disabled until a config is chosen. */
+export const useTarsSyncScheduleQuery = (
+  configId: string | null,
+  config?: UseQueryOptions<TTarsSyncScheduleResponse, unknown, TTarsSyncSchedule | null>,
+): QueryObserverResult<TTarsSyncSchedule | null> => {
+  return useQuery<TTarsSyncScheduleResponse, unknown, TTarsSyncSchedule | null>(
+    [QueryKeys.tarsSyncSchedule, configId ?? ''],
+    () => dataService.getTarsSyncSchedule(configId as string),
+    {
+      enabled: configId != null && configId !== '',
+      select: (data) => data.schedule ?? null,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
 };

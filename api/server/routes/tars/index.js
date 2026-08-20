@@ -6,6 +6,7 @@ const mcp = require('./mcp');
 const models = require('./models');
 const prompts = require('./prompts');
 const roles = require('./roles');
+const settings = require('./settings');
 const sysconfig = require('./sysconfig');
 const users = require('./users');
 
@@ -13,6 +14,10 @@ const router = express.Router();
 /** First: the MCP gateway authenticates by gateway key, and the sibling routers'
  *  pathless `router.use(requireJwtAuth)` would otherwise intercept `/mcp`. */
 router.use('/', mcp);
+/** Second: `/settings/logo` is public so the login page can render the branding
+ *  before anyone signs in, and the sibling routers' pathless `requireJwtAuth`
+ *  would otherwise intercept it. */
+router.use('/', settings);
 router.use('/', domains);
 router.use('/', groups);
 router.use('/', knowledge);
