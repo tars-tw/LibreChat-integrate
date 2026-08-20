@@ -861,3 +861,93 @@ export type TTarsAuditOptionsResponse = {
   domains: { id: string; name: string }[];
   knowledge_bases: { id: string; name: string }[];
 };
+
+/**
+ * A value from one of pwc_tars' `db.JSON` columns. SQLAlchemy hands these back
+ * already parsed, so they arrive as objects rather than text — but rows written
+ * before the column was JSON still hold a raw string.
+ */
+export type TTarsJsonField =
+  | string
+  | number
+  | boolean
+  | null
+  | TTarsJsonField[]
+  | { [key: string]: TTarsJsonField };
+
+/** One recorded operation in the pwc_tars system audit trail. */
+export type TTarsActionLog = {
+  id: string;
+  sys_domain_id: string | null;
+  user_id: string | null;
+  username: string | null;
+  user_email: string | null;
+  role_id: string | null;
+  action_type: string | null;
+  module: string | null;
+  target_type: string | null;
+  target_id: string | null;
+  target_name: string | null;
+  description: string | null;
+  page_url: string | null;
+  menu_id: string | null;
+  http_method: string | null;
+  api_endpoint: string | null;
+  before_data: TTarsJsonField;
+  after_data: TTarsJsonField;
+  extra: TTarsJsonField;
+  status: string | null;
+  error_message: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  trace_id: string | null;
+  created_at: string | null;
+};
+
+/** Counts per action verb across the whole filtered set, not just the page. */
+export type TTarsActionLogSummary = {
+  total: number;
+  create: number;
+  update: number;
+  delete: number;
+  read: number;
+  export: number;
+  download: number;
+  login: number;
+  logout: number;
+  other: number;
+};
+
+/** One page of the trail; pwc_tars pages this server-side. */
+export type TTarsActionLogPage = {
+  logs: TTarsActionLog[];
+  total: number;
+  page: number;
+  page_size: number;
+  summary: TTarsActionLogSummary;
+};
+
+/** A module the trail can be filtered by, resolved from `sys_menu`. */
+export type TTarsActionLogModule = {
+  value: string;
+  title: string;
+  lang_key: string | null;
+};
+
+export type TTarsActionLogOptionsResponse = {
+  users: { user_id: string; username: string | null; user_email: string | null }[];
+  action_types: string[];
+  modules: TTarsActionLogModule[];
+};
+
+/** Filters the operator submits. Dates are `YYYY-MM-DDTHH:mm` from a local picker. */
+export type TTarsActionLogQuery = {
+  start_date?: string;
+  end_date?: string;
+  user_ids?: string[];
+  action_types?: string[];
+  modules?: string[];
+  keyword?: string;
+  page?: number;
+  page_size?: number;
+};
