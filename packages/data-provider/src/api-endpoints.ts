@@ -346,6 +346,17 @@ export const tarsPrompt = (id: string, query?: { domainId?: string; knowledgeBas
   return qs ? `${BASE_URL}/api/tars/prompts/${id}?${qs}` : `${BASE_URL}/api/tars/prompts/${id}`;
 };
 export const tarsSysConfigs = () => `${BASE_URL}/api/tars/sys-configs`;
+export const tarsSystemSettings = () => `${BASE_URL}/api/tars/settings`;
+export const tarsSystemLogo = () => `${BASE_URL}/api/tars/settings/logo`;
+export const tarsSystemLicense = () => `${BASE_URL}/api/tars/settings/license`;
+export const tarsSsoConfigs = () => `${BASE_URL}/api/tars/settings/sso`;
+export const tarsSsoConfig = (id: string) =>
+  `${BASE_URL}/api/tars/settings/sso/${encodeURIComponent(id)}`;
+export const tarsSsoTest = () => `${BASE_URL}/api/tars/settings/sso/test`;
+export const tarsSsoTree = () => `${BASE_URL}/api/tars/settings/sso/tree`;
+export const tarsSsoWhitelist = () => `${BASE_URL}/api/tars/settings/sso/whitelist`;
+export const tarsSsoImport = (id: string) => `${tarsSsoConfig(id)}/import`;
+export const tarsSsoSchedule = (id: string) => `${tarsSsoConfig(id)}/schedule`;
 export const tarsRoles = () => `${BASE_URL}/api/tars/roles`;
 export const tarsRole = (id: string | number) =>
   `${BASE_URL}/api/tars/roles/${encodeURIComponent(String(id))}`;
