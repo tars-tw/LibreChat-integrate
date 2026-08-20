@@ -7,5 +7,7 @@ export * from './mirror';
 export * from './models';
 export * from './prompts';
 export * from './roles';
+export * from './settings';
+export * from './sso';
 export * from './sysconfig';
 export * from './users';
