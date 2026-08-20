@@ -1,3 +1,4 @@
+export * from './audit';
 export * from './client';
 export * from './domains';
 export * from './groups';
