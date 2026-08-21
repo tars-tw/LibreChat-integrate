@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { ExternalLink, Layers, Pencil, Trash2 } from 'lucide-react';
 import { Button, Checkbox, useToastContext } from '@librechat/client';
 import type { TTarsDatasetWebsite } from 'librechat-data-provider';
 import { enabledStatusMeta, formatCount, matchesName, websiteLabel } from './helpers';
@@ -20,6 +20,7 @@ export default function WebsitesTab({
   onRefresh,
   isRefreshing,
   onBatchDelete,
+  onViewChunks,
 }: {
   knowledgeBaseId: string;
   websites: TTarsDatasetWebsite[];
@@ -27,6 +28,7 @@ export default function WebsitesTab({
   onRefresh: () => void;
   isRefreshing: boolean;
   onBatchDelete: (websiteIds: string[]) => void;
+  onViewChunks: (website: TTarsDatasetWebsite) => void;
 }) {
   const localize = useLocalize();
   const { showToast } = useToastContext();
@@ -154,6 +156,15 @@ export default function WebsitesTab({
                   </td>
                   <td className="px-3 py-1.5">
                     <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => onViewChunks(site)}
+                        aria-label={localize('com_ui_tars_kb_view_chunks')}
+                        title={localize('com_ui_tars_kb_view_chunks')}
+                      >
+                        <Layers className="size-4" aria-hidden />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon-xs"
