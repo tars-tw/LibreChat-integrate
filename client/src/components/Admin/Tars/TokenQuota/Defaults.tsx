@@ -3,6 +3,7 @@ import { Save } from 'lucide-react';
 import { Button, Input, Label, Spinner, useToastContext } from '@librechat/client';
 import type { TTarsTokenConfig } from 'librechat-data-provider';
 import { useTarsTokenDefaultsQuery, useUpdateTarsTokenDefaultMutation } from '~/data-provider';
+import LimitInput, { toLimitField, fromLimitField, isValidLimitField } from './LimitInput';
 import { RESET_TYPES, TOKEN_PROVIDERS, RESET_LABEL_KEYS, usesResetDay } from './helpers';
 import { useLocalize } from '~/hooks';
 
@@ -18,8 +19,8 @@ interface DefaultForm {
 }
 
 const formOf = (config: TTarsTokenConfig | undefined): DefaultForm => ({
-  defaultUserLimit: config?.default_user_limit == null ? '' : String(config.default_user_limit),
-  systemTotalLimit: config?.system_total_limit == null ? '' : String(config.system_total_limit),
+  defaultUserLimit: toLimitField(config?.default_user_limit),
+  systemTotalLimit: toLimitField(config?.system_total_limit),
   resetType: config?.reset_type ?? 'monthly',
   resetDay: String(config?.reset_day ?? 1),
   warningPercent: String(Math.round((config?.warning_threshold ?? 0.8) * 100)),
@@ -49,13 +50,14 @@ function ProviderDefault({
     },
   });
 
+  const invalid =
+    !isValidLimitField(form.defaultUserLimit) || !isValidLimitField(form.systemTotalLimit);
+
   const handleSave = () =>
     updateMutation.mutate({
       provider,
-      default_user_limit:
-        form.defaultUserLimit.trim() === '' ? null : Number(form.defaultUserLimit),
-      system_total_limit:
-        form.systemTotalLimit.trim() === '' ? null : Number(form.systemTotalLimit),
+      default_user_limit: fromLimitField(form.defaultUserLimit),
+      system_total_limit: fromLimitField(form.systemTotalLimit),
       reset_type: form.resetType,
       reset_day: usesResetDay(form.resetType) ? Number(form.resetDay) : 1,
       warning_threshold: Number(form.warningPercent) / 100,
@@ -73,33 +75,19 @@ function ProviderDefault({
       </header>
 
       <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
-        <div className="space-y-1.5">
-          <Label htmlFor={`tars-default-user-${provider}`}>
-            {localize('com_ui_tars_quota_default_user_limit')}
-          </Label>
-          <Input
-            id={`tars-default-user-${provider}`}
-            type="number"
-            min="0"
-            value={form.defaultUserLimit}
-            onChange={(event) => set('defaultUserLimit', event.target.value)}
-            placeholder={localize('com_ui_tars_quota_unlimited')}
-          />
-        </div>
+        <LimitInput
+          id={`tars-default-user-${provider}`}
+          label={localize('com_ui_tars_quota_default_user_limit')}
+          value={form.defaultUserLimit}
+          onChange={(value) => set('defaultUserLimit', value)}
+        />
 
-        <div className="space-y-1.5">
-          <Label htmlFor={`tars-default-total-${provider}`}>
-            {localize('com_ui_tars_quota_system_total_limit')}
-          </Label>
-          <Input
-            id={`tars-default-total-${provider}`}
-            type="number"
-            min="0"
-            value={form.systemTotalLimit}
-            onChange={(event) => set('systemTotalLimit', event.target.value)}
-            placeholder={localize('com_ui_tars_quota_unlimited')}
-          />
-        </div>
+        <LimitInput
+          id={`tars-default-total-${provider}`}
+          label={localize('com_ui_tars_quota_system_total_limit')}
+          value={form.systemTotalLimit}
+          onChange={(value) => set('systemTotalLimit', value)}
+        />
 
         <div className="space-y-1.5">
           <Label htmlFor={`tars-default-threshold-${provider}`}>
@@ -149,7 +137,11 @@ function ProviderDefault({
         </div>
 
         <div className="flex items-end justify-end">
-          <Button variant="submit" onClick={handleSave} disabled={updateMutation.isLoading}>
+          <Button
+            variant="submit"
+            onClick={handleSave}
+            disabled={updateMutation.isLoading || invalid}
+          >
             {updateMutation.isLoading ? (
               <Spinner className="mr-2 size-4" />
             ) : (
