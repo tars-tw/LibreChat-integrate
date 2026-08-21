@@ -14,6 +14,7 @@ import {
   importTarsWebsiteDataset,
   batchDeleteTarsDatasets,
   unbindTarsDatabase,
+  fetchTarsWebsiteChunks,
 } from './datasets';
 
 const BASE_URL = 'http://tars.test';
@@ -233,5 +234,38 @@ describe('unbindTarsDatabase', () => {
       knowledge_base_id: 'kb-1',
       dataset_sql_id: 'db-1',
     });
+  });
+});
+
+describe('fetchTarsWebsiteChunks', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('asks pwc_tars for one website by id', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(200, {
+        website: { id: 'w-1', name: 'Docs' },
+        chunks: [{ id: 'c-1', website_id: 'w-1', position: 0, content: 'hello' }],
+        totalChunks: 1,
+      }),
+    );
+
+    const page = await fetchTarsWebsiteChunks('user-1', 'w-1', BASE_URL);
+
+    const url = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(url.pathname).toBe('/api/knowledge_detail/get_website_chunk');
+    expect(url.searchParams.get('website_id')).toBe('w-1');
+    expect(page.chunks).toHaveLength(1);
+  });
+
+  /** pwc_tars omits the count on some paths; the list length is the fallback. */
+  it('derives the total from the chunks when pwc_tars omits it', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { chunks: [{ id: 'c-1' }, { id: 'c-2' }] }));
+
+    const page = await fetchTarsWebsiteChunks('user-1', 'w-1', BASE_URL);
+
+    expect(page.totalChunks).toBe(2);
+    expect(page.website).toBeNull();
   });
 });
