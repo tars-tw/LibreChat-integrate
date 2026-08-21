@@ -624,3 +624,55 @@ export async function batchDeleteTarsDatasets(
     },
   });
 }
+
+/**
+ * One crawled slice of a website (`ChunkWebsite.to_json()`).
+ *
+ * The same shape as a document chunk apart from what it belongs to — pwc_tars
+ * keeps the two in separate tables, so the identifying pair differs.
+ */
+export interface TarsWebsiteChunk {
+  id: string;
+  website_id: string;
+  url: string | null;
+  position: number;
+  content: string;
+  word_count: number | null;
+  tokens: number | null;
+  keywords: string | null;
+  hit_count: number | null;
+  enabled: boolean | null;
+  status: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface TarsWebsiteChunkPage {
+  website: TarsDatasetWebsite | null;
+  chunks: TarsWebsiteChunk[];
+  totalChunks: number;
+}
+
+/**
+ * Every chunk of one website dataset
+ * (`GET /api/knowledge_detail/get_website_chunk`).
+ *
+ * Unpaged, like the document equivalent: pwc_tars returns the whole set and
+ * the client pages through it.
+ */
+export async function fetchTarsWebsiteChunks(
+  tarsId: string,
+  websiteId: string,
+  baseUrl?: string,
+): Promise<TarsWebsiteChunkPage> {
+  const data = await tarsFetch<Partial<TarsWebsiteChunkPage>>(
+    '/api/knowledge_detail/get_website_chunk',
+    { query: { user_id: tarsId, website_id: websiteId }, baseUrl },
+  );
+  const chunks = data?.chunks ?? [];
+  return {
+    website: data?.website ?? null,
+    chunks,
+    totalChunks: data?.totalChunks ?? chunks.length,
+  };
+}

@@ -255,6 +255,29 @@ export type TTarsKnowledgeBaseDatasets = {
   stats: TTarsDatasetStats;
 };
 
+/** One crawled slice of a website dataset. */
+export type TTarsWebsiteChunk = {
+  id: string;
+  website_id: string;
+  url: string | null;
+  position: number;
+  content: string;
+  word_count: number | null;
+  tokens: number | null;
+  keywords: string | null;
+  hit_count: number | null;
+  enabled: boolean | null;
+  status: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type TTarsWebsiteChunkPage = {
+  website: TTarsDatasetWebsite | null;
+  chunks: TTarsWebsiteChunk[];
+  totalChunks: number;
+};
+
 export type TTarsWebsiteImportInput = {
   name: string;
   url: string;
@@ -347,10 +370,6 @@ export type TTarsChunksResponse = {
 export type TTarsFileSetting = {
   chunkSize?: number;
   overlap?: number;
-};
-
-export type TTarsChunkUpdate = {
-  content: string;
 };
 
 export type TTarsDocumentReprocess = {

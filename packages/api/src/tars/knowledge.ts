@@ -153,11 +153,6 @@ export interface TarsDocumentReprocessInput {
   overlap?: number;
 }
 
-export interface TarsChunkUpdateInput {
-  chunkId: string;
-  content: string;
-}
-
 interface KnowledgeBasesResponse {
   knowledge_bases?: TarsKnowledgeBase[];
 }
@@ -529,26 +524,4 @@ export async function fetchTarsDocumentChunks(
     baseUrl,
   });
   return data?.chunks ?? [];
-}
-
-/** Updates a chunk's content (`POST /api/knowledge_detail/update_chunk`). */
-export async function updateTarsChunk(
-  tarsId: string,
-  input: TarsChunkUpdateInput,
-  baseUrl?: string,
-): Promise<TarsChunk> {
-  const data = await tarsFetch<{ chunk: TarsChunk }>('/api/knowledge_detail/update_chunk', {
-    method: 'POST',
-    body: { chunk_id: input.chunkId, content: input.content, updated_by: tarsId },
-    baseUrl,
-  });
-  return data.chunk;
-}
-
-/** Deletes a chunk (`DELETE /api/knowledge_detail/delete_chunk/<id>`). */
-export async function deleteTarsChunk(chunkId: string, baseUrl?: string): Promise<void> {
-  await tarsFetch(`/api/knowledge_detail/delete_chunk/${encodeURIComponent(chunkId)}`, {
-    method: 'DELETE',
-    baseUrl,
-  });
 }
