@@ -19,24 +19,54 @@ export const RESET_LABEL_KEYS: Record<TokenResetType, TranslationKeys> = {
 export const usesResetDay = (resetType: string | null): boolean =>
   resetType === 'monthly' || resetType === 'yearly';
 
-export const isActiveQuota = (quota: TTarsTokenUserQuota): boolean => quota.status === 'active';
+/**
+ * pwc_tars stores a personal quota's status as the *string* `'true'` / `'false'`,
+ * and its enforcement (`services/token_quota.py`, `status == "true"`) honours no
+ * other value — an override saved as `'active'` is silently never applied.
+ */
+export const QUOTA_STATUS_ON = 'true';
+export const QUOTA_STATUS_OFF = 'false';
+
+export const isActiveQuota = (quota: Pick<TTarsTokenUserQuota, 'status'>): boolean =>
+  String(quota.status).toLowerCase() === QUOTA_STATUS_ON;
 
 export const BADGE_NEUTRAL =
   'rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary';
 export const BADGE_ON =
   'rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300';
 
-/** A null limit is pwc_tars' "no ceiling", which must never render as 0. */
-export const formatLimit = (value: number | null | undefined, unlimited: string): string =>
-  value == null ? unlimited : value.toLocaleString();
+/**
+ * pwc_tars spells "no ceiling" as `-1`, not as null — `_build_quota_result`
+ * short-circuits on `limit == -1`, while a null limit means the rule is *unset*
+ * and enforcement falls through to the next level (or skips a personal override
+ * entirely, via `custom_limit.isnot(None)`). The two must never be conflated.
+ */
+export const UNLIMITED = -1;
+
+export const isUnlimited = (value: number | null | undefined): boolean => value === UNLIMITED;
+
+/** The enforceable ceiling, or null when there is none to compare usage against. */
+export const capOf = (value: number | null | undefined): number | null =>
+  value == null || value <= 0 ? null : value;
+
+export const formatLimit = (
+  value: number | null | undefined,
+  unlimited: string,
+  unset = '—',
+): string => {
+  if (isUnlimited(value)) {
+    return unlimited;
+  }
+  return value == null ? unset : value.toLocaleString();
+};
 
 export const formatThreshold = (value: number | null | undefined): string =>
   value == null ? '—' : `${Math.round(value * 100)}%`;
 
 /** How much of a personal quota is spent, capped so an overrun still renders. */
 export const quotaUsageShare = (quota: TTarsTokenUserQuota): number => {
-  const limit = quota.custom_limit;
-  if (limit == null || limit <= 0) {
+  const limit = capOf(quota.custom_limit);
+  if (limit == null) {
     return 0;
   }
   return Math.min(Math.round(((quota.used_amount ?? 0) / limit) * 100), 100);
