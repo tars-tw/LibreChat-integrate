@@ -136,7 +136,11 @@ export default function Header({
       )}
 
       {showModels && (
-        <ModelsDialog knowledgeBaseId={knowledgeBaseId} onClose={() => setShowModels(false)} />
+        <ModelsDialog
+          knowledgeBaseId={knowledgeBaseId}
+          maxRetrieveCount={knowledgeBase?.max_retrieve_count ?? null}
+          onClose={() => setShowModels(false)}
+        />
       )}
     </div>
   );

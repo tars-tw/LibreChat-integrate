@@ -8,7 +8,8 @@ import {
   TabsTrigger,
   useToastContext,
 } from '@librechat/client';
-import type { TTarsDocument } from 'librechat-data-provider';
+import type { TTarsDocument, TTarsDatasetWebsite } from 'librechat-data-provider';
+import type { ChunkSource } from './ChunkList';
 import {
   useTarsKnowledgeBaseDatasetsQuery,
   useBatchDeleteTarsDatasetsMutation,
@@ -33,7 +34,7 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
   const { showToast } = useToastContext();
 
   const datasetsQuery = useTarsKnowledgeBaseDatasetsQuery(knowledgeBaseId);
-  const [chunkDoc, setChunkDoc] = useState<TTarsDocument | null>(null);
+  const [chunkSource, setChunkSource] = useState<ChunkSource | null>(null);
 
   const batchDeleteMutation = useBatchDeleteTarsDatasetsMutation(knowledgeBaseId, {
     /**
@@ -109,7 +110,9 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
             locale={locale}
             onRefresh={refresh}
             isRefreshing={isRefreshing}
-            onViewChunks={setChunkDoc}
+            onViewChunks={(document: TTarsDocument) =>
+              setChunkSource({ kind: 'document', document })
+            }
             onBatchDelete={(documentIds) => batchDeleteMutation.mutate({ documentIds })}
           />
         </TabsContent>
@@ -122,6 +125,9 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
             onRefresh={refresh}
             isRefreshing={isRefreshing}
             onBatchDelete={(websiteIds) => batchDeleteMutation.mutate({ websiteIds })}
+            onViewChunks={(website: TTarsDatasetWebsite) =>
+              setChunkSource({ kind: 'website', knowledgeBaseId, website })
+            }
           />
         </TabsContent>
 
@@ -148,12 +154,8 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
         </TabsContent>
       </Tabs>
 
-      {chunkDoc != null && (
-        <ChunkList
-          document={chunkDoc}
-          open={true}
-          onOpenChange={(open) => !open && setChunkDoc(null)}
-        />
+      {chunkSource != null && (
+        <ChunkList source={chunkSource} onClose={() => setChunkSource(null)} />
       )}
     </div>
   );

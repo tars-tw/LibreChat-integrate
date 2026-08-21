@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Button,
   Dropdown,
+  Input,
   Label,
   OGDialog,
   OGDialogTemplate,
@@ -11,19 +12,28 @@ import {
 import {
   useTarsKnowledgeBaseModelBindingsQuery,
   useUpdateTarsKnowledgeBaseModelBindingsMutation,
+  useUpdateTarsKnowledgeBaseMutation,
 } from '~/data-provider';
+import { DEFAULT_MAX_RETRIEVE } from '../helpers';
 import { useLocalize } from '~/hooks';
 
+const RETRIEVE_MIN = 1;
+const RETRIEVE_MAX = 100;
+
 /**
- * Shows which models this knowledge base uses, and rebinds the two that can
- * change. The embedding model is read-only: the stored vectors were built with
- * it, so swapping it would orphan every chunk.
+ * The retrieval settings of one knowledge base: which models answer with it,
+ * and how many chunks it retrieves.
+ *
+ * The embedding model is read-only — the stored vectors were built with it, so
+ * swapping it would orphan every chunk.
  */
 export default function ModelsDialog({
   knowledgeBaseId,
+  maxRetrieveCount,
   onClose,
 }: {
   knowledgeBaseId: string;
+  maxRetrieveCount: number | null;
   onClose: () => void;
 }) {
   const localize = useLocalize();
@@ -32,6 +42,9 @@ export default function ModelsDialog({
   const bindingsQuery = useTarsKnowledgeBaseModelBindingsQuery(knowledgeBaseId);
   const [llmId, setLlmId] = useState('');
   const [rerankId, setRerankId] = useState('');
+  const [retrieveCount, setRetrieveCount] = useState(
+    String(maxRetrieveCount ?? DEFAULT_MAX_RETRIEVE),
+  );
 
   useEffect(() => {
     const data = bindingsQuery.data;
@@ -42,13 +55,43 @@ export default function ModelsDialog({
     setRerankId((prev) => (prev !== '' ? prev : (data.rerank.selected_id ?? '')));
   }, [bindingsQuery.data]);
 
-  const updateMutation = useUpdateTarsKnowledgeBaseModelBindingsMutation({
-    onSuccess: () => {
+  const onError = () =>
+    showToast({ message: localize('com_ui_tars_kb_save_failed'), status: 'error' });
+
+  /**
+   * The models and the retrieve count live on two different pwc_tars
+   * endpoints, so saving fans out and only reports success once both settle.
+   */
+  const bindingsMutation = useUpdateTarsKnowledgeBaseModelBindingsMutation({ onError });
+  const knowledgeBaseMutation = useUpdateTarsKnowledgeBaseMutation({ onError });
+
+  const parsedCount = Number(retrieveCount);
+  const retrieveInvalid =
+    !Number.isInteger(parsedCount) || parsedCount < RETRIEVE_MIN || parsedCount > RETRIEVE_MAX;
+  const isSaving = bindingsMutation.isLoading || knowledgeBaseMutation.isLoading;
+
+  const save = async () => {
+    try {
+      await bindingsMutation.mutateAsync({
+        id: knowledgeBaseId,
+        data: {
+          ...(llmId !== '' ? { llmModelId: llmId } : {}),
+          ...(rerankId !== '' ? { rerankModelId: rerankId } : {}),
+        },
+      });
+      /** Skipped when unchanged, so an untouched count costs no request. */
+      if (parsedCount !== (maxRetrieveCount ?? DEFAULT_MAX_RETRIEVE)) {
+        await knowledgeBaseMutation.mutateAsync({
+          id: knowledgeBaseId,
+          data: { new_max_retrieve_count: parsedCount },
+        });
+      }
       showToast({ message: localize('com_ui_tars_kb_saved'), status: 'success' });
       onClose();
-    },
-    onError: () => showToast({ message: localize('com_ui_tars_kb_save_failed'), status: 'error' }),
-  });
+    } catch {
+      /** Both mutations already surfaced the failure through `onError`. */
+    }
+  };
 
   const embeddingName =
     bindingsQuery.data?.embedding.options.find(
@@ -120,6 +163,32 @@ export default function ModelsDialog({
                   bindingsQuery.data?.rerank.options ?? [],
                 )}
                 <div className="space-y-1.5">
+                  <Label htmlFor="tars-kb-retrieve-count">
+                    {localize('com_ui_tars_kb_max_retrieve')}
+                  </Label>
+                  <Input
+                    id="tars-kb-retrieve-count"
+                    type="number"
+                    min={RETRIEVE_MIN}
+                    max={RETRIEVE_MAX}
+                    value={retrieveCount}
+                    onChange={(event) => setRetrieveCount(event.target.value)}
+                  />
+                  {retrieveInvalid ? (
+                    <p className="text-xs text-pwc-danger">
+                      {localize('com_ui_tars_kb_max_retrieve_invalid', {
+                        0: String(RETRIEVE_MIN),
+                        1: String(RETRIEVE_MAX),
+                      })}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-text-secondary">
+                      {localize('com_ui_tars_kb_max_retrieve_hint')}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
                   <Label>{localize('com_ui_tars_kb_embedding_model')}</Label>
                   <p className="flex h-10 items-center rounded-md border border-border-light px-3 text-sm text-text-secondary">
                     {embeddingName}
@@ -135,18 +204,10 @@ export default function ModelsDialog({
         buttons={
           <Button
             variant="submit"
-            disabled={updateMutation.isLoading || bindingsQuery.isLoading}
-            onClick={() =>
-              updateMutation.mutate({
-                id: knowledgeBaseId,
-                data: {
-                  ...(llmId !== '' ? { llmModelId: llmId } : {}),
-                  ...(rerankId !== '' ? { rerankModelId: rerankId } : {}),
-                },
-              })
-            }
+            disabled={isSaving || bindingsQuery.isLoading || retrieveInvalid}
+            onClick={() => void save()}
           >
-            {updateMutation.isLoading ? <Spinner className="size-4" /> : localize('com_ui_save')}
+            {isSaving ? <Spinner className="size-4" /> : localize('com_ui_save')}
           </Button>
         }
       />
