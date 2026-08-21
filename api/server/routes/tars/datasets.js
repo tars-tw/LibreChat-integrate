@@ -5,6 +5,7 @@ const {
   importTarsWebsiteDataset,
   updateTarsWebsiteDataset,
   deleteTarsWebsiteDataset,
+  fetchTarsWebsiteChunks,
   fetchTarsDatabaseTables,
   fetchTarsBoundTables,
   bindTarsDatabase,
@@ -117,6 +118,21 @@ router.delete('/knowledge-bases/:id/websites/:websiteId', async (req, res) => {
   } catch (error) {
     logger.error('[DELETE /api/tars/knowledge-bases/:id/websites/:websiteId] Failed', error);
     return relay(res, error, 'Failed to delete pwc_tars website dataset');
+  }
+});
+
+/**
+ * @route GET /api/tars/knowledge-bases/:id/websites/:websiteId/chunks
+ * @desc Every crawled chunk of one website dataset.
+ * @access Admin (pwc_tars)
+ */
+router.get('/knowledge-bases/:id/websites/:websiteId/chunks', async (req, res) => {
+  try {
+    const page = await fetchTarsWebsiteChunks(req.user.tarsId, req.params.websiteId);
+    return res.json(page);
+  } catch (error) {
+    logger.error('[GET /api/tars/knowledge-bases/:id/websites/:websiteId/chunks] Failed', error);
+    return relay(res, error, 'Failed to fetch pwc_tars website chunks');
   }
 });
 

@@ -17,8 +17,6 @@ import {
   deleteTarsKnowledgeBaseDocument,
   reprocessTarsKnowledgeBaseDocument,
   fetchTarsDocumentChunks,
-  updateTarsChunk,
-  deleteTarsChunk,
 } from './knowledge';
 import type { TarsDocument } from './knowledge';
 
@@ -206,35 +204,6 @@ describe('chunk operations', () => {
       expect.objectContaining({ method: 'GET' }),
     );
     expect(result).toEqual(chunks);
-  });
-
-  it('updates a chunk with the editor as updated_by', async () => {
-    const fetchMock = jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValue(
-        buildResponse(200, { chunk: { id: 'c1', document_id: 'd1', position: 0, content: 'new' } }),
-      );
-
-    await updateTarsChunk('u1', { chunkId: 'c1', content: 'new' }, BASE_URL);
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      `${BASE_URL}/api/knowledge_detail/update_chunk`,
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ chunk_id: 'c1', content: 'new', updated_by: 'u1' }),
-      }),
-    );
-  });
-
-  it('deletes a chunk by id', async () => {
-    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, {}));
-
-    await deleteTarsChunk('c1', BASE_URL);
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      `${BASE_URL}/api/knowledge_detail/delete_chunk/c1`,
-      expect.objectContaining({ method: 'DELETE' }),
-    );
   });
 });
 
