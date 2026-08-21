@@ -17,6 +17,9 @@ import type {
   TTarsWebsiteImportInput,
   TTarsFileSystemImportInput,
   TTarsDatasetBatchDelete,
+  TTarsSchedule,
+  TTarsScheduleInput,
+  TTarsScheduleUpdate,
   TTarsMcpTool,
   TTarsMcpServer,
   TTarsMcpSyncResult,
@@ -105,9 +108,74 @@ export const useDeleteTarsDomainMutation = (
   });
 };
 
+/** Any schedule change refreshes every scoped listing of them. */
+const invalidateSchedules = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsSchedules]);
+};
+
+const useScheduleMutation = <TData, TVariables>(
+  mutate: (variables: TVariables) => Promise<TData>,
+  options?: UseMutationOptions<TData, unknown, TVariables>,
+): UseMutationResult<TData, unknown, TVariables> => {
+  const queryClient = useQueryClient();
+  return useMutation(mutate, {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateSchedules(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useCreateTarsScheduleMutation = (
+  options?: UseMutationOptions<{ schedule: TTarsSchedule | null }, unknown, TTarsScheduleInput>,
+) =>
+  useScheduleMutation((data: TTarsScheduleInput) => dataService.createTarsSchedule(data), options);
+
+export const useUpdateTarsScheduleMutation = (
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { id: string; data: TTarsScheduleUpdate }
+  >,
+) =>
+  useScheduleMutation(
+    ({ id, data }: { id: string; data: TTarsScheduleUpdate }) =>
+      dataService.updateTarsSchedule(id, data),
+    options,
+  );
+
+export const useDeleteTarsScheduleMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+) => useScheduleMutation((id: string) => dataService.deleteTarsSchedule(id), options);
+
+/** Run, stop and restart differ only in which call they make. */
+export const useTarsScheduleActionMutation = (
+  action: 'run' | 'stop' | 'restart',
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+) => {
+  const call = {
+    run: dataService.runTarsSchedule,
+    stop: dataService.stopTarsSchedule,
+    restart: dataService.restartTarsSchedule,
+  }[action];
+  return useScheduleMutation((id: string) => call(id), options);
+};
+
+export const useUpdateTarsScheduleSyncAllMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, { id: string; isSyncAll: boolean }>,
+) =>
+  useScheduleMutation(
+    ({ id, isSyncAll }: { id: string; isSyncAll: boolean }) =>
+      dataService.updateTarsScheduleSyncAll(id, isSyncAll),
+    options,
+  );
+
 const invalidateKnowledgeBases = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBases]);
   queryClient.invalidateQueries([QueryKeys.tarsDomainPrepareData]);
+  /** The detail page reads the knowledge base from its dataset response. */
+  queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets]);
 };
 
 export const useCreateTarsKnowledgeBaseMutation = (
