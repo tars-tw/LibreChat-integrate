@@ -24,6 +24,9 @@ export interface TarsKnowledgeBase {
   total_chunk_count?: number;
   total_token_count?: number;
   has_sql_database?: boolean;
+  /** Ids allowed to use the KB. Empty means "everyone", matching pwc_tars. */
+  allowed_user_ids?: string[];
+  allowed_user_group_ids?: string[];
 }
 
 /** A selectable model option for the knowledge-base upload form. */
@@ -45,6 +48,12 @@ export interface TarsKnowledgeBaseUpdate {
   description?: string;
   domain_ids?: string;
   new_max_retrieve_count?: number;
+  /**
+   * pwc_tars only touches these when the key is present, so an omitted list
+   * leaves the stored permissions alone rather than clearing them.
+   */
+  allowed_user_ids?: string[];
+  allowed_user_group_ids?: string[];
 }
 
 /** A file forwarded from the LibreChat upload route to pwc_tars. */
@@ -62,6 +71,8 @@ export interface TarsKnowledgeBaseFileInput {
   embeddingModel?: string;
   rerankModel?: string;
   maxRetrieveCount?: number;
+  allowedUserIds?: string[];
+  allowedUserGroupIds?: string[];
   /** Optional seed file. pwc_tars creates the KB + RAG config even without it. */
   file?: TarsUploadFile;
 }
@@ -71,6 +82,8 @@ export interface TarsDocument {
   id: string;
   filename: string;
   knowledge_base_ids?: string | null;
+  /** Set when the document came in through a document group. */
+  dataset_file_system_id?: string | null;
   size?: number | null;
   extension?: string | null;
   mime_type?: string | null;
@@ -149,8 +162,56 @@ interface KnowledgeBasesResponse {
   knowledge_bases?: TarsKnowledgeBase[];
 }
 
+/** A person who may be granted access to a knowledge base. */
+export interface TarsKnowledgeBaseUser {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+}
+
+/** A group that may be granted access to a knowledge base. */
+export interface TarsKnowledgeBaseGroup {
+  id: string;
+  name: string;
+}
+
+/**
+ * Everything the knowledge-base listing needs in one call: the bases the caller
+ * may see, plus the people and groups the permission pickers offer.
+ */
+export interface TarsKnowledgeBaseOverview {
+  knowledge_bases: TarsKnowledgeBase[];
+  users: TarsKnowledgeBaseUser[];
+  user_groups: TarsKnowledgeBaseGroup[];
+}
+
+/** One selectable model on the per-knowledge-base binding form. */
+export interface TarsBindableModel {
+  id: string;
+  name: string;
+  note?: string;
+}
+
+/**
+ * The models a knowledge base may be bound to, with what it currently uses.
+ * pwc_tars drops LLMs whose API key is invalid or that its health checker
+ * cannot reach, so this list is narrower than the raw `/api/model/*` ones.
+ */
+export interface TarsKnowledgeBaseModelBindings {
+  embedding: { selected_id: string | null; options: TarsBindableModel[] };
+  rerank: { selected_id: string | null; options: TarsBindableModel[] };
+  llm: { selected_id: string | null; options: TarsBindableModel[] };
+}
+
+export interface TarsKnowledgeBaseModelUpdate {
+  rerank_model_id?: string;
+  llm_model_id?: string;
+}
+
 interface PrepareDataResponse {
   knowledge_bases?: TarsKnowledgeBase[];
+  users?: TarsKnowledgeBaseUser[];
+  user_groups?: TarsKnowledgeBaseGroup[];
 }
 
 interface RawModelName {
@@ -166,18 +227,70 @@ interface RawModelOption {
  * The knowledge bases a pwc_tars user may access, with document/chunk/token
  * stats (`GET /api/knowledge_base/prepare_data`). Admins (role 1) get all KBs.
  */
-export async function fetchTarsKnowledgeBases(
+export async function fetchTarsKnowledgeBaseOverview(
   tarsId: string,
   baseUrl?: string,
-): Promise<TarsKnowledgeBase[]> {
+): Promise<TarsKnowledgeBaseOverview> {
   if (!tarsId) {
-    return [];
+    return { knowledge_bases: [], users: [], user_groups: [] };
   }
   const data = await tarsFetch<PrepareDataResponse>('/api/knowledge_base/prepare_data', {
     query: { user_id: tarsId },
     baseUrl,
   });
-  return data?.knowledge_bases ?? [];
+  return {
+    knowledge_bases: data?.knowledge_bases ?? [],
+    users: data?.users ?? [],
+    user_groups: data?.user_groups ?? [],
+  };
+}
+
+/** Just the bases, for callers that do not need the permission pickers. */
+export async function fetchTarsKnowledgeBases(
+  tarsId: string,
+  baseUrl?: string,
+): Promise<TarsKnowledgeBase[]> {
+  const overview = await fetchTarsKnowledgeBaseOverview(tarsId, baseUrl);
+  return overview.knowledge_bases;
+}
+
+/**
+ * The models this knowledge base may be bound to
+ * (`GET /api/knowledge_detail/get_models_by_knowledge`).
+ */
+export async function fetchTarsKnowledgeBaseModelBindings(
+  tarsId: string,
+  knowledgeBaseId: string,
+  baseUrl?: string,
+): Promise<TarsKnowledgeBaseModelBindings> {
+  const data = await tarsFetch<Partial<TarsKnowledgeBaseModelBindings>>(
+    '/api/knowledge_detail/get_models_by_knowledge',
+    { query: { user_id: tarsId, knowledge_base_id: knowledgeBaseId }, baseUrl },
+  );
+  const empty = { selected_id: null, options: [] };
+  return {
+    embedding: data?.embedding ?? empty,
+    rerank: data?.rerank ?? empty,
+    llm: data?.llm ?? empty,
+  };
+}
+
+/**
+ * Rebinds a knowledge base's rerank and/or LLM model
+ * (`POST /api/knowledge_detail/update_knowledge_base_model`). The embedding
+ * model is deliberately not settable: the stored vectors were built with it.
+ */
+export async function updateTarsKnowledgeBaseModel(
+  tarsId: string,
+  knowledgeBaseId: string,
+  update: TarsKnowledgeBaseModelUpdate,
+  baseUrl?: string,
+): Promise<TarsKnowledgeBase> {
+  return tarsFetch<TarsKnowledgeBase>('/api/knowledge_detail/update_knowledge_base_model', {
+    method: 'POST',
+    body: { user_id: tarsId, knowledge_base_id: knowledgeBaseId, ...update },
+    baseUrl,
+  });
 }
 
 export async function createTarsKnowledgeBase(
@@ -270,6 +383,9 @@ export async function createTarsKnowledgeBaseWithFile(
   if (input.maxRetrieveCount != null) {
     form.append('max_retrieve_count', String(input.maxRetrieveCount));
   }
+  /** pwc_tars parses these two with `json.loads`, so they go over as JSON text. */
+  form.append('allowed_user_ids', JSON.stringify(input.allowedUserIds ?? []));
+  form.append('allowed_user_group_ids', JSON.stringify(input.allowedUserGroupIds ?? []));
   if (input.file) {
     const blob = new Blob([new Uint8Array(input.file.buffer)], { type: input.file.mimetype });
     form.append('file', blob, input.file.filename);

@@ -2,6 +2,7 @@ export * from './audit';
 export * from './client';
 export * from './domains';
 export * from './groups';
+export * from './datasets';
 export * from './knowledge';
 export * from './mcp';
 export * from './mirror';

@@ -14,6 +14,11 @@ import type {
   TTarsDocumentReprocess,
   TTarsKnowledgeBaseInput,
   TTarsKnowledgeBaseUpdate,
+  TTarsKnowledgeBaseModelUpdate,
+  TTarsDatasetWebsite,
+  TTarsWebsiteImportInput,
+  TTarsFileSystemImportInput,
+  TTarsDatasetBatchDelete,
   TTarsMcpTool,
   TTarsMcpServer,
   TTarsMcpSyncResult,
@@ -158,6 +163,240 @@ export const useDeleteTarsKnowledgeBaseMutation = (
   });
 };
 
+/**
+ * Rebinds one knowledge base's rerank / LLM model. pwc_tars has no batch
+ * endpoint, so the batch dialog calls this once per selected base.
+ */
+export const useUpdateTarsKnowledgeBaseModelBindingsMutation = (
+  options?: UseMutationOptions<
+    KnowledgeResponse,
+    unknown,
+    { id: string; data: TTarsKnowledgeBaseModelUpdate }
+  >,
+): UseMutationResult<
+  KnowledgeResponse,
+  unknown,
+  { id: string; data: TTarsKnowledgeBaseModelUpdate }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: { id: string; data: TTarsKnowledgeBaseModelUpdate }) =>
+      dataService.updateTarsKnowledgeBaseModelBindings(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateKnowledgeBases(queryClient);
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseModelBindings]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+/** Anything that changes a knowledge base's datasets refreshes the same list. */
+const invalidateDatasets = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  knowledgeBaseId: string,
+) => {
+  queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets, knowledgeBaseId]);
+  queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBases]);
+};
+
+/**
+ * Builds a mutation whose only side effect is refreshing the dataset list.
+ * Every dataset action shares that shape, so writing it once keeps the
+ * individual hooks down to their call.
+ */
+const useDatasetMutation = <TData, TVariables>(
+  knowledgeBaseId: string,
+  mutate: (variables: TVariables) => Promise<TData>,
+  options?: UseMutationOptions<TData, unknown, TVariables>,
+): UseMutationResult<TData, unknown, TVariables> => {
+  const queryClient = useQueryClient();
+  return useMutation(mutate, {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateDatasets(queryClient, knowledgeBaseId);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useImportTarsWebsiteMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<
+    { website: TTarsDatasetWebsite | null },
+    unknown,
+    TTarsWebsiteImportInput
+  >,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    (data: TTarsWebsiteImportInput) => dataService.importTarsWebsiteDataset(knowledgeBaseId, data),
+    options,
+  );
+
+export const useUpdateTarsWebsiteMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<
+    { website: TTarsDatasetWebsite | null },
+    unknown,
+    { websiteId: string; name: string; description?: string }
+  >,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    ({ websiteId, name, description }: { websiteId: string; name: string; description?: string }) =>
+      dataService.updateTarsWebsiteDataset(knowledgeBaseId, websiteId, { name, description }),
+    options,
+  );
+
+export const useDeleteTarsWebsiteMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    (websiteId: string) => dataService.deleteTarsWebsiteDataset(knowledgeBaseId, websiteId),
+    options,
+  );
+
+export const useBindTarsDatabaseMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { databaseId: string; tables: string[] }
+  >,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    ({ databaseId, tables }: { databaseId: string; tables: string[] }) =>
+      dataService.bindTarsDatabase(knowledgeBaseId, databaseId, tables),
+    options,
+  );
+
+export const useUnbindTarsDatabaseMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    (databaseId: string) => dataService.unbindTarsDatabase(knowledgeBaseId, databaseId),
+    options,
+  );
+
+export const useUpdateTarsDatabasePromptMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { databaseId: string; bindingId: string; tableInfo: string }
+  >,
+): UseMutationResult<
+  { success: boolean },
+  unknown,
+  { databaseId: string; bindingId: string; tableInfo: string }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({
+      databaseId,
+      bindingId,
+      tableInfo,
+    }: {
+      databaseId: string;
+      bindingId: string;
+      tableInfo: string;
+    }) =>
+      dataService.updateTarsDatabasePrompt(knowledgeBaseId, databaseId, { bindingId, tableInfo }),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsDatabasePrompt, knowledgeBaseId]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useImportTarsFileSystemMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { fileSystemId: string; data: TTarsFileSystemImportInput }
+  >,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    ({ fileSystemId, data }: { fileSystemId: string; data: TTarsFileSystemImportInput }) =>
+      dataService.importTarsFileSystemDataset(knowledgeBaseId, fileSystemId, data),
+    options,
+  );
+
+export const useRefreshTarsFileSystemMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { fileSystemId: string; chunkSize?: number; overlap?: number }
+  >,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    ({
+      fileSystemId,
+      chunkSize,
+      overlap,
+    }: {
+      fileSystemId: string;
+      chunkSize?: number;
+      overlap?: number;
+    }) =>
+      dataService.refreshTarsFileSystemDataset(knowledgeBaseId, fileSystemId, {
+        chunkSize,
+        overlap,
+      }),
+    options,
+  );
+
+export const useReprocessTarsFileSystemMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    (fileSystemId: string) =>
+      dataService.reprocessTarsFileSystemDataset(knowledgeBaseId, fileSystemId),
+    options,
+  );
+
+export const useUnlinkTarsFileSystemMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    (fileSystemId: string) =>
+      dataService.unlinkTarsFileSystemDataset(knowledgeBaseId, fileSystemId),
+    options,
+  );
+
+/**
+ * pwc_tars answers 202 and deletes on a background thread, so the refreshed
+ * list may still show rows that are on their way out.
+ */
+export const useBatchDeleteTarsDatasetsMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<{ accepted: number }, unknown, TTarsDatasetBatchDelete>,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    (data: TTarsDatasetBatchDelete) => dataService.batchDeleteTarsDatasets(knowledgeBaseId, data),
+    options,
+  );
+
 export const useUploadTarsKnowledgeBaseMutation = (
   options?: UseMutationOptions<Record<string, unknown>, unknown, FormData>,
 ): UseMutationResult<Record<string, unknown>, unknown, FormData> => {
@@ -182,6 +421,8 @@ export const useUploadTarsDocumentsMutation = (
       ...options,
       onSuccess: (...args) => {
         queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+        /** The detail page reads documents from the combined dataset list. */
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets, knowledgeBaseId]);
         queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBases]);
         options?.onSuccess?.(...args);
       },
@@ -209,6 +450,8 @@ export const useRenameTarsDocumentMutation = (
       ...options,
       onSuccess: (...args) => {
         queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+        /** The detail page reads documents from the combined dataset list. */
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets, knowledgeBaseId]);
         options?.onSuccess?.(...args);
       },
     },
@@ -226,6 +469,8 @@ export const useDeleteTarsDocumentMutation = (
       ...options,
       onSuccess: (...args) => {
         queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+        /** The detail page reads documents from the combined dataset list. */
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets, knowledgeBaseId]);
         queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBases]);
         options?.onSuccess?.(...args);
       },
@@ -253,6 +498,8 @@ export const useReprocessTarsDocumentMutation = (
       ...options,
       onSuccess: (...args) => {
         queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+        /** The detail page reads documents from the combined dataset list. */
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets, knowledgeBaseId]);
         options?.onSuccess?.(...args);
       },
     },
