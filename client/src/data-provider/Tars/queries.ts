@@ -16,6 +16,7 @@ import type {
   TTarsKnowledgeBaseModelBindings,
   TTarsKnowledgeBaseDatasets,
   TTarsDatabaseTables,
+  TTarsWebsiteChunkPage,
   TTarsDatabasePrompt,
   TTarsFileSystemSource,
   TTarsMcpUserServer,
@@ -157,6 +158,19 @@ export const useTarsKnowledgeBaseDatasetsQuery = (
         (data?.documents ?? []).some((doc) => PROCESSING_STATUSES.has(doc.status)) ? 5000 : false,
       ...config,
     },
+  );
+};
+
+/** Every crawled chunk of one website dataset. Unpaged, like the document one. */
+export const useTarsWebsiteChunksQuery = (
+  knowledgeBaseId: string,
+  websiteId?: string | null,
+  config?: UseQueryOptions<TTarsWebsiteChunkPage>,
+): QueryObserverResult<TTarsWebsiteChunkPage> => {
+  return useQuery<TTarsWebsiteChunkPage>(
+    [QueryKeys.tarsWebsiteChunks, knowledgeBaseId, websiteId],
+    () => dataService.getTarsWebsiteChunks(knowledgeBaseId, websiteId ?? ''),
+    { enabled: websiteId != null && websiteId !== '', ...adminQueryOptions, ...config },
   );
 };
 
