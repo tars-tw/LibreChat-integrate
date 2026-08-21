@@ -3,18 +3,21 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button, Spinner, OGDialog, OGDialogTemplate, useToastContext } from '@librechat/client';
 import type { TTarsTokenUserQuota, TTarsTokenPrepareData } from 'librechat-data-provider';
 import {
-  useTarsTokenQuotasQuery,
-  useDeleteTarsTokenQuotaMutation,
-  useTarsTokenReportMembersQuery,
-} from '~/data-provider';
-import {
   BADGE_ON,
   BADGE_NEUTRAL,
+  capOf,
+  QUOTA_STATUS_ON,
+  QUOTA_STATUS_OFF,
   TOKEN_PROVIDERS,
   formatLimit,
   isActiveQuota,
   quotaUsageShare,
 } from './helpers';
+import {
+  useTarsTokenQuotasQuery,
+  useDeleteTarsTokenQuotaMutation,
+  useTarsTokenReportMembersQuery,
+} from '~/data-provider';
 import { formatTokens, recentReportRange } from './Report/helpers';
 import QuotaModal from './QuotaModal';
 import { useLocalize } from '~/hooks';
@@ -97,8 +100,8 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
           onChange={(event) => setStatus(event.target.value)}
         >
           <option value="">{localize('com_ui_tars_quota_all_statuses')}</option>
-          <option value="active">{localize('com_ui_tars_quota_active')}</option>
-          <option value="suspended">{localize('com_ui_tars_quota_suspended')}</option>
+          <option value={QUOTA_STATUS_ON}>{localize('com_ui_tars_quota_active')}</option>
+          <option value={QUOTA_STATUS_OFF}>{localize('com_ui_tars_quota_suspended')}</option>
         </select>
 
         <Button variant="submit" className="ml-auto" onClick={() => setCreating(true)}>
@@ -173,9 +176,9 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                   <td className="px-3 py-2">
                     <div className="flex items-center justify-between gap-2 text-xs tabular-nums text-text-secondary">
                       <span>{(quota.used_amount ?? 0).toLocaleString()}</span>
-                      {quota.custom_limit != null && <span>{quotaUsageShare(quota)}%</span>}
+                      {capOf(quota.custom_limit) != null && <span>{quotaUsageShare(quota)}%</span>}
                     </div>
-                    {quota.custom_limit != null && (
+                    {capOf(quota.custom_limit) != null && (
                       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
                         <div
                           className="h-full rounded-full bg-brand-primary"
