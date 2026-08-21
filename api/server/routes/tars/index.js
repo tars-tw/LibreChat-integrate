@@ -1,5 +1,6 @@
 const express = require('express');
 const audit = require('./audit');
+const datasets = require('./datasets');
 const domains = require('./domains');
 const groups = require('./groups');
 const knowledge = require('./knowledge');
@@ -24,6 +25,7 @@ router.use('/', mcp);
  *  would otherwise intercept it. */
 router.use('/', settings);
 router.use('/', audit);
+router.use('/', datasets);
 router.use('/', domains);
 router.use('/', groups);
 router.use('/', knowledge);

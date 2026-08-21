@@ -8,6 +8,9 @@ jest.mock('@librechat/data-schemas', () => ({
 }));
 
 import {
+  fetchTarsKnowledgeBaseOverview,
+  fetchTarsKnowledgeBaseModelBindings,
+  updateTarsKnowledgeBaseModel,
   fetchTarsKnowledgeBaseDocuments,
   uploadTarsKnowledgeBaseDocuments,
   renameTarsKnowledgeBaseDocument,
@@ -232,5 +235,95 @@ describe('chunk operations', () => {
       `${BASE_URL}/api/knowledge_detail/delete_chunk/c1`,
       expect.objectContaining({ method: 'DELETE' }),
     );
+  });
+});
+
+describe('fetchTarsKnowledgeBaseOverview', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('returns empty lists without calling pwc_tars when the caller has no tars id', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+    await expect(fetchTarsKnowledgeBaseOverview('', BASE_URL)).resolves.toEqual({
+      knowledge_bases: [],
+      users: [],
+      user_groups: [],
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('carries the users and groups the access pickers need', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(200, {
+        knowledge_bases: [{ id: 'kb-1', name: 'HR', description: null }],
+        users: [{ id: 'u-1', username: 'amy', display_name: 'Amy' }],
+        user_groups: [{ id: 'g-1', name: 'Legal' }],
+      }),
+    );
+
+    const overview = await fetchTarsKnowledgeBaseOverview('user-1', BASE_URL);
+
+    expect(overview.knowledge_bases).toHaveLength(1);
+    expect(overview.users[0].display_name).toBe('Amy');
+    expect(overview.user_groups[0].name).toBe('Legal');
+  });
+
+  /**
+   * pwc_tars only started returning the picker lists alongside the bases; an
+   * older deployment answers with `knowledge_bases` alone.
+   */
+  it('defaults the picker lists when pwc_tars omits them', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { knowledge_bases: [{ id: 'kb-1', name: 'HR' }] }));
+
+    const overview = await fetchTarsKnowledgeBaseOverview('user-1', BASE_URL);
+
+    expect(overview.users).toEqual([]);
+    expect(overview.user_groups).toEqual([]);
+  });
+});
+
+describe('fetchTarsKnowledgeBaseModelBindings', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('asks pwc_tars for the bindings of one knowledge base', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(200, {
+        embedding: { selected_id: 'e-1', options: [{ id: 'e-1', name: 'bge' }] },
+        rerank: { selected_id: 'r-1', options: [{ id: 'r-1', name: 'bge-rerank' }] },
+        llm: { selected_id: 'gpt', options: [{ id: 'gpt', name: 'GPT' }] },
+      }),
+    );
+
+    const bindings = await fetchTarsKnowledgeBaseModelBindings('user-1', 'kb-1', BASE_URL);
+
+    const url = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(url.pathname).toBe('/api/knowledge_detail/get_models_by_knowledge');
+    expect(url.searchParams.get('knowledge_base_id')).toBe('kb-1');
+    expect(bindings.llm.selected_id).toBe('gpt');
+  });
+
+  it('returns empty option lists when pwc_tars omits a model kind', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, {}));
+
+    const bindings = await fetchTarsKnowledgeBaseModelBindings('user-1', 'kb-1', BASE_URL);
+
+    expect(bindings.rerank).toEqual({ selected_id: null, options: [] });
+  });
+});
+
+describe('updateTarsKnowledgeBaseModel', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('sends only the models the caller asked to rebind', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { id: 'kb-1', name: 'HR' }));
+
+    await updateTarsKnowledgeBaseModel('user-1', 'kb-1', { llm_model_id: 'gpt' }, BASE_URL);
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(body).toEqual({ user_id: 'user-1', knowledge_base_id: 'kb-1', llm_model_id: 'gpt' });
+    expect(body).not.toHaveProperty('rerank_model_id');
   });
 });
