@@ -6,7 +6,9 @@ const {
   createTarsKnowledgeBase,
   updateTarsKnowledgeBase,
   deleteTarsKnowledgeBase,
-  fetchTarsKnowledgeBases,
+  fetchTarsKnowledgeBaseOverview,
+  fetchTarsKnowledgeBaseModelBindings,
+  updateTarsKnowledgeBaseModel,
   createTarsKnowledgeBaseWithFile,
   fetchTarsKnowledgeBaseDocuments,
   uploadTarsKnowledgeBaseDocuments,
@@ -22,18 +24,44 @@ const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
+/**
+ * Multipart fields arrive as strings, so the two access lists are sent as JSON
+ * text. Anything unparseable is treated as "no restriction", matching pwc_tars.
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+const parseIdList = (value) => {
+  if (Array.isArray(value)) {
+    return value.map(String);
+  }
+  if (typeof value !== 'string' || value === '') {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+};
+
 router.use(requireJwtAuth);
 router.use(requireTarsAdmin);
 
 /**
  * @route GET /api/tars/knowledge-bases
- * @desc List pwc_tars knowledge bases with document/chunk/token stats.
+ * @desc List pwc_tars knowledge bases with per-type dataset counts, plus the
+ *       users and groups the access pickers offer.
  * @access Admin (pwc_tars)
  */
 router.get('/knowledge-bases', async (req, res) => {
   try {
-    const knowledgeBases = await fetchTarsKnowledgeBases(req.user.tarsId);
-    return res.json({ knowledgeBases });
+    const overview = await fetchTarsKnowledgeBaseOverview(req.user.tarsId);
+    return res.json({
+      knowledgeBases: overview.knowledge_bases,
+      users: overview.users,
+      userGroups: overview.user_groups,
+    });
   } catch (error) {
     logger.error('[GET /api/tars/knowledge-bases] Failed', error);
     return res.status(500).json({ error: 'Failed to fetch pwc_tars knowledge bases' });
@@ -85,6 +113,8 @@ router.post('/knowledge-bases/upload', upload.single('file'), async (req, res) =
     embeddingModel,
     rerankModel,
     maxRetrieveCount,
+    allowedUserIds,
+    allowedUserGroupIds,
   } = req.body ?? {};
   if (!knowledgeName || !llmModel) {
     return res.status(400).json({ error: 'knowledgeName and llmModel are required' });
@@ -99,6 +129,9 @@ router.post('/knowledge-bases/upload', upload.single('file'), async (req, res) =
       embeddingModel,
       rerankModel,
       maxRetrieveCount: maxRetrieveCount != null ? Number(maxRetrieveCount) : undefined,
+      /** Sent as JSON text by the multipart form, so it arrives as a string. */
+      allowedUserIds: parseIdList(allowedUserIds),
+      allowedUserGroupIds: parseIdList(allowedUserGroupIds),
       file: req.file
         ? {
             buffer: req.file.buffer,
@@ -111,6 +144,47 @@ router.post('/knowledge-bases/upload', upload.single('file'), async (req, res) =
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/upload] Failed', error);
     return res.status(500).json({ error: 'Failed to create pwc_tars knowledge base' });
+  }
+});
+
+/**
+ * @route GET /api/tars/knowledge-bases/:id/model-bindings
+ * @desc The rerank / LLM models this knowledge base may be bound to.
+ * @access Admin (pwc_tars)
+ */
+router.get('/knowledge-bases/:id/model-bindings', async (req, res) => {
+  try {
+    const bindings = await fetchTarsKnowledgeBaseModelBindings(req.user.tarsId, req.params.id);
+    return res.json(bindings);
+  } catch (error) {
+    logger.error('[GET /api/tars/knowledge-bases/:id/model-bindings] Failed', error);
+    return res.status(500).json({ error: 'Failed to fetch pwc_tars model bindings' });
+  }
+});
+
+/**
+ * @route PUT /api/tars/knowledge-bases/:id/model-bindings
+ * @desc Rebind the knowledge base's rerank and/or LLM model.
+ * @access Admin (pwc_tars)
+ */
+router.put('/knowledge-bases/:id/model-bindings', async (req, res) => {
+  const { rerankModelId, llmModelId } = req.body ?? {};
+  if (rerankModelId == null && llmModelId == null) {
+    return res.status(400).json({ error: 'rerankModelId or llmModelId is required' });
+  }
+
+  try {
+    const knowledgeBase = await updateTarsKnowledgeBaseModel(req.user.tarsId, req.params.id, {
+      ...(rerankModelId != null ? { rerank_model_id: rerankModelId } : {}),
+      ...(llmModelId != null ? { llm_model_id: llmModelId } : {}),
+    });
+    return res.json({ knowledgeBase });
+  } catch (error) {
+    logger.error('[PUT /api/tars/knowledge-bases/:id/model-bindings] Failed', error);
+    /** pwc_tars rejects a model name that no longer maps to an active profile. */
+    return res.status(error?.status === 400 ? 400 : 500).json({
+      error: error?.status === 400 ? error.message : 'Failed to update pwc_tars model bindings',
+    });
   }
 });
 

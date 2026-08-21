@@ -12,6 +12,12 @@ import type {
   TTarsChunksResponse,
   TTarsDomainsResponse,
   TTarsKnowledgeBase,
+  TTarsKnowledgeBasesResponse,
+  TTarsKnowledgeBaseModelBindings,
+  TTarsKnowledgeBaseDatasets,
+  TTarsDatabaseTables,
+  TTarsDatabasePrompt,
+  TTarsFileSystemSource,
   TTarsMcpUserServer,
   TTarsPromptsResponse,
   TTarsDocumentsResponse,
@@ -103,7 +109,127 @@ export const useTarsDomainPrepareDataQuery = (
   );
 };
 
-/** Admin: knowledge bases with document/chunk/token stats. */
+/**
+ * Admin: knowledge bases plus the users and groups the access pickers offer.
+ * Shares a cache key with `useTarsKnowledgeBasesQuery`, so the two hooks cost
+ * one request between them.
+ */
+export const useTarsKnowledgeBaseOverviewQuery = (
+  config?: UseQueryOptions<TTarsKnowledgeBasesResponse>,
+): QueryObserverResult<TTarsKnowledgeBasesResponse> => {
+  return useQuery<TTarsKnowledgeBasesResponse>(
+    [QueryKeys.tarsKnowledgeBases],
+    () => dataService.getTarsKnowledgeBases(),
+    { ...adminQueryOptions, ...config },
+  );
+};
+
+/** The rerank / LLM models one knowledge base may be bound to. */
+export const useTarsKnowledgeBaseModelBindingsQuery = (
+  knowledgeBaseId?: string | null,
+  config?: UseQueryOptions<TTarsKnowledgeBaseModelBindings>,
+): QueryObserverResult<TTarsKnowledgeBaseModelBindings> => {
+  return useQuery<TTarsKnowledgeBaseModelBindings>(
+    [QueryKeys.tarsKnowledgeBaseModelBindings, knowledgeBaseId],
+    () => dataService.getTarsKnowledgeBaseModelBindings(knowledgeBaseId ?? ''),
+    { enabled: knowledgeBaseId != null && knowledgeBaseId !== '', ...adminQueryOptions, ...config },
+  );
+};
+
+/**
+ * Every dataset in a knowledge base, plus the system upload limits.
+ *
+ * Polls while anything is still ingesting: pwc_tars processes uploads,
+ * crawls and document-group syncs on background threads, so the statuses
+ * only settle after the request that started them has long returned.
+ */
+export const useTarsKnowledgeBaseDatasetsQuery = (
+  knowledgeBaseId?: string | null,
+  config?: UseQueryOptions<TTarsKnowledgeBaseDatasets>,
+): QueryObserverResult<TTarsKnowledgeBaseDatasets> => {
+  return useQuery<TTarsKnowledgeBaseDatasets>(
+    [QueryKeys.tarsKnowledgeBaseDatasets, knowledgeBaseId],
+    () => dataService.getTarsKnowledgeBaseDatasets(knowledgeBaseId ?? ''),
+    {
+      enabled: knowledgeBaseId != null && knowledgeBaseId !== '',
+      refetchOnWindowFocus: false,
+      refetchInterval: (data) =>
+        (data?.documents ?? []).some((doc) => PROCESSING_STATUSES.has(doc.status)) ? 5000 : false,
+      ...config,
+    },
+  );
+};
+
+/** The tables a connection exposes, and which are already bound. */
+export const useTarsDatabaseTablesQuery = (
+  knowledgeBaseId: string,
+  databaseId?: string | null,
+  config?: UseQueryOptions<TTarsDatabaseTables>,
+): QueryObserverResult<TTarsDatabaseTables> => {
+  return useQuery<TTarsDatabaseTables>(
+    [QueryKeys.tarsDatabaseTables, knowledgeBaseId, databaseId],
+    () => dataService.getTarsDatabaseTables(knowledgeBaseId, databaseId ?? ''),
+    {
+      enabled: databaseId != null && databaseId !== '',
+      /** Opening a real connection is slow; do not repeat it on a focus change. */
+      refetchOnWindowFocus: false,
+      retry: false,
+      ...config,
+    },
+  );
+};
+
+/** The schema description the text-to-SQL prompt is built from. */
+export const useTarsDatabasePromptQuery = (
+  knowledgeBaseId: string,
+  databaseId?: string | null,
+  config?: UseQueryOptions<TTarsDatabasePrompt>,
+): QueryObserverResult<TTarsDatabasePrompt> => {
+  return useQuery<TTarsDatabasePrompt>(
+    [QueryKeys.tarsDatabasePrompt, knowledgeBaseId, databaseId],
+    () => dataService.getTarsDatabasePrompt(knowledgeBaseId, databaseId ?? ''),
+    { enabled: databaseId != null && databaseId !== '', ...adminQueryOptions, ...config },
+  );
+};
+
+/** File servers this knowledge base may import a document group from. */
+export const useTarsFileSystemSourcesQuery = (
+  knowledgeBaseId?: string | null,
+  config?: UseQueryOptions<{ sources: TTarsFileSystemSource[] }, unknown, TTarsFileSystemSource[]>,
+): QueryObserverResult<TTarsFileSystemSource[]> => {
+  return useQuery<{ sources: TTarsFileSystemSource[] }, unknown, TTarsFileSystemSource[]>(
+    [QueryKeys.tarsFileSystemSources, knowledgeBaseId],
+    () => dataService.getTarsFileSystemSources(knowledgeBaseId ?? ''),
+    {
+      enabled: knowledgeBaseId != null && knowledgeBaseId !== '',
+      select: (data) => data.sources ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** What a file server currently holds, for the import picker. */
+export const useTarsFileSystemFilesQuery = (
+  knowledgeBaseId: string,
+  fileSystemId?: string | null,
+  config?: UseQueryOptions<{ files: string[] }, unknown, string[]>,
+): QueryObserverResult<string[]> => {
+  return useQuery<{ files: string[] }, unknown, string[]>(
+    [QueryKeys.tarsFileSystemFiles, knowledgeBaseId, fileSystemId],
+    () => dataService.getTarsFileSystemFiles(knowledgeBaseId, fileSystemId ?? ''),
+    {
+      enabled: fileSystemId != null && fileSystemId !== '',
+      select: (data) => data.files ?? [],
+      /** Walking the remote tree is slow; do not repeat it on a focus change. */
+      refetchOnWindowFocus: false,
+      retry: false,
+      ...config,
+    },
+  );
+};
+
+/** Admin: knowledge bases with per-type dataset counts. */
 export const useTarsKnowledgeBasesQuery = (
   config?: UseQueryOptions<{ knowledgeBases: TTarsKnowledgeBase[] }, unknown, TTarsKnowledgeBase[]>,
 ): QueryObserverResult<TTarsKnowledgeBase[]> => {

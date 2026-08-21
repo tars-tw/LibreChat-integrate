@@ -120,11 +120,22 @@ interface RawFilterOptions {
  */
 const REPORT_TIMEOUT_MS = 120000;
 
-/** pwc_tars ids are numeric here but every picker compares them as strings. */
+/**
+ * pwc_tars ids are numeric here but every picker compares them as strings.
+ *
+ * The name columns are nullable strings, so an unset one can arrive as `''`
+ * rather than `null`; falling back only on nullish would leave a blank entry
+ * sorting to the top of the picker.
+ */
 const toOptions = (rows: RawOption[] | undefined): { id: string; label: string }[] =>
   (rows ?? [])
     .filter((row) => row?.id != null)
-    .map((row) => ({ id: String(row.id), label: row.name ?? row.username ?? '' }));
+    .map((row) => {
+      const label = [row.name, row.username, String(row.id)].find(
+        (candidate) => candidate != null && candidate.trim() !== '',
+      );
+      return { id: String(row.id), label: label ?? '' };
+    });
 
 /**
  * The users, specialized brains and knowledge bases the filter bar offers.

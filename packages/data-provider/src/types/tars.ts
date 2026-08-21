@@ -53,6 +53,22 @@ export type TTarsKnowledgeBase = {
   total_chunk_count?: number;
   total_token_count?: number;
   has_sql_database?: boolean;
+  /** Ids allowed to use the KB. Empty means "everyone", matching pwc_tars. */
+  allowed_user_ids?: string[];
+  allowed_user_group_ids?: string[];
+};
+
+/** A person the knowledge-base access picker offers. */
+export type TTarsKnowledgeBaseUser = {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+};
+
+/** A group the knowledge-base access picker offers. */
+export type TTarsKnowledgeBaseGroup = {
+  id: string;
+  name: string;
 };
 
 export type TTarsDomainPrepareData = {
@@ -75,6 +91,32 @@ export type TTarsDomainInput = {
 
 export type TTarsKnowledgeBasesResponse = {
   knowledgeBases: TTarsKnowledgeBase[];
+  users: TTarsKnowledgeBaseUser[];
+  userGroups: TTarsKnowledgeBaseGroup[];
+};
+
+/** One selectable model on the knowledge-base binding form. */
+export type TTarsBindableModel = {
+  id: string;
+  name: string;
+  note?: string;
+};
+
+/**
+ * The models a knowledge base may bind to, with what it currently uses.
+ * Narrower than the raw model lists: pwc_tars drops LLMs whose API key is
+ * invalid or that its health checker cannot reach.
+ */
+export type TTarsKnowledgeBaseModelBindings = {
+  embedding: { selected_id: string | null; options: TTarsBindableModel[] };
+  rerank: { selected_id: string | null; options: TTarsBindableModel[] };
+  llm: { selected_id: string | null; options: TTarsBindableModel[] };
+};
+
+/** Only rerank and LLM are rebindable — the stored vectors fix the embedding. */
+export type TTarsKnowledgeBaseModelUpdate = {
+  rerankModelId?: string;
+  llmModelId?: string;
 };
 
 export type TTarsModelOption = {
@@ -106,6 +148,150 @@ export type TTarsKnowledgeBaseUpdate = {
   description?: string;
   domain_ids?: string;
   new_max_retrieve_count?: number;
+  /**
+   * pwc_tars only touches these when the key is present, so omitting a list
+   * leaves the stored permissions alone rather than clearing them.
+   */
+  allowed_user_ids?: string[];
+  allowed_user_group_ids?: string[];
+};
+
+/** A website dataset bound to a knowledge base. */
+export type TTarsDatasetWebsite = {
+  id: string;
+  name: string | null;
+  description: string | null;
+  url: string | null;
+  status: number | null;
+  size: number | null;
+  word_count: number | null;
+  tokens: number | null;
+  chunk_size: number | null;
+  tags: string | null;
+  website_metatype: string | null;
+  llm_model?: string | null;
+  created_by: string | null;
+  created_at: string | null;
+  updated_by: string | null;
+  updated_at: string | null;
+};
+
+/**
+ * A database connection. Every credential is stripped server-side — pwc_tars
+ * serialises the whole row, password included, and none of it reaches here.
+ */
+export type TTarsDatasetDatabase = {
+  id: string;
+  name: string;
+  description: string | null;
+  db_type: string | null;
+  host: string | null;
+  port: number | null;
+  database_name: string | null;
+  schema: string | null;
+  service_name: string | null;
+  sid: string | null;
+  status: number | null;
+  allowed_km_ids: string[];
+  llm_model?: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+/** A document-group link between a knowledge base and a file server. */
+export type TTarsDatasetFileSystemLink = {
+  id: string;
+  knowledge_base_id: string;
+  dataset_file_system_id: string;
+  name: string | null;
+  status: number | null;
+  llm_model: string | null;
+  schedule_id: string | null;
+  is_sync_all: boolean | null;
+  is_upload_only: boolean | null;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+/** A file server a document group can be imported from, without its password. */
+export type TTarsFileSystemSource = {
+  id: string;
+  name: string;
+  description: string | null;
+  mount_type: string | null;
+  host: string | null;
+  port: number | null;
+  path: string | null;
+  host_name: string | null;
+  status: number | null;
+  allowed_km_ids: string[];
+};
+
+/** System-wide ceilings the upload forms must respect. */
+export type TTarsDatasetLimits = {
+  max_upload_counts: number;
+  max_chunk_size: number;
+  max_overlap: number;
+};
+
+export type TTarsDatasetStats = {
+  document_count: number;
+  total_word_count: number;
+  total_token_count: number;
+  /** API datasets have no tab, so the count is what keeps them visible. */
+  api_count: number;
+};
+
+/** Everything the knowledge-base detail page reads, in one response. */
+export type TTarsKnowledgeBaseDatasets = {
+  knowledge_base: TTarsKnowledgeBase | null;
+  documents: TTarsDocument[];
+  websites: TTarsDatasetWebsite[];
+  databases: TTarsDatasetDatabase[];
+  file_systems: TTarsDatasetFileSystemLink[];
+  available_databases: TTarsDatasetDatabase[];
+  limits: TTarsDatasetLimits;
+  stats: TTarsDatasetStats;
+};
+
+export type TTarsWebsiteImportInput = {
+  name: string;
+  url: string;
+  description?: string;
+  enabled?: boolean;
+  chunkSize?: number;
+};
+
+/** `bound` are the tables already attached to this knowledge base. */
+export type TTarsDatabaseTables = {
+  tables: string[];
+  views: string[];
+  bound: string[];
+};
+
+export type TTarsDatabasePrompt = {
+  id: string;
+  dataset_sql_id: string;
+  knowledge_base_id: string;
+  tables: string | null;
+  llm_table_info: string | null;
+  llm_model: string | null;
+};
+
+export type TTarsFileSystemImportInput = {
+  name: string;
+  syncAll?: boolean;
+  uploadOnly?: boolean;
+  fileSettings?: Record<string, { chunkSize?: number; overlap?: number }>;
+  tags?: string;
+};
+
+/** Document groups are unlinked one at a time, so they have no id list. */
+export type TTarsDatasetBatchDelete = {
+  documentIds?: string[];
+  websiteIds?: string[];
+  databaseIds?: string[];
 };
 
 /** A document inside a knowledge base (pwc_tars `Document.to_dict()`). */
@@ -113,6 +299,8 @@ export type TTarsDocument = {
   id: string;
   filename: string;
   knowledge_base_ids?: string | null;
+  /** Set when the document came in through a document group. */
+  dataset_file_system_id?: string | null;
   size?: number | null;
   extension?: string | null;
   mime_type?: string | null;

@@ -286,6 +286,7 @@ const Dropdown: React.FC<DropdownProps> = ({
           'popover-ui z-40 text-sm',
           '[pointer-events:auto]', // Override body's pointer-events:none when in modal
           sizeClasses,
+          className,
         )}
       >
         {searchable ? (
