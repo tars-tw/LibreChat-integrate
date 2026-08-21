@@ -3,12 +3,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   TTarsTicket,
   TTarsDomain,
-  TTarsChunk,
   TTarsPrompt,
   TTarsDocument,
   TTarsDomainInput,
   TTarsPromptInput,
-  TTarsChunkUpdate,
   TTarsKnowledgeBase,
   TTarsSysConfigUpdate,
   TTarsDocumentReprocess,
@@ -504,46 +502,6 @@ export const useReprocessTarsDocumentMutation = (
       },
     },
   );
-};
-
-export const useUpdateTarsChunkMutation = (
-  documentId: string,
-  options?: UseMutationOptions<
-    { chunk: TTarsChunk },
-    unknown,
-    { chunkId: string; data: TTarsChunkUpdate }
-  >,
-): UseMutationResult<
-  { chunk: TTarsChunk },
-  unknown,
-  { chunkId: string; data: TTarsChunkUpdate }
-> => {
-  const queryClient = useQueryClient();
-  return useMutation(
-    ({ chunkId, data }: { chunkId: string; data: TTarsChunkUpdate }) =>
-      dataService.updateTarsChunk(chunkId, data),
-    {
-      ...options,
-      onSuccess: (...args) => {
-        queryClient.invalidateQueries([QueryKeys.tarsDocumentChunks, documentId]);
-        options?.onSuccess?.(...args);
-      },
-    },
-  );
-};
-
-export const useDeleteTarsChunkMutation = (
-  documentId: string,
-  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
-): UseMutationResult<{ success: boolean }, unknown, string> => {
-  const queryClient = useQueryClient();
-  return useMutation((chunkId: string) => dataService.deleteTarsChunk(chunkId), {
-    ...options,
-    onSuccess: (...args) => {
-      queryClient.invalidateQueries([QueryKeys.tarsDocumentChunks, documentId]);
-      options?.onSuccess?.(...args);
-    },
-  });
 };
 
 const invalidatePrompts = (queryClient: ReturnType<typeof useQueryClient>) => {
