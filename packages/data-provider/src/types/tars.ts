@@ -317,6 +317,62 @@ export type TTarsDatasetBatchDelete = {
   databaseIds?: string[];
 };
 
+/** The dataset kinds pwc_tars can schedule. */
+export type TTarsScheduleDatasetType = 'website' | 'file_system' | 'api';
+
+/**
+ * One recurring dataset refresh.
+ *
+ * `last_status` is the one to read — `status` is an unused integer flag, and
+ * pwc_tars rewrites `last_status` to `stopped` in the response once `end_time`
+ * has passed, so it does not always match what is stored.
+ */
+export type TTarsSchedule = {
+  id: string;
+  dataset_id: string;
+  dataset_type: string;
+  dataset_name: string;
+  knowledge_base_id: string;
+  knowledge_base_name: string;
+  frequency: number;
+  frequency_unit: string;
+  start_time: string | null;
+  end_time: string | null;
+  last_execute_time: string | null;
+  next_execute_time: string | null;
+  execution_duration: number | null;
+  execution_type: string | null;
+  execution_count: number;
+  retry_count: number;
+  max_retry_count: number;
+  last_status: string | null;
+  description: string | null;
+  message: string | null;
+  /** Only meaningful for `file_system` schedules; it lives on the group link. */
+  is_sync_all: boolean;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type TTarsScheduleInput = {
+  datasetId: string;
+  datasetType: TTarsScheduleDatasetType;
+  knowledgeBaseId: string;
+  frequency: number;
+  frequencyUnit: string;
+  /** `YYYY-MM-DDTHH:MM`, as a `datetime-local` input produces. */
+  startTime: string;
+  endTime?: string;
+};
+
+export type TTarsScheduleUpdate = {
+  frequency: number;
+  frequencyUnit: string;
+  startTime: string;
+  endTime?: string;
+};
+
 /** A document inside a knowledge base (pwc_tars `Document.to_dict()`). */
 export type TTarsDocument = {
   id: string;
