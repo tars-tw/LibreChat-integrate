@@ -55,13 +55,13 @@ const loadProjectWorkspace = () =>
   }));
 
 const loadKnowledgeBasesView = () =>
-  import('~/components/KnowledgeBases').then((m) => ({
-    Component: m.KnowledgeBasesView,
+  import('~/components/Admin/Tars/Knowledge').then((m) => ({
+    Component: m.KnowledgeView,
   }));
 
 const loadKnowledgeBaseDetail = () =>
-  import('~/components/KnowledgeBases').then((m) => ({
-    Component: m.KnowledgeBaseDetail,
+  import('~/components/Admin/Tars/Knowledge/Detail').then((m) => ({
+    Component: m.KnowledgeDetailView,
   }));
 
 const loadSystemSettingsView = () =>

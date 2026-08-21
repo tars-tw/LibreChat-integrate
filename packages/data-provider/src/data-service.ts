@@ -1089,6 +1089,129 @@ export const deleteTarsKnowledgeBase = (id: string): Promise<{ success: boolean 
   return request.delete(endpoints.tarsKnowledgeBase(id));
 };
 
+export const getTarsKnowledgeBaseDatasets = (id: string): Promise<t.TTarsKnowledgeBaseDatasets> => {
+  return request.get(endpoints.tarsKnowledgeBaseDatasets(id));
+};
+
+export const importTarsWebsiteDataset = (
+  id: string,
+  data: t.TTarsWebsiteImportInput,
+): Promise<{ website: t.TTarsDatasetWebsite | null }> => {
+  return request.post(endpoints.tarsKnowledgeBaseWebsites(id), data);
+};
+
+export const updateTarsWebsiteDataset = (
+  id: string,
+  websiteId: string,
+  data: { name: string; description?: string },
+): Promise<{ website: t.TTarsDatasetWebsite | null }> => {
+  return request.put(endpoints.tarsKnowledgeBaseWebsite(id, websiteId), data);
+};
+
+export const deleteTarsWebsiteDataset = (
+  id: string,
+  websiteId: string,
+): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsKnowledgeBaseWebsite(id, websiteId));
+};
+
+export const getTarsDatabaseTables = (
+  id: string,
+  databaseId: string,
+): Promise<t.TTarsDatabaseTables> => {
+  return request.get(endpoints.tarsKnowledgeBaseDatabaseTables(id, databaseId));
+};
+
+export const bindTarsDatabase = (
+  id: string,
+  databaseId: string,
+  tables: string[],
+): Promise<{ success: boolean }> => {
+  return request.put(endpoints.tarsKnowledgeBaseDatabase(id, databaseId), { tables });
+};
+
+export const unbindTarsDatabase = (
+  id: string,
+  databaseId: string,
+): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsKnowledgeBaseDatabase(id, databaseId));
+};
+
+export const getTarsDatabasePrompt = (
+  id: string,
+  databaseId: string,
+): Promise<t.TTarsDatabasePrompt> => {
+  return request.get(endpoints.tarsKnowledgeBaseDatabasePrompt(id, databaseId));
+};
+
+export const updateTarsDatabasePrompt = (
+  id: string,
+  databaseId: string,
+  data: { bindingId: string; tableInfo: string },
+): Promise<{ success: boolean }> => {
+  return request.put(endpoints.tarsKnowledgeBaseDatabasePrompt(id, databaseId), data);
+};
+
+export const getTarsFileSystemSources = (
+  id: string,
+): Promise<{ sources: t.TTarsFileSystemSource[] }> => {
+  return request.get(endpoints.tarsKnowledgeBaseFileSystems(id));
+};
+
+export const getTarsFileSystemFiles = (id: string, fsId: string): Promise<{ files: string[] }> => {
+  return request.get(endpoints.tarsKnowledgeBaseFileSystemFiles(id, fsId));
+};
+
+export const importTarsFileSystemDataset = (
+  id: string,
+  fsId: string,
+  data: t.TTarsFileSystemImportInput,
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsKnowledgeBaseFileSystem(id, fsId), data);
+};
+
+export const refreshTarsFileSystemDataset = (
+  id: string,
+  fsId: string,
+  data: { chunkSize?: number; overlap?: number },
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsKnowledgeBaseFileSystemRefresh(id, fsId), data);
+};
+
+export const reprocessTarsFileSystemDataset = (
+  id: string,
+  fsId: string,
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsKnowledgeBaseFileSystemReprocess(id, fsId), {});
+};
+
+export const unlinkTarsFileSystemDataset = (
+  id: string,
+  fsId: string,
+): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsKnowledgeBaseFileSystem(id, fsId));
+};
+
+export const batchDeleteTarsDatasets = (
+  id: string,
+  data: t.TTarsDatasetBatchDelete,
+): Promise<{ accepted: number }> => {
+  return request.post(endpoints.tarsKnowledgeBaseDatasetsBatchDelete(id), data);
+};
+
+export const getTarsKnowledgeBaseModelBindings = (
+  id: string,
+): Promise<t.TTarsKnowledgeBaseModelBindings> => {
+  return request.get(endpoints.tarsKnowledgeBaseModelBindings(id));
+};
+
+export const updateTarsKnowledgeBaseModelBindings = (
+  id: string,
+  data: t.TTarsKnowledgeBaseModelUpdate,
+): Promise<{ knowledgeBase: t.TTarsKnowledgeBase }> => {
+  return request.put(endpoints.tarsKnowledgeBaseModelBindings(id), data);
+};
+
 export const uploadTarsKnowledgeBase = (data: FormData): Promise<Record<string, unknown>> => {
   return request.postMultiPart(endpoints.tarsKnowledgeBaseUpload(), data);
 };
