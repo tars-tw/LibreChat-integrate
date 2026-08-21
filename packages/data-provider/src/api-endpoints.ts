@@ -322,6 +322,15 @@ export const tarsKnowledgeBaseModelBindings = (id: string) =>
   `${BASE_URL}/api/tars/knowledge-bases/${encodeURIComponent(id)}/model-bindings`;
 const tarsKb = (id: string) => `${BASE_URL}/api/tars/knowledge-bases/${encodeURIComponent(id)}`;
 export const tarsKnowledgeBaseDatasets = (id: string) => `${tarsKb(id)}/datasets`;
+export const tarsSchedules = (knowledgeBaseId?: string) =>
+  knowledgeBaseId != null && knowledgeBaseId !== ''
+    ? `${BASE_URL}/api/tars/schedules?knowledgeBaseId=${encodeURIComponent(knowledgeBaseId)}`
+    : `${BASE_URL}/api/tars/schedules`;
+export const tarsSchedule = (id: string) =>
+  `${BASE_URL}/api/tars/schedules/${encodeURIComponent(id)}`;
+export const tarsScheduleAction = (id: string, action: 'run' | 'stop' | 'restart') =>
+  `${tarsSchedule(id)}/${action}`;
+export const tarsScheduleSyncAll = (id: string) => `${tarsSchedule(id)}/sync-all`;
 export const tarsKnowledgeBaseDatasetsBatchDelete = (id: string) =>
   `${tarsKb(id)}/datasets/batch-delete`;
 export const tarsKnowledgeBaseWebsites = (id: string) => `${tarsKb(id)}/websites`;
