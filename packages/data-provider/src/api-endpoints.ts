@@ -339,6 +339,30 @@ export const tarsKnowledgeBases = () => `${BASE_URL}/api/tars/knowledge-bases`;
 export const tarsKnowledgeBase = (id: string) => `${BASE_URL}/api/tars/knowledge-bases/${id}`;
 export const tarsKnowledgeBaseModels = () => `${BASE_URL}/api/tars/knowledge-bases/models`;
 export const tarsKnowledgeBaseUpload = () => `${BASE_URL}/api/tars/knowledge-bases/upload`;
+export const tarsKnowledgeBaseModelBindings = (id: string) =>
+  `${BASE_URL}/api/tars/knowledge-bases/${encodeURIComponent(id)}/model-bindings`;
+const tarsKb = (id: string) => `${BASE_URL}/api/tars/knowledge-bases/${encodeURIComponent(id)}`;
+export const tarsKnowledgeBaseDatasets = (id: string) => `${tarsKb(id)}/datasets`;
+export const tarsKnowledgeBaseDatasetsBatchDelete = (id: string) =>
+  `${tarsKb(id)}/datasets/batch-delete`;
+export const tarsKnowledgeBaseWebsites = (id: string) => `${tarsKb(id)}/websites`;
+export const tarsKnowledgeBaseWebsite = (id: string, websiteId: string) =>
+  `${tarsKb(id)}/websites/${encodeURIComponent(websiteId)}`;
+export const tarsKnowledgeBaseDatabase = (id: string, databaseId: string) =>
+  `${tarsKb(id)}/databases/${encodeURIComponent(databaseId)}`;
+export const tarsKnowledgeBaseDatabaseTables = (id: string, databaseId: string) =>
+  `${tarsKnowledgeBaseDatabase(id, databaseId)}/tables`;
+export const tarsKnowledgeBaseDatabasePrompt = (id: string, databaseId: string) =>
+  `${tarsKnowledgeBaseDatabase(id, databaseId)}/prompt`;
+export const tarsKnowledgeBaseFileSystems = (id: string) => `${tarsKb(id)}/file-systems`;
+export const tarsKnowledgeBaseFileSystem = (id: string, fsId: string) =>
+  `${tarsKb(id)}/file-systems/${encodeURIComponent(fsId)}`;
+export const tarsKnowledgeBaseFileSystemFiles = (id: string, fsId: string) =>
+  `${tarsKnowledgeBaseFileSystem(id, fsId)}/files`;
+export const tarsKnowledgeBaseFileSystemRefresh = (id: string, fsId: string) =>
+  `${tarsKnowledgeBaseFileSystem(id, fsId)}/refresh`;
+export const tarsKnowledgeBaseFileSystemReprocess = (id: string, fsId: string) =>
+  `${tarsKnowledgeBaseFileSystem(id, fsId)}/reprocess`;
 export const tarsKnowledgeBaseDocuments = (id: string) =>
   `${BASE_URL}/api/tars/knowledge-bases/${encodeURIComponent(id)}/documents`;
 export const tarsKnowledgeBaseDocument = (id: string, docId: string) =>
