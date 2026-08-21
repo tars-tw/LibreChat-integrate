@@ -25,15 +25,11 @@ import {
   useCreateTarsTokenConfigMutation,
   useUpdateTarsTokenConfigMutation,
 } from '~/data-provider';
+import LimitInput, { toLimitField, fromLimitField, isValidLimitField } from './LimitInput';
 import { useLocalize } from '~/hooks';
 
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-border-light bg-surface-primary px-3 text-sm text-text-primary disabled:opacity-50';
-
-/** A blank limit means "no ceiling" upstream, which is not the same as zero. */
-const toLimit = (value: string): number | null => (value.trim() === '' ? null : Number(value));
-
-const fromLimit = (value: number | null): string => (value == null ? '' : String(value));
 
 interface ConfigForm {
   domainId: string;
@@ -51,8 +47,8 @@ const formOf = (config: TTarsTokenConfig | null): ConfigForm => ({
   domainId: config?.domain_id ?? '',
   groupId: config?.user_group_id ?? '',
   provider: config?.provider ?? TOKEN_PROVIDERS[0],
-  defaultUserLimit: fromLimit(config?.default_user_limit ?? null),
-  systemTotalLimit: fromLimit(config?.system_total_limit ?? null),
+  defaultUserLimit: toLimitField(config?.default_user_limit),
+  systemTotalLimit: toLimitField(config?.system_total_limit),
   resetType: config?.reset_type ?? 'monthly',
   resetDay: String(config?.reset_day ?? 1),
   warningPercent: String(Math.round((config?.warning_threshold ?? 0.8) * 100)),
@@ -112,6 +108,8 @@ export default function ConfigModal({
     form.groupId === '' ||
     form.domainId === '' ||
     form.provider === '' ||
+    !isValidLimitField(form.defaultUserLimit) ||
+    !isValidLimitField(form.systemTotalLimit) ||
     Number.isNaN(Number(form.warningPercent));
 
   const handleSave = () => {
@@ -119,8 +117,8 @@ export default function ConfigModal({
       domain_id: form.domainId,
       user_group_id: form.groupId,
       provider: form.provider,
-      default_user_limit: toLimit(form.defaultUserLimit),
-      system_total_limit: toLimit(form.systemTotalLimit),
+      default_user_limit: fromLimitField(form.defaultUserLimit),
+      system_total_limit: fromLimitField(form.systemTotalLimit),
       reset_type: form.resetType,
       reset_day: usesResetDay(form.resetType) ? Number(form.resetDay) : 1,
       warning_threshold: Number(form.warningPercent) / 100,
@@ -214,33 +212,19 @@ export default function ConfigModal({
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="tars-quota-user-limit">
-                {localize('com_ui_tars_quota_default_user_limit')}
-              </Label>
-              <Input
-                id="tars-quota-user-limit"
-                type="number"
-                min="0"
-                value={form.defaultUserLimit}
-                onChange={(event) => set('defaultUserLimit', event.target.value)}
-                placeholder={localize('com_ui_tars_quota_unlimited')}
-              />
-            </div>
+            <LimitInput
+              id="tars-quota-user-limit"
+              label={localize('com_ui_tars_quota_default_user_limit')}
+              value={form.defaultUserLimit}
+              onChange={(value) => set('defaultUserLimit', value)}
+            />
 
-            <div className="space-y-1.5">
-              <Label htmlFor="tars-quota-total-limit">
-                {localize('com_ui_tars_quota_system_total_limit')}
-              </Label>
-              <Input
-                id="tars-quota-total-limit"
-                type="number"
-                min="0"
-                value={form.systemTotalLimit}
-                onChange={(event) => set('systemTotalLimit', event.target.value)}
-                placeholder={localize('com_ui_tars_quota_unlimited')}
-              />
-            </div>
+            <LimitInput
+              id="tars-quota-total-limit"
+              label={localize('com_ui_tars_quota_system_total_limit')}
+              value={form.systemTotalLimit}
+              onChange={(value) => set('systemTotalLimit', value)}
+            />
 
             <div className="space-y-1.5">
               <Label htmlFor="tars-quota-reset-type">
