@@ -185,7 +185,7 @@ describe('Landing agent contact', () => {
       'agent-1': { id: 'agent-1', name: '簡報高手', description: '我超級會做簡報的唷!' },
     };
 
-    render(<Landing centerFormOnLanding={false} />);
+    renderLanding();
 
     expect(screen.getByText('簡報高手')).toBeInTheDocument();
     expect(screen.queryByText('通用腦')).not.toBeInTheDocument();
@@ -195,7 +195,7 @@ describe('Landing agent contact', () => {
     mockDomains = [{ id: 100, name: '通用腦' }];
     mockConversation = { endpoint: 'openAI', model: 'gpt-4o' };
 
-    render(<Landing centerFormOnLanding={false} />);
+    renderLanding();
 
     expect(screen.getByText('通用腦')).toBeInTheDocument();
   });
@@ -204,7 +204,7 @@ describe('Landing agent contact', () => {
     mockDomains = [{ id: 100, name: '通用腦', description: '什麼都問得到' }];
     mockConversation = { endpoint: 'openAI', model: 'gpt-4o', greeting: 'Start chatting' };
 
-    render(<Landing centerFormOnLanding={false} />);
+    renderLanding();
 
     expect(screen.getByText('什麼都問得到')).toBeInTheDocument();
     expect(screen.queryByText('Start chatting')).not.toBeInTheDocument();
@@ -214,7 +214,7 @@ describe('Landing agent contact', () => {
     mockDomains = [{ id: 100, name: '通用腦', description: null }];
     mockConversation = { endpoint: 'openAI', model: 'gpt-4o', greeting: 'Start chatting' };
 
-    render(<Landing centerFormOnLanding={false} />);
+    renderLanding();
 
     expect(screen.getByText('Start chatting')).toBeInTheDocument();
   });
@@ -226,7 +226,7 @@ describe('Landing agent contact', () => {
       'agent-1': { id: 'agent-1', name: '簡報高手', description: '我超級會做簡報的唷!' },
     };
 
-    render(<Landing centerFormOnLanding={false} />);
+    renderLanding();
 
     expect(screen.getByText('我超級會做簡報的唷!')).toBeInTheDocument();
     expect(screen.queryByText('什麼都問得到')).not.toBeInTheDocument();
