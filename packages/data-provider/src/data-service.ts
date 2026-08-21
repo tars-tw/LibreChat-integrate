@@ -1155,6 +1155,13 @@ export const deleteTarsWebsiteDataset = (
   return request.delete(endpoints.tarsKnowledgeBaseWebsite(id, websiteId));
 };
 
+export const getTarsWebsiteChunks = (
+  id: string,
+  websiteId: string,
+): Promise<t.TTarsWebsiteChunkPage> => {
+  return request.get(endpoints.tarsKnowledgeBaseWebsiteChunks(id, websiteId));
+};
+
 export const getTarsDatabaseTables = (
   id: string,
   databaseId: string,
@@ -1292,17 +1299,6 @@ export const reprocessTarsKnowledgeBaseDocument = (
 
 export const getTarsDocumentChunks = (docId: string): Promise<t.TTarsChunksResponse> => {
   return request.get(endpoints.tarsDocumentChunks(docId));
-};
-
-export const updateTarsChunk = (
-  chunkId: string,
-  data: t.TTarsChunkUpdate,
-): Promise<{ chunk: t.TTarsChunk }> => {
-  return request.put(endpoints.tarsChunk(chunkId), data);
-};
-
-export const deleteTarsChunk = (chunkId: string): Promise<{ success: boolean }> => {
-  return request.delete(endpoints.tarsChunk(chunkId));
 };
 
 export const getTarsPrompts = (domainId?: string | number): Promise<t.TTarsPromptsResponse> => {
