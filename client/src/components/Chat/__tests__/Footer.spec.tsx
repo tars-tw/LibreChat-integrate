@@ -23,10 +23,13 @@ jest.mock('~/hooks', () => ({
 }));
 
 describe('Footer', () => {
-  test('opens the default LibreChat site link in a new tab', () => {
+  test('opens the default TARS.ai footer link in a new tab', () => {
     render(<Footer startupConfig={null} />);
-    const link = screen.getByRole('link', { name: /LibreChat/ });
-    expect(link).toHaveAttribute('href', 'https://librechat.ai');
+    const link = screen.getByRole('link', { name: 'Privacy Policy' });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://www.pwc.tw/zh/legal-notices/privacy-statement-zh.html',
+    );
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
