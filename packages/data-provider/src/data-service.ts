@@ -1165,6 +1165,48 @@ export const deleteTarsWebsiteDataset = (
   return request.delete(endpoints.tarsKnowledgeBaseWebsite(id, websiteId));
 };
 
+export const getTarsSchedules = (
+  knowledgeBaseId?: string,
+): Promise<{ schedules: t.TTarsSchedule[] }> => {
+  return request.get(endpoints.tarsSchedules(knowledgeBaseId));
+};
+
+export const createTarsSchedule = (
+  data: t.TTarsScheduleInput,
+): Promise<{ schedule: t.TTarsSchedule | null }> => {
+  return request.post(endpoints.tarsSchedules(), data);
+};
+
+export const updateTarsSchedule = (
+  id: string,
+  data: t.TTarsScheduleUpdate,
+): Promise<{ success: boolean }> => {
+  return request.put(endpoints.tarsSchedule(id), data);
+};
+
+export const deleteTarsSchedule = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsSchedule(id));
+};
+
+export const runTarsSchedule = (id: string): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsScheduleAction(id, 'run'), {});
+};
+
+export const stopTarsSchedule = (id: string): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsScheduleAction(id, 'stop'), {});
+};
+
+export const restartTarsSchedule = (id: string): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsScheduleAction(id, 'restart'), {});
+};
+
+export const updateTarsScheduleSyncAll = (
+  id: string,
+  isSyncAll: boolean,
+): Promise<{ success: boolean }> => {
+  return request.put(endpoints.tarsScheduleSyncAll(id), { isSyncAll });
+};
+
 export const getTarsWebsiteChunks = (
   id: string,
   websiteId: string,

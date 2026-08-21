@@ -6,12 +6,18 @@ import {
   MCP_USER_INPUT_FIELDS,
 } from '../src/mcp';
 
+/**
+ * Rule enforced here: {@link MCP_TITLE_PATTERN} — Unicode letters/numbers/marks plus
+ * space and the `. _ -` separators; punctuation and symbols are excluded. The pattern
+ * itself is covered by `src/mcpTitle.spec.ts`; these cases assert both the configured
+ * and the user-input schema apply it.
+ */
 describe('MCP server title validation', () => {
   const titleCases = [
     ['hyphenated ASCII title', 'Read-Only Tools'],
-    ['accented title', "Générateur d'images"],
+    ['accented title', 'Générateur images'],
     ['Unicode title', '画像ツール'],
-    ['typographic apostrophe', 'Today’s Tools'],
+    ['dotted version suffix', 'Gateway v1.2'],
   ];
 
   it.each(titleCases)('accepts a %s in configured MCP servers', (_label, title) => {
@@ -34,7 +40,7 @@ describe('MCP server title validation', () => {
     expect(result.success).toBe(true);
   });
 
-  it.each(['', '   ', '-Tools', "'Tools", 'Tools@Home'])(
+  it.each(['', 'Today’s Tools', "'Tools", 'Tools@Home', 'Platform API (Demo)'])(
     'rejects an invalid MCP server title: %p',
     (title) => {
       const result = MCPServerUserInputSchema.safeParse({
