@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, RotateCcw, Search } from 'lucide-react';
 import type { TTarsActionLogOptionsResponse } from 'librechat-data-provider';
 import type { PickerOption } from '../Audit/Picker';
 import { ACTION_ORDER, actionConfig, defaultWindow } from './helpers';
+import { pickerLabel } from '../Audit/Picker';
 import { useLocalize } from '~/hooks';
 import Picker from '../Audit/Picker';
 
@@ -50,7 +51,7 @@ export default function Filters({
     () =>
       (options?.users ?? []).map((user) => ({
         value: user.user_id,
-        label: user.username ?? user.user_email ?? user.user_id,
+        label: pickerLabel(user.username, user.user_email, user.user_id),
       })),
     [options],
   );

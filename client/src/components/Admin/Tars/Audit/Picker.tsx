@@ -9,6 +9,22 @@ export interface PickerOption {
 }
 
 /**
+ * The first candidate that is actually readable.
+ *
+ * pwc_tars stores optional display names as nullable strings, so a person who
+ * never set one can arrive as `''` rather than `null` — and `??` would keep
+ * that empty string, leaving a blank row at the top of the list.
+ */
+export const pickerLabel = (...candidates: (string | null | undefined)[]): string => {
+  for (const candidate of candidates) {
+    if (candidate != null && candidate.trim() !== '') {
+      return candidate;
+    }
+  }
+  return '';
+};
+
+/**
  * A searchable multi-select for the audit filters.
  *
  * `MultiSelect` from `@librechat/client` has no search box, and these lists are
