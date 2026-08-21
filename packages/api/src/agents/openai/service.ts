@@ -62,6 +62,7 @@ import {
   createOpenAIStreamTracker,
   sendFinalChunk,
   createChunk,
+  GraphEvents,
   writeSSE,
 } from './handlers';
 import {
@@ -70,6 +71,7 @@ import {
 } from '~/middleware/modelBoundContent';
 import { contentFilterBlockResponse, isContentFilterError } from '~/middleware/contentFilter';
 import { contentFilterUninspectableResponse } from '~/protection/files';
+import { createToolExecuteHandler } from '~/agents/handlers';
 import { createMCPRuntimeRequestBody } from '~/mcp/request';
 import { getUserFacingProviderError } from '../errors';
 import { collectReachableAgents } from '../traversal';
@@ -848,6 +850,14 @@ export async function createAgentChatCompletion(
         },
       },
     };
+
+    /** Deferred (lazy) tool loading still applies here: the graph emits this event
+     *  when a tool call names a tool the run has not materialized yet. */
+    if (deps.toolExecuteOptions) {
+      eventHandlers[GraphEvents.ON_TOOL_EXECUTE] = createToolExecuteHandler(
+        deps.toolExecuteOptions,
+      );
+    }
 
     // Convert messages to internal format
     const messages = convertMessages(request.messages);
