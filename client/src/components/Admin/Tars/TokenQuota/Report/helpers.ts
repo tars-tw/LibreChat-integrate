@@ -4,6 +4,7 @@ import type {
   TTarsTokenDailyUsage,
   TTarsTokenGroupUsage,
 } from 'librechat-data-provider';
+import { capOf, isActiveQuota } from '../helpers';
 
 /** The report opens on the last month, the range the pwc_tars page defaulted to. */
 export const defaultReportRange = (): { start: string; end: string } => {
@@ -81,9 +82,10 @@ export interface QuotaCeiling {
 const addToCeiling = (
   ceilings: Map<string, QuotaCeiling>,
   key: string,
-  limit: number | null,
+  rawLimit: number | null,
   warningThreshold: number | null,
 ): void => {
+  const limit = capOf(rawLimit);
   const current = ceilings.get(key);
   if (current == null) {
     ceilings.set(key, { limit, ruleCount: 1, warningThreshold });
@@ -120,7 +122,7 @@ export const groupCeilings = (configs: TTarsTokenConfig[]): Map<string, QuotaCei
 export const userCeilings = (quotas: TTarsTokenUserQuota[]): Map<string, QuotaCeiling> => {
   const ceilings = new Map<string, QuotaCeiling>();
   for (const quota of quotas) {
-    if (quota.status !== 'active' || quota.user_id == null) {
+    if (!isActiveQuota(quota) || quota.user_id == null) {
       continue;
     }
     addToCeiling(ceilings, String(quota.user_id), quota.custom_limit, null);
