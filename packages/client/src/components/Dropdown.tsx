@@ -4,6 +4,7 @@ import { matchSorter } from 'match-sorter';
 import * as Select from '@ariakit/react/select';
 import * as Combobox from '@ariakit/react/combobox';
 import type { Option } from '~/common';
+import { usePopoverZIndex } from './OriginalDialog';
 import { fieldControl } from './Field';
 import { cn } from '~/utils/';
 import './Dropdown.css';
@@ -68,6 +69,12 @@ const Dropdown: React.FC<DropdownProps> = ({
   searchEmptyText,
 }) => {
   const [searchValue, setSearchValue] = useState('');
+  /**
+   * The popover is portaled to `document.body`, so a static z-index leaves it
+   * behind the overlay of any dialog it is opened from. Every other portaled
+   * popup in this package reads its depth the same way.
+   */
+  const popoverZIndex = usePopoverZIndex();
 
   const handleChange = (value: string) => {
     onChange(value);
@@ -181,10 +188,13 @@ const Dropdown: React.FC<DropdownProps> = ({
         portal={portal}
         portalElement={portalElement}
         store={selectProps}
+        style={{ zIndex: popoverZIndex }}
         className={cn(
-          'popover-ui z-40 text-sm',
+          'popover-ui text-sm',
+          'max-h-[80vh] overflow-y-auto',
           '[pointer-events:auto]', // Override body's pointer-events:none when in modal
           sizeClasses,
+          className,
         )}
       >
         {searchable ? (
