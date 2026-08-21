@@ -17,6 +17,7 @@ import type {
   TTarsKnowledgeBaseDatasets,
   TTarsDatabaseTables,
   TTarsWebsiteChunkPage,
+  TTarsSchedule,
   TTarsDatabasePrompt,
   TTarsFileSystemSource,
   TTarsMcpUserServer,
@@ -156,6 +157,30 @@ export const useTarsKnowledgeBaseDatasetsQuery = (
       refetchOnWindowFocus: false,
       refetchInterval: (data) =>
         (data?.documents ?? []).some((doc) => PROCESSING_STATUSES.has(doc.status)) ? 5000 : false,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Recurring dataset refreshes. Omitting the knowledge base asks for every one
+ * the caller may see, which is what the standalone schedule page wants.
+ *
+ * Polls while any job is running, since pwc_tars advances `last_status` on a
+ * scheduler thread long after the request that started it returned.
+ */
+export const useTarsSchedulesQuery = (
+  knowledgeBaseId?: string,
+  config?: UseQueryOptions<{ schedules: TTarsSchedule[] }, unknown, TTarsSchedule[]>,
+): QueryObserverResult<TTarsSchedule[]> => {
+  return useQuery<{ schedules: TTarsSchedule[] }, unknown, TTarsSchedule[]>(
+    [QueryKeys.tarsSchedules, knowledgeBaseId ?? 'all'],
+    () => dataService.getTarsSchedules(knowledgeBaseId),
+    {
+      select: (data) => data.schedules ?? [],
+      refetchOnWindowFocus: false,
+      refetchInterval: (data) =>
+        (data ?? []).some((schedule) => schedule.last_status === 'running') ? 5000 : false,
       ...config,
     },
   );

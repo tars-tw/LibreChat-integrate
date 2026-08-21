@@ -12,6 +12,7 @@ import { useChatSettings } from '~/Providers/ChatSettingsContext';
 import AgentContact from '~/components/Agents/AgentContact';
 import { useSelectedTarsDomain } from './Menus/Tars/domain';
 import ConvoIcon from '~/components/Endpoints/ConvoIcon';
+import temporaryStore from '~/store/temporary';
 
 const containerClassName =
   'relative flex h-full items-center justify-center rounded-full bg-presentation text-text-primary';

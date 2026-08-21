@@ -10,6 +10,7 @@ export * from './models';
 export * from './prompts';
 export * from './reports';
 export * from './roles';
+export * from './schedules';
 export * from './settings';
 export * from './sso';
 export * from './sysconfig';
