@@ -89,6 +89,11 @@ const loadIssuesView = () =>
     Component: m.IssuesView,
   }));
 
+const loadSchedulesView = () =>
+  import('~/components/Admin/Tars/Schedules').then((m) => ({
+    Component: m.SchedulesView,
+  }));
+
 const loadSysConfigView = () =>
   import('~/components/Admin/Tars/SysConfig').then((m) => ({
     Component: m.SysConfigView,
@@ -282,7 +287,10 @@ export const router = createBrowserRouter(
               path: 'admin/domains',
               lazy: loadDomainsView,
             },
-            placeholderRoute('kb-schedules', 'com_ui_tars_nav_kb_schedule'),
+            {
+              path: 'kb-schedules',
+              lazy: loadSchedulesView,
+            },
             placeholderRoute('data-sources/databases', 'com_ui_tars_nav_app_db'),
             placeholderRoute('data-sources/documents', 'com_ui_tars_nav_doc_groups'),
             placeholderRoute('data-sources/websites', 'com_ui_tars_nav_websites'),
