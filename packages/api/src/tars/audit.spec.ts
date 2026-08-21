@@ -196,3 +196,34 @@ describe('fetchTarsAuditReport', () => {
     });
   });
 });
+
+describe('fetchTarsAuditFilterOptions blank names', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  /**
+   * `display_name` and friends are nullable strings in pwc_tars, so an unset
+   * one can come back as `''`. A blank label sorts to the top of the picker and
+   * reads as an empty row, so the id stands in instead.
+   */
+  it('falls back past an empty name to the id', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(200, {
+        data: {
+          users: [
+            { id: 7, name: '', username: '' },
+            { id: 8, name: null, username: 'amy' },
+          ],
+          domains: [],
+          knowledge_bases: [],
+        },
+      }),
+    );
+
+    const options = await fetchTarsAuditFilterOptions(BASE_URL);
+
+    expect(options.users).toEqual([
+      { id: '7', username: '7' },
+      { id: '8', username: 'amy' },
+    ]);
+  });
+});
