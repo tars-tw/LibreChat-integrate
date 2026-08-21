@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
   Label,
-  Input,
   Button,
   Switch,
   Spinner,
@@ -15,8 +14,15 @@ import type {
   TTarsTokenQuotaInput,
   TTarsTokenPrepareData,
 } from 'librechat-data-provider';
+import {
+  QUOTA_STATUS_ON,
+  QUOTA_STATUS_OFF,
+  TOKEN_PROVIDERS,
+  allowedDomainSet,
+  isActiveQuota,
+} from './helpers';
 import { useCreateTarsTokenQuotaMutation, useUpdateTarsTokenQuotaMutation } from '~/data-provider';
-import { TOKEN_PROVIDERS, allowedDomainSet } from './helpers';
+import LimitInput, { toLimitField, fromLimitField, isValidLimitField } from './LimitInput';
 import UserPicker from './UserPicker';
 import { useLocalize } from '~/hooks';
 
@@ -45,10 +51,8 @@ export default function QuotaModal({
   const [user, setUser] = useState<TTarsTokenUser | null>(null);
   const [domainId, setDomainId] = useState(quota?.domain_id ?? '');
   const [provider, setProvider] = useState(quota?.provider ?? TOKEN_PROVIDERS[0]);
-  const [customLimit, setCustomLimit] = useState(
-    quota?.custom_limit == null ? '' : String(quota.custom_limit),
-  );
-  const [active, setActive] = useState((quota?.status ?? 'active') === 'active');
+  const [customLimit, setCustomLimit] = useState(() => toLimitField(quota?.custom_limit));
+  const [active, setActive] = useState(quota == null ? true : isActiveQuota(quota));
 
   const domains = useMemo(() => options?.domains ?? [], [options]);
   const availableDomains = useMemo(() => {
@@ -73,14 +77,22 @@ export default function QuotaModal({
   const updateMutation = useUpdateTarsTokenQuotaMutation({ onSuccess, onError });
   const isSaving = createMutation.isLoading || updateMutation.isLoading;
 
-  const invalid = quota == null && (user == null || provider === '');
+  /**
+   * A brain is required, not optional: `get_effective_quota` matches a personal
+   * override with `domain_id == str(domain_id)`, so a row saved without one can
+   * never be found by a request and the ceiling would silently never apply.
+   */
+  const invalid =
+    domainId === '' ||
+    !isValidLimitField(customLimit) ||
+    (quota == null && (user == null || provider === ''));
 
   const handleSave = () => {
     const input: TTarsTokenQuotaInput = {
-      domain_id: domainId === '' ? null : domainId,
+      domain_id: domainId,
       provider,
-      custom_limit: customLimit.trim() === '' ? null : Number(customLimit),
-      status: active ? 'active' : 'suspended',
+      custom_limit: fromLimitField(customLimit),
+      status: active ? QUOTA_STATUS_ON : QUOTA_STATUS_OFF,
     };
     if (quota == null) {
       createMutation.mutate({
@@ -126,7 +138,7 @@ export default function QuotaModal({
                   value={domainId}
                   onChange={(event) => setDomainId(event.target.value)}
                 >
-                  <option value="">{localize('com_ui_tars_quota_all_domains')}</option>
+                  <option value="">{localize('com_ui_tars_quota_select_domain')}</option>
                   {availableDomains.map((domain) => (
                     <option key={domain.id} value={domain.id}>
                       {domain.name}
@@ -154,19 +166,12 @@ export default function QuotaModal({
                 </select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="tars-quota-custom-limit">
-                  {localize('com_ui_tars_quota_custom_limit')}
-                </Label>
-                <Input
-                  id="tars-quota-custom-limit"
-                  type="number"
-                  min="0"
-                  value={customLimit}
-                  onChange={(event) => setCustomLimit(event.target.value)}
-                  placeholder={localize('com_ui_tars_quota_unlimited')}
-                />
-              </div>
+              <LimitInput
+                id="tars-quota-custom-limit"
+                label={localize('com_ui_tars_quota_custom_limit')}
+                value={customLimit}
+                onChange={setCustomLimit}
+              />
 
               <div className="flex items-end justify-between gap-3">
                 <Label htmlFor="tars-quota-user-status">
