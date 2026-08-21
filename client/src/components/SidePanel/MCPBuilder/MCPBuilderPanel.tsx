@@ -2,13 +2,13 @@ import { useState, useRef, useMemo, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useRecoilValue } from 'recoil';
 import { useLocation } from 'react-router-dom';
+import { Button, FilterInput, OGDialogTrigger, TooltipAnchor } from '@librechat/client';
 import {
   SystemRoles,
   PermissionTypes,
   Permissions,
   isTarsMcpServerName,
 } from 'librechat-data-provider';
-import { Button, FilterInput, OGDialogTrigger, TooltipAnchor } from '@librechat/client';
 import {
   useLocalize,
   useMCPServerManager,
@@ -23,8 +23,8 @@ import { useGetStartupConfig } from '~/data-provider';
 import MCPAdminSettings from './MCPAdminSettings';
 import MCPServerDialog from './MCPServerDialog';
 import MCPServerList from './MCPServerList';
-import store from '~/store';
 import TarsCard from './TarsCard';
+import store from '~/store';
 
 export default function MCPBuilderPanel() {
   const localize = useLocalize();
