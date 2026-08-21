@@ -15,6 +15,7 @@ import {
   useBatchDeleteTarsDatasetsMutation,
 } from '~/data-provider';
 import FileSystemsTab from './FileSystemsTab';
+import SchedulesTab from './SchedulesTab';
 import DatabasesTab from './DatabasesTab';
 import DocumentsTab from './DocumentsTab';
 import WebsitesTab from './WebsitesTab';
@@ -98,6 +99,9 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
             {localize('com_ui_tars_kb_stat_file_systems')}
             {count(data?.file_systems.length ?? 0)}
           </TabsTrigger>
+          <TabsTrigger value="schedules" className={TAB_TRIGGER}>
+            {localize('com_ui_tars_nav_kb_schedule')}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="documents" className={TAB_PANEL}>
@@ -151,6 +155,10 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
             onRefresh={refresh}
             isRefreshing={isRefreshing}
           />
+        </TabsContent>
+
+        <TabsContent value="schedules" className={TAB_PANEL}>
+          <SchedulesTab knowledgeBaseId={knowledgeBaseId} locale={locale} />
         </TabsContent>
       </Tabs>
 
