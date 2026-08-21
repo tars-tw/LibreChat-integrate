@@ -356,6 +356,8 @@ export const tarsKnowledgeBaseDatasetsBatchDelete = (id: string) =>
 export const tarsKnowledgeBaseWebsites = (id: string) => `${tarsKb(id)}/websites`;
 export const tarsKnowledgeBaseWebsite = (id: string, websiteId: string) =>
   `${tarsKb(id)}/websites/${encodeURIComponent(websiteId)}`;
+export const tarsKnowledgeBaseWebsiteChunks = (id: string, websiteId: string) =>
+  `${tarsKnowledgeBaseWebsite(id, websiteId)}/chunks`;
 export const tarsKnowledgeBaseDatabase = (id: string, databaseId: string) =>
   `${tarsKb(id)}/databases/${encodeURIComponent(databaseId)}`;
 export const tarsKnowledgeBaseDatabaseTables = (id: string, databaseId: string) =>
@@ -381,8 +383,6 @@ export const tarsKnowledgeBaseDocumentReprocess = (id: string, docId: string) =>
   `${tarsKnowledgeBaseDocument(id, docId)}/reprocess`;
 export const tarsDocumentChunks = (docId: string) =>
   `${BASE_URL}/api/tars/documents/${encodeURIComponent(docId)}/chunks`;
-export const tarsChunk = (chunkId: string) =>
-  `${BASE_URL}/api/tars/chunks/${encodeURIComponent(chunkId)}`;
 export const tarsPrompts = (domainId?: string | number) =>
   domainId != null && domainId !== ''
     ? `${BASE_URL}/api/tars/prompts?domain_id=${encodeURIComponent(String(domainId))}`
