@@ -8,7 +8,7 @@ function TarsBrandPanel() {
       <img
         src="assets/tars/login_page_6.png"
         alt=""
-        className="mb-8 w-full max-w-[320px] object-contain"
+        className="mb-5 w-full max-w-[300px] object-contain"
       />
       <div className="max-w-md text-center">
         <div className="mb-3 text-2xl font-bold text-gray-900">
