@@ -22,7 +22,11 @@ import { useLocalize } from '~/hooks';
 import DatabaseTable from './Table';
 import DatabaseModal from './Modal';
 
-const ALL_TYPES = '';
+/**
+ * The shared Dropdown treats an empty value as "nothing selected" and renders
+ * a blank trigger, so the catch-all option needs a value of its own.
+ */
+const ALL_TYPES = '__all__';
 
 /**
  * Application-database administration (資料源管理 → 應用資料庫): the master list
@@ -53,7 +57,7 @@ export default function DatabaseManager() {
   const [details, setDetails] = useState<TTarsDatasetDatabase | null>(null);
 
   const filtered = useMemo(
-    () => filterDatabases(databases, search, dbType),
+    () => filterDatabases(databases, search, dbType === ALL_TYPES ? '' : dbType),
     [databases, search, dbType],
   );
 
