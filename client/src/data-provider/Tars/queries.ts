@@ -22,6 +22,7 @@ import type {
   TTarsSchedule,
   TTarsDatabasePrompt,
   TTarsFileSystemSource,
+  TTarsFileSystemsResponse,
   TTarsMcpUserServer,
   TTarsPromptsResponse,
   TTarsDocumentsResponse,
@@ -940,6 +941,24 @@ export const useTarsDatabasesQuery = (
     () => dataService.getTarsDatabases(),
     {
       select: (data) => data.databases ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Admin: every document group (資料源管理 → 文檔群組). Credentials are stripped
+ * server-side, so nothing here can be prefilled back into a password field.
+ */
+export const useTarsFileSystemsQuery = (
+  config?: UseQueryOptions<TTarsFileSystemsResponse, unknown, TTarsFileSystemSource[]>,
+): QueryObserverResult<TTarsFileSystemSource[]> => {
+  return useQuery<TTarsFileSystemsResponse, unknown, TTarsFileSystemSource[]>(
+    [QueryKeys.tarsFileSystems],
+    () => dataService.getTarsFileSystems(),
+    {
+      select: (data) => data.fileSystems ?? [],
       ...adminQueryOptions,
       ...config,
     },

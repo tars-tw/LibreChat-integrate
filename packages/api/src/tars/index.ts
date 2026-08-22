@@ -4,6 +4,7 @@ export * from './domains';
 export * from './groups';
 export * from './databases';
 export * from './datasets';
+export * from './filesystems';
 export * from './knowledge';
 export * from './mcp';
 export * from './mirror';

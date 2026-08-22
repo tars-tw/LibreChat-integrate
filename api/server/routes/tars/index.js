@@ -1,6 +1,7 @@
 const express = require('express');
 const audit = require('./audit');
 const databases = require('./databases');
+const filesystems = require('./filesystems');
 const datasets = require('./datasets');
 const domains = require('./domains');
 const groups = require('./groups');
@@ -28,6 +29,7 @@ router.use('/', mcp);
 router.use('/', settings);
 router.use('/', audit);
 router.use('/', databases);
+router.use('/', filesystems);
 router.use('/', datasets);
 router.use('/', domains);
 router.use('/', groups);
