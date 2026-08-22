@@ -23,6 +23,7 @@ import type {
   TTarsDatabasePrompt,
   TTarsFileSystemSource,
   TTarsFileSystemsResponse,
+  TTarsWebsitesResponse,
   TTarsMcpUserServer,
   TTarsPromptsResponse,
   TTarsDocumentsResponse,
@@ -962,5 +963,19 @@ export const useTarsFileSystemsQuery = (
       ...adminQueryOptions,
       ...config,
     },
+  );
+};
+
+/**
+ * Admin: every website dataset (資料源管理 → 外部網站), plus the knowledge
+ * bases one may be imported into — pwc_tars returns both in one response.
+ */
+export const useTarsWebsitesQuery = (
+  config?: UseQueryOptions<TTarsWebsitesResponse>,
+): QueryObserverResult<TTarsWebsitesResponse> => {
+  return useQuery<TTarsWebsitesResponse>(
+    [QueryKeys.tarsWebsites],
+    () => dataService.getTarsWebsites(),
+    { ...adminQueryOptions, ...config },
   );
 };
