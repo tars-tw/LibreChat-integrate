@@ -20,6 +20,7 @@ import type {
   TTarsFileSystemSource,
   TTarsFileSystemInput,
   TTarsFileSystemConnectionTest,
+  TTarsWebsiteSourceInput,
   TTarsWebsiteImportInput,
   TTarsFileSystemImportInput,
   TTarsDatasetBatchDelete,
@@ -1620,5 +1621,69 @@ export const useTestTarsFileSystemConnectionMutation = (
   useMutation(
     (data: TTarsFileSystemInput & { fileSystemId?: string }) =>
       dataService.testTarsFileSystemConnection(data),
+    options,
+  );
+
+/**
+ * The 外部網站 master page reaches the same pwc_tars datasets the knowledge-base
+ * detail page does, so both caches are invalidated after every change.
+ */
+const useWebsiteSourceMutation = <TData, TVariables>(
+  mutate: (variables: TVariables) => Promise<TData>,
+  options?: UseMutationOptions<TData, unknown, TVariables>,
+): UseMutationResult<TData, unknown, TVariables> => {
+  const queryClient = useQueryClient();
+  return useMutation(mutate, {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsWebsites]);
+      queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+type WebsiteResponse = { website: TTarsDatasetWebsite | null };
+
+/** Crawls and embeds inside the request, so expect this one to be slow. */
+export const useCreateTarsWebsiteSourceMutation = (
+  options?: UseMutationOptions<WebsiteResponse, unknown, TTarsWebsiteSourceInput>,
+): UseMutationResult<WebsiteResponse, unknown, TTarsWebsiteSourceInput> =>
+  useWebsiteSourceMutation(
+    (data: TTarsWebsiteSourceInput) => dataService.createTarsWebsiteSource(data),
+    options,
+  );
+
+export const useUpdateTarsWebsiteSourceMutation = (
+  options?: UseMutationOptions<
+    WebsiteResponse,
+    unknown,
+    { id: string; name: string; description?: string }
+  >,
+): UseMutationResult<
+  WebsiteResponse,
+  unknown,
+  { id: string; name: string; description?: string }
+> =>
+  useWebsiteSourceMutation(
+    ({ id, name, description }: { id: string; name: string; description?: string }) =>
+      dataService.updateTarsWebsiteSource(id, { name, description }),
+    options,
+  );
+
+export const useDeleteTarsWebsiteSourceMutation = (
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { id: string; knowledgeBaseId: string | null }
+  >,
+): UseMutationResult<
+  { success: boolean },
+  unknown,
+  { id: string; knowledgeBaseId: string | null }
+> =>
+  useWebsiteSourceMutation(
+    ({ id, knowledgeBaseId }: { id: string; knowledgeBaseId: string | null }) =>
+      dataService.deleteTarsWebsiteSource(id, knowledgeBaseId),
     options,
   );
