@@ -14,6 +14,9 @@ import type {
   TTarsKnowledgeBaseUpdate,
   TTarsKnowledgeBaseModelUpdate,
   TTarsDatasetWebsite,
+  TTarsDatasetDatabase,
+  TTarsDatabaseInput,
+  TTarsDatabaseConnectionTest,
   TTarsWebsiteImportInput,
   TTarsFileSystemImportInput,
   TTarsDatasetBatchDelete,
@@ -1477,3 +1480,74 @@ export const useUpdateTarsTokenDefaultMutation = (
     },
   );
 };
+
+type DatabaseResponse = { database: TTarsDatasetDatabase | null };
+
+/**
+ * Every connection mutation also changes which knowledge bases may use it, so
+ * the knowledge-base dataset views are invalidated alongside the list itself.
+ */
+const invalidateTarsDatabases = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsDatabases]);
+  queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets]);
+};
+
+const useDatabaseMutation = <TData, TVariables>(
+  mutate: (variables: TVariables) => Promise<TData>,
+  options?: UseMutationOptions<TData, unknown, TVariables>,
+): UseMutationResult<TData, unknown, TVariables> => {
+  const queryClient = useQueryClient();
+  return useMutation(mutate, {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsDatabases(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useCreateTarsDatabaseMutation = (
+  options?: UseMutationOptions<DatabaseResponse, unknown, TTarsDatabaseInput>,
+): UseMutationResult<DatabaseResponse, unknown, TTarsDatabaseInput> =>
+  useDatabaseMutation((data: TTarsDatabaseInput) => dataService.createTarsDatabase(data), options);
+
+/** Creates a connection from an uploaded SQLite file (`multipart/form-data`). */
+export const useUploadTarsSqliteDatabaseMutation = (
+  options?: UseMutationOptions<DatabaseResponse, unknown, FormData>,
+): UseMutationResult<DatabaseResponse, unknown, FormData> =>
+  useDatabaseMutation((data: FormData) => dataService.uploadTarsSqliteDatabase(data), options);
+
+export const useUpdateTarsDatabaseMutation = (
+  options?: UseMutationOptions<DatabaseResponse, unknown, { id: string; data: TTarsDatabaseInput }>,
+): UseMutationResult<DatabaseResponse, unknown, { id: string; data: TTarsDatabaseInput }> =>
+  useDatabaseMutation(
+    ({ id, data }: { id: string; data: TTarsDatabaseInput }) =>
+      dataService.updateTarsDatabase(id, data),
+    options,
+  );
+
+export const useDeleteTarsDatabaseMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> =>
+  useDatabaseMutation((id: string) => dataService.deleteTarsDatabase(id), options);
+
+/**
+ * Opens the connection and lists its tables and views. Not a cache mutation —
+ * it uses `useMutation` because it is an explicit, on-demand action.
+ */
+export const useTestTarsDatabaseConnectionMutation = (
+  options?: UseMutationOptions<
+    TTarsDatabaseConnectionTest,
+    unknown,
+    TTarsDatabaseInput & { databaseId?: string }
+  >,
+): UseMutationResult<
+  TTarsDatabaseConnectionTest,
+  unknown,
+  TTarsDatabaseInput & { databaseId?: string }
+> =>
+  useMutation(
+    (data: TTarsDatabaseInput & { databaseId?: string }) =>
+      dataService.testTarsDatabaseConnection(data),
+    options,
+  );
