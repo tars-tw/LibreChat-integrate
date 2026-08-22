@@ -380,6 +380,10 @@ const tarsFileSystemsBase = () => `${BASE_URL}/api/tars/data-sources/file-system
 export const tarsFileSystems = () => tarsFileSystemsBase();
 export const tarsFileSystem = (id: string) => `${tarsFileSystemsBase()}/${encodeURIComponent(id)}`;
 export const tarsFileSystemTest = () => `${tarsFileSystemsBase()}/test`;
+
+const tarsWebsitesBase = () => `${BASE_URL}/api/tars/data-sources/websites`;
+export const tarsWebsites = () => tarsWebsitesBase();
+export const tarsWebsite = (id: string) => `${tarsWebsitesBase()}/${encodeURIComponent(id)}`;
 export const tarsKnowledgeBaseFileSystems = (id: string) => `${tarsKb(id)}/file-systems`;
 export const tarsKnowledgeBaseFileSystem = (id: string, fsId: string) =>
   `${tarsKb(id)}/file-systems/${encodeURIComponent(fsId)}`;
