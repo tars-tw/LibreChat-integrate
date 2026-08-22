@@ -34,3 +34,34 @@ export const isTarsFileDatabase = (dbType: string | null | undefined): boolean =
 
 /** Extensions pwc_tars accepts for a SQLite upload (`ALLOWED_SQLITE_EXTENSIONS`). */
 export const TARS_SQLITE_EXTENSIONS = ['.sqlite', '.db', '.sqlite3', '.s3db', '.sl3'];
+
+/**
+ * The file-server protocols the document-group page offers
+ * (`dataset_file_system.mount_type`). pwc_tars' `test_connection` implements
+ * exactly these four and rejects anything else.
+ */
+export const TARS_FILE_PROTOCOLS = ['SMB', 'FTP', 'SFTP', 'NFS'] as const;
+
+export type TTarsFileProtocol = (typeof TARS_FILE_PROTOCOLS)[number];
+
+/**
+ * Ports pwc_tars' own form pre-fills. SFTP is 2022 rather than 22 because the
+ * deployment maps the container's SSH port; every value stays editable.
+ */
+export const TARS_PROTOCOL_DEFAULT_PORTS: Record<TTarsFileProtocol, number> = {
+  SMB: 445,
+  FTP: 21,
+  SFTP: 2022,
+  NFS: 2049,
+};
+
+export const isTarsFileProtocol = (value: unknown): value is TTarsFileProtocol =>
+  TARS_FILE_PROTOCOLS.includes(value as TTarsFileProtocol);
+
+/** NFS authenticates by host export, so it takes no account or password. */
+export const tarsProtocolNeedsCredentials = (protocol: string | null | undefined): boolean =>
+  protocol === 'SMB' || protocol === 'FTP' || protocol === 'SFTP';
+
+/** Only SMB sends a NetBIOS server name (`host_name`) alongside the address. */
+export const tarsProtocolUsesHostName = (protocol: string | null | undefined): boolean =>
+  protocol === 'SMB';
