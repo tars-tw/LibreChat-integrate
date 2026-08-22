@@ -189,3 +189,11 @@ CLAUDE.md
 .gsd
 codedb.snapshot
 scripts/activity-labels/results/
+
+# TARS brand assets vendored from pwc_tars (frontend/src/assets/images/auth).
+# A global `*.png` ignore silently skipped these on `git add`, so the login page
+# shipped a 404 to every fresh clone — re-include them explicitly.
+!client/public/assets/tars/*.png
+!client/public/assets/tars/*.jpg
+!client/public/assets/tars/*.svg
+!client/public/assets/tars/*.webp
