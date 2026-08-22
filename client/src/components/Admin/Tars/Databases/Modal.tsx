@@ -31,6 +31,7 @@ import {
   useUploadTarsSqliteDatabaseMutation,
   useTestTarsDatabaseConnectionMutation,
 } from '~/data-provider';
+import { errorMessage } from '../Sources/helpers';
 import { useLocalize } from '~/hooks';
 import Picker from '../Audit/Picker';
 
@@ -477,11 +478,4 @@ export default function DatabaseModal({
       />
     </OGDialog>
   );
-}
-
-/** pwc_tars explains why it refused a connection; that beats a generic string. */
-function errorMessage(error: unknown): string | null {
-  const response = (error as { response?: { data?: { error?: unknown } } })?.response;
-  const detail = response?.data?.error;
-  return typeof detail === 'string' && detail !== '' ? detail : null;
 }
