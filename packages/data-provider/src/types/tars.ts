@@ -1,3 +1,5 @@
+import type { TTarsDatabaseType } from '../tars';
+
 /**
  * A pwc_tars specialized brain ("專用腦") as surfaced to the LibreChat client.
  * Mirrors the backend `TarsDomain` (pwc_tars `SysDomain.to_dict()`):
@@ -196,6 +198,32 @@ export type TTarsDatasetDatabase = {
   llm_model?: string | null;
   created_at: string | null;
   updated_at: string | null;
+};
+
+/** Payload the application-database form submits. */
+export type TTarsDatabaseInput = {
+  name: string;
+  description?: string;
+  dbType: TTarsDatabaseType;
+  host?: string;
+  port?: number;
+  /** For Oracle this is the Service Name; pwc_tars stores it in `database_name`. */
+  databaseName?: string;
+  username?: string;
+  /** Blank on edit means "keep the stored password" — the browser never has it. */
+  password?: string;
+  enabled?: boolean;
+  allowedKmIds?: string[];
+};
+
+export type TTarsDatabasesResponse = {
+  databases: TTarsDatasetDatabase[];
+};
+
+/** What a connection test found on the far side. */
+export type TTarsDatabaseConnectionTest = {
+  tables: string[];
+  views: string[];
 };
 
 /** A document-group link between a knowledge base and a file server. */

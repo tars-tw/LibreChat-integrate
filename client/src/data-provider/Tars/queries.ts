@@ -16,6 +16,8 @@ import type {
   TTarsKnowledgeBaseModelBindings,
   TTarsKnowledgeBaseDatasets,
   TTarsDatabaseTables,
+  TTarsDatasetDatabase,
+  TTarsDatabasesResponse,
   TTarsWebsiteChunkPage,
   TTarsSchedule,
   TTarsDatabasePrompt,
@@ -919,6 +921,25 @@ export const useTarsTokenReportUserQuery = (
     {
       enabled: query != null,
       select: (data) => data.usage ?? null,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Admin: every application-database connection (資料源管理 → 應用資料庫).
+ * Credentials are stripped server-side, so nothing here can be prefilled back
+ * into a password field.
+ */
+export const useTarsDatabasesQuery = (
+  config?: UseQueryOptions<TTarsDatabasesResponse, unknown, TTarsDatasetDatabase[]>,
+): QueryObserverResult<TTarsDatasetDatabase[]> => {
+  return useQuery<TTarsDatabasesResponse, unknown, TTarsDatasetDatabase[]>(
+    [QueryKeys.tarsDatabases],
+    () => dataService.getTarsDatabases(),
+    {
+      select: (data) => data.databases ?? [],
       ...adminQueryOptions,
       ...config,
     },
