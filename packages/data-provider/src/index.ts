@@ -46,6 +46,7 @@ export * from './types/traces';
 export * from './types/subagents';
 export * from './types/queuedTurns';
 export * from './types/tars';
+export * from './tars';
 /* access permissions */
 export * from './accessPermissions';
 /* query/mutation keys */
