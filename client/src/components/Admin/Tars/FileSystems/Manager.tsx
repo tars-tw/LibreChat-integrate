@@ -22,7 +22,11 @@ import FileSystemTable from './Table';
 import FileSystemModal from './Modal';
 import { useLocalize } from '~/hooks';
 
-const ALL_PROTOCOLS = '';
+/**
+ * The shared Dropdown treats an empty value as "nothing selected" and renders
+ * a blank trigger, so the catch-all option needs a value of its own.
+ */
+const ALL_PROTOCOLS = '__all__';
 
 /**
  * Document-group administration (資料源管理 → 文檔群組): the master list of the
@@ -53,7 +57,7 @@ export default function FileSystemManager() {
   const [details, setDetails] = useState<TTarsFileSystemSource | null>(null);
 
   const filtered = useMemo(
-    () => filterFileSystems(fileSystems, search, protocol),
+    () => filterFileSystems(fileSystems, search, protocol === ALL_PROTOCOLS ? '' : protocol),
     [fileSystems, search, protocol],
   );
 
