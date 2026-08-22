@@ -38,6 +38,7 @@ export * from './types/graph';
 export * from './types/insights';
 export * from './types/subagents';
 export * from './types/tars';
+export * from './tars';
 /* access permissions */
 export * from './accessPermissions';
 /* query/mutation keys */
