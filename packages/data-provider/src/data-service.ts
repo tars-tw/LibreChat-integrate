@@ -727,6 +727,33 @@ export const testTarsDatabaseConnection = (
   return request.post(endpoints.tarsDatabaseTest(), data);
 };
 
+export const getTarsFileSystems = (): Promise<t.TTarsFileSystemsResponse> => {
+  return request.get(endpoints.tarsFileSystems());
+};
+
+export const createTarsFileSystem = (
+  data: t.TTarsFileSystemInput,
+): Promise<{ fileSystem: t.TTarsFileSystemSource | null }> => {
+  return request.post(endpoints.tarsFileSystems(), data);
+};
+
+export const updateTarsFileSystem = (
+  id: string,
+  data: t.TTarsFileSystemInput,
+): Promise<{ fileSystem: t.TTarsFileSystemSource | null }> => {
+  return request.put(endpoints.tarsFileSystem(id), data);
+};
+
+export const deleteTarsFileSystem = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsFileSystem(id));
+};
+
+export const testTarsFileSystemConnection = (
+  data: t.TTarsFileSystemInput & { fileSystemId?: string },
+): Promise<t.TTarsFileSystemConnectionTest> => {
+  return request.post(endpoints.tarsFileSystemTest(), data);
+};
+
 export const getTarsSystemSettings = (): Promise<t.TTarsSystemSettings> => {
   return request.get(endpoints.tarsSystemSettings());
 };
