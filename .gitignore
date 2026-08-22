@@ -196,3 +196,11 @@ scripts/activity-labels/results/
 # Chrome user-data directories a Lighthouse run leaves in the repository root when the browser
 # is handed a Windows profile path from WSL: the whole path arrives as one directory name.
 /*lighthouse.[0-9]*/
+
+# TARS brand assets vendored from pwc_tars (frontend/src/assets/images/auth).
+# A global `*.png` ignore silently skipped these on `git add`, so the login page
+# shipped a 404 to every fresh clone — re-include them explicitly.
+!client/public/assets/tars/*.png
+!client/public/assets/tars/*.jpg
+!client/public/assets/tars/*.svg
+!client/public/assets/tars/*.webp
