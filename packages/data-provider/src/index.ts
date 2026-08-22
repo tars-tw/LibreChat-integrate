@@ -69,6 +69,7 @@ export * from './types/background';
 export * from './types/pullRequest';
 export * from './types/queuedTurns';
 export * from './types/tars';
+export * from './tars';
 /* access permissions */
 export * from './accessPermissions';
 /* query/mutation keys */
