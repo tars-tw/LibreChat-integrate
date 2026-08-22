@@ -694,6 +694,39 @@ export const deleteTarsDomain = (id: string | number): Promise<{ success: boolea
   return request.delete(endpoints.tarsDomain(id));
 };
 
+export const getTarsDatabases = (): Promise<t.TTarsDatabasesResponse> => {
+  return request.get(endpoints.tarsDatabases());
+};
+
+export const createTarsDatabase = (
+  data: t.TTarsDatabaseInput,
+): Promise<{ database: t.TTarsDatasetDatabase | null }> => {
+  return request.post(endpoints.tarsDatabases(), data);
+};
+
+export const uploadTarsSqliteDatabase = (
+  data: FormData,
+): Promise<{ database: t.TTarsDatasetDatabase | null }> => {
+  return request.postMultiPart(endpoints.tarsDatabaseSqlite(), data);
+};
+
+export const updateTarsDatabase = (
+  id: string,
+  data: t.TTarsDatabaseInput,
+): Promise<{ database: t.TTarsDatasetDatabase | null }> => {
+  return request.put(endpoints.tarsDatabase(id), data);
+};
+
+export const deleteTarsDatabase = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsDatabase(id));
+};
+
+export const testTarsDatabaseConnection = (
+  data: t.TTarsDatabaseInput & { databaseId?: string },
+): Promise<t.TTarsDatabaseConnectionTest> => {
+  return request.post(endpoints.tarsDatabaseTest(), data);
+};
+
 export const getTarsSystemSettings = (): Promise<t.TTarsSystemSettings> => {
   return request.get(endpoints.tarsSystemSettings());
 };
