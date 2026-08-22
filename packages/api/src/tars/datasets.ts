@@ -116,7 +116,7 @@ export interface TarsKnowledgeBaseDatasets {
   stats: TarsDatasetStats;
 }
 
-interface RawDatabase extends TarsDatasetDatabase {
+export interface TarsRawDatabase extends TarsDatasetDatabase {
   password?: string;
   connection_string?: string;
   username?: string;
@@ -133,9 +133,9 @@ interface PrepareDatasetsResponse {
   documents?: TarsDocument[];
   dataset_websites?: TarsDatasetWebsite[];
   dataset_apis?: unknown[];
-  dataset_sqls?: RawDatabase[];
+  dataset_sqls?: TarsRawDatabase[];
   dataset_file_systems?: TarsDatasetFileSystemLink[];
-  all_dataset_sqls?: RawDatabase[];
+  all_dataset_sqls?: TarsRawDatabase[];
   document_count?: number;
   total_word_count?: number;
   total_token_count?: number;
@@ -148,7 +148,7 @@ interface PrepareDatasetsResponse {
  * Copies only the fields the UI needs. pwc_tars sends the stored password and
  * connection string on every database row; neither belongs in a browser.
  */
-const toSafeDatabase = (row: RawDatabase): TarsDatasetDatabase => ({
+export const toSafeDatabase = (row: TarsRawDatabase): TarsDatasetDatabase => ({
   id: row.id,
   name: row.name,
   description: row.description ?? null,
