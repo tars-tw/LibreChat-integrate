@@ -17,6 +17,9 @@ import type {
   TTarsDatasetDatabase,
   TTarsDatabaseInput,
   TTarsDatabaseConnectionTest,
+  TTarsFileSystemSource,
+  TTarsFileSystemInput,
+  TTarsFileSystemConnectionTest,
   TTarsWebsiteImportInput,
   TTarsFileSystemImportInput,
   TTarsDatasetBatchDelete,
@@ -1549,5 +1552,73 @@ export const useTestTarsDatabaseConnectionMutation = (
   useMutation(
     (data: TTarsDatabaseInput & { databaseId?: string }) =>
       dataService.testTarsDatabaseConnection(data),
+    options,
+  );
+
+type FileSystemResponse = { fileSystem: TTarsFileSystemSource | null };
+
+/**
+ * A document group's grants decide which knowledge bases may import from it,
+ * so the knowledge-base dataset views are invalidated alongside the list.
+ */
+const useFileSystemMutation = <TData, TVariables>(
+  mutate: (variables: TVariables) => Promise<TData>,
+  options?: UseMutationOptions<TData, unknown, TVariables>,
+): UseMutationResult<TData, unknown, TVariables> => {
+  const queryClient = useQueryClient();
+  return useMutation(mutate, {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsFileSystems]);
+      queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useCreateTarsFileSystemMutation = (
+  options?: UseMutationOptions<FileSystemResponse, unknown, TTarsFileSystemInput>,
+): UseMutationResult<FileSystemResponse, unknown, TTarsFileSystemInput> =>
+  useFileSystemMutation(
+    (data: TTarsFileSystemInput) => dataService.createTarsFileSystem(data),
+    options,
+  );
+
+export const useUpdateTarsFileSystemMutation = (
+  options?: UseMutationOptions<
+    FileSystemResponse,
+    unknown,
+    { id: string; data: TTarsFileSystemInput }
+  >,
+): UseMutationResult<FileSystemResponse, unknown, { id: string; data: TTarsFileSystemInput }> =>
+  useFileSystemMutation(
+    ({ id, data }: { id: string; data: TTarsFileSystemInput }) =>
+      dataService.updateTarsFileSystem(id, data),
+    options,
+  );
+
+export const useDeleteTarsFileSystemMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> =>
+  useFileSystemMutation((id: string) => dataService.deleteTarsFileSystem(id), options);
+
+/**
+ * Opens the connection and lists what the share holds. Not a cache mutation —
+ * it uses `useMutation` because it is an explicit, on-demand action.
+ */
+export const useTestTarsFileSystemConnectionMutation = (
+  options?: UseMutationOptions<
+    TTarsFileSystemConnectionTest,
+    unknown,
+    TTarsFileSystemInput & { fileSystemId?: string }
+  >,
+): UseMutationResult<
+  TTarsFileSystemConnectionTest,
+  unknown,
+  TTarsFileSystemInput & { fileSystemId?: string }
+> =>
+  useMutation(
+    (data: TTarsFileSystemInput & { fileSystemId?: string }) =>
+      dataService.testTarsFileSystemConnection(data),
     options,
   );
