@@ -20,4 +20,5 @@ export * from './syslogs';
 export * from './tickets';
 export * from './token';
 export * from './usage';
+export * from './websites';
 export * from './users';
