@@ -777,6 +777,34 @@ export const testTarsFileSystemConnection = (
   return request.post(endpoints.tarsFileSystemTest(), data);
 };
 
+export const getTarsWebsites = (): Promise<t.TTarsWebsitesResponse> => {
+  return request.get(endpoints.tarsWebsites());
+};
+
+export const createTarsWebsiteSource = (
+  data: t.TTarsWebsiteSourceInput,
+): Promise<{ website: t.TTarsDatasetWebsite | null }> => {
+  return request.post(endpoints.tarsWebsites(), data);
+};
+
+export const updateTarsWebsiteSource = (
+  id: string,
+  data: { name: string; description?: string },
+): Promise<{ website: t.TTarsDatasetWebsite | null }> => {
+  return request.put(endpoints.tarsWebsite(id), data);
+};
+
+export const deleteTarsWebsiteSource = (
+  id: string,
+  knowledgeBaseId?: string | null,
+): Promise<{ success: boolean }> => {
+  const query =
+    knowledgeBaseId != null && knowledgeBaseId !== ''
+      ? `?knowledgeBaseId=${encodeURIComponent(knowledgeBaseId)}`
+      : '';
+  return request.delete(`${endpoints.tarsWebsite(id)}${query}`);
+};
+
 export const getTarsSystemSettings = (): Promise<t.TTarsSystemSettings> => {
   return request.get(endpoints.tarsSystemSettings());
 };
