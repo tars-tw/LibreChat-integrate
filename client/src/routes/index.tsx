@@ -94,6 +94,11 @@ const loadDatabasesView = () =>
     Component: m.DatabaseView,
   }));
 
+const loadFileSystemsView = () =>
+  import('~/components/Admin/Tars/FileSystems').then((m) => ({
+    Component: m.FileSystemView,
+  }));
+
 const loadSchedulesView = () =>
   import('~/components/Admin/Tars/Schedules').then((m) => ({
     Component: m.SchedulesView,
@@ -300,7 +305,10 @@ export const router = createBrowserRouter(
               path: 'data-sources/databases',
               lazy: loadDatabasesView,
             },
-            placeholderRoute('data-sources/documents', 'com_ui_tars_nav_doc_groups'),
+            {
+              path: 'data-sources/documents',
+              lazy: loadFileSystemsView,
+            },
             placeholderRoute('data-sources/websites', 'com_ui_tars_nav_websites'),
             {
               path: 'admin/users',
