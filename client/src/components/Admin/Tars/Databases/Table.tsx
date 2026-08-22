@@ -2,19 +2,11 @@ import { Button } from '@librechat/client';
 import { Info, Pencil, Trash2 } from 'lucide-react';
 import type { TTarsDatasetDatabase } from 'librechat-data-provider';
 import Pagination, { usePagination } from '../Knowledge/Pagination';
+import KnowledgeBaseChips from '../Sources/KnowledgeBaseChips';
 import { databaseIcon, knowledgeBaseNames } from './helpers';
 import { useLocalize } from '~/hooks';
 
-/** How many knowledge-base names fit in a cell before the rest become "+N". */
-const KB_CHIP_LIMIT = 2;
-
-/**
- * The application-database list.
- *
- * The knowledge-base column is the reason this table exists rather than a card
- * grid: a connection is only useful once it is granted to a base, and that
- * grant was previously invisible until the row was opened.
- */
+/** The application-database list, with the knowledge bases each is granted to. */
 export default function DatabaseTable({
   databases,
   knowledgeBaseNamesById,
@@ -57,8 +49,6 @@ export default function DatabaseTable({
                 database.allowed_km_ids ?? [],
                 knowledgeBaseNamesById,
               );
-              const shown = names.slice(0, KB_CHIP_LIMIT);
-              const overflow = names.length - shown.length;
 
               return (
                 <tr
@@ -95,25 +85,7 @@ export default function DatabaseTable({
                     </span>
                   </td>
                   <td className="px-3 py-1.5">
-                    {names.length === 0 ? (
-                      <span className="text-text-tertiary">
-                        {localize('com_ui_tars_db_allowed_kbs_none')}
-                      </span>
-                    ) : (
-                      <span className="flex flex-wrap items-center gap-1" title={names.join(', ')}>
-                        {shown.map((name) => (
-                          <span
-                            key={name}
-                            className="max-w-[10rem] truncate rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary"
-                          >
-                            {name}
-                          </span>
-                        ))}
-                        {overflow > 0 && (
-                          <span className="text-xs text-text-tertiary">+{overflow}</span>
-                        )}
-                      </span>
-                    )}
+                    <KnowledgeBaseChips names={names} />
                   </td>
                   <td className="whitespace-nowrap px-3 py-1.5">
                     <span
