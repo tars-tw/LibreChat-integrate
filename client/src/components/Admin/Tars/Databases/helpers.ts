@@ -2,11 +2,15 @@ import { Database, FileCode2, Layers, Server, Table2 } from 'lucide-react';
 import { TARS_DATABASE_TYPES, TARS_DEFAULT_PORTS } from 'librechat-data-provider';
 import type { TTarsDatabaseType, TTarsDatasetDatabase } from 'librechat-data-provider';
 import type { LucideIcon } from 'lucide-react';
-import type { PickerOption } from '../Audit/Picker';
 
-export const NAME_MIN = 2;
-export const NAME_MAX = 40;
-const PORT_MAX = 65535;
+export {
+  NAME_MIN,
+  NAME_MAX,
+  nameInvalid,
+  portInvalid,
+  knowledgeBaseNames,
+  knowledgeBasePickerOptions,
+} from '../Sources/helpers';
 
 /** Each kind gets its own mark so the type is readable at a glance in the list. */
 export const DATABASE_ICONS: Record<TTarsDatabaseType, LucideIcon> = {
@@ -78,19 +82,6 @@ export const connectionFieldsFilled = (form: DatabaseForm, isEdit: boolean): boo
   return isEdit || (form.username.trim() !== '' && form.password.trim() !== '');
 };
 
-export const portInvalid = (port: string): boolean => {
-  if (port.trim() === '') {
-    return true;
-  }
-  const value = Number(port);
-  return !Number.isInteger(value) || value < 0 || value > PORT_MAX;
-};
-
-export const nameInvalid = (name: string): boolean => {
-  const trimmed = name.trim();
-  return trimmed.length < NAME_MIN || trimmed.length > NAME_MAX;
-};
-
 /** Matches the original page: case-insensitive, across the fields on screen. */
 export const filterDatabases = (
   databases: TTarsDatasetDatabase[],
@@ -110,20 +101,3 @@ export const filterDatabases = (
     );
   });
 };
-
-/**
- * Names for the knowledge bases a connection is granted to. Ids with no
- * matching base are kept as-is rather than dropped, so a grant pointing at a
- * deleted base stays visible instead of silently vanishing from the row.
- */
-export const knowledgeBaseNames = (
-  allowedKmIds: string[],
-  namesById: Map<string, string>,
-): string[] => allowedKmIds.map((id) => namesById.get(id) ?? id);
-
-const byLabel = (a: PickerOption, b: PickerOption): number =>
-  a.label.localeCompare(b.label, 'zh-Hant');
-
-export const knowledgeBasePickerOptions = (
-  knowledgeBases: { id: string; name: string }[],
-): PickerOption[] => knowledgeBases.map((kb) => ({ value: kb.id, label: kb.name })).sort(byLabel);

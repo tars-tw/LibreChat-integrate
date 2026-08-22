@@ -1,4 +1,4 @@
-import type { TTarsDatabaseType } from '../tars';
+import type { TTarsDatabaseType, TTarsFileProtocol } from '../tars';
 
 /**
  * A pwc_tars specialized brain ("專用腦") as surfaced to the LibreChat client.
@@ -254,6 +254,34 @@ export type TTarsFileSystemSource = {
   host_name: string | null;
   status: number | null;
   allowed_km_ids: string[];
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type TTarsFileSystemInput = {
+  name: string;
+  description?: string;
+  protocol: TTarsFileProtocol;
+  host: string;
+  port?: number;
+  /** For SMB the first segment is the share name, e.g. `public/reports`. */
+  path?: string;
+  /** NetBIOS name, SMB only. */
+  hostName?: string;
+  account?: string;
+  /** Blank on edit means "keep the stored password" — the browser never has it. */
+  password?: string;
+  allowedKmIds?: string[];
+};
+
+export type TTarsFileSystemsResponse = {
+  fileSystems: TTarsFileSystemSource[];
+};
+
+/** The paths a document group's share currently holds. */
+export type TTarsFileSystemConnectionTest = {
+  files: string[];
 };
 
 /** System-wide ceilings the upload forms must respect. */
