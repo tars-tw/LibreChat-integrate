@@ -275,6 +275,27 @@ export type TTarsFileSystemInput = {
   allowedKmIds?: string[];
 };
 
+/** A row of the 外部網站 master list, with the knowledge base it was imported into. */
+export type TTarsWebsiteSource = TTarsDatasetWebsite & {
+  knowledge_base_id: string | null;
+  knowledge_base_name: string | null;
+};
+
+export type TTarsWebsitesResponse = {
+  websites: TTarsWebsiteSource[];
+  /** The enabled knowledge bases a website may be imported into. */
+  knowledgeBases: { id: string; name: string }[];
+};
+
+export type TTarsWebsiteSourceInput = {
+  knowledgeBaseId: string;
+  name: string;
+  url: string;
+  description?: string;
+  enabled?: boolean;
+  chunkSize?: number;
+};
+
 export type TTarsFileSystemsResponse = {
   fileSystems: TTarsFileSystemSource[];
 };
