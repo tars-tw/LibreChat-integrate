@@ -313,7 +313,14 @@ export async function updateTarsKnowledgeBase(
   return data.knowledge_base;
 }
 
+/**
+ * Deletes a knowledge base (pwc_tars cascades Milvus / chunks / documents).
+ *
+ * The deletion itself needs no operator, but pwc_tars records one audit entry
+ * from `operator_id`; a DELETE carries no body, so it travels as a query param.
+ */
 export async function deleteTarsKnowledgeBase(
+  tarsId: string,
   knowledgeBaseId: string,
   baseUrl?: string,
 ): Promise<void> {
@@ -321,6 +328,7 @@ export async function deleteTarsKnowledgeBase(
     `/api/knowledge_base/delete_knowledge_base/${encodeURIComponent(knowledgeBaseId)}`,
     {
       method: 'DELETE',
+      query: { operator_id: tarsId },
       baseUrl,
     },
   );

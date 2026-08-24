@@ -13,6 +13,7 @@ const {
   resetTarsUserPassword,
   fetchTarsUserPrepareData,
   downloadTarsUserImportTemplate,
+  recordTarsActionLog,
   TarsRequestError,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
@@ -94,6 +95,35 @@ router.get('/users/import-template', requireTarsAdmin, async (req, res) => {
   } catch (error) {
     logger.error('[GET /api/tars/users/import-template] Failed', error);
     return res.status(500).json({ error: 'Failed to download pwc_tars import template' });
+  }
+});
+
+/**
+ * @route POST /api/tars/users/export-log
+ * @desc Record the account-list export in the pwc_tars audit trail. The rows
+ *       are turned into a CSV in the browser, so pwc_tars never sees the export
+ *       and this is the only thing that puts it on the record.
+ * @access Admin (pwc_tars)
+ */
+router.post('/users/export-log', requireTarsAdmin, async (req, res) => {
+  const count = Number.parseInt(req.body?.count, 10);
+  if (!Number.isFinite(count) || count < 1) {
+    return res.status(400).json({ error: 'A positive row count is required' });
+  }
+
+  try {
+    await recordTarsActionLog(req.user.tarsId, {
+      action_type: 'EXPORT',
+      module: 'user-settings',
+      target_type: 'csv',
+      target_name: '人員清單',
+      description: `匯出 ${count} 筆使用者資料`,
+      page_url: typeof req.body?.page_url === 'string' ? req.body.page_url : undefined,
+    });
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error('[POST /api/tars/users/export-log] Failed', error);
+    return res.status(500).json({ error: 'Failed to record the pwc_tars export' });
   }
 });
 
