@@ -921,6 +921,10 @@ export const getTarsOperationLogs = (
   return request.get(`${endpoints.tarsOperationLogs()}?${tarsActionLogParams(query)}`);
 };
 
+export const getTarsOperationLogDetail = (logId: string): Promise<{ log: t.TTarsActionLog }> => {
+  return request.get(endpoints.tarsOperationLogDetail(logId));
+};
+
 export const getTarsOperationLogsByUser = (
   userId: string,
   window: { start_date?: string; end_date?: string },
@@ -1190,6 +1194,14 @@ export const importTarsUsers = (data: FormData): Promise<t.TTarsUserImportResult
 
 export const downloadTarsUserImportTemplate = (): Promise<ArrayBuffer> => {
   return request.get(endpoints.tarsUsersImportTemplate(), { responseType: 'arraybuffer' });
+};
+
+/** Puts a browser-side account-list export on the pwc_tars audit trail. */
+export const recordTarsUserExport = (
+  count: number,
+  pageUrl: string,
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsUsersExportLog(), { count, page_url: pageUrl });
 };
 
 export const getTarsKnowledgeBases = (): Promise<t.TTarsKnowledgeBasesResponse> => {
