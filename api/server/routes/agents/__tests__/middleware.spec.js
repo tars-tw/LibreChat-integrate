@@ -17,6 +17,7 @@ jest.mock('@librechat/api', () => ({
   createRequireApiKeyAuth: jest.fn(() => (req, res, next) => next()),
   createRemoteAgentAuth: jest.fn(() => mockRemoteAgentAuth),
   createCheckRemoteAgentAccess: jest.fn(() => (req, res, next) => next()),
+  createCheckAgentTriggerAccess: jest.fn(() => (req, res, next) => next()),
 }));
 
 jest.mock('~/server/services/PermissionService', () => ({
