@@ -25,6 +25,7 @@ jest.mock('@librechat/api', () => ({
 
 jest.mock('~/server/middleware', () => ({
   moderateText: (_req, _res, next) => next(),
+  injectTarsDomain: (_req, _res, next) => next(),
   validateConvoAccess: (_req, _res, next) => next(),
   buildEndpointOption: (_req, _res, next) => next(),
   canAccessAgentFromBody: jest.fn(() => (_req, _res, next) => next()),

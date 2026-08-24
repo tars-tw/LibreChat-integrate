@@ -133,7 +133,7 @@ export const useEndpoints = ({
       /** Custom endpoints always have `models.default` (schema min 1), so an
        *  empty list only happens for availability-gated endpoints (e.g. a
        *  tars-managed vLLM host that is down) — hide them entirely. */
-      if (endpointType === EModelEndpoint.custom && !hasModels) {
+      if (getEndpointField(endpointsConfig, ep, 'type') === EModelEndpoint.custom && !hasModels) {
         return acc;
       }
 
