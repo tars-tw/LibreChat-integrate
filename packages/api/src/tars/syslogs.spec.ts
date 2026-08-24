@@ -12,6 +12,8 @@ import {
   fetchTarsActionLogs,
   fetchTarsUserActionLogs,
   fetchTarsActionLogFilterOptions,
+  fetchTarsActionLogDetail,
+  recordTarsActionLog,
 } from './syslogs';
 
 const BASE_URL = 'http://tars.test';
@@ -206,5 +208,60 @@ describe('fetchTarsUserActionLogs', () => {
   it('returns [] when the user has no recorded actions', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { logs: [] }));
     await expect(fetchTarsUserActionLogs('3', {}, BASE_URL)).resolves.toEqual([]);
+  });
+});
+
+describe('fetchTarsActionLogDetail', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('reads the row back by id and unwraps it', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { log: { id: 'a/b' } }));
+    await expect(fetchTarsActionLogDetail('a/b', BASE_URL)).resolves.toEqual({ id: 'a/b' });
+    expect(urlOf(fetchMock)).toBe(`${BASE_URL}/api/system_action_log/audit_logs/a%2Fb`);
+  });
+
+  /** A purged row is not a failure — the caller falls back to the listed copy. */
+  it('answers null when pwc_tars no longer has the row', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(404, { error: '找不到指定的稽核紀錄' }));
+    await expect(fetchTarsActionLogDetail('gone', BASE_URL)).resolves.toBeNull();
+  });
+
+  it('still throws on any other failure', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(500, { error: 'boom' }));
+    await expect(fetchTarsActionLogDetail('1', BASE_URL)).rejects.toThrow();
+  });
+});
+
+describe('recordTarsActionLog', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('posts the entry with the operator as user_id', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { success: true }));
+
+    await recordTarsActionLog(
+      'admin',
+      { action_type: 'EXPORT', module: 'user-settings', description: '匯出 3 筆使用者資料' },
+      BASE_URL,
+    );
+
+    expect(urlOf(fetchMock)).toBe(`${BASE_URL}/api/system_action_log/record`);
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(String(init.body))).toEqual({
+      action_type: 'EXPORT',
+      module: 'user-settings',
+      description: '匯出 3 筆使用者資料',
+      user_id: 'admin',
+    });
   });
 });

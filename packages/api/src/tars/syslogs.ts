@@ -1,4 +1,4 @@
-import { tarsFetch } from './client';
+import { tarsFetch, TarsRequestError } from './client';
 
 /** The action verbs pwc_tars records (`ActionType`). Order drives the summary row. */
 export const TARS_ACTION_TYPES = [
@@ -188,6 +188,65 @@ export async function fetchTarsActionLogFilterOptions(
     action_types: data?.action_types ?? [],
     modules: data?.modules ?? [],
   };
+}
+
+/** The fields `POST /api/system_action_log/record` accepts from a caller. */
+export interface TarsActionLogEntry {
+  action_type: TarsActionType;
+  module: string;
+  target_type?: string;
+  target_name?: string;
+  description?: string;
+  page_url?: string;
+}
+
+/**
+ * Writes one audit row for an action LibreChat performed itself
+ * (`POST /api/system_action_log/record`).
+ *
+ * Only for work that never reaches pwc_tars — a client-side export, say. Every
+ * proxied mutation is already recorded by the pwc_tars route that ran it, so
+ * calling this alongside one would double-count the operation.
+ *
+ * pwc_tars stamps the row's IP and user agent from this request, so they name
+ * the LibreChat server rather than the operator's browser.
+ */
+export async function recordTarsActionLog(
+  tarsId: string,
+  entry: TarsActionLogEntry,
+  baseUrl?: string,
+): Promise<void> {
+  await tarsFetch('/api/system_action_log/record', {
+    method: 'POST',
+    body: { ...entry, user_id: tarsId },
+    baseUrl,
+  });
+}
+
+/**
+ * One recorded operation in full (`GET /api/system_action_log/audit_logs/<id>`).
+ *
+ * The list endpoint already returns every column, but pwc_tars is free to widen
+ * a row after the fact (`before_data` / `after_data` / `extra` are written by
+ * the module that acted), so the detail view reads the row back by id.
+ * A row that has since been purged answers 404, which surfaces as null.
+ */
+export async function fetchTarsActionLogDetail(
+  logId: string,
+  baseUrl?: string,
+): Promise<TarsActionLog | null> {
+  try {
+    const data = await tarsFetch<{ log?: TarsActionLog }>(
+      `/api/system_action_log/audit_logs/${encodeURIComponent(logId)}`,
+      { baseUrl },
+    );
+    return data?.log ?? null;
+  } catch (error) {
+    if (error instanceof TarsRequestError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 /**

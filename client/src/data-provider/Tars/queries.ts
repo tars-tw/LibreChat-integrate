@@ -734,6 +734,29 @@ export const useTarsOperationLogsQuery = (
   );
 };
 
+/**
+ * Admin: one audit row read back by id when its detail panel opens.
+ *
+ * The list row is already complete enough to render, so the dialog shows it
+ * immediately and this only replaces it once pwc_tars answers — a purged row
+ * (404) leaves the listed copy on screen.
+ */
+export const useTarsOperationLogDetailQuery = (
+  logId: string | null,
+  config?: UseQueryOptions<{ log: TTarsActionLog }, unknown, TTarsActionLog>,
+): QueryObserverResult<TTarsActionLog> => {
+  return useQuery<{ log: TTarsActionLog }, unknown, TTarsActionLog>(
+    [QueryKeys.tarsOperationLogDetail, logId ?? ''],
+    () => dataService.getTarsOperationLogDetail(logId as string),
+    {
+      enabled: logId != null && logId !== '',
+      select: (data) => data.log,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
 /** Admin: one operator's whole activity in the window, for the timeline panel. */
 export const useTarsUserOperationLogsQuery = (
   userId: string | null,
