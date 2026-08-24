@@ -17,6 +17,7 @@ import {
   deleteTarsKnowledgeBaseDocument,
   reprocessTarsKnowledgeBaseDocument,
   fetchTarsDocumentChunks,
+  deleteTarsKnowledgeBase,
 } from './knowledge';
 import type { TarsDocument } from './knowledge';
 
@@ -294,5 +295,22 @@ describe('updateTarsKnowledgeBaseModel', () => {
     const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(body).toEqual({ user_id: 'user-1', knowledge_base_id: 'kb-1', llm_model_id: 'gpt' });
     expect(body).not.toHaveProperty('rerank_model_id');
+  });
+});
+
+describe('deleteTarsKnowledgeBase', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('passes the operator id as a query param', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { success: true }));
+
+    await deleteTarsKnowledgeBase('admin', 'kb-1', BASE_URL);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${BASE_URL}/api/knowledge_base/delete_knowledge_base/kb-1?operator_id=admin`,
+      expect.objectContaining({ method: 'DELETE' }),
+    );
   });
 });

@@ -204,6 +204,12 @@ export default function UserManager() {
       toCsvBlob(headers, csvRows),
       `TARS_users_${new Date().toISOString().slice(0, 10)}.csv`,
     );
+
+    /**
+     * The CSV is built here, so pwc_tars only learns of the export from this
+     * call. It must never hold up the download, hence the detached catch.
+     */
+    dataService.recordTarsUserExport(csvRows.length, window.location.href).catch(() => undefined);
   };
 
   const handleTemplateDownload = async () => {

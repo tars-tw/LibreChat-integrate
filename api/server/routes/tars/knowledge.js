@@ -346,7 +346,7 @@ router.put('/knowledge-bases/:id', async (req, res) => {
  */
 router.delete('/knowledge-bases/:id', async (req, res) => {
   try {
-    await deleteTarsKnowledgeBase(req.params.id);
+    await deleteTarsKnowledgeBase(req.user.tarsId, req.params.id);
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/knowledge-bases/:id] Failed', error);
