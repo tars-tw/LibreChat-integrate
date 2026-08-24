@@ -412,6 +412,8 @@ export const tarsOperationLogs = () => `${BASE_URL}/api/tars/audit/operations`;
 export const tarsOperationLogOptions = () => `${BASE_URL}/api/tars/audit/operations/options`;
 export const tarsOperationLogsByUser = (userId: string) =>
   `${BASE_URL}/api/tars/audit/operations/user/${encodeURIComponent(userId)}`;
+export const tarsOperationLogDetail = (logId: string) =>
+  `${BASE_URL}/api/tars/audit/operations/log/${encodeURIComponent(logId)}`;
 
 export const tarsProviderUsage = (provider: string) =>
   `${BASE_URL}/api/tars/usage/${encodeURIComponent(provider)}`;
@@ -452,6 +454,7 @@ export const tarsUsersBulkDelete = () => `${BASE_URL}/api/tars/users/bulk-delete
 export const tarsUserResetPassword = (id: string) => `${tarsUser(id)}/reset-password`;
 export const tarsUsersImport = () => `${BASE_URL}/api/tars/users/import`;
 export const tarsUsersImportTemplate = () => `${BASE_URL}/api/tars/users/import-template`;
+export const tarsUsersExportLog = () => `${BASE_URL}/api/tars/users/export-log`;
 export const tarsModels = () => `${BASE_URL}/api/tars/models`;
 export const tarsMcpAdminServers = () => `${BASE_URL}/api/tars/mcp/admin/servers`;
 export const tarsMcpAdminServer = (id: string) =>
