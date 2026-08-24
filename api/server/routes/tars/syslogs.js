@@ -6,6 +6,7 @@ const {
   fetchTarsActionLogs,
   fetchTarsUserActionLogs,
   fetchTarsActionLogFilterOptions,
+  fetchTarsActionLogDetail,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
@@ -94,6 +95,26 @@ router.get('/audit/operations', requireTarsAdmin, async (req, res) => {
   } catch (error) {
     logger.error('[GET /api/tars/audit/operations] Failed', error);
     return relayTarsError(res, error, 'Failed to load the operation audit trail');
+  }
+});
+
+/**
+ * @route GET /api/tars/audit/operations/log/:logId
+ * @desc One audit row read back by id. Under `/log/` rather than directly on
+ *       `/operations/:logId` so it can never shadow the `/user/:userId` and
+ *       `/options` routes that share the prefix.
+ * @access Admin (pwc_tars)
+ */
+router.get('/audit/operations/log/:logId', requireTarsAdmin, async (req, res) => {
+  try {
+    const log = await fetchTarsActionLogDetail(req.params.logId);
+    if (log == null) {
+      return res.status(404).json({ error: 'That audit record no longer exists' });
+    }
+    return res.json({ log });
+  } catch (error) {
+    logger.error('[GET /api/tars/audit/operations/log/:logId] Failed', error);
+    return relayTarsError(res, error, 'Failed to load the audit record');
   }
 });
 
