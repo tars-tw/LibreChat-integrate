@@ -14,6 +14,13 @@ import type {
   TTarsKnowledgeBaseUpdate,
   TTarsKnowledgeBaseModelUpdate,
   TTarsDatasetWebsite,
+  TTarsDatasetDatabase,
+  TTarsDatabaseInput,
+  TTarsDatabaseConnectionTest,
+  TTarsFileSystemSource,
+  TTarsFileSystemInput,
+  TTarsFileSystemConnectionTest,
+  TTarsWebsiteSourceInput,
   TTarsWebsiteImportInput,
   TTarsFileSystemImportInput,
   TTarsDatasetBatchDelete,
@@ -1477,3 +1484,206 @@ export const useUpdateTarsTokenDefaultMutation = (
     },
   );
 };
+
+type DatabaseResponse = { database: TTarsDatasetDatabase | null };
+
+/**
+ * Every connection mutation also changes which knowledge bases may use it, so
+ * the knowledge-base dataset views are invalidated alongside the list itself.
+ */
+const invalidateTarsDatabases = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsDatabases]);
+  queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets]);
+};
+
+const useDatabaseMutation = <TData, TVariables>(
+  mutate: (variables: TVariables) => Promise<TData>,
+  options?: UseMutationOptions<TData, unknown, TVariables>,
+): UseMutationResult<TData, unknown, TVariables> => {
+  const queryClient = useQueryClient();
+  return useMutation(mutate, {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsDatabases(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useCreateTarsDatabaseMutation = (
+  options?: UseMutationOptions<DatabaseResponse, unknown, TTarsDatabaseInput>,
+): UseMutationResult<DatabaseResponse, unknown, TTarsDatabaseInput> =>
+  useDatabaseMutation((data: TTarsDatabaseInput) => dataService.createTarsDatabase(data), options);
+
+/** Creates a connection from an uploaded SQLite file (`multipart/form-data`). */
+export const useUploadTarsSqliteDatabaseMutation = (
+  options?: UseMutationOptions<DatabaseResponse, unknown, FormData>,
+): UseMutationResult<DatabaseResponse, unknown, FormData> =>
+  useDatabaseMutation((data: FormData) => dataService.uploadTarsSqliteDatabase(data), options);
+
+export const useUpdateTarsDatabaseMutation = (
+  options?: UseMutationOptions<DatabaseResponse, unknown, { id: string; data: TTarsDatabaseInput }>,
+): UseMutationResult<DatabaseResponse, unknown, { id: string; data: TTarsDatabaseInput }> =>
+  useDatabaseMutation(
+    ({ id, data }: { id: string; data: TTarsDatabaseInput }) =>
+      dataService.updateTarsDatabase(id, data),
+    options,
+  );
+
+export const useDeleteTarsDatabaseMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> =>
+  useDatabaseMutation((id: string) => dataService.deleteTarsDatabase(id), options);
+
+/**
+ * Opens the connection and lists its tables and views. Not a cache mutation —
+ * it uses `useMutation` because it is an explicit, on-demand action.
+ */
+export const useTestTarsDatabaseConnectionMutation = (
+  options?: UseMutationOptions<
+    TTarsDatabaseConnectionTest,
+    unknown,
+    TTarsDatabaseInput & { databaseId?: string }
+  >,
+): UseMutationResult<
+  TTarsDatabaseConnectionTest,
+  unknown,
+  TTarsDatabaseInput & { databaseId?: string }
+> =>
+  useMutation(
+    (data: TTarsDatabaseInput & { databaseId?: string }) =>
+      dataService.testTarsDatabaseConnection(data),
+    options,
+  );
+
+type FileSystemResponse = { fileSystem: TTarsFileSystemSource | null };
+
+/**
+ * A document group's grants decide which knowledge bases may import from it,
+ * so the knowledge-base dataset views are invalidated alongside the list.
+ */
+const useFileSystemMutation = <TData, TVariables>(
+  mutate: (variables: TVariables) => Promise<TData>,
+  options?: UseMutationOptions<TData, unknown, TVariables>,
+): UseMutationResult<TData, unknown, TVariables> => {
+  const queryClient = useQueryClient();
+  return useMutation(mutate, {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsFileSystems]);
+      queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useCreateTarsFileSystemMutation = (
+  options?: UseMutationOptions<FileSystemResponse, unknown, TTarsFileSystemInput>,
+): UseMutationResult<FileSystemResponse, unknown, TTarsFileSystemInput> =>
+  useFileSystemMutation(
+    (data: TTarsFileSystemInput) => dataService.createTarsFileSystem(data),
+    options,
+  );
+
+export const useUpdateTarsFileSystemMutation = (
+  options?: UseMutationOptions<
+    FileSystemResponse,
+    unknown,
+    { id: string; data: TTarsFileSystemInput }
+  >,
+): UseMutationResult<FileSystemResponse, unknown, { id: string; data: TTarsFileSystemInput }> =>
+  useFileSystemMutation(
+    ({ id, data }: { id: string; data: TTarsFileSystemInput }) =>
+      dataService.updateTarsFileSystem(id, data),
+    options,
+  );
+
+export const useDeleteTarsFileSystemMutation = (
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> =>
+  useFileSystemMutation((id: string) => dataService.deleteTarsFileSystem(id), options);
+
+/**
+ * Opens the connection and lists what the share holds. Not a cache mutation —
+ * it uses `useMutation` because it is an explicit, on-demand action.
+ */
+export const useTestTarsFileSystemConnectionMutation = (
+  options?: UseMutationOptions<
+    TTarsFileSystemConnectionTest,
+    unknown,
+    TTarsFileSystemInput & { fileSystemId?: string }
+  >,
+): UseMutationResult<
+  TTarsFileSystemConnectionTest,
+  unknown,
+  TTarsFileSystemInput & { fileSystemId?: string }
+> =>
+  useMutation(
+    (data: TTarsFileSystemInput & { fileSystemId?: string }) =>
+      dataService.testTarsFileSystemConnection(data),
+    options,
+  );
+
+/**
+ * The 外部網站 master page reaches the same pwc_tars datasets the knowledge-base
+ * detail page does, so both caches are invalidated after every change.
+ */
+const useWebsiteSourceMutation = <TData, TVariables>(
+  mutate: (variables: TVariables) => Promise<TData>,
+  options?: UseMutationOptions<TData, unknown, TVariables>,
+): UseMutationResult<TData, unknown, TVariables> => {
+  const queryClient = useQueryClient();
+  return useMutation(mutate, {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsWebsites]);
+      queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+type WebsiteResponse = { website: TTarsDatasetWebsite | null };
+
+/** Crawls and embeds inside the request, so expect this one to be slow. */
+export const useCreateTarsWebsiteSourceMutation = (
+  options?: UseMutationOptions<WebsiteResponse, unknown, TTarsWebsiteSourceInput>,
+): UseMutationResult<WebsiteResponse, unknown, TTarsWebsiteSourceInput> =>
+  useWebsiteSourceMutation(
+    (data: TTarsWebsiteSourceInput) => dataService.createTarsWebsiteSource(data),
+    options,
+  );
+
+export const useUpdateTarsWebsiteSourceMutation = (
+  options?: UseMutationOptions<
+    WebsiteResponse,
+    unknown,
+    { id: string; name: string; description?: string }
+  >,
+): UseMutationResult<
+  WebsiteResponse,
+  unknown,
+  { id: string; name: string; description?: string }
+> =>
+  useWebsiteSourceMutation(
+    ({ id, name, description }: { id: string; name: string; description?: string }) =>
+      dataService.updateTarsWebsiteSource(id, { name, description }),
+    options,
+  );
+
+export const useDeleteTarsWebsiteSourceMutation = (
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { id: string; knowledgeBaseId: string | null }
+  >,
+): UseMutationResult<
+  { success: boolean },
+  unknown,
+  { id: string; knowledgeBaseId: string | null }
+> =>
+  useWebsiteSourceMutation(
+    ({ id, knowledgeBaseId }: { id: string; knowledgeBaseId: string | null }) =>
+      dataService.deleteTarsWebsiteSource(id, knowledgeBaseId),
+    options,
+  );

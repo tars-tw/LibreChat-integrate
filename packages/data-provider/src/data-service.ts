@@ -694,6 +694,94 @@ export const deleteTarsDomain = (id: string | number): Promise<{ success: boolea
   return request.delete(endpoints.tarsDomain(id));
 };
 
+export const getTarsDatabases = (): Promise<t.TTarsDatabasesResponse> => {
+  return request.get(endpoints.tarsDatabases());
+};
+
+export const createTarsDatabase = (
+  data: t.TTarsDatabaseInput,
+): Promise<{ database: t.TTarsDatasetDatabase | null }> => {
+  return request.post(endpoints.tarsDatabases(), data);
+};
+
+export const uploadTarsSqliteDatabase = (
+  data: FormData,
+): Promise<{ database: t.TTarsDatasetDatabase | null }> => {
+  return request.postMultiPart(endpoints.tarsDatabaseSqlite(), data);
+};
+
+export const updateTarsDatabase = (
+  id: string,
+  data: t.TTarsDatabaseInput,
+): Promise<{ database: t.TTarsDatasetDatabase | null }> => {
+  return request.put(endpoints.tarsDatabase(id), data);
+};
+
+export const deleteTarsDatabase = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsDatabase(id));
+};
+
+export const testTarsDatabaseConnection = (
+  data: t.TTarsDatabaseInput & { databaseId?: string },
+): Promise<t.TTarsDatabaseConnectionTest> => {
+  return request.post(endpoints.tarsDatabaseTest(), data);
+};
+
+export const getTarsFileSystems = (): Promise<t.TTarsFileSystemsResponse> => {
+  return request.get(endpoints.tarsFileSystems());
+};
+
+export const createTarsFileSystem = (
+  data: t.TTarsFileSystemInput,
+): Promise<{ fileSystem: t.TTarsFileSystemSource | null }> => {
+  return request.post(endpoints.tarsFileSystems(), data);
+};
+
+export const updateTarsFileSystem = (
+  id: string,
+  data: t.TTarsFileSystemInput,
+): Promise<{ fileSystem: t.TTarsFileSystemSource | null }> => {
+  return request.put(endpoints.tarsFileSystem(id), data);
+};
+
+export const deleteTarsFileSystem = (id: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsFileSystem(id));
+};
+
+export const testTarsFileSystemConnection = (
+  data: t.TTarsFileSystemInput & { fileSystemId?: string },
+): Promise<t.TTarsFileSystemConnectionTest> => {
+  return request.post(endpoints.tarsFileSystemTest(), data);
+};
+
+export const getTarsWebsites = (): Promise<t.TTarsWebsitesResponse> => {
+  return request.get(endpoints.tarsWebsites());
+};
+
+export const createTarsWebsiteSource = (
+  data: t.TTarsWebsiteSourceInput,
+): Promise<{ website: t.TTarsDatasetWebsite | null }> => {
+  return request.post(endpoints.tarsWebsites(), data);
+};
+
+export const updateTarsWebsiteSource = (
+  id: string,
+  data: { name: string; description?: string },
+): Promise<{ website: t.TTarsDatasetWebsite | null }> => {
+  return request.put(endpoints.tarsWebsite(id), data);
+};
+
+export const deleteTarsWebsiteSource = (
+  id: string,
+  knowledgeBaseId?: string | null,
+): Promise<{ success: boolean }> => {
+  const query =
+    knowledgeBaseId != null && knowledgeBaseId !== ''
+      ? `?knowledgeBaseId=${encodeURIComponent(knowledgeBaseId)}`
+      : '';
+  return request.delete(`${endpoints.tarsWebsite(id)}${query}`);
+};
+
 export const getTarsSystemSettings = (): Promise<t.TTarsSystemSettings> => {
   return request.get(endpoints.tarsSystemSettings());
 };

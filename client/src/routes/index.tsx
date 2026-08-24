@@ -89,6 +89,21 @@ const loadIssuesView = () =>
     Component: m.IssuesView,
   }));
 
+const loadDatabasesView = () =>
+  import('~/components/Admin/Tars/Databases').then((m) => ({
+    Component: m.DatabaseView,
+  }));
+
+const loadFileSystemsView = () =>
+  import('~/components/Admin/Tars/FileSystems').then((m) => ({
+    Component: m.FileSystemView,
+  }));
+
+const loadWebsitesView = () =>
+  import('~/components/Admin/Tars/Websites').then((m) => ({
+    Component: m.WebsiteView,
+  }));
+
 const loadSchedulesView = () =>
   import('~/components/Admin/Tars/Schedules').then((m) => ({
     Component: m.SchedulesView,
@@ -291,9 +306,18 @@ export const router = createBrowserRouter(
               path: 'kb-schedules',
               lazy: loadSchedulesView,
             },
-            placeholderRoute('data-sources/databases', 'com_ui_tars_nav_app_db'),
-            placeholderRoute('data-sources/documents', 'com_ui_tars_nav_doc_groups'),
-            placeholderRoute('data-sources/websites', 'com_ui_tars_nav_websites'),
+            {
+              path: 'data-sources/databases',
+              lazy: loadDatabasesView,
+            },
+            {
+              path: 'data-sources/documents',
+              lazy: loadFileSystemsView,
+            },
+            {
+              path: 'data-sources/websites',
+              lazy: loadWebsitesView,
+            },
             {
               path: 'admin/users',
               lazy: loadUsersView,

@@ -338,6 +338,20 @@ export const tarsKnowledgeBaseDatabaseTables = (id: string, databaseId: string) 
   `${tarsKnowledgeBaseDatabase(id, databaseId)}/tables`;
 export const tarsKnowledgeBaseDatabasePrompt = (id: string, databaseId: string) =>
   `${tarsKnowledgeBaseDatabase(id, databaseId)}/prompt`;
+const tarsDatabasesBase = () => `${BASE_URL}/api/tars/data-sources/databases`;
+export const tarsDatabases = () => tarsDatabasesBase();
+export const tarsDatabase = (id: string) => `${tarsDatabasesBase()}/${encodeURIComponent(id)}`;
+export const tarsDatabaseTest = () => `${tarsDatabasesBase()}/test`;
+export const tarsDatabaseSqlite = () => `${tarsDatabasesBase()}/sqlite`;
+
+const tarsFileSystemsBase = () => `${BASE_URL}/api/tars/data-sources/file-systems`;
+export const tarsFileSystems = () => tarsFileSystemsBase();
+export const tarsFileSystem = (id: string) => `${tarsFileSystemsBase()}/${encodeURIComponent(id)}`;
+export const tarsFileSystemTest = () => `${tarsFileSystemsBase()}/test`;
+
+const tarsWebsitesBase = () => `${BASE_URL}/api/tars/data-sources/websites`;
+export const tarsWebsites = () => tarsWebsitesBase();
+export const tarsWebsite = (id: string) => `${tarsWebsitesBase()}/${encodeURIComponent(id)}`;
 export const tarsKnowledgeBaseFileSystems = (id: string) => `${tarsKb(id)}/file-systems`;
 export const tarsKnowledgeBaseFileSystem = (id: string, fsId: string) =>
   `${tarsKb(id)}/file-systems/${encodeURIComponent(fsId)}`;

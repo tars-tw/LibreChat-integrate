@@ -1,3 +1,5 @@
+import type { TTarsDatabaseType, TTarsFileProtocol } from '../tars';
+
 /**
  * A pwc_tars specialized brain ("專用腦") as surfaced to the LibreChat client.
  * Mirrors the backend `TarsDomain` (pwc_tars `SysDomain.to_dict()`):
@@ -198,6 +200,32 @@ export type TTarsDatasetDatabase = {
   updated_at: string | null;
 };
 
+/** Payload the application-database form submits. */
+export type TTarsDatabaseInput = {
+  name: string;
+  description?: string;
+  dbType: TTarsDatabaseType;
+  host?: string;
+  port?: number;
+  /** For Oracle this is the Service Name; pwc_tars stores it in `database_name`. */
+  databaseName?: string;
+  username?: string;
+  /** Blank on edit means "keep the stored password" — the browser never has it. */
+  password?: string;
+  enabled?: boolean;
+  allowedKmIds?: string[];
+};
+
+export type TTarsDatabasesResponse = {
+  databases: TTarsDatasetDatabase[];
+};
+
+/** What a connection test found on the far side. */
+export type TTarsDatabaseConnectionTest = {
+  tables: string[];
+  views: string[];
+};
+
 /** A document-group link between a knowledge base and a file server. */
 export type TTarsDatasetFileSystemLink = {
   id: string;
@@ -226,6 +254,55 @@ export type TTarsFileSystemSource = {
   host_name: string | null;
   status: number | null;
   allowed_km_ids: string[];
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type TTarsFileSystemInput = {
+  name: string;
+  description?: string;
+  protocol: TTarsFileProtocol;
+  host: string;
+  port?: number;
+  /** For SMB the first segment is the share name, e.g. `public/reports`. */
+  path?: string;
+  /** NetBIOS name, SMB only. */
+  hostName?: string;
+  account?: string;
+  /** Blank on edit means "keep the stored password" — the browser never has it. */
+  password?: string;
+  allowedKmIds?: string[];
+};
+
+/** A row of the 外部網站 master list, with the knowledge base it was imported into. */
+export type TTarsWebsiteSource = TTarsDatasetWebsite & {
+  knowledge_base_id: string | null;
+  knowledge_base_name: string | null;
+};
+
+export type TTarsWebsitesResponse = {
+  websites: TTarsWebsiteSource[];
+  /** The enabled knowledge bases a website may be imported into. */
+  knowledgeBases: { id: string; name: string }[];
+};
+
+export type TTarsWebsiteSourceInput = {
+  knowledgeBaseId: string;
+  name: string;
+  url: string;
+  description?: string;
+  enabled?: boolean;
+  chunkSize?: number;
+};
+
+export type TTarsFileSystemsResponse = {
+  fileSystems: TTarsFileSystemSource[];
+};
+
+/** The paths a document group's share currently holds. */
+export type TTarsFileSystemConnectionTest = {
+  files: string[];
 };
 
 /** System-wide ceilings the upload forms must respect. */

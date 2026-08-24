@@ -16,10 +16,14 @@ import type {
   TTarsKnowledgeBaseModelBindings,
   TTarsKnowledgeBaseDatasets,
   TTarsDatabaseTables,
+  TTarsDatasetDatabase,
+  TTarsDatabasesResponse,
   TTarsWebsiteChunkPage,
   TTarsSchedule,
   TTarsDatabasePrompt,
   TTarsFileSystemSource,
+  TTarsFileSystemsResponse,
+  TTarsWebsitesResponse,
   TTarsMcpUserServer,
   TTarsPromptsResponse,
   TTarsDocumentsResponse,
@@ -922,5 +926,56 @@ export const useTarsTokenReportUserQuery = (
       ...adminQueryOptions,
       ...config,
     },
+  );
+};
+
+/**
+ * Admin: every application-database connection (資料源管理 → 應用資料庫).
+ * Credentials are stripped server-side, so nothing here can be prefilled back
+ * into a password field.
+ */
+export const useTarsDatabasesQuery = (
+  config?: UseQueryOptions<TTarsDatabasesResponse, unknown, TTarsDatasetDatabase[]>,
+): QueryObserverResult<TTarsDatasetDatabase[]> => {
+  return useQuery<TTarsDatabasesResponse, unknown, TTarsDatasetDatabase[]>(
+    [QueryKeys.tarsDatabases],
+    () => dataService.getTarsDatabases(),
+    {
+      select: (data) => data.databases ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Admin: every document group (資料源管理 → 文檔群組). Credentials are stripped
+ * server-side, so nothing here can be prefilled back into a password field.
+ */
+export const useTarsFileSystemsQuery = (
+  config?: UseQueryOptions<TTarsFileSystemsResponse, unknown, TTarsFileSystemSource[]>,
+): QueryObserverResult<TTarsFileSystemSource[]> => {
+  return useQuery<TTarsFileSystemsResponse, unknown, TTarsFileSystemSource[]>(
+    [QueryKeys.tarsFileSystems],
+    () => dataService.getTarsFileSystems(),
+    {
+      select: (data) => data.fileSystems ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Admin: every website dataset (資料源管理 → 外部網站), plus the knowledge
+ * bases one may be imported into — pwc_tars returns both in one response.
+ */
+export const useTarsWebsitesQuery = (
+  config?: UseQueryOptions<TTarsWebsitesResponse>,
+): QueryObserverResult<TTarsWebsitesResponse> => {
+  return useQuery<TTarsWebsitesResponse>(
+    [QueryKeys.tarsWebsites],
+    () => dataService.getTarsWebsites(),
+    { ...adminQueryOptions, ...config },
   );
 };

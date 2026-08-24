@@ -86,6 +86,9 @@ export interface TarsFileSystemSource {
   host_name: string | null;
   status: number | null;
   allowed_km_ids: string[];
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 /** System-wide ceilings the upload forms must respect (`sys_config`). */
@@ -116,14 +119,18 @@ export interface TarsKnowledgeBaseDatasets {
   stats: TarsDatasetStats;
 }
 
-interface RawDatabase extends TarsDatasetDatabase {
+export interface TarsRawDatabase extends TarsDatasetDatabase {
   password?: string;
   connection_string?: string;
   username?: string;
   extra_params?: string;
 }
 
-interface RawFileSystem extends TarsFileSystemSource {
+/**
+ * The stored row as pwc_tars serialises it. `to_dict()` includes the file
+ * server's account and password, so nothing may hand this to a client.
+ */
+export interface TarsRawFileSystem extends TarsFileSystemSource {
   password?: string;
   account?: string;
 }
@@ -133,9 +140,9 @@ interface PrepareDatasetsResponse {
   documents?: TarsDocument[];
   dataset_websites?: TarsDatasetWebsite[];
   dataset_apis?: unknown[];
-  dataset_sqls?: RawDatabase[];
+  dataset_sqls?: TarsRawDatabase[];
   dataset_file_systems?: TarsDatasetFileSystemLink[];
-  all_dataset_sqls?: RawDatabase[];
+  all_dataset_sqls?: TarsRawDatabase[];
   document_count?: number;
   total_word_count?: number;
   total_token_count?: number;
@@ -148,7 +155,7 @@ interface PrepareDatasetsResponse {
  * Copies only the fields the UI needs. pwc_tars sends the stored password and
  * connection string on every database row; neither belongs in a browser.
  */
-const toSafeDatabase = (row: RawDatabase): TarsDatasetDatabase => ({
+export const toSafeDatabase = (row: TarsRawDatabase): TarsDatasetDatabase => ({
   id: row.id,
   name: row.name,
   description: row.description ?? null,
@@ -167,7 +174,7 @@ const toSafeDatabase = (row: RawDatabase): TarsDatasetDatabase => ({
 });
 
 /** Same reasoning as `toSafeDatabase`: the file-server password never leaves here. */
-const toSafeFileSystem = (row: RawFileSystem): TarsFileSystemSource => ({
+export const toSafeFileSystem = (row: TarsRawFileSystem): TarsFileSystemSource => ({
   id: row.id,
   name: row.name,
   description: row.description ?? null,
@@ -178,6 +185,9 @@ const toSafeFileSystem = (row: RawFileSystem): TarsFileSystemSource => ({
   host_name: row.host_name ?? null,
   status: row.status ?? null,
   allowed_km_ids: row.allowed_km_ids ?? [],
+  created_by: row.created_by ?? null,
+  created_at: row.created_at ?? null,
+  updated_at: row.updated_at ?? null,
 });
 
 /**
@@ -450,7 +460,7 @@ export async function fetchTarsFileSystemSources(
   knowledgeBaseId: string,
   baseUrl?: string,
 ): Promise<TarsFileSystemSource[]> {
-  const data = await tarsFetch<{ dataset_file_systems?: RawFileSystem[] }>(
+  const data = await tarsFetch<{ dataset_file_systems?: TarsRawFileSystem[] }>(
     '/api/dataset_file_system/get_dataset_file_systems',
     { query: { user_id: tarsId, knowledge_base_ids: knowledgeBaseId }, baseUrl },
   );
@@ -470,7 +480,7 @@ export async function fetchTarsFileSystemFiles(
   fileSystemId: string,
   baseUrl?: string,
 ): Promise<string[]> {
-  const sources = await tarsFetch<{ dataset_file_systems?: RawFileSystem[] }>(
+  const sources = await tarsFetch<{ dataset_file_systems?: TarsRawFileSystem[] }>(
     '/api/dataset_file_system/get_dataset_file_systems',
     { query: { user_id: tarsId, knowledge_base_ids: knowledgeBaseId }, baseUrl },
   );
