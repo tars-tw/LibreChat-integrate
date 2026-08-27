@@ -114,6 +114,8 @@ export type TEphemeralAgent = {
    */
   mcp_tools?: Record<string, string[]>;
   web_search?: boolean;
+  /** pwc_tars SQL agent (資料庫查詢). */
+  sql_agent?: boolean;
   file_search?: boolean;
   execute_code?: boolean;
   artifacts?: string;
