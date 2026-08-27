@@ -33,6 +33,8 @@ function hasExplicitConfig(
       return interfaceConfig?.runCode !== undefined;
     case PermissionTypes.WEB_SEARCH:
       return interfaceConfig?.webSearch !== undefined;
+    case PermissionTypes.SQL_AGENT:
+      return interfaceConfig?.sqlAgent !== undefined;
     case PermissionTypes.PEOPLE_PICKER:
       return interfaceConfig?.peoplePicker !== undefined;
     case PermissionTypes.MARKETPLACE:
@@ -354,6 +356,13 @@ export async function updateInterfacePermissions({
           loadedInterface.webSearch,
           defaultPerms[PermissionTypes.WEB_SEARCH]?.[Permissions.USE],
           defaults.webSearch,
+        ),
+      },
+      [PermissionTypes.SQL_AGENT]: {
+        [Permissions.USE]: getPermissionValue(
+          loadedInterface.sqlAgent,
+          defaultPerms[PermissionTypes.SQL_AGENT]?.[Permissions.USE],
+          defaults.sqlAgent,
         ),
       },
       [PermissionTypes.PEOPLE_PICKER]: {
