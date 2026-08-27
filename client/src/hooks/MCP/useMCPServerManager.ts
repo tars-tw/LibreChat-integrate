@@ -3,6 +3,12 @@ import { useAtom } from 'jotai';
 import { useToastContext } from '@librechat/client';
 import { useQueryClient } from '@tanstack/react-query';
 import {
+  useCancelMCPOAuthMutation,
+  useUpdateUserPluginsMutation,
+  useReinitializeMCPServerMutation,
+  useGetAllEffectivePermissionsQuery,
+} from 'librechat-data-provider/react-query';
+import {
   Constants,
   dataService,
   QueryKeys,
@@ -12,13 +18,8 @@ import {
   PermissionTypes,
   tarsMcpServerName,
   isTarsMcpServerName,
+  TARS_SQL_MCP_SERVER_NAME,
 } from 'librechat-data-provider';
-import {
-  useCancelMCPOAuthMutation,
-  useUpdateUserPluginsMutation,
-  useReinitializeMCPServerMutation,
-  useGetAllEffectivePermissionsQuery,
-} from 'librechat-data-provider/react-query';
 import type {
   TUpdateUserPlugins,
   TPlugin,
@@ -133,6 +134,11 @@ export function useMCPServerManager({
   }, [isTarsUser, tarsSettingsFailed, tarsUserServers]);
   const isTarsServerVisible = useCallback(
     (serverName: string): boolean => {
+      /** The SQL agent proxies a pwc_tars capability rather than an `mcp_server`
+       *  row, so it has no per-user opt-in — only a linked account. */
+      if (serverName === TARS_SQL_MCP_SERVER_NAME) {
+        return isTarsUser;
+      }
       if (!isTarsMcpServerName(serverName)) {
         return true;
       }

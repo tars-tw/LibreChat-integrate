@@ -50,20 +50,24 @@ export function deriveTarsMcpGatewayKey(): string | null {
   return createHmac('sha256', secret).update(GATEWAY_KEY_CONTEXT).digest('hex');
 }
 
-/**
- * The URL LibreChat's MCP client uses to reach its own gateway route.
- * `localhost` (not `127.0.0.1`) so the connection works whichever family the
- * `HOST` binding chose; Node's happy-eyeballs tries both. Override with
- * `TARS_MCP_SELF_URL` (full endpoint URL) behind proxies or multi-instance
- * setups.
- */
+/** The URL LibreChat's MCP client uses to reach its own gateway route. */
 export function tarsMcpSelfUrl(): string {
-  const override = process.env.TARS_MCP_SELF_URL?.trim();
-  if (override) {
-    return override.replace(/\/+$/, '');
+  return tarsLoopbackUrl(TARS_MCP_PATH, process.env.TARS_MCP_SELF_URL);
+}
+
+/**
+ * Loopback endpoint URL for a route LibreChat's own MCP client calls back into.
+ * `localhost` (not `127.0.0.1`) so the connection works whichever family the
+ * `HOST` binding chose; Node's happy-eyeballs tries both. `override` is a full
+ * endpoint URL, for proxies or multi-instance setups.
+ */
+export function tarsLoopbackUrl(path: string, override?: string): string {
+  const trimmed = override?.trim();
+  if (trimmed) {
+    return trimmed.replace(/\/+$/, '');
   }
   const port = process.env.PORT?.trim() || '3080';
-  return `http://localhost:${port}${TARS_MCP_PATH}`;
+  return `http://localhost:${port}${path}`;
 }
 
 function buildServerEntry(
