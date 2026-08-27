@@ -8,6 +8,7 @@ import {
   useGetAgentsConfig,
   useToolToggle,
 } from '~/hooks';
+import useTarsSqlAgent from '~/hooks/MCP/useTarsSqlAgent';
 import useTarsMcpTools from '~/hooks/MCP/useTarsMcpTools';
 import { getTimestampedValue } from '~/utils/timestamps';
 import { useGetStartupConfig } from '~/data-provider';
@@ -26,6 +27,7 @@ interface BadgeRowContextType {
   searchApiKeyForm: ReturnType<typeof useSearchApiKeyForm>;
   mcpServerManager: ReturnType<typeof useMCPServerManager>;
   tarsMcpTools: ReturnType<typeof useTarsMcpTools>;
+  sqlAgent: ReturnType<typeof useTarsSqlAgent>;
 }
 
 const BadgeRowContext = createContext<BadgeRowContextType | undefined>(undefined);
@@ -282,6 +284,7 @@ export default function BadgeRowProvider({
     observeToolAuthorization,
   });
   const tarsMcpTools = useTarsMcpTools({ conversationId, storageContextKey });
+  const sqlAgent = useTarsSqlAgent(mcpServerManager);
 
   /* Memoized because this is an inline child of `ChatForm`, which re-renders on
      every keystroke: a fresh value here invalidated every consumer's memo, and
@@ -301,6 +304,7 @@ export default function BadgeRowProvider({
       searchApiKeyForm,
       mcpServerManager,
       tarsMcpTools,
+      sqlAgent,
     }),
     [
       skills,
@@ -315,6 +319,7 @@ export default function BadgeRowProvider({
       searchApiKeyForm,
       mcpServerManager,
       tarsMcpTools,
+      sqlAgent,
     ],
   );
 
