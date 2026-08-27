@@ -2,7 +2,6 @@ import React from 'react';
 import * as Ariakit from '@ariakit/react';
 import { ChevronRight } from 'lucide-react';
 import { MCPIcon, PinIcon } from '@librechat/client';
-import { TARS_SQL_MCP_SERVER_NAME } from 'librechat-data-provider';
 import MCPPendingServerItem from '~/components/MCP/MCPPendingServerItem';
 import MCPServerMenuItem from '~/components/MCP/MCPServerMenuItem';
 import MCPConfigDialog from '~/components/MCP/MCPConfigDialog';
@@ -43,15 +42,9 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
       getServerStatusIconProps,
     } = mcpServerManager;
 
-    /** The SQL agent has its own top-level row in the tools menu, so it is not
-     *  offered a second time here. It stays in `selectableServers` because that
-     *  list is what keeps its selection state alive. */
-    const listedServers = selectableServers.filter(
-      (server) => server.serverName !== TARS_SQL_MCP_SERVER_NAME,
-    );
     const visibleServers = tarsMcpTools
-      ? listedServers.filter((server) => tarsMcpTools.isServerAllowed(server.serverName))
-      : listedServers;
+      ? selectableServers.filter((server) => tarsMcpTools.isServerAllowed(server.serverName))
+      : selectableServers;
     const pendingServers = tarsMcpTools?.pendingServers ?? [];
 
     if (visibleServers.length === 0 && pendingServers.length === 0) {
