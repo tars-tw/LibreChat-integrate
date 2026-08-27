@@ -15,6 +15,7 @@ export const TOOL_FRIENDLY_NAME_KEYS: Record<string, TranslationKeys> = {
   run_tools_with_bash: 'com_ui_tool_name_code',
   bash_tool: 'com_ui_tool_name_code',
   web_search: 'com_ui_tool_name_web_search',
+  sql_agent: 'com_ui_tool_name_sql_agent',
   image_gen_oai: 'com_ui_tool_name_image_gen',
   image_edit_oai: 'com_ui_tool_name_image_edit',
   gemini_image_gen: 'com_ui_tool_name_image_gen',
