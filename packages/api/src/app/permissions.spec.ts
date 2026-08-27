@@ -86,6 +86,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: true },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -149,6 +150,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: true },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -276,6 +278,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: false },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: false },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: false },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -339,6 +342,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: false },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: false },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: false },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -452,6 +456,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: true },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -515,6 +520,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: true },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -641,6 +647,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: false },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -704,6 +711,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: false },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -817,6 +825,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: true },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -880,6 +889,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: true },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -998,6 +1008,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: true },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -1049,6 +1060,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: true },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -1184,6 +1196,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: true },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -1239,6 +1252,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.TEMPORARY_CHAT]: { [Permissions.USE]: true },
       [PermissionTypes.RUN_CODE]: { [Permissions.USE]: true },
       [PermissionTypes.WEB_SEARCH]: { [Permissions.USE]: true },
+      [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
