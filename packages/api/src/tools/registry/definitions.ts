@@ -5,6 +5,7 @@ import {
 } from '@librechat/agents';
 import type { ExtendedJsonSchema } from './schema';
 import { AskUserQuestionToolDefinition } from '~/agents/hitl/askUserQuestionTool';
+import { TarsSqlToolDefinition } from '~/tars/sql/tool';
 import { geminiToolkit } from '~/tools/toolkits/gemini';
 import { oaiToolkit } from '~/tools/toolkits/oai';
 
@@ -425,6 +426,12 @@ const agentToolDefinitions: Record<string, ToolRegistryDefinition> = {
     name: AskUserQuestionToolDefinition.name,
     description: AskUserQuestionToolDefinition.description,
     schema: AskUserQuestionToolDefinition.schema as ExtendedJsonSchema,
+    toolType: 'builtin',
+  },
+  [TarsSqlToolDefinition.name]: {
+    name: TarsSqlToolDefinition.name,
+    description: TarsSqlToolDefinition.description,
+    schema: TarsSqlToolDefinition.schema as unknown as ExtendedJsonSchema,
     toolType: 'builtin',
   },
 };

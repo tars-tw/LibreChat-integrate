@@ -1,25 +1,28 @@
 import React, { memo } from 'react';
 import { Database } from 'lucide-react';
 import { CheckboxButton } from '@librechat/client';
+import { Permissions, PermissionTypes } from 'librechat-data-provider';
+import { useLocalize, useHasAccess } from '~/hooks';
 import { useBadgeRowContext } from '~/Providers';
 import { badgeAccents } from './accents';
-import { useLocalize } from '~/hooks';
 
 function SqlAgent() {
   const localize = useLocalize();
+  const canUseSqlAgent = useHasAccess({
+    permissionType: PermissionTypes.SQL_AGENT,
+    permission: Permissions.USE,
+  });
   const context = useBadgeRowContext();
-  const sqlAgent = context?.sqlAgent;
-
-  if (!sqlAgent?.isAvailable) {
+  if (!canUseSqlAgent || !context) {
     return null;
   }
-  const { isActive, toggle, isPinned } = sqlAgent;
+  const { toggleState: sqlAgent, debouncedChange, isPinned } = context.sqlAgent;
 
   return (
-    (isPinned || isActive) && (
+    (isPinned || sqlAgent) && (
       <CheckboxButton
-        checked={isActive}
-        setValue={toggle}
+        checked={sqlAgent}
+        setValue={debouncedChange}
         label={localize('com_ui_tars_sql_agent')}
         isCheckedClassName={badgeAccents.green}
         icon={<Database className="icon-md" aria-hidden="true" />}
