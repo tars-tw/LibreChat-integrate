@@ -79,11 +79,20 @@ export function useMCPSelect({
       if (!isEqual(activeMcps, mcpValues)) {
         setMCPValuesRaw(activeMcps);
       }
+      /** Prune the ephemeral agent too, not just the atom. A selection that
+       *  outlives its server — removed from the config, renamed, or promoted to
+       *  a native tool — is invisible in the UI but still rides the submitted
+       *  payload, where the backend equips it as an expected MCP tool and fails
+       *  the entire turn with AGENT_EXPECTED_MCP_TOOLS_UNAVAILABLE. Keeping the
+       *  two in step lets stale state heal itself on the next load. */
+      if (!isEqual(activeMcps, mcps)) {
+        setEphemeralAgent((prev) => (prev ? { ...prev, mcp: activeMcps } : prev));
+      }
     } else if (Array.isArray(mcps) && mcps.length === 0 && mcpValues.length > 0) {
       // Ephemeral agent explicitly has empty MCP (e.g., spec with no MCP servers) — clear atom
       setMCPValuesRaw([]);
     }
-  }, [ephemeralAgent?.mcp, setMCPValuesRaw, configuredServers, mcpValues]);
+  }, [ephemeralAgent?.mcp, setMCPValuesRaw, setEphemeralAgent, configuredServers, mcpValues]);
 
   // Write timestamp when MCP values change
   useEffect(() => {

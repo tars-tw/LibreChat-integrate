@@ -8,7 +8,6 @@ import {
   useGetAgentsConfig,
   useToolToggle,
 } from '~/hooks';
-import useTarsSqlAgent from '~/hooks/MCP/useTarsSqlAgent';
 import useTarsMcpTools from '~/hooks/MCP/useTarsMcpTools';
 import { getTimestampedValue } from '~/utils/timestamps';
 import { useGetStartupConfig } from '~/data-provider';
@@ -21,13 +20,13 @@ interface BadgeRowContextType {
   skills: ReturnType<typeof useToolToggle>;
   memory: ReturnType<typeof useToolToggle>;
   webSearch: ReturnType<typeof useToolToggle>;
+  sqlAgent: ReturnType<typeof useToolToggle>;
   artifacts: ReturnType<typeof useToolToggle>;
   fileSearch: ReturnType<typeof useToolToggle>;
   codeInterpreter: ReturnType<typeof useToolToggle>;
   searchApiKeyForm: ReturnType<typeof useSearchApiKeyForm>;
   mcpServerManager: ReturnType<typeof useMCPServerManager>;
   tarsMcpTools: ReturnType<typeof useTarsMcpTools>;
-  sqlAgent: ReturnType<typeof useTarsSqlAgent>;
 }
 
 const BadgeRowContext = createContext<BadgeRowContextType | undefined>(undefined);
@@ -106,6 +105,7 @@ export default function BadgeRowProvider({
       const artifactsToggleKey = `${LocalStorageKeys.LAST_ARTIFACTS_TOGGLE_}${storageSuffix}`;
       const skillsToggleKey = `${LocalStorageKeys.LAST_SKILLS_TOGGLE_}${storageSuffix}`;
       const memoryToggleKey = `${LocalStorageKeys.LAST_MEMORY_TOGGLE_}${storageSuffix}`;
+      const sqlAgentToggleKey = `${LocalStorageKeys.LAST_SQL_AGENT_TOGGLE_}${storageSuffix}`;
 
       const codeToggleValue = getTimestampedValue(codeToggleKey);
       const webSearchToggleValue = getTimestampedValue(webSearchToggleKey);
@@ -113,6 +113,7 @@ export default function BadgeRowProvider({
       const artifactsToggleValue = getTimestampedValue(artifactsToggleKey);
       const skillsToggleValue = getTimestampedValue(skillsToggleKey);
       const memoryToggleValue = getTimestampedValue(memoryToggleKey);
+      const sqlAgentToggleValue = getTimestampedValue(sqlAgentToggleKey);
 
       const initialValues: Record<string, boolean | string> = {};
 
@@ -161,6 +162,14 @@ export default function BadgeRowProvider({
           initialValues[Tools.memory] = JSON.parse(memoryToggleValue);
         } catch (e) {
           console.error('Failed to parse memory toggle value:', e);
+        }
+      }
+
+      if (sqlAgentToggleValue !== null) {
+        try {
+          initialValues[Tools.sql_agent] = JSON.parse(sqlAgentToggleValue);
+        } catch (e) {
+          console.error('Failed to parse SQL agent toggle value:', e);
         }
       }
 
@@ -239,6 +248,15 @@ export default function BadgeRowProvider({
   });
 
   /** FileSearch hook */
+  /** pwc_tars SQL agent (資料庫查詢) — a plain capability toggle like web search. */
+  const sqlAgent = useToolToggle({
+    conversationId,
+    storageContextKey,
+    toolKey: Tools.sql_agent,
+    localStorageKey: LocalStorageKeys.LAST_SQL_AGENT_TOGGLE_,
+    isAuthenticated: true,
+  });
+
   const fileSearch = useToolToggle({
     conversationId,
     storageContextKey,
@@ -276,7 +294,6 @@ export default function BadgeRowProvider({
 
   const mcpServerManager = useMCPServerManager({ conversationId, storageContextKey });
   const tarsMcpTools = useTarsMcpTools({ conversationId, storageContextKey });
-  const sqlAgent = useTarsSqlAgent(mcpServerManager);
 
   const value: BadgeRowContextType = {
     skills,

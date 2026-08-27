@@ -18,6 +18,7 @@ const {
   buildWebSearchContext,
   DELETE_MEMORY_TOOL_NAME,
   createAskUserQuestionTool,
+  createTarsSqlTool,
   ASK_USER_QUESTION_TOOL_NAME,
   resolveWebSearchSSRFAgents,
   buildWebSearchDynamicContext,
@@ -443,6 +444,15 @@ const loadTools = async ({
           logger,
         });
       };
+      continue;
+    } else if (tool === Tools.sql_agent) {
+      requestedTools[tool] = async () =>
+        createTarsSqlTool({
+          tarsUserId: options.req?.user?.tarsId,
+          domainId: options.req?.body?.domain_id,
+          model: agent?.model,
+          librechatUserId: user,
+        });
       continue;
     } else if (tool === ASK_USER_QUESTION_TOOL_NAME) {
       requestedTools[tool] = async () => createAskUserQuestionTool();
