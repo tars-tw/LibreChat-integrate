@@ -3398,6 +3398,15 @@ export const TARS_MCP_SERVER_PREFIX = 'tars_';
 /** Legacy aggregate gateway entry name (single "TARS" server, pre per-server injection). */
 export const TARS_MCP_LEGACY_SERVER_NAME = 'tars';
 
+/**
+ * Entry name of the loopback pwc_tars SQL-agent MCP server. Deliberately
+ * outside the `tars_` namespace: those entries mirror pwc_tars `mcp_server`
+ * rows and are filtered by each user's pwc_tars opt-in, whereas the SQL agent
+ * is a pwc_tars capability every linked user may reach. Server-side injection
+ * and the client-side visibility filter must both use this constant.
+ */
+export const TARS_SQL_MCP_SERVER_NAME = 'sql_agent';
+
 /** Whether an MCP server name belongs to the pwc_tars gateway (per-server or legacy aggregate). */
 export function isTarsMcpServerName(serverName: string): boolean {
   return (

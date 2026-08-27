@@ -1,7 +1,15 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import * as Ariakit from '@ariakit/react';
 import { TooltipAnchor, DropdownPopup, PinIcon, VectorIcon } from '@librechat/client';
-import { Brain, Globe, ScrollText, Settings, Settings2, TerminalSquareIcon } from 'lucide-react';
+import {
+  Brain,
+  Globe,
+  Database,
+  ScrollText,
+  Settings,
+  Settings2,
+  TerminalSquareIcon,
+} from 'lucide-react';
 import {
   AuthType,
   Permissions,
@@ -79,6 +87,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
   const {
     skills,
     memory,
+    sqlAgent,
     webSearch,
     artifacts,
     fileSearch,
@@ -243,6 +252,41 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
               </div>
             </button>
           </div>
+        </div>
+      ),
+    });
+  }
+
+  /** The pwc_tars SQL agent is a first-class tool here, not an MCP submenu entry:
+   *  users reach for "查資料庫" the way they reach for web search, and the MCP
+   *  transport underneath is an implementation detail. */
+  if (canUseMcp && sqlAgent?.isAvailable) {
+    dropdownItems.push({
+      onClick: sqlAgent.toggle,
+      hideOnClick: false,
+      render: (props) => (
+        <div {...props} data-testid="tools-menu-sql-agent">
+          <div className="flex items-center gap-2">
+            <Database className="icon-md" aria-hidden="true" />
+            <span>{localize('com_ui_tars_sql_agent')}</span>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              sqlAgent.setIsPinned(!sqlAgent.isPinned);
+            }}
+            className={cn(
+              'rounded p-1 transition-all duration-200',
+              'hover:bg-surface-secondary hover:shadow-sm',
+              !sqlAgent.isPinned && 'text-text-secondary hover:text-text-primary',
+            )}
+            aria-label={sqlAgent.isPinned ? localize('com_ui_unpin') : localize('com_ui_pin')}
+          >
+            <div className="h-4 w-4">
+              <PinIcon unpin={sqlAgent.isPinned} />
+            </div>
+          </button>
         </div>
       ),
     });

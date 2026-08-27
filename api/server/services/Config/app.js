@@ -9,6 +9,7 @@ const {
   tarsMcpInjectionFailed,
   clearMcpConfigCache,
   createAppConfigService,
+  withTarsSqlAgentConfig,
   createCodeEnvironmentRegistry,
   mergeAccessibleCodeEnvironments,
 } = require('@librechat/api');
@@ -91,8 +92,10 @@ const loadBaseConfig = async () => {
     adminIncluded: config.includedTools,
     directory: paths.structuredTools,
   });
-  const appConfig = await withTarsMcpConfig(
-    withLangflowAllowedAddress(await AppService({ config, paths, systemTools })),
+  const appConfig = withTarsSqlAgentConfig(
+    await withTarsMcpConfig(
+      withLangflowAllowedAddress(await AppService({ config, paths, systemTools })),
+    ),
   );
   scheduleTarsMcpRetry();
   return appConfig;
