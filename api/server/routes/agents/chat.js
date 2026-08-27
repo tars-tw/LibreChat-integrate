@@ -14,7 +14,6 @@ const {
   moderateText,
   // validateModel,
   injectTarsDomain,
-  recordTarsChatContext,
   validateConvoAccess,
   buildEndpointOption,
   canAccessAgentFromBody,
@@ -86,8 +85,6 @@ router.use(validateConvoAccess);
 router.use(guardSubagentThreadTurn);
 router.use(injectTarsDomain);
 router.use(buildEndpointOption);
-/** After `buildEndpointOption`: the resolved agent is what names the model. */
-router.use(recordTarsChatContext);
 
 const controller = async (req, res, next) => {
   await AgentController(req, res, next, initializeClient, addTitle);
