@@ -97,10 +97,8 @@ const loadBaseConfig = async (mode) => {
     adminIncluded: config.includedTools,
     directory: paths.structuredTools,
   });
-  const appConfig = withTarsSqlAgentConfig(
-    await withTarsMcpConfig(
-      withLangflowAllowedAddress(await AppService({ config, paths, systemTools, expandCustomEndpoint })),
-    ),
+  const appConfig = await withTarsMcpConfig(
+    withLangflowAllowedAddress(await AppService({ config, paths, systemTools, expandCustomEndpoint })),
   );
   scheduleTarsMcpRetry();
   return appConfig;
