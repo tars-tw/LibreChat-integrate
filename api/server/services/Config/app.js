@@ -5,6 +5,7 @@ const {
   clearMcpConfigCache,
   withTarsMcpConfig,
   tarsMcpInjectionFailed,
+  withTarsSqlAgentConfig,
   hostPortFromUrl,
 } = require('@librechat/api');
 const { setCachedTools, invalidateCachedTools } = require('./getCachedTools');
@@ -69,8 +70,10 @@ const loadBaseConfig = async () => {
     adminIncluded: config.includedTools,
     directory: paths.structuredTools,
   });
-  const appConfig = await withTarsMcpConfig(
-    withLangflowAllowedAddress(await AppService({ config, paths, systemTools })),
+  const appConfig = withTarsSqlAgentConfig(
+    await withTarsMcpConfig(
+      withLangflowAllowedAddress(await AppService({ config, paths, systemTools })),
+    ),
   );
   scheduleTarsMcpRetry();
   return appConfig;
