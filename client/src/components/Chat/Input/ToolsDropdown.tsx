@@ -49,6 +49,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     codeEnabled,
     memoryEnabled,
     webSearchEnabled,
+    sqlAgentEnabled,
     artifactsEnabled,
     fileSearchEnabled,
     skillsEnabled,
@@ -76,6 +77,11 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
 
   const canUseSkills = useHasAccess({
     permissionType: PermissionTypes.SKILLS,
+    permission: Permissions.USE,
+  });
+
+  const canUseSqlAgent = useHasAccess({
+    permissionType: PermissionTypes.SQL_AGENT,
     permission: Permissions.USE,
   });
 
@@ -108,6 +114,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
   const { isPinned: isArtifactsPinned, setIsPinned: setIsArtifactsPinned } = artifacts ?? {};
   const { isPinned: isSkillsPinned, setIsPinned: setIsSkillsPinned } = skills ?? {};
   const { isPinned: isMemoryPinned, setIsPinned: setIsMemoryPinned } = memory ?? {};
+  const { isPinned: isSqlAgentPinned, setIsPinned: setIsSqlAgentPinned } = sqlAgent ?? {};
 
   const showWebSearchSettings = useMemo(() => {
     const authTypes = webSearchAuthData?.authTypes ?? [];
@@ -166,6 +173,11 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     const newValue = !memory?.toggleState;
     memory?.debouncedChange({ value: newValue });
   }, [memory]);
+
+  const handleSqlAgentToggle = useCallback(() => {
+    const newValue = !sqlAgent?.toggleState;
+    sqlAgent?.debouncedChange({ value: newValue });
+  }, [sqlAgent]);
 
   const mcpPlaceholder = startupConfig?.interface?.mcpServers?.placeholder;
 
@@ -257,12 +269,9 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     });
   }
 
-  /** The pwc_tars SQL agent is a first-class tool here, not an MCP submenu entry:
-   *  users reach for "查資料庫" the way they reach for web search, and the MCP
-   *  transport underneath is an implementation detail. */
-  if (canUseMcp && sqlAgent?.isAvailable) {
+  if (canUseSqlAgent && sqlAgentEnabled) {
     dropdownItems.push({
-      onClick: sqlAgent.toggle,
+      onClick: handleSqlAgentToggle,
       hideOnClick: false,
       render: (props) => (
         <div {...props} data-testid="tools-menu-sql-agent">
@@ -274,17 +283,17 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              sqlAgent.setIsPinned(!sqlAgent.isPinned);
+              setIsSqlAgentPinned?.(!isSqlAgentPinned);
             }}
             className={cn(
               'rounded p-1 transition-all duration-200',
               'hover:bg-surface-secondary hover:shadow-sm',
-              !sqlAgent.isPinned && 'text-text-secondary hover:text-text-primary',
+              !isSqlAgentPinned && 'text-text-secondary hover:text-text-primary',
             )}
-            aria-label={sqlAgent.isPinned ? localize('com_ui_unpin') : localize('com_ui_pin')}
+            aria-label={isSqlAgentPinned ? localize('com_ui_unpin') : localize('com_ui_pin')}
           >
             <div className="h-4 w-4">
-              <PinIcon unpin={sqlAgent.isPinned} />
+              <PinIcon unpin={isSqlAgentPinned} />
             </div>
           </button>
         </div>

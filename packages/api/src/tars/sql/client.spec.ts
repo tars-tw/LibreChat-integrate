@@ -9,14 +9,7 @@ jest.mock('@librechat/data-schemas', () => ({
 
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
-import { rememberTarsChatContext, clearTarsChatContexts } from '~/tars/chat';
-import {
-  runTarsSqlAgent,
-  tarsSqlDomainHint,
-  listTarsSqlDatabases,
-  isTarsSqlAgentSelected,
-  invalidateTarsSqlDatabasesCache,
-} from './client';
+import { runTarsSqlAgent, listTarsSqlDatabases, invalidateTarsSqlDatabasesCache } from './client';
 
 const BASE_URL = 'http://tars.test';
 const USER_ID = 'tars-user-1';
@@ -75,7 +68,6 @@ beforeEach(() => {
   invalidateTarsSqlDatabasesCache();
   invalidateTarsSysConfigCache();
   invalidateTarsModelProfilesCache();
-  clearTarsChatContexts();
 });
 
 afterEach(() => {
@@ -198,52 +190,6 @@ describe('runTarsSqlAgent', () => {
   });
 });
 
-describe('isTarsSqlAgentSelected', () => {
-  it('detects the SQL agent entry on the turn', () => {
-    expect(isTarsSqlAgentSelected({ ephemeralAgent: { mcp: ['tars_x', 'sql_agent'] } })).toBe(true);
-    expect(isTarsSqlAgentSelected({ ephemeralAgent: { mcp: ['tars_x'] } })).toBe(false);
-    expect(isTarsSqlAgentSelected({})).toBe(false);
-  });
-});
-
-describe('tarsSqlDomainHint', () => {
-  const mockDomain = (knowledgeBaseIds: string) =>
-    jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.includes('/api/domain_settings/get_domain_by_user')) {
-        return buildResponse(200, {
-          sys_domains: [{ id: 100, name: '通用腦', knowledge_base_ids: knowledgeBaseIds }],
-        });
-      }
-      if (url.includes('/api/knowledge_base/prepare_data')) {
-        return buildResponse(200, { knowledge_bases: knowledgeBases });
-      }
-      throw new Error(`Unexpected fetch: ${url}`);
-    });
-
-  it('names only the brain-bound knowledge bases that have a database', async () => {
-    mockDomain('kb-sql,kb-plain');
-    const hint = await tarsSqlDomainHint(USER_ID, 100);
-    expect(hint).toContain('kb-sql');
-    expect(hint).not.toContain('kb-plain');
-    expect(hint).not.toContain('kb-other');
-  });
-
-  it('is empty when the brain has no database-backed knowledge base', async () => {
-    mockDomain('kb-plain');
-    await expect(tarsSqlDomainHint(USER_ID, 100)).resolves.toBe('');
-  });
-
-  it('is empty without a brain', async () => {
-    await expect(tarsSqlDomainHint(USER_ID, null)).resolves.toBe('');
-  });
-
-  it('swallows a pwc_tars failure rather than breaking the turn', async () => {
-    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
-    await expect(tarsSqlDomainHint(USER_ID, 100)).resolves.toBe('');
-  });
-});
-
 const sqlBodyOf = (fetchMock: jest.SpyInstance): Record<string, unknown> => {
   const call = fetchMock.mock.calls.find(([url]) =>
     String(url).includes('/api/langflow-service/sql'),
@@ -258,60 +204,49 @@ describe('SQL agent model selection', () => {
 
   it("runs on the model the caller's chat turn resolved to", async () => {
     const fetchMock = mockBackend({ status: 200, body: answerBody });
-    rememberTarsChatContext('lc-1', { model: 'gpt-5.5' });
-
     await runTarsSqlAgent(USER_ID, {
       question: 'q',
       knowledgeBaseId: 'kb-sql',
-      librechatUserId: 'lc-1',
+      model: 'gpt-5.5',
     });
     expect(sqlBodyOf(fetchMock).model_name).toBe('gpt-5.5');
   });
 
   it('sends the pwc_tars spelling of the model', async () => {
     const fetchMock = mockBackend({ status: 200, body: answerBody });
-    rememberTarsChatContext('lc-1', { model: 'GPT-5.4-Mini' });
-
     await runTarsSqlAgent(USER_ID, {
       question: 'q',
       knowledgeBaseId: 'kb-sql',
-      librechatUserId: 'lc-1',
+      model: 'GPT-5.4-Mini',
     });
     expect(sqlBodyOf(fetchMock).model_name).toBe('gpt-5.4-mini');
   });
 
   it('falls back to the pwc_tars default when the chat model has no model_profile', async () => {
     const fetchMock = mockBackend({ status: 200, body: answerBody });
-    rememberTarsChatContext('lc-1', { model: 'claude-opus-5' });
-
     await runTarsSqlAgent(USER_ID, {
       question: 'q',
       knowledgeBaseId: 'kb-sql',
-      librechatUserId: 'lc-1',
+      model: 'claude-opus-5',
     });
     expect(sqlBodyOf(fetchMock).model_name).toBeUndefined();
   });
 
-  it('falls back to the pwc_tars default when no turn was recorded', async () => {
+  it('falls back to the pwc_tars default when the turn names no model', async () => {
     const fetchMock = mockBackend({ status: 200, body: answerBody });
 
-    await runTarsSqlAgent(USER_ID, {
-      question: 'q',
-      knowledgeBaseId: 'kb-sql',
-      librechatUserId: 'lc-1',
-    });
+    await runTarsSqlAgent(USER_ID, { question: 'q', knowledgeBaseId: 'kb-sql' });
     expect(sqlBodyOf(fetchMock).model_name).toBeUndefined();
   });
 
   it('logs which model the nested loop ran on', async () => {
     const { logger } = jest.requireMock('@librechat/data-schemas');
     mockBackend({ status: 200, body: answerBody });
-    rememberTarsChatContext('lc-1', { model: 'gpt-5.5' });
 
     await runTarsSqlAgent(USER_ID, {
       question: 'q',
       knowledgeBaseId: 'kb-sql',
-      librechatUserId: 'lc-1',
+      model: 'gpt-5.5',
     });
 
     expect(logger.debug).toHaveBeenCalledWith(
@@ -323,12 +258,11 @@ describe('SQL agent model selection', () => {
   it('lets the env pin override the chat model', async () => {
     process.env.TARS_SQL_AGENT_MODEL = 'deepseek-reasoner';
     const fetchMock = mockBackend({ status: 200, body: answerBody });
-    rememberTarsChatContext('lc-1', { model: 'gpt-5.5' });
 
     await runTarsSqlAgent(USER_ID, {
       question: 'q',
       knowledgeBaseId: 'kb-sql',
-      librechatUserId: 'lc-1',
+      model: 'gpt-5.5',
     });
     expect(sqlBodyOf(fetchMock).model_name).toBe('deepseek-reasoner');
   });
