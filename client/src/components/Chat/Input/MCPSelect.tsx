@@ -1,7 +1,7 @@
 import React, { memo, useRef, useMemo, useEffect } from 'react';
 import * as Ariakit from '@ariakit/react';
 import { ChevronDown } from 'lucide-react';
-import { PermissionTypes, Permissions } from 'librechat-data-provider';
+import { PermissionTypes, Permissions, TARS_SQL_MCP_SERVER_NAME } from 'librechat-data-provider';
 import { TooltipAnchor, composerControlClasses } from '@librechat/client';
 import MCPPendingServerItem from '~/components/MCP/MCPPendingServerItem';
 import MCPServerMenuItem from '~/components/MCP/MCPServerMenuItem';
@@ -47,22 +47,31 @@ function MCPSelectContent() {
     configDialogWasOpen.current = configDialogOpen;
   }, [configDialogOpen, menuStore]);
 
-  /** Gateway entries the active brain (domain) may not use are hidden. */
+  /** Gateway entries the active brain (domain) may not use are hidden, as is the
+   *  SQL agent — it owns a top-level tools-menu row and badge of its own. */
   const visibleServers = useMemo(() => {
-    const servers = manager?.selectableServers ?? [];
+    const servers = (manager?.selectableServers ?? []).filter(
+      (s) => s.serverName !== TARS_SQL_MCP_SERVER_NAME,
+    );
     if (!tarsMcpTools) {
       return servers;
     }
     return servers.filter((s) => tarsMcpTools.isServerAllowed(s.serverName));
   }, [manager?.selectableServers, tarsMcpTools]);
 
+  /** Selections this badge speaks for — the SQL agent's is counted by its own badge. */
+  const selectedNames = useMemo(
+    () => (manager?.mcpValues ?? []).filter((name) => name !== TARS_SQL_MCP_SERVER_NAME),
+    [manager?.mcpValues],
+  );
+
   const selectedServers = useMemo(() => {
-    if (!manager?.mcpValues || manager.mcpValues.length === 0) {
+    if (selectedNames.length === 0) {
       return [];
     }
-    const selectedSet = new Set(manager.mcpValues);
+    const selectedSet = new Set(selectedNames);
     return visibleServers.filter((s) => selectedSet.has(s.serverName));
-  }, [visibleServers, manager?.mcpValues]);
+  }, [visibleServers, selectedNames]);
 
   /** Counts what the menu actually offers, never the raw selection: a name the
    *  catalog has not returned — or one the admin has hidden — renders no row,
@@ -94,7 +103,7 @@ function MCPSelectContent() {
     getServerStatusIconProps,
   } = manager;
 
-  if (!isPinned && mcpValues?.length === 0) {
+  if (!isPinned && selectedNames.length === 0) {
     return null;
   }
 
