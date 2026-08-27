@@ -631,6 +631,7 @@ export enum AgentCapabilities {
   stateful_code_sessions = 'stateful_code_sessions',
   file_search = 'file_search',
   web_search = 'web_search',
+  sql_agent = 'sql_agent',
   artifacts = 'artifacts',
   subagents = 'subagents',
   actions = 'actions',
@@ -809,6 +810,7 @@ export const defaultAgentCapabilities = [
   AgentCapabilities.execute_code,
   AgentCapabilities.file_search,
   AgentCapabilities.web_search,
+  AgentCapabilities.sql_agent,
   AgentCapabilities.artifacts,
   AgentCapabilities.subagents,
   AgentCapabilities.actions,
@@ -1653,6 +1655,8 @@ export const interfaceSchema = z
     retainAgentFiles: z.boolean().optional(),
     runCode: z.boolean().optional(),
     webSearch: z.boolean().optional(),
+    /** pwc_tars SQL agent (資料庫查詢) — grants `SQL_AGENT.USE`. */
+    sqlAgent: z.boolean().optional(),
     contextUsage: z.boolean().optional(),
     contextCost: z.boolean().optional(),
     feedback: z.boolean().optional(),
@@ -1756,6 +1760,7 @@ export const interfaceSchema = z
     autoSubmitFromUrl: true,
     runCode: true,
     webSearch: true,
+    sqlAgent: true,
     contextUsage: true,
     contextCost: false,
     feedback: true,
@@ -3345,15 +3350,6 @@ export const TARS_MCP_SERVER_PREFIX = 'tars_';
 /** Legacy aggregate gateway entry name (single "TARS" server, pre per-server injection). */
 export const TARS_MCP_LEGACY_SERVER_NAME = 'tars';
 
-/**
- * Entry name of the loopback pwc_tars SQL-agent MCP server. Deliberately
- * outside the `tars_` namespace: those entries mirror pwc_tars `mcp_server`
- * rows and are filtered by each user's pwc_tars opt-in, whereas the SQL agent
- * is a pwc_tars capability every linked user may reach. Server-side injection
- * and the client-side visibility filter must both use this constant.
- */
-export const TARS_SQL_MCP_SERVER_NAME = 'sql_agent';
-
 /** Whether an MCP server name belongs to the pwc_tars gateway (per-server or legacy aggregate). */
 export function isTarsMcpServerName(serverName: string): boolean {
   return (
@@ -3680,6 +3676,7 @@ export enum LocalStorageKeys {
   LAST_CODE_TOGGLE_ = 'LAST_CODE_TOGGLE_',
   /** Last checked toggle for Web Search per conversation ID */
   LAST_WEB_SEARCH_TOGGLE_ = 'LAST_WEB_SEARCH_TOGGLE_',
+  LAST_SQL_AGENT_TOGGLE_ = 'LAST_SQL_AGENT_TOGGLE_',
   /** Last checked toggle for File Search per conversation ID */
   LAST_FILE_SEARCH_TOGGLE_ = 'LAST_FILE_SEARCH_TOGGLE_',
   /** Last checked toggle for Artifacts per conversation ID */

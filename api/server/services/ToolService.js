@@ -16,6 +16,7 @@ const {
   GenerationJobManager,
   isActionDomainAllowed,
   buildWebSearchContext,
+  buildTarsSqlContext,
   buildImageToolContext,
   buildToolClassification,
   getMissingCustomUserVars,
@@ -688,6 +689,7 @@ const nativeTools = new Set([
   Tools.execute_code,
   Tools.file_search,
   Tools.web_search,
+  Tools.sql_agent,
   Tools.memory,
 ]);
 
@@ -804,6 +806,9 @@ async function loadToolDefinitionsWrapper({
     }
     if (tool === Tools.web_search) {
       return checkCapability(AgentCapabilities.web_search);
+    }
+    if (tool === Tools.sql_agent) {
+      return checkCapability(AgentCapabilities.sql_agent);
     }
     if (tool === Tools.memory) {
       return checkCapability(AgentCapabilities.memory);
@@ -1375,6 +1380,20 @@ async function loadToolDefinitionsWrapper({
     dynamicToolContextMap[Tools.web_search] = buildWebSearchDynamicContext(req.turnStartedAt);
   }
 
+  /** The reachable databases follow the active 專用腦, so they are runtime
+   *  context rather than part of the registry definition. Non-fatal: without
+   *  it the model simply has to name a knowledge base itself. */
+  if (filteredTools.includes(Tools.sql_agent) && req.user?.tarsId) {
+    try {
+      toolContextMap[Tools.sql_agent] = await buildTarsSqlContext(
+        req.user.tarsId,
+        req.body?.domain_id,
+      );
+    } catch (error) {
+      logger.warn('[loadToolDefinitionsWrapper] Failed to build TARS SQL context', error);
+    }
+  }
+
   /**
    * `files` carry the upload session_ids; we surface them so client.js can
    * seed `Graph.sessions[EXECUTE_CODE]` before run start. Without that seed,
@@ -1575,6 +1594,8 @@ async function loadAgentTools({
     } else if (tool === Tools.web_search) {
       includesWebSearch = checkCapability(AgentCapabilities.web_search);
       return includesWebSearch;
+    } else if (tool === Tools.sql_agent) {
+      return checkCapability(AgentCapabilities.sql_agent);
     } else if (tool === Tools.memory) {
       return checkCapability(AgentCapabilities.memory);
     } else if (tool === ASK_USER_QUESTION_TOOL_NAME) {
