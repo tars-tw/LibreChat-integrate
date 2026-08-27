@@ -1,5 +1,6 @@
 export * from './assets';
 export * from './audit';
+export * from './chat';
 export * from './client';
 export * from './domains';
 export * from './groups';
