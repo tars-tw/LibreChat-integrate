@@ -2746,6 +2746,7 @@
   "com_ui_tars_sched_unit_day": "days",
   "com_ui_tars_sched_unit_month": "months",
   "com_ui_tars_sched_unit_week": "weeks",
+  "com_ui_tars_sql_agent": "Database Query",
   "com_ui_tars_sys_config": "System Parameters",
   "com_ui_tars_sys_config_active": "Active",
   "com_ui_tars_sys_config_category": "Category",
