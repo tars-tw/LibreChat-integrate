@@ -5,8 +5,6 @@ const {
   isTarsConfigured,
   isTarsMcpEnabled,
   handleTarsMcpRequest,
-  handleTarsSqlRequest,
-  isTarsSqlAgentEnabled,
   deriveTarsMcpGatewayKey,
   adminListTarsMcpServers,
   adminGetTarsMcpServer,
@@ -103,42 +101,6 @@ router.post('/mcp', gatewayHandler());
 const methodNotAllowed = (req, res) => jsonRpcError(res, 405, -32000, 'Method not allowed');
 router.get('/mcp', methodNotAllowed);
 router.delete('/mcp', methodNotAllowed);
-
-/**
- * @route POST /api/tars/sql-agent
- * @desc Loopback MCP server exposing the pwc_tars SQL agent
- *       (`/api/langflow-service/sql`) as two tools. Shares the MCP gateway's
- *       key and `X-Tars-User-Id` scoping; it is a separate endpoint because it
- *       proxies a pwc_tars capability rather than a pwc_tars `mcp_server` row.
- * @access Internal — LibreChat's own MCP client, authenticated by gateway key (not JWT).
- */
-router.post('/sql-agent', async (req, res) => {
-  if (!isTarsSqlAgentEnabled()) {
-    return jsonRpcError(res, 404, -32001, 'TARS SQL agent is disabled');
-  }
-  if (!gatewayKeyMatches(req.headers['x-tars-gateway-key'])) {
-    return jsonRpcError(res, 403, -32002, 'Forbidden');
-  }
-  const librechatUserId = req.headers['x-tars-user-id'];
-  try {
-    const tarsUserId = await resolveTarsUserId(librechatUserId);
-    await handleTarsSqlRequest({
-      req,
-      res,
-      body: req.body,
-      tarsUserId,
-      librechatUserId: typeof librechatUserId === 'string' ? librechatUserId : undefined,
-    });
-  } catch (error) {
-    logger.error('[POST /api/tars/sql-agent] SQL agent request failed', error);
-    if (!res.headersSent) {
-      return jsonRpcError(res, 500, -32603, 'Internal server error');
-    }
-  }
-});
-
-router.get('/sql-agent', methodNotAllowed);
-router.delete('/sql-agent', methodNotAllowed);
 
 /**
  * Invalidates every cache a pwc_tars MCP mutation can affect: the gateway's

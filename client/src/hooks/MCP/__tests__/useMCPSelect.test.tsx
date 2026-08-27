@@ -375,6 +375,31 @@ describe('useMCPSelect', () => {
       });
     });
 
+    it('prunes a removed server out of the ephemeral agent, not just the atom', async () => {
+      const { Wrapper, servers } = createWrapper(['server1', 'server2']);
+
+      const TestComponent = () => {
+        const mcpHook = useMCPSelect({ servers });
+        const [ephemeralAgent, setEphemeralAgent] = useRecoilState(
+          ephemeralAgentByConvoId(Constants.NEW_CONVO),
+        );
+        return { mcpHook, ephemeralAgent, setEphemeralAgent };
+      };
+
+      const { result } = renderHook(() => TestComponent(), { wrapper: Wrapper });
+
+      act(() => {
+        result.current.setEphemeralAgent({ mcp: ['server1', 'removed-server'] });
+      });
+
+      /** The submitted payload reads `ephemeralAgent.mcp`; leaving the removed
+       *  server there fails the whole turn server-side. */
+      await waitFor(() => {
+        expect(result.current.ephemeralAgent?.mcp).toEqual(['server1']);
+      });
+      expect(result.current.mcpHook.mcpValues).toEqual(['server1']);
+    });
+
     it('should clear all MCPs when none are in configured servers', async () => {
       const { Wrapper, servers } = createWrapper(['server1', 'server2']);
 
