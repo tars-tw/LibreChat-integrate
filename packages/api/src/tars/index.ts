@@ -1,4 +1,5 @@
 export * from './audit';
+export * from './chat';
 export * from './client';
 export * from './domains';
 export * from './groups';
@@ -14,6 +15,7 @@ export * from './reports';
 export * from './roles';
 export * from './schedules';
 export * from './settings';
+export * from './sql';
 export * from './sso';
 export * from './sysconfig';
 export * from './syslogs';
