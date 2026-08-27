@@ -10,6 +10,8 @@ export interface TarsFetchOptions {
   query?: TarsQuery;
   timeoutMs?: number;
   baseUrl?: string;
+  /** Extra request headers, merged over the JSON content type (e.g. a service key). */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -65,7 +67,7 @@ function buildUrl(base: string, path: string, query?: TarsQuery): string {
  * responses so callers can surface a 5xx.
  */
 export async function tarsFetch<T>(path: string, options: TarsFetchOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, timeoutMs = DEFAULT_TIMEOUT_MS, baseUrl } = options;
+  const { method = 'GET', body, query, timeoutMs = DEFAULT_TIMEOUT_MS, baseUrl, headers } = options;
   const url = buildUrl(getTarsBaseUrl(baseUrl), path, query);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -73,7 +75,7 @@ export async function tarsFetch<T>(path: string, options: TarsFetchOptions = {})
   try {
     const response = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...headers },
       body: body != null ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     });
