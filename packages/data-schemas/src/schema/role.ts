@@ -44,6 +44,9 @@ const rolePermissionsSchema = new Schema(
     [PermissionTypes.SQL_AGENT]: {
       [Permissions.USE]: { type: Boolean },
     },
+    [PermissionTypes.CHART_AGENT]: {
+      [Permissions.USE]: { type: Boolean },
+    },
     [PermissionTypes.PEOPLE_PICKER]: {
       [Permissions.VIEW_USERS]: { type: Boolean },
       [Permissions.VIEW_GROUPS]: { type: Boolean },

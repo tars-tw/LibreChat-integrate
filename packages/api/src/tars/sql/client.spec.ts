@@ -62,9 +62,6 @@ const answerBody = {
 
 beforeEach(() => {
   process.env.TARS_AUTH_URL = BASE_URL;
-  delete process.env.TARS_SQL_SERVICE_KEY;
-  delete process.env.TARS_SQL_AGENT_MODEL;
-  delete process.env.TARS_SQL_AGENT_USE_GATEWAY;
   invalidateTarsSqlDatabasesCache();
   invalidateTarsSysConfigCache();
   invalidateTarsModelProfilesCache();
@@ -115,12 +112,14 @@ describe('listTarsSqlDatabases', () => {
 
 describe('runTarsSqlAgent', () => {
   it('runs the question against the bound database', async () => {
-    process.env.TARS_SQL_SERVICE_KEY = 'service-key';
-    process.env.TARS_SQL_AGENT_MODEL = 'gpt-5.4-mini';
     const fetchMock = mockBackend({ status: 200, body: answerBody });
 
     await expect(
-      runTarsSqlAgent(USER_ID, { question: '有什麼模型？', knowledgeBaseId: 'kb-sql' }),
+      runTarsSqlAgent(USER_ID, {
+        question: '有什麼模型？',
+        knowledgeBaseId: 'kb-sql',
+        model: 'gpt-5.4-mini',
+      }),
     ).resolves.toEqual({ answer: '共有 9 個模型', modelName: 'gpt-5.4-mini', totalTokens: 8983 });
 
     const call = fetchMock.mock.calls.find(([url]) =>
@@ -128,8 +127,8 @@ describe('runTarsSqlAgent', () => {
     );
     const init = call?.[1] as RequestInit;
     expect(init.method).toBe('POST');
-    expect((init.headers as Record<string, string>)['X-TARS-Service-Key']).toBe('service-key');
-    expect((init.headers as Record<string, string>)['X-Use-Librechat-Gateway']).toBeUndefined();
+    expect((init.headers as Record<string, string>)['X-TARS-Service-Key']).toBe('from-sysconfig');
+    expect((init.headers as Record<string, string>)['X-Use-Librechat-Gateway']).toBe('true');
     expect(JSON.parse(String(init.body))).toEqual({
       query: '有什麼模型？',
       knowledge_base_id: 'kb-sql',
@@ -149,9 +148,7 @@ describe('runTarsSqlAgent', () => {
     ).toBe('from-sysconfig');
   });
 
-  it('sends the gateway headers when routing through LibreChat', async () => {
-    process.env.TARS_SQL_SERVICE_KEY = 'service-key';
-    process.env.TARS_SQL_AGENT_USE_GATEWAY = 'true';
+  it('always routes the nested loop through the LibreChat gateway', async () => {
     const fetchMock = mockBackend({ status: 200, body: answerBody });
 
     await runTarsSqlAgent(USER_ID, {
@@ -169,7 +166,6 @@ describe('runTarsSqlAgent', () => {
   });
 
   it('refuses a knowledge base the user cannot reach', async () => {
-    process.env.TARS_SQL_SERVICE_KEY = 'service-key';
     const fetchMock = mockBackend({ status: 200, body: answerBody });
 
     await expect(
@@ -181,7 +177,6 @@ describe('runTarsSqlAgent', () => {
   });
 
   it('surfaces the pwc_tars failure message', async () => {
-    process.env.TARS_SQL_SERVICE_KEY = 'service-key';
     mockBackend({ status: 400, body: { message: '資料庫 schema 資訊尚未生成' } });
 
     await expect(
@@ -198,9 +193,7 @@ const sqlBodyOf = (fetchMock: jest.SpyInstance): Record<string, unknown> => {
 };
 
 describe('SQL agent model selection', () => {
-  beforeEach(() => {
-    process.env.TARS_SQL_SERVICE_KEY = 'service-key';
-  });
+  beforeEach(() => {});
 
   it("runs on the model the caller's chat turn resolved to", async () => {
     const fetchMock = mockBackend({ status: 200, body: answerBody });
@@ -252,11 +245,10 @@ describe('SQL agent model selection', () => {
     expect(logger.debug).toHaveBeenCalledWith(
       expect.stringContaining('requested=gpt-5.5 used=gpt-5.4-mini'),
     );
-    expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('via=pwc_tars-direct'));
+    expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('gateway=requested'));
   });
 
-  it('lets the env pin override the chat model', async () => {
-    process.env.TARS_SQL_AGENT_MODEL = 'deepseek-reasoner';
+  it('sends the chat model when pwc_tars has a matching model_profile', async () => {
     const fetchMock = mockBackend({ status: 200, body: answerBody });
 
     await runTarsSqlAgent(USER_ID, {
@@ -264,6 +256,6 @@ describe('SQL agent model selection', () => {
       knowledgeBaseId: 'kb-sql',
       model: 'gpt-5.5',
     });
-    expect(sqlBodyOf(fetchMock).model_name).toBe('deepseek-reasoner');
+    expect(sqlBodyOf(fetchMock).model_name).toBe('gpt-5.5');
   });
 });
