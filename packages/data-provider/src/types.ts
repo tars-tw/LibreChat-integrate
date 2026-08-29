@@ -115,6 +115,8 @@ export type TEphemeralAgent = {
   web_search?: boolean;
   /** pwc_tars SQL agent (資料庫查詢). */
   sql_agent?: boolean;
+  /** pwc_tars chart agent (產生圖表). */
+  chart_agent?: boolean;
   file_search?: boolean;
   execute_code?: boolean;
   artifacts?: string;

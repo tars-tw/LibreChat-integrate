@@ -49,11 +49,21 @@ pwc_tars's SQL agent is a **first-class LibreChat tool**, not an MCP server: `To
 
 One tool, `sql_agent({ question, knowledge_base_id? })` → `POST /api/langflow-service/sql`. Its reachable databases are resolved **per request** and written into the tool's own description, which removes the usual list-then-query round trip: a brain binding one database needs no `knowledge_base_id` at all, and a brain binding several advertises them by name. Scoping mirrors pwc_tars's own chat path (`message/routes.py` resolves a database from the domain's `knowledge_base_ids`, not from everything the user can see): the candidate set is `has_sql_database` on `GET /api/knowledge_base/prepare_data` intersected with the active 專用腦's knowledge bases, and the same set authorizes the call. pwc_tars owns the whole text-to-SQL loop (schema prompt from the KB↔database binding's `llm_table_info`, read-only guard, row formatting); LibreChat only bounds which knowledge base may be asked (fail-closed for unlinked accounts) and relays the answer, so the markdown table plus the SQL used flows back into the normal agent loop and composes with every other tool.
 
-`sql_agent` costs **two** LLM calls: the chat model decides to call the tool, then pwc_tars's nested loop writes and runs the SQL. The nested loop runs on the **same model the chat turn is on** — being a native tool, `handleTools.js` reads `agent.model` and `req.body.domain_id` straight off the request, so no side channel is needed. The model is matched against pwc_tars `model_profile` names — the same whitelist `ModelSelectorContext` filters the picker by, so the picker can only produce a match — and unmatched models (saved agents and assistants bypass that filter; it also fails open while pwc_tars is down) fall back to pwc_tars's default sys_model rather than letting pwc_tars 400 the call. `TARS_SQL_AGENT_MODEL` pins one model regardless. Every call logs `[tars-sql] kb=… requested=… used=… tokens=… via=…` at debug level, where `used` is what pwc_tars reports it actually ran.
+`sql_agent` costs **two** LLM calls: the chat model decides to call the tool, then pwc_tars's nested loop writes and runs the SQL. The nested loop runs on the **same model the chat turn is on** — being a native tool, `handleTools.js` reads `agent.model` and `req.body.domain_id` straight off the request, so no side channel is needed. The model is matched against pwc_tars `model_profile` names — the same whitelist `ModelSelectorContext` filters the picker by, so the picker can only produce a match — and unmatched models (saved agents and assistants bypass that filter; it also fails open while pwc_tars is down) fall back to pwc_tars's default sys_model rather than letting pwc_tars 400 the call — there is no LibreChat-side model pin, both ends of that decision are pwc_tars's. Every call logs `[tars-sql] kb=… requested=… used=… tokens=… via=…` at debug level, where `used` is what pwc_tars reports it actually ran.
 
-The pwc_tars service key is the `KEY_LANGFLOW_API_KEY` sys_config row (override: `TARS_SQL_SERVICE_KEY`). Other env: `TARS_SQL_AGENT_USE_GATEWAY` (route the SQL agent's own LLM back through LibreChat's gateway), `TARS_SQL_AGENT_TIMEOUT_MS`. Key files: `packages/api/src/tars/sql/{client,tool}.ts`, construction in `api/app/clients/tools/util/handleTools.js`, capability gate in `api/server/services/ToolService.js`, equipping in `packages/api/src/agents/{load,added}.ts`, UI in `client/src/components/Chat/Input/{SqlAgent,ToolsDropdown}.tsx` + `BadgeRowContext`. **No pwc_tars-side change is required** — `/api/langflow-service/sql` already exists for Langflow. Not yet wired into the saved-agent builder catalog (`client/src/components/SidePanel/Agents/Tools/items/`), so saved agents can run the tool but cannot pick it in that UI.
+The pwc_tars service key is read from the `KEY_LANGFLOW_API_KEY` sys_config row — pwc_tars validates the whole `/api/langflow-service` blueprint against that single row, so there is no LibreChat-side override. The nested loop's own LLM **always** goes back through LibreChat's gateway (`X-Use-Librechat-Gateway: true` plus `X-Librechat-User-Id`, so the quota lands on the acting user) — pwc_tars hosts the tools but carries no models of its own; its `FLAG_USE_LIBRECHAT_LLM` sys_config switch is the only remaining gate. Other env: `TARS_SQL_AGENT_TIMEOUT_MS`. Key files: `packages/api/src/tars/sql/{client,tool}.ts`, construction in `api/app/clients/tools/util/handleTools.js`, capability gate in `api/server/services/ToolService.js`, equipping in `packages/api/src/agents/{load,added}.ts`, UI in `client/src/components/Chat/Input/{SqlAgent,ToolsDropdown}.tsx` + `BadgeRowContext`. **No pwc_tars-side change is required** — `/api/langflow-service/sql` already exists for Langflow. Not yet wired into the saved-agent builder catalog (`client/src/components/SidePanel/Agents/Tools/items/`), so saved agents can run the tool but cannot pick it in that UI.
 
 ---
+
+### TARS Long-term Memory + langflow tools (chart / data / table-task)
+
+When `TARS_AUTH_URL` is set (`startupConfig.tarsMemoryEnabled`), **chat uploads bypass `/api/files` entirely**: the composer paperclip and drag-drop are replaced by a single path into pwc_tars's 長期記憶區 (`TarsMemoryAttach` swap in `AttachFileChat.tsx`, shared hook `client/src/hooks/Files/useTarsMemoryUpload.ts`), and the 附加檔案 side panel becomes a memory manager (`client/src/components/SidePanel/TarsMemory/`, swap in `useSideNavLinks.ts`). Semantics mirror pwc_tars exactly: files live on the **pwc_tars conversation** (`memory_document`, linked via the mirror's `tarsConversationId`), `status=1` rows apply to **every** turn — non-structured files' parsed `summary` is injected into the system prompt via `toolContextMap['tars_memory']`, csv/xlsx/xls instead auto-equip the data tools. Per turn, `primeTarsMemory` (`packages/api/src/tars/memory/prime.ts`, three guarded hook points in `packages/api/src/agents/initialize.ts`) fetches `get_memory_data` once in parallel with init (10s cap, fail-soft), stashes a WeakMap snapshot reused by the tool factories, filters rows to `created_by === User.tarsId` (pwc_tars's memory routes don't authorize — LibreChat closes that gap; `update_status`/`delete` are ownership-prechecked in `api/server/routes/tars/memory.js`). New-chat uploads have no conversation yet: pwc_tars creates one, the id rides conversation state → `compactAgentsBaseSchema` pick list (the send-path schema; `agentsBaseSchema` carries it for settings parsing) → first send, where `request.js` adopts it only after a pending-registry claim (`memory/pending.ts`) or document-ownership re-verification. Trade-off: images no longer reach the model as vision input, only their VLM-parsed text. Routes: `/api/tars/memory/{upload,list/:id,documents/:id/...}`.
+
+Three tools call `/api/langflow-service/{chart,data,table-task}` through the shared client `packages/api/src/tars/langflow/client.ts` (service key = sys_config `KEY_LANGFLOW_API_KEY`, no env override — pwc_tars owns the value; model matching same as sql_agent, no pin; the gateway headers are always sent, as for sql_agent — `sql/client.ts` was refactored onto this client):
+- **`Tools.chart_agent`** (「產生圖表」) — full sql_agent-style wiring: `AgentCapabilities.chart_agent` (must be listed in librechat.yaml capabilities), `PermissionTypes.CHART_AGENT`, `interface.chartAgent`, `TEphemeralAgent.chart_agent`, badge `ChartAgent.tsx` + pin + ToolsDropdown (gated on `startupConfig.tarsAuth`). pwc_tars renders a PNG under its unauthenticated `/static`; the answer embeds `![chart](url)` directly — pwc_tars sys_config `HOST` must be browser-reachable or images render broken.
+- **`Tools.data_query` / `Tools.table_task`** — **auto-equipped, never user-toggled**: when the snapshot has active structured docs, `initialize.ts` appends them to `agent.tools` before `loadTools` (ephemeral AND saved agents), the structured-file list goes in as `toolContextMap['tars_memory_data']`, and ToolService gates them on `isTarsConfigured()` only. Both send `document_ids` (defaulting to all attached; requested ids outside the snapshot are dropped). `table_task` additionally resolves `knowledge_base_ids` from the active 專用腦 (like `buildTarsSqlContext` but without the `has_sql_database` filter), refuses cleanly with no domain/no KBs, runs up to ~29min (`TARS_TABLE_TASK_TIMEOUT_MS` default 1_740_000 — watch reverse-proxy idle timeouts), and appends the xlsx download link.
+
+Key files: `packages/api/src/tars/{memory,langflow}/`, registry entries in `packages/api/src/tools/registry/definitions.ts`, dispatch in `handleTools.js`, gates in `ToolService.js`. **No pwc_tars-side change was required.** Full docs: `docs/TARS_INTEGRATION.md` §6.7.
 
 ## Workspace Boundaries
 
@@ -72,6 +82,71 @@ The pwc_tars service key is the `KEY_LANGFLOW_API_KEY` sys_config row (override:
 - Leave finished work as **uncommitted changes in the working tree** and tell the user what changed, so they decide when and how to commit.
 - **Never `git push` / `git push --force` / `git push --tags`** to any remote under any circumstances.
 - Other local git operations (`add`, `stash`, `branch`, `checkout`, `reset`, local `merge`/`rebase`) are allowed when they serve the task.
+
+### Rebasing onto upstream (`main`)
+
+`main` mirrors upstream LibreChat; `release/26P3_dev` is this fork's trunk and is
+**replayed on top of it, never merged** — the fork stays a readable stack of TARS
+commits. The operation recurs every few weeks (see the `backup/26P3_dev-pre-rebase-*`
+branches), so it is worth doing the same way every time:
+
+```bash
+git fetch origin --prune && git branch backup/26P3_dev-pre-rebase-$(date +%Y%m%d) && git rebase main
+```
+
+`rerere` is enabled in this clone with a large resolution cache, so most recurring
+conflicts replay themselves; only genuinely new ones stop the rebase.
+
+**Conflict policy: TARS wins on intent, upstream wins on mechanism.** Take upstream's
+rewritten code and re-attach our TARS hook to it — never resolve by deleting upstream
+logic to keep our older copy of the same function. The exception is our own product
+surface: TARS features, our design/theming, and our frontend components are
+authoritative, so where upstream restyles or re-lays-out a screen we own, keep ours.
+
+The same handful of files conflict nearly every round, and all of them resolve by
+**keeping both sides**:
+
+| File | What conflicts | Resolution |
+|---|---|---|
+| `packages/api/src/auth/index.ts`, `packages/api/src/agents/index.ts` | export barrels — upstream appends a line where we appended `./tars` / `./passthrough` | keep both exports |
+| `packages/data-schemas/src/schema/convo.ts` + `types/convo.ts` | `tarsConversationId` lands next to upstream's new conversation fields | keep both blocks |
+| `api/server/controllers/agents/request.js` | the `require('@librechat/api')` destructure | upstream's list **plus** our TARS names; drop the duplicate `saveConvo` |
+| `api/server/controllers/auth/LogoutController.js` | import line | fold `notifyTarsLogout` into upstream's `@librechat/api` require |
+| `client/src/components/Chat/Input/ChatForm.tsx` | import block + `useSubmitMessage()` destructure | upstream's imports, our `insertPrompt` and `Disclaimer` |
+| `.github/workflows/static-checks.yml`, `package.json` | our fork deletes the `paths:` trigger and the i18n + depcheck steps | re-apply those deletions **onto upstream's new file**, never restore our whole old copy |
+
+Upstream dependency bumps ride along with the rebase (this last round:
+`@librechat/agents` 3.7.1 → 3.7.8, `axios` → 1.20, new `helmet` and
+`express-rate-limit` in `packages/api`). `node_modules` is stale until you sync it,
+and `packages/api` will not typecheck before then — **`npm run smart-reinstall` is
+part of the rebase, not an optional follow-up.**
+
+Then verify in this order, because each step feeds the next:
+
+```bash
+npm run build:data-provider && npm run build:data-schemas && npm run build:api
+```
+
+A stale `data-provider/dist` makes `data-schemas` report phantom "property does not
+exist" errors — build before believing any typecheck. Then the four `tsc --noEmit`
+projects (see "Code Style Check"), then `node scripts/static-checks.mts --against main`,
+then the TARS suites:
+
+```bash
+cd packages/api && npx jest src/tars src/auth/tars src/agents/passthrough
+```
+
+```bash
+cd api && npx jest strategies/tarsStrategy
+```
+
+Finally, confirm the integration seams survived the auto-merges — textual success is
+not semantic success. The load-bearing ones: `primeTarsMemory` in
+`packages/api/src/agents/initialize.ts`, the TARS tool gates in
+`api/server/services/ToolService.js`, the tool construction in `handleTools.js`,
+`mirrorChatToTars` / `claimPendingTarsConversation` in `agents/request.js`,
+`withTarsMcpConfig` in `api/server/services/Config/app.js`, and on the frontend
+`TarsMemoryAttach`, `TarsMemoryPanel`, `TarsPromptsButton`.
 
 ---
 
@@ -243,6 +318,7 @@ Without it, OpenID JWT request burst caching can serve a stale `req.user` until 
 | `npm run frontend` | Build all compiled code sequentially (legacy fallback) |
 | `npm run frontend:dev` | Start frontend dev server with HMR (port 3090, requires backend running) |
 | `npm run build:data-provider` | Rebuild `packages/data-provider` after changes |
+| `npm run static-checks` | Run the CI static-check job locally, scoped to the staged diff |
 
 - Node.js: v24.16.0
 - Database: MongoDB
@@ -315,6 +391,27 @@ and **import sorting**, each evaluated against the files your branch changed
 relative to the PR base. These are not advisory. Run them locally before pushing —
 never discover them from a red CI run.
 
+### The one-command path
+
+`scripts/static-checks.mts` is a local mirror of that CI job: it derives the changed
+file list itself and runs the same per-file checks plus the path-gated tree-wide ones.
+Prefer it — it cannot make the scoping mistake the manual commands can:
+
+```bash
+node scripts/static-checks.mts --against release/26P3_dev
+```
+
+`npm run static-checks` scopes to the staged diff (what the pre-commit hook runs);
+`npm run static-checks:full` adds the slow gates. Note that `--full` still includes
+`i18n` and `depcheck`, the two gates **this fork removed from CI** because they
+mis-flag TARS locale keys and TARS-only dependencies — read their output as advisory,
+or pass `--skip i18n,depcheck`. Check ids: `eslint`, `prettier`, `imports`,
+`eslint-config`, `json`, `circular-deps`, `typecheck`, `config-tests`, `i18n`,
+`depcheck`.
+
+The explicit-file-list commands below remain the ground truth for what CI runs, and
+are what you reach for when you need to re-run a single check on a single file.
+
 ### Collect your changed files first
 
 From the repo root, on your feature branch. Diffing the merge-base against the
@@ -361,9 +458,11 @@ seconds.
 
 ### The pre-commit hook is the safety net, not the plan
 
-`.husky/pre-commit` runs `lint-staged` (Prettier + import sort on staged files).
-It is installed by the root `prepare` script on `npm install` / `npm ci`. Verify
-once per clone:
+`.husky/pre-commit` runs `lint-staged` (Prettier + import sort on the exact staged
+content), then `node scripts/static-checks.mts --skip eslint,prettier,imports` for the
+rest of the CI job, gated on the paths the commit touches. `STATIC_CHECKS_FULL=1`
+adds the slow gates. It is installed by the root `prepare` script on `npm install` /
+`npm ci`. Verify once per clone:
 
 ```bash
 npm run prepare && git config core.hooksPath
@@ -383,7 +482,9 @@ own changes**, exactly as the command above does.
 ### What `static-checks.yml` does and does not cover
 
 It gates on ESLint, Prettier, import sorting, the ESLint-config regression
-sweep, and the config-migration tests. The unused-i18n-key scan and the depcheck
+sweep, the config-migration tests, and a smoke test of `scripts/static-checks.mts`
+itself (the `runner` filter — keep the script's `FILTERS` block in sync with the
+workflow's `paths-filter` block). The unused-i18n-key scan and the depcheck
 sweep were removed from this fork — they could not see TARS locale keys or
 TARS-only dependencies, and they cost more runtime than the rest of the workflow
 combined. Nothing checks for unused locale keys or stale dependencies on a PR

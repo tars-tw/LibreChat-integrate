@@ -632,6 +632,7 @@ export enum AgentCapabilities {
   file_search = 'file_search',
   web_search = 'web_search',
   sql_agent = 'sql_agent',
+  chart_agent = 'chart_agent',
   artifacts = 'artifacts',
   subagents = 'subagents',
   actions = 'actions',
@@ -811,6 +812,7 @@ export const defaultAgentCapabilities = [
   AgentCapabilities.file_search,
   AgentCapabilities.web_search,
   AgentCapabilities.sql_agent,
+  AgentCapabilities.chart_agent,
   AgentCapabilities.artifacts,
   AgentCapabilities.subagents,
   AgentCapabilities.actions,
@@ -1657,6 +1659,8 @@ export const interfaceSchema = z
     webSearch: z.boolean().optional(),
     /** pwc_tars SQL agent (資料庫查詢) — grants `SQL_AGENT.USE`. */
     sqlAgent: z.boolean().optional(),
+    /** pwc_tars chart agent (產生圖表) — grants `CHART_AGENT.USE`. */
+    chartAgent: z.boolean().optional(),
     contextUsage: z.boolean().optional(),
     contextCost: z.boolean().optional(),
     feedback: z.boolean().optional(),
@@ -1761,6 +1765,7 @@ export const interfaceSchema = z
     runCode: true,
     webSearch: true,
     sqlAgent: true,
+    chartAgent: true,
     contextUsage: true,
     contextCost: false,
     feedback: true,
@@ -1878,6 +1883,8 @@ export type TStartupConfig = {
   tarsAuth?: boolean;
   /** Whether pwc_tars is the MCP server source of truth (hides native MCP server management UI) */
   tarsMcpEnabled?: boolean;
+  /** Whether chat uploads are stored in the pwc_tars long-term memory area (replaces native upload UI) */
+  tarsMemoryEnabled?: boolean;
   /** pwc_tars SSO status, used to offer the LDAP login option on the login page */
   tarsSso?: {
     enabled: boolean;
@@ -3677,6 +3684,7 @@ export enum LocalStorageKeys {
   /** Last checked toggle for Web Search per conversation ID */
   LAST_WEB_SEARCH_TOGGLE_ = 'LAST_WEB_SEARCH_TOGGLE_',
   LAST_SQL_AGENT_TOGGLE_ = 'LAST_SQL_AGENT_TOGGLE_',
+  LAST_CHART_AGENT_TOGGLE_ = 'LAST_CHART_AGENT_TOGGLE_',
   /** Last checked toggle for File Search per conversation ID */
   LAST_FILE_SEARCH_TOGGLE_ = 'LAST_FILE_SEARCH_TOGGLE_',
   /** Last checked toggle for Artifacts per conversation ID */

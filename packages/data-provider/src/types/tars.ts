@@ -1575,3 +1575,66 @@ export type TTarsTokenReportUserQuery = TTarsTokenReportRange & {
 
 export type TTarsTokenReportMembersResponse = { members: TTarsTokenUserUsage[] };
 export type TTarsTokenReportUserResponse = { usage: TTarsTokenUserUsageDetail | null };
+
+/**
+ * A pwc_tars long-term memory document (`memory_document` row) as surfaced to
+ * the LibreChat client. `structured` marks csv/xlsx/xls files whose contents
+ * are queried via the data/table-task tools instead of prompt injection;
+ * `status` 1 means the file is included in every chat turn of its conversation.
+ */
+export type TTarsMemoryDocument = {
+  id: string;
+  filename: string;
+  extension: string | null;
+  mime_type: string | null;
+  size: number | null;
+  status: number;
+  word_count: number | null;
+  tokens: number | null;
+  structured: boolean;
+  created_at: string | null;
+};
+
+export type TTarsMemoryList = {
+  tars_conversation_id: string;
+  documents: TTarsMemoryDocument[];
+  token_used: number;
+  token_limit: number;
+};
+
+export type TTarsMemoryProcessedFile = {
+  filename: string;
+  size: number;
+  extension: string;
+  document_id: string;
+};
+
+export type TTarsMemoryRejectedFile = {
+  filename: string;
+  tokens: number;
+  reason: string;
+};
+
+export type TTarsMemoryUploadResult = {
+  tars_conversation_id: string;
+  processed_files: TTarsMemoryProcessedFile[];
+  rejected_files: TTarsMemoryRejectedFile[];
+  token_used: number;
+  token_limit: number;
+};
+
+export type TTarsMemoryDocumentContent = {
+  id: string;
+  filename: string;
+  content: string;
+  content_length: number;
+  preview_type: string;
+  file_available: boolean;
+};
+
+/** Speech-to-text models pwc_tars can transcribe audio uploads with. */
+export type TTarsSttModels = {
+  use_mac_stt?: boolean;
+  models: string[];
+  message?: string;
+};
