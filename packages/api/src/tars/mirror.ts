@@ -44,6 +44,50 @@ export async function createTarsConversation(
 }
 
 /**
+ * Names already pushed to pwc_tars, so the rename below costs one request per
+ * conversation rather than one per turn. Bounded by evicting in insertion order:
+ * a stale eviction only causes a redundant rename, never a wrong one.
+ */
+const SYNCED_CONVERSATION_NAMES = new Map<string, string>();
+const SYNCED_NAME_CACHE_LIMIT = 5000;
+
+/**
+ * Renames a pwc_tars conversation to match LibreChat's generated title
+ * (`PUT /api/conversation/update_conversation/:id`).
+ *
+ * A conversation that a long-term-memory upload created is named
+ * `長期記憶對話_MMDD` by pwc_tars, and the mirror only passes a name when it
+ * creates the conversation itself — so without this those threads keep the
+ * placeholder name forever on the pwc_tars side. No-ops once the name matches
+ * what was last sent.
+ */
+export async function syncTarsConversationName(
+  tarsId: string,
+  tarsConversationId: string,
+  name: string,
+  baseUrl?: string,
+): Promise<void> {
+  if (SYNCED_CONVERSATION_NAMES.get(tarsConversationId) === name) {
+    return;
+  }
+  await tarsFetch(
+    `/api/conversation/update_conversation/${encodeURIComponent(tarsConversationId)}`,
+    {
+      method: 'PUT',
+      body: { name, updated_by: tarsId },
+      baseUrl,
+    },
+  );
+  if (SYNCED_CONVERSATION_NAMES.size >= SYNCED_NAME_CACHE_LIMIT) {
+    const oldest = SYNCED_CONVERSATION_NAMES.keys().next().value;
+    if (oldest != null) {
+      SYNCED_CONVERSATION_NAMES.delete(oldest);
+    }
+  }
+  SYNCED_CONVERSATION_NAMES.set(tarsConversationId, name);
+}
+
+/**
  * Mirrors one LibreChat query/response turn into a pwc_tars message
  * (`POST /api/message/create_message`). `message` stores the raw turn as JSON
  * (pwc_tars uses it for the request payload); `response` holds the answer text.

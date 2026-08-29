@@ -10,8 +10,14 @@ import {
 } from 'librechat-data-provider';
 import type { TConversation } from 'librechat-data-provider';
 import type { ExtendedFile, FileSetter } from '~/common';
-import { useGetFileConfig, useGetEndpointsQuery, useGetAgentByIdQuery } from '~/data-provider';
+import {
+  useGetFileConfig,
+  useGetStartupConfig,
+  useGetEndpointsQuery,
+  useGetAgentByIdQuery,
+} from '~/data-provider';
 import { useAgentsMapContext } from '~/Providers';
+import TarsMemoryAttach from './TarsMemoryAttach';
 import AttachFileMenu from './AttachFileMenu';
 import AttachFile from './AttachFile';
 
@@ -29,6 +35,7 @@ function AttachFileChat({
   setFilesLoading: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const conversationId = conversation?.conversationId ?? Constants.NEW_CONVO;
+  const { data: startupConfig } = useGetStartupConfig();
   const { endpoint } = conversation ?? { endpoint: null };
   const isAgents = useMemo(() => isAgentsEndpoint(endpoint), [endpoint]);
   const isAssistants = useMemo(() => isAssistantsEndpoint(endpoint), [endpoint]);
@@ -96,6 +103,12 @@ function AttachFileChat({
     () => (disableInputs || endpointFileConfig?.disabled) ?? false,
     [disableInputs, endpointFileConfig?.disabled],
   );
+
+  /** TARS mode: chat uploads go to the pwc_tars long-term memory area instead,
+   *  replacing the native upload menu entirely. */
+  if (startupConfig?.tarsMemoryEnabled === true) {
+    return <TarsMemoryAttach disabled={disableInputs} conversation={conversation} />;
+  }
 
   if (isAssistants && endpointSupportsFiles && !isUploadDisabled) {
     return (
