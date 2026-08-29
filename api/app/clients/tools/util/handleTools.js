@@ -19,6 +19,10 @@ const {
   DELETE_MEMORY_TOOL_NAME,
   createAskUserQuestionTool,
   createTarsSqlTool,
+  createTarsChartTool,
+  createTarsDataTool,
+  createTarsTableTaskTool,
+  getTarsMemorySnapshot,
   ASK_USER_QUESTION_TOOL_NAME,
   resolveWebSearchSSRFAgents,
   buildWebSearchDynamicContext,
@@ -450,6 +454,32 @@ const loadTools = async ({
         createTarsSqlTool({
           tarsUserId: options.req?.user?.tarsId,
           domainId: options.req?.body?.domain_id,
+          model: agent?.model,
+          librechatUserId: user,
+        });
+      continue;
+    } else if (tool === Tools.chart_agent) {
+      requestedTools[tool] = async () =>
+        createTarsChartTool({
+          model: agent?.model,
+          librechatUserId: user,
+        });
+      continue;
+    } else if (tool === Tools.data_query) {
+      requestedTools[tool] = async () =>
+        createTarsDataTool({
+          tarsUserId: options.req?.user?.tarsId,
+          documents: getTarsMemorySnapshot(options.req)?.structuredDocuments,
+          model: agent?.model,
+          librechatUserId: user,
+        });
+      continue;
+    } else if (tool === Tools.table_task) {
+      requestedTools[tool] = async () =>
+        createTarsTableTaskTool({
+          tarsUserId: options.req?.user?.tarsId,
+          domainId: options.req?.body?.domain_id,
+          documents: getTarsMemorySnapshot(options.req)?.structuredDocuments,
           model: agent?.model,
           librechatUserId: user,
         });

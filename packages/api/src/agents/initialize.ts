@@ -90,6 +90,7 @@ import {
 } from './errors';
 import { extractAgentContent, extractSkillContent } from '../protection/adapters/submissions';
 import { createConfiguredContentInspector, inspectContent } from '../protection/runtime';
+import { primeTarsMemory, buildTarsMemoryContext } from '~/tars/memory/prime';
 import { assertModelBoundContent } from '../middleware/modelBoundContent';
 import { registerMemoryTools, memoryToolUsageGuard } from './memory';
 import { applyIntentLabels, sanitizeIntentLabels } from './intent';
@@ -738,6 +739,11 @@ export async function initializeAgent(
     throw new Error('initializeAgent requires db methods to be passed');
   }
 
+  /** pwc_tars long-term memory for this conversation, loaded in parallel with
+   *  the rest of init. Fail-soft: resolves `null` unless TARS is configured,
+   *  the user is linked, and the conversation maps to a pwc_tars one. */
+  const tarsMemoryPromise = primeTarsMemory(req);
+
   /**
    * Reject the stored agent definition before initialization performs usage
    * accounting, resource priming, tool/MCP loading, or provider setup. Inspect
@@ -1237,6 +1243,19 @@ export async function initializeAgent(
     }
   }
 
+  /** Active structured (csv/xlsx) memory files auto-equip the pwc_tars data
+   *  tools for this turn — before `loadTools`, so the definitions path, the
+   *  capability filter, and execution all see a consistent tool set. Applies
+   *  to ephemeral and saved agents alike: the memory belongs to the
+   *  conversation, not the agent. */
+  const tarsMemorySnapshot = await tarsMemoryPromise;
+  if (tarsMemorySnapshot != null && tarsMemorySnapshot.structuredDocuments.length > 0) {
+    const withDataTools = new Set(agent.tools ?? []);
+    withDataTools.add(Tools.data_query);
+    withDataTools.add(Tools.table_task);
+    agent.tools = [...withDataTools];
+  }
+
   const baseToolNames = agent.tools ?? [];
   const requestedToolNames =
     extraAllowedToolNames.length > 0 ? [...baseToolNames, ...extraAllowedToolNames] : baseToolNames;
@@ -1390,6 +1409,24 @@ export async function initializeAgent(
     ),
     DEFAULT_MAX_CONTEXT_TOKENS,
   );
+
+  /** Long-term-memory context joins the system prompt via `toolContextMap`
+   *  (keys need not be tool names): extracted text of the non-structured
+   *  files, plus the structured-file listing the data tools refer to. Built
+   *  here rather than at prime time because its truncation budget is a share
+   *  of this agent's resolved context window. */
+  if (toolContextMap != null && tarsMemorySnapshot != null) {
+    const tarsMemoryContext = buildTarsMemoryContext(
+      tarsMemorySnapshot,
+      Number(agentMaxContextTokens) || undefined,
+    );
+    if (tarsMemoryContext.contextText) {
+      toolContextMap['tars_memory'] = tarsMemoryContext.contextText;
+    }
+    if (tarsMemoryContext.dataContextText) {
+      toolContextMap['tars_memory_data'] = tarsMemoryContext.dataContextText;
+    }
+  }
 
   if (
     agent.endpoint === EModelEndpoint.azureOpenAI &&

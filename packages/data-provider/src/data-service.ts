@@ -1393,6 +1393,46 @@ export const uploadTarsKnowledgeBaseDocuments = (
   return request.postMultiPart(endpoints.tarsKnowledgeBaseDocuments(id), data);
 };
 
+export const uploadTarsMemoryFiles = (data: FormData): Promise<t.TTarsMemoryUploadResult> => {
+  return request.postMultiPart(endpoints.tarsMemoryUpload(), data);
+};
+
+export const getTarsMemoryList = (tarsConversationId: string): Promise<t.TTarsMemoryList> => {
+  return request.get(endpoints.tarsMemoryList(tarsConversationId));
+};
+
+export const getTarsMemorySttModels = (): Promise<t.TTarsSttModels> => {
+  return request.get(endpoints.tarsMemorySttModels());
+};
+
+export const updateTarsMemoryDocumentStatus = (
+  documentId: string,
+  status: number,
+): Promise<{ document_id: string; status: number }> => {
+  return request.put(endpoints.tarsMemoryDocumentStatus(documentId), { status });
+};
+
+export const deleteTarsMemoryDocument = (
+  documentId: string,
+): Promise<{ deleted_document_id: string }> => {
+  return request.delete(endpoints.tarsMemoryDocument(documentId));
+};
+
+export const getTarsMemoryDocumentContent = (
+  documentId: string,
+): Promise<t.TTarsMemoryDocumentContent> => {
+  return request.get(endpoints.tarsMemoryDocumentContent(documentId));
+};
+
+export const getTarsMemoryDocumentDownload = async (documentId: string): Promise<AxiosResponse> => {
+  return request.getResponse(endpoints.tarsMemoryDocumentDownload(documentId), {
+    responseType: 'blob',
+    headers: {
+      Accept: 'application/octet-stream',
+    },
+  });
+};
+
 export const renameTarsKnowledgeBaseDocument = (
   id: string,
   docId: string,

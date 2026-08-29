@@ -1,6 +1,7 @@
 import * as artifacts from './artifacts';
 import submission from './submission';
 import isTemporary from './temporary';
+import tarsMemory from './tarsMemory';
 import endpoints from './endpoints';
 import families from './families';
 import settings from './settings';
@@ -36,4 +37,5 @@ export default {
   ...settings,
   ...misc,
   ...isTemporary,
+  ...tarsMemory,
 };
