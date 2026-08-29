@@ -18,6 +18,7 @@ import ToolsDropdown from './ToolsDropdown';
 import { useChatBadges } from '~/hooks';
 import ToolDialogs from './ToolDialogs';
 import FileSearch from './FileSearch';
+import ChartAgent from './ChartAgent';
 import Artifacts from './Artifacts';
 import MCPSelect from './MCPSelect';
 import WebSearch from './WebSearch';
@@ -375,6 +376,7 @@ function BadgeRow({
           <>
             <WebSearch />
             <SqlAgent />
+            <ChartAgent />
             <CodeInterpreter />
             <FileSearch />
             <Skills />

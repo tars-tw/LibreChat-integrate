@@ -4,6 +4,7 @@ const {
   isTarsConfigured,
   createTarsConversation,
   createTarsMessage,
+  syncTarsConversationName,
   deleteTarsConversation,
   deleteTarsConversations,
 } = require('@librechat/api');
@@ -13,7 +14,8 @@ const { getConvo, saveConvo } = require('~/models');
  * Best-effort, one-way mirror of a finished LibreChat chat turn into the pwc_tars
  * DB (LibreChat → pwc_tars). Lazily creates the linked pwc_tars conversation on
  * the first turn and stores the mapping (`tarsConversationId`) on the LibreChat
- * conversation, then appends the query/response as a pwc_tars message.
+ * conversation, then appends the query/response as a pwc_tars message. Keeps the
+ * pwc_tars-side conversation name in step with LibreChat's generated title.
  *
  * Never throws — any failure is logged and swallowed so chat is unaffected.
  */
@@ -43,6 +45,11 @@ async function mirrorChatToTars(
       if (!tarsConversationId) {
         return;
       }
+    } else if (title) {
+      // An adopted conversation was named by whoever created it — a long-term-memory
+      // upload names it `長期記憶對話_MMDD` — so push LibreChat's title once it exists.
+      // Deduplicated inside, so this is one request per conversation, not per turn.
+      await syncTarsConversationName(tarsId, tarsConversationId, title);
     }
 
     // Always re-assert the mapping: the agent's per-turn convo save wipes it, so without
