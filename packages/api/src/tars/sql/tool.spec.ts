@@ -7,6 +7,7 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
+import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import { invalidateTarsSqlDatabasesCache } from './client';
 import { createTarsSqlTool } from './tool';
 
@@ -49,6 +50,11 @@ const mockBackend = (sql: { status: number; body: unknown } = { status: 200, bod
     if (url.includes('/api/model/get_model_list')) {
       return buildResponse(200, [{ model_name: 'gpt-5.4-mini' }]);
     }
+    if (url.includes('/api/sys_config/prepare_data')) {
+      return buildResponse(200, [
+        { key: 'KEY_LANGFLOW_API_KEY', value: 'from-sysconfig', status: 'active' },
+      ]);
+    }
     if (url.includes('/api/langflow-service/sql')) {
       return buildResponse(sql.status, sql.body);
     }
@@ -64,13 +70,11 @@ const sqlBodyOf = (fetchMock: jest.SpyInstance): Record<string, unknown> => {
 
 beforeEach(() => {
   process.env.TARS_AUTH_URL = BASE_URL;
-  process.env.TARS_SQL_SERVICE_KEY = 'service-key';
-  delete process.env.TARS_SQL_AGENT_MODEL;
   invalidateTarsSqlDatabasesCache();
+  invalidateTarsSysConfigCache();
 });
 
 afterEach(() => {
-  delete process.env.TARS_SQL_SERVICE_KEY;
   jest.restoreAllMocks();
 });
 

@@ -401,6 +401,12 @@ export const RESUME_CONTEXT_KEYS = [
   // (#14253). It rides top-level on req.body and flows into model_parameters via the
   // build spread, so replaying it here restores the stable id. Replay-only.
   'modelLabel',
+  // The active pwc_tars 專用腦. `handleTools` reads it straight off `req.body.domain_id`
+  // to scope the sql_agent's reachable databases (which are baked into that tool's own
+  // description) and the table_task's knowledge bases. The resume POST omits it, so
+  // without replay a resumed turn rebuilds those tools against a different — or empty —
+  // brain than the paused graph was interrupted with. Replay-only.
+  'domain_id',
 ] as const;
 
 export type ResumeContext = Partial<Record<(typeof RESUME_CONTEXT_KEYS)[number], unknown>> & {

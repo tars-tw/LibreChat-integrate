@@ -15,6 +15,7 @@ import { render, screen, within, waitFor, fireEvent } from '@testing-library/rea
 import type { TFile, TFileUpload, TConversation } from 'librechat-data-provider';
 import type { ChatFormValues, TAskFunction } from '~/common';
 import type { TranslationKeys } from '~/hooks/useLocalize';
+import { startupConfigKey } from '~/data-provider/Endpoints/queries';
 import { getDraft, getPendingDraftId, setDraft } from '~/utils';
 import { ChatContext, ChatFormProvider } from '~/Providers';
 import { AuthContextProvider } from '~/hooks/AuthContext';
@@ -170,6 +171,20 @@ function renderComposer({
   });
   queryClient.setQueryData<TFile[]>([QueryKeys.files], []);
   queryClient.setQueryData([QueryKeys.endpoints], { [EModelEndpoint.openAI]: { order: 0 } });
+  /**
+   * The composer swaps the native attach menu for the pwc_tars memory uploader
+   * when `tarsMemoryEnabled` is set. jsdom runs against `http://localhost:3080`,
+   * so leaving this unseeded lets a locally running TARS backend answer
+   * `/api/config` mid-test and silently change what this spec exercises.
+   */
+  queryClient.setQueryData(startupConfigKey(false), {});
+  /**
+   * The composer swaps the native attach menu for the pwc_tars memory uploader
+   * when `tarsMemoryEnabled` is set. jsdom runs against `http://localhost:3080`,
+   * so leaving this unseeded lets a locally running TARS backend answer
+   * `/api/config` and silently change what this spec is exercising.
+   */
+  queryClient.setQueryData([QueryKeys.startupConfig], {});
 
   getDefaultStore().set(pendingQuotesByConvoId(conversation.conversationId ?? ''), quotes);
   return render(
