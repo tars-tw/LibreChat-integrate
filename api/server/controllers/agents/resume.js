@@ -1745,6 +1745,29 @@ const ResumeAgentController = async (req, res, next, initializeClient, addTitle)
 
   req.turnStartedAt = job.createdAt;
 
+  // Restore the conversation's createdAt so temporal prompt vars ({{current_datetime}},
+  // {{iso_datetime}}, ...) resolve against the SAME anchor the paused graph used rather
+  // than the resume wall-clock. initializeAgent reads `req.conversationCreatedAt`; the
+  // normal path sets it from the convo timestamp (resolveConversationCreatedAt), so mirror
+  // that here. (The original `timezone` is replayed onto req.body via RESUME_CONTEXT_KEYS.)
+  // The same read also restores the pwc_tars conversation mapping: `primeTarsMemory`
+  // reads `req.tarsConversationId`, which only the normal send path sets, so without
+  // this a resumed turn silently loses its long-term memory and the data tools it
+  // auto-equips — changing the tool set the paused graph was interrupted with.
+  try {
+    const resumedConvo = await getConvo(userId, conversationId);
+    req.tarsConversationId = resumedConvo?.tarsConversationId ?? undefined;
+    const createdAt = resumedConvo?.createdAt ? new Date(resumedConvo.createdAt) : null;
+    if (createdAt && !Number.isNaN(createdAt.getTime())) {
+      req.conversationCreatedAt = createdAt.toISOString();
+    }
+  } catch (err) {
+    logger.warn(
+      '[ResumeAgentController] Failed to restore conversation timestamp anchor',
+      getSafeErrorMetadata(err),
+    );
+  }
+
   let client = null;
   /** Re-pause progress failures use the action/epoch-scoped terminal CAS. The
    * generic resume catch must not subsequently call completeJob, because the
