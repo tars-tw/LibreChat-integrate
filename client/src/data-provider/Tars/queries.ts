@@ -24,6 +24,9 @@ import type {
   TTarsFileSystemSource,
   TTarsFileSystemsResponse,
   TTarsWebsitesResponse,
+  TTarsMemoryList,
+  TTarsMemoryDocumentContent,
+  TTarsSttModels,
   TTarsMcpUserServer,
   TTarsPromptsResponse,
   TTarsDocumentsResponse,
@@ -1000,5 +1003,58 @@ export const useTarsWebsitesQuery = (
     [QueryKeys.tarsWebsites],
     () => dataService.getTarsWebsites(),
     { ...adminQueryOptions, ...config },
+  );
+};
+
+/**
+ * The current conversation's pwc_tars long-term memory documents with token
+ * usage. Keyed by the linked pwc_tars conversation id; disabled until one
+ * exists (a brand-new chat has none before its first upload).
+ */
+export const useTarsMemoryQuery = (
+  tarsConversationId?: string | null,
+  config?: UseQueryOptions<TTarsMemoryList>,
+): QueryObserverResult<TTarsMemoryList> => {
+  return useQuery<TTarsMemoryList>(
+    [QueryKeys.tarsMemory, tarsConversationId],
+    () => dataService.getTarsMemoryList(tarsConversationId ?? ''),
+    {
+      refetchOnWindowFocus: false,
+      ...config,
+      /** After the spread: a caller's own `enabled` narrows this query, it must
+       *  never widen it into a request with an empty conversation id. */
+      enabled: !!tarsConversationId && (config?.enabled ?? true),
+    },
+  );
+};
+
+/** One memory document's parsed text + preview metadata, for the preview dialog. */
+export const useTarsMemoryDocumentContentQuery = (
+  documentId?: string | null,
+  config?: UseQueryOptions<TTarsMemoryDocumentContent>,
+): QueryObserverResult<TTarsMemoryDocumentContent> => {
+  return useQuery<TTarsMemoryDocumentContent>(
+    [QueryKeys.tarsMemoryDocumentContent, documentId],
+    () => dataService.getTarsMemoryDocumentContent(documentId ?? ''),
+    {
+      refetchOnWindowFocus: false,
+      ...config,
+      enabled: !!documentId && (config?.enabled ?? true),
+    },
+  );
+};
+
+/** STT models pwc_tars can transcribe audio uploads with (empty = unavailable). */
+export const useTarsMemorySttModelsQuery = (
+  config?: UseQueryOptions<TTarsSttModels>,
+): QueryObserverResult<TTarsSttModels> => {
+  return useQuery<TTarsSttModels>(
+    [QueryKeys.tarsMemorySttModels],
+    () => dataService.getTarsMemorySttModels(),
+    {
+      refetchOnWindowFocus: false,
+      staleTime: 60_000,
+      ...config,
+    },
   );
 };

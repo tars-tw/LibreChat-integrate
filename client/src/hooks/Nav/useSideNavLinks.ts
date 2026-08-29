@@ -30,10 +30,12 @@ import MCPBuilderPanel from '~/components/SidePanel/MCPBuilder/MCPBuilderPanel';
 import AgentPanelSwitch from '~/components/SidePanel/Agents/AgentPanelSwitch';
 import BookmarkPanel from '~/components/SidePanel/Bookmarks/BookmarkPanel';
 import PanelSwitch from '~/components/SidePanel/Builder/PanelSwitch';
+import { TarsMemoryPanel } from '~/components/SidePanel/TarsMemory';
 import { SchedulePanel } from '~/components/SidePanel/Schedules';
 import Parameters from '~/components/SidePanel/Parameters/Panel';
 import { MemoryPanel } from '~/components/SidePanel/Memories';
 import { PromptsAccordion } from '~/components/Prompts';
+import { useGetStartupConfig } from '~/data-provider';
 import { SkillsAccordion } from '~/components/Skills';
 
 export default function useSideNavLinks({
@@ -97,6 +99,8 @@ export default function useSideNavLinks({
 
   const { agentsConfig } = useGetAgentsConfig({ endpointsConfig });
   const { skillsEnabled } = useAgentCapabilities(agentsConfig?.capabilities);
+  const { data: startupConfig } = useGetStartupConfig();
+  const tarsMemoryEnabled = startupConfig?.tarsMemoryEnabled === true;
 
   const Links = useMemo(() => {
     const links: NavLink[] = [];
@@ -253,6 +257,7 @@ export default function useSideNavLinks({
     availableMCPServers,
     hasAccessToUseMCPSettings,
     hasAccessToCreateMCP,
+    tarsMemoryEnabled,
     includeHidePanel,
     hidePanel,
   ]);

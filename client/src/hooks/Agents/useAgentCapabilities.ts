@@ -10,6 +10,7 @@ interface AgentCapabilitiesResult {
   fileSearchEnabled: boolean;
   webSearchEnabled: boolean;
   sqlAgentEnabled: boolean;
+  chartAgentEnabled: boolean;
   codeEnabled: boolean;
   skillsEnabled: boolean;
   memoryEnabled: boolean;
@@ -62,6 +63,11 @@ export default function useAgentCapabilities(
     [capabilities],
   );
 
+  const chartAgentEnabled = useMemo(
+    () => capabilities?.includes(AgentCapabilities.chart_agent) ?? false,
+    [capabilities],
+  );
+
   const codeEnabled = useMemo(
     () => capabilities?.includes(AgentCapabilities.execute_code) ?? false,
     [capabilities],
@@ -108,6 +114,7 @@ export default function useAgentCapabilities(
     artifactsEnabled,
     webSearchEnabled,
     sqlAgentEnabled,
+    chartAgentEnabled,
     fileSearchEnabled,
     deferredToolsEnabled,
     programmaticToolsEnabled,

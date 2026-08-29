@@ -1,17 +1,12 @@
 import { logger } from '@librechat/data-schemas';
 import type { TarsKnowledgeBase } from '~/tars/knowledge';
+import {
+  langflowTimeoutMs,
+  runLangflowCapability,
+  resolveLangflowModelName,
+} from '~/tars/langflow/client';
 import { fetchTarsDomainKnowledgeBases } from '~/tars/prompts';
 import { fetchTarsKnowledgeBases } from '~/tars/knowledge';
-import { getTarsModelProfileNames } from '~/tars/models';
-import { getTarsSysConfigValue } from '~/tars/sysconfig';
-import { tarsFetch } from '~/tars/client';
-
-/** pwc_tars sys_config key holding the shared secret for `/api/langflow-service/*`. */
-const SERVICE_KEY_CONFIG = 'KEY_LANGFLOW_API_KEY';
-const SERVICE_KEY_HEADER = 'X-TARS-Service-Key';
-/** Opt-in headers that make pwc_tars drive the SQL agent's LLM through LibreChat's gateway. */
-const GATEWAY_HEADER = 'X-Use-Librechat-Gateway';
-const GATEWAY_USER_HEADER = 'X-Librechat-User-Id';
 
 const SQL_AGENT_PATH = '/api/langflow-service/sql';
 /**
@@ -36,7 +31,7 @@ export interface TarsSqlAgentInput {
   domainId?: string | number | null;
   /** The model the chat turn runs on, as LibreChat names it. */
   model?: string;
-  /** The account the LLM gateway resolves API keys for, when gateway routing is on. */
+  /** The account the LLM gateway resolves models and quota for. */
   librechatUserId?: string;
 }
 
@@ -44,14 +39,6 @@ export interface TarsSqlAgentResult {
   answer: string;
   modelName: string;
   totalTokens: number;
-}
-
-interface SqlServiceEnvelope {
-  data?: {
-    answer?: string;
-    model_name?: string;
-    tokens?: { total?: number };
-  };
 }
 
 interface DatabasesCacheEntry {
@@ -64,60 +51,6 @@ const databasesCache = new Map<string, DatabasesCacheEntry>();
 /** Drops the cached per-user database lists so the next call re-reads pwc_tars. */
 export function invalidateTarsSqlDatabasesCache(): void {
   databasesCache.clear();
-}
-
-function timeoutMs(): number {
-  const raw = Number(process.env.TARS_SQL_AGENT_TIMEOUT_MS);
-  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_TIMEOUT_MS;
-}
-
-/** Whether pwc_tars should run the SQL agent's LLM through LibreChat's gateway. */
-function usesLlmGateway(): boolean {
-  return process.env.TARS_SQL_AGENT_USE_GATEWAY?.trim().toLowerCase() === 'true';
-}
-
-/**
- * The pwc_tars model the nested SQL-agent loop runs on. Precedence:
- * `TARS_SQL_AGENT_MODEL` (explicit pin) > the model this user's current chat
- * turn resolved to > undefined, which lets pwc_tars pick its default sys_model.
- *
- * The chat model is matched against pwc_tars's `model_profile` names — the same
- * list the model selector is filtered by, so the normal picker can only produce
- * a match — and the canonical spelling is what gets sent. Saved agents and
- * assistants bypass that selector filter, and the filter fails open while
- * pwc_tars is unreachable, so an unmatched model falls back to the default
- * rather than letting pwc_tars reject the whole call.
- */
-async function resolveModelName(chatModel?: string): Promise<string | undefined> {
-  const override = process.env.TARS_SQL_AGENT_MODEL?.trim();
-  if (override) {
-    return override;
-  }
-  if (!chatModel) {
-    return undefined;
-  }
-  const profiles = await getTarsModelProfileNames();
-  const match = profiles?.find((name) => name.toLowerCase() === chatModel.toLowerCase());
-  if (!match) {
-    logger.debug(
-      `[tars-sql] Chat model "${chatModel}" is not a pwc_tars model_profile; falling back to the pwc_tars default`,
-    );
-  }
-  return match;
-}
-
-/**
- * The `/api/langflow-service` service key: the `TARS_SQL_SERVICE_KEY` env
- * override first, otherwise the `KEY_LANGFLOW_API_KEY` sys_config row pwc_tars
- * already validates that endpoint against — so a single pwc_tars-side setting
- * configures both callers.
- */
-async function serviceKey(): Promise<string | undefined> {
-  const override = process.env.TARS_SQL_SERVICE_KEY?.trim();
-  if (override) {
-    return override;
-  }
-  return getTarsSysConfigValue(SERVICE_KEY_CONFIG);
 }
 
 const toSqlDatabase = (base: TarsKnowledgeBase): TarsSqlDatabase => ({
@@ -174,13 +107,6 @@ export async function runTarsSqlAgent(
   tarsUserId: string,
   input: TarsSqlAgentInput,
 ): Promise<TarsSqlAgentResult> {
-  const key = await serviceKey();
-  if (!key) {
-    throw new Error(
-      'The pwc_tars service key is not configured (sys_config KEY_LANGFLOW_API_KEY / TARS_SQL_SERVICE_KEY).',
-    );
-  }
-
   const databases = await listTarsSqlDatabases(tarsUserId, input.domainId);
   if (!databases.some((database) => database.knowledge_base_id === input.knowledgeBaseId)) {
     throw new Error(
@@ -188,43 +114,36 @@ export async function runTarsSqlAgent(
         'or this user cannot access it.',
     );
   }
-
-  const gateway = usesLlmGateway();
-  const headers: Record<string, string> = { [SERVICE_KEY_HEADER]: key };
-  if (gateway) {
-    headers[GATEWAY_HEADER] = 'true';
-    if (input.librechatUserId) {
-      headers[GATEWAY_USER_HEADER] = input.librechatUserId;
-    }
-  }
-
-  const requestedModel = await resolveModelName(input.model);
-  const data = await tarsFetch<SqlServiceEnvelope>(SQL_AGENT_PATH, {
-    method: 'POST',
-    timeoutMs: timeoutMs(),
-    headers,
-    body: {
+  const requestedModel = await resolveLangflowModelName(input.model, 'tars-sql');
+  const data = await runLangflowCapability(
+    SQL_AGENT_PATH,
+    {
       query: input.question,
       knowledge_base_id: input.knowledgeBaseId,
       model_name: requestedModel,
     },
-  });
+    {
+      timeoutMs: langflowTimeoutMs('TARS_SQL_AGENT_TIMEOUT_MS', DEFAULT_TIMEOUT_MS),
+      librechatUserId: input.librechatUserId,
+    },
+  );
 
-  const answer = data?.data?.answer?.trim();
+  const answer = data?.answer?.trim();
   if (!answer) {
     logger.warn('[tars-sql] pwc_tars returned an empty SQL-agent answer');
   }
   /** The audit trail for "which model actually ran the nested loop": what the
-   *  chat turn asked for, what pwc_tars reports it used, and whether the call
-   *  was served through LibreChat's own gateway. */
+   *  chat turn asked for and what pwc_tars reports it used. `gateway=requested`
+   *  records that we asked for LibreChat's gateway — pwc_tars's own
+   *  `FLAG_USE_LIBRECHAT_LLM` switch decides whether it honored that. */
   logger.debug(
     `[tars-sql] kb=${input.knowledgeBaseId} requested=${requestedModel ?? '(pwc_tars default)'} ` +
-      `used=${data?.data?.model_name ?? '(unreported)'} tokens=${data?.data?.tokens?.total ?? 0} ` +
-      `via=${gateway ? 'librechat-gateway' : 'pwc_tars-direct'}`,
+      `used=${data?.model_name ?? '(unreported)'} tokens=${data?.tokens?.total ?? 0} ` +
+      'gateway=requested',
   );
   return {
     answer: answer || '(pwc_tars returned no answer.)',
-    modelName: data?.data?.model_name ?? '',
-    totalTokens: data?.data?.tokens?.total ?? 0,
+    modelName: data?.model_name ?? '',
+    totalTokens: data?.tokens?.total ?? 0,
   };
 }
