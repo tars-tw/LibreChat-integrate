@@ -16,6 +16,7 @@ import { TarsMemoryPanel } from '~/components/SidePanel/Memories';
 import { SchedulePanel } from '~/components/SidePanel/Schedules';
 import FilesPanel from '~/components/SidePanel/Files/Panel';
 import { PromptsAccordion } from '~/components/Prompts';
+import { useGetStartupConfig } from '~/data-provider';
 import { SkillsAccordion } from '~/components/Skills';
 
 export default function useSideNavLinks({
