@@ -17,6 +17,7 @@ const {
   isActionDomainAllowed,
   buildWebSearchContext,
   buildTarsSqlContext,
+  isTarsConfigured,
   buildImageToolContext,
   buildToolClassification,
   supportsProgrammaticCodeExecution,
@@ -742,6 +743,9 @@ const nativeTools = new Set([
   Tools.file_search,
   Tools.web_search,
   Tools.sql_agent,
+  Tools.chart_agent,
+  Tools.data_query,
+  Tools.table_task,
   Tools.memory,
 ]);
 
@@ -879,6 +883,13 @@ async function loadToolDefinitionsWrapper({
     }
     if (tool === Tools.sql_agent) {
       return checkCapability(AgentCapabilities.sql_agent);
+    }
+    if (tool === Tools.chart_agent) {
+      return checkCapability(AgentCapabilities.chart_agent);
+    }
+    if (tool === Tools.data_query || tool === Tools.table_task) {
+      /** Auto-equipped by the memory prime, never user-selected; the only gate is TARS itself. */
+      return isTarsConfigured();
     }
     if (tool === Tools.memory) {
       return checkCapability(AgentCapabilities.memory);
@@ -1703,6 +1714,11 @@ async function loadAgentTools({
       return includesWebSearch;
     } else if (tool === Tools.sql_agent) {
       return checkCapability(AgentCapabilities.sql_agent);
+    } else if (tool === Tools.chart_agent) {
+      return checkCapability(AgentCapabilities.chart_agent);
+    } else if (tool === Tools.data_query || tool === Tools.table_task) {
+      /** Auto-equipped by the memory prime, never user-selected; the only gate is TARS itself. */
+      return isTarsConfigured();
     } else if (tool === Tools.memory) {
       return checkCapability(AgentCapabilities.memory);
     } else if (tool === ASK_USER_QUESTION_TOOL_NAME) {
