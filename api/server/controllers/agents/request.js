@@ -30,6 +30,8 @@ const {
   getAttachmentTitleText,
   createMCPRuntimeRequestBody,
   isAgentEventRetentionActive,
+  listTarsMemoryDocuments,
+  claimPendingTarsConversation,
 } = require('@librechat/api');
 const { disposeClient } = require('~/server/cleanup');
 const {
@@ -1057,6 +1059,29 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
       existingTarsConversationId = undefined;
     }
   }
+  if (!existingTarsConversationId && req.user?.tarsId && req.body?.tarsConversationId) {
+    // A pre-send long-term-memory upload created the pwc_tars conversation; adopt
+    // its id only when this user registered it (or, after a server restart, when
+    // every memory document on it verifiably belongs to them). Not gated on
+    // isNewConvo: when the first turn is aborted the mirror never persists the
+    // mapping, so a later turn must still be able to adopt it — otherwise the
+    // mirror creates a second pwc_tars conversation and orphans the uploads.
+    const candidate = req.body.tarsConversationId;
+    if (claimPendingTarsConversation(userId, candidate)) {
+      existingTarsConversationId = candidate;
+    } else {
+      try {
+        const memory = await listTarsMemoryDocuments(req.user.tarsId, candidate);
+        if (memory.documents.length > 0) {
+          existingTarsConversationId = candidate;
+        }
+      } catch {
+        existingTarsConversationId = undefined;
+      }
+    }
+  }
+  /** The turn's memory prime (`primeTarsMemory`) reads the mapping off the request. */
+  req.tarsConversationId = existingTarsConversationId;
 
   let client = null;
   let jobCreatedAt;

@@ -487,6 +487,20 @@ export const tarsMcpUserServer = (id: string) =>
   `${BASE_URL}/api/tars/mcp/user/servers/${encodeURIComponent(id)}`;
 export const tarsMcpUserServerCredentials = (id: string) => `${tarsMcpUserServer(id)}/credentials`;
 
+const tarsMemoryBase = () => `${BASE_URL}/api/tars/memory`;
+export const tarsMemoryUpload = () => `${tarsMemoryBase()}/upload`;
+export const tarsMemorySttModels = () => `${tarsMemoryBase()}/stt-models`;
+export const tarsMemoryList = (tarsConversationId: string) =>
+  `${tarsMemoryBase()}/list/${encodeURIComponent(tarsConversationId)}`;
+export const tarsMemoryDocument = (documentId: string) =>
+  `${tarsMemoryBase()}/documents/${encodeURIComponent(documentId)}`;
+export const tarsMemoryDocumentStatus = (documentId: string) =>
+  `${tarsMemoryDocument(documentId)}/status`;
+export const tarsMemoryDocumentContent = (documentId: string) =>
+  `${tarsMemoryDocument(documentId)}/content`;
+export const tarsMemoryDocumentDownload = (documentId: string) =>
+  `${tarsMemoryDocument(documentId)}/download`;
+
 export const mcp = {
   tools: `${BASE_URL}/api/mcp/tools`,
   servers: `${BASE_URL}/api/mcp/servers`,

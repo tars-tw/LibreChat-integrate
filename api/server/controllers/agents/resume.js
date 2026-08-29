@@ -1399,8 +1399,13 @@ const ResumeAgentController = async (req, res, next, initializeClient, addTitle)
   // than the resume wall-clock. initializeAgent reads `req.conversationCreatedAt`; the
   // normal path sets it from the convo timestamp (resolveConversationCreatedAt), so mirror
   // that here. (The original `timezone` is replayed onto req.body via RESUME_CONTEXT_KEYS.)
+  // The same read also restores the pwc_tars conversation mapping: `primeTarsMemory`
+  // reads `req.tarsConversationId`, which only the normal send path sets, so without
+  // this a resumed turn silently loses its long-term memory and the data tools it
+  // auto-equips — changing the tool set the paused graph was interrupted with.
   try {
     const resumedConvo = await getConvo(userId, conversationId);
+    req.tarsConversationId = resumedConvo?.tarsConversationId ?? undefined;
     const createdAt = resumedConvo?.createdAt ? new Date(resumedConvo.createdAt) : null;
     if (createdAt && !Number.isNaN(createdAt.getTime())) {
       req.conversationCreatedAt = createdAt.toISOString();
