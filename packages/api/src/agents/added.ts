@@ -126,6 +126,7 @@ export async function loadAddedAgent(
       file_search?: boolean;
       web_search?: boolean;
       sql_agent?: boolean;
+      chart_agent?: boolean;
       artifacts?: unknown;
       memory?: boolean;
     };
@@ -149,6 +150,7 @@ export async function loadAddedAgent(
         file_search?: boolean;
         web_search?: boolean;
         sql_agent?: boolean;
+        chart_agent?: boolean;
         artifacts?: unknown;
         memory?: boolean;
         ask_user_question?: boolean;
@@ -243,6 +245,9 @@ export async function loadAddedAgent(
   }
   if (ephemeralAgent?.sql_agent === true) {
     tools.push(Tools.sql_agent);
+  }
+  if (ephemeralAgent?.chart_agent === true) {
+    tools.push(Tools.chart_agent);
   }
   if (ephemeralAgent?.memory === true || modelSpec?.memory === true) {
     tools.push(Tools.memory);

@@ -5,6 +5,9 @@ import {
 } from '@librechat/agents';
 import type { ExtendedJsonSchema } from './schema';
 import { AskUserQuestionToolDefinition } from '~/agents/hitl/askUserQuestionTool';
+import { TarsChartToolDefinition } from '~/tars/langflow/chart';
+import { TarsTableToolDefinition } from '~/tars/langflow/table';
+import { TarsDataToolDefinition } from '~/tars/langflow/data';
 import { TarsSqlToolDefinition } from '~/tars/sql/tool';
 import { geminiToolkit } from '~/tools/toolkits/gemini';
 import { oaiToolkit } from '~/tools/toolkits/oai';
@@ -432,6 +435,24 @@ const agentToolDefinitions: Record<string, ToolRegistryDefinition> = {
     name: TarsSqlToolDefinition.name,
     description: TarsSqlToolDefinition.description,
     schema: TarsSqlToolDefinition.schema as unknown as ExtendedJsonSchema,
+    toolType: 'builtin',
+  },
+  [TarsChartToolDefinition.name]: {
+    name: TarsChartToolDefinition.name,
+    description: TarsChartToolDefinition.description,
+    schema: TarsChartToolDefinition.schema as unknown as ExtendedJsonSchema,
+    toolType: 'builtin',
+  },
+  [TarsDataToolDefinition.name]: {
+    name: TarsDataToolDefinition.name,
+    description: TarsDataToolDefinition.description,
+    schema: TarsDataToolDefinition.schema as unknown as ExtendedJsonSchema,
+    toolType: 'builtin',
+  },
+  [TarsTableToolDefinition.name]: {
+    name: TarsTableToolDefinition.name,
+    description: TarsTableToolDefinition.description,
+    schema: TarsTableToolDefinition.schema as unknown as ExtendedJsonSchema,
     toolType: 'builtin',
   },
 };
