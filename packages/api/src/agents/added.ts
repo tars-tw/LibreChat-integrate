@@ -259,6 +259,9 @@ export async function loadAddedAgent(
   for (const pluginName of tarsPluginNamesOf(ephemeralAgent?.tars_plugins)) {
     tools.push(tarsPluginToolName(pluginName));
   }
+  if (ephemeralAgent?.chart_agent === true) {
+    tools.push(Tools.chart_agent);
+  }
   if (ephemeralAgent?.memory === true || modelSpec?.memory === true) {
     tools.push(Tools.memory);
   }
