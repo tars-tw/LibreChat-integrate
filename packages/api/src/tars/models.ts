@@ -213,3 +213,27 @@ export async function reorderTarsWhitelistedModels<T extends Record<string, stri
   }
   return result;
 }
+
+/** pwc_tars `GET /api/model/get_transcribe_models` — available STT models for audio uploads. */
+export interface TarsTranscribeModels {
+  use_mac_stt?: boolean;
+  models?: string[];
+  message?: string;
+}
+
+/**
+ * The speech-to-text models pwc_tars can transcribe audio uploads with. An
+ * empty list is meaningful (local mac STT, or no provider key configured), so
+ * failures also degrade to an empty list rather than throwing into the UI.
+ */
+export async function fetchTarsTranscribeModels(): Promise<TarsTranscribeModels> {
+  try {
+    const data = await tarsFetch<TarsTranscribeModels>('/api/model/get_transcribe_models', {
+      timeoutMs: FETCH_TIMEOUT_MS,
+    });
+    return { use_mac_stt: data?.use_mac_stt, models: data?.models ?? [], message: data?.message };
+  } catch (error) {
+    logger.warn('[tars-models] Failed to fetch transcribe models', error);
+    return { models: [] };
+  }
+}

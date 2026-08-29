@@ -328,6 +328,46 @@ curl "http://<tars-host>:5000/api/mcp/servers?enabled_only=true"
 
 ---
 
+### 6.7 長期記憶區 + chart / data / table-task 工具(pwc_tars langflow capabilities)
+
+**方向**:LibreChat → pwc_tars。`TARS_AUTH_URL` 有設即整組生效,無另外的開關。
+
+**長期記憶區(聊天上傳的唯一路徑)**。TARS 啟用時(startup config `tarsMemoryEnabled`),聊天輸入框的迴紋針**完全取代**原生上傳選單(上傳至供應商/以文字形式上傳/file_search/execute_code 全部隱藏),檔案(含圖片與拖放)一律進 pwc_tars 長期記憶區(`POST /api/conversation/upload_memory_data`,pwc_tars 端解析:pdf/docx/ppt/音訊 STT/圖片 VLM/csv・xlsx 結構摘要)。側邊欄「附加檔案」面板同時換成**長期記憶管理器**(列表、納入開關、預覽解析文字、下載原檔、刪除、token 用量條)。語意完全鏡射 pwc_tars:檔案綁在 **pwc_tars 對話**上、`status=1` 的列**每一回合**都生效——非結構化檔的解析文字(`summary`)注入 system prompt(`toolContextMap['tars_memory']`,`TARS_MEMORY_CONTEXT_MAX_CHARS` 上限、比例截斷),csv/xlsx/xls 則改走 data 工具。每回合由 `primeTarsMemory`(`packages/api/src/agents/initialize.ts` 三處掛點)並行抓一次 `get_memory_data`(10s cap、fail-soft),同一 snapshot 供工具工廠重用。
+
+- **對話綁定**:沿用 conversation mirror 的 `tarsConversationId`(存 LibreChat convo doc)。**新聊天**先上傳時 pwc_tars 自建對話(名為 長期記憶對話_MMDD),回傳 id 由前端寫入 conversation state、隨首次送訊上行(`agentsBaseSchema` pick list),`request.js` 經 pending 註冊表(in-memory TTL)或文件所有權驗證後領養,之後 mirror 沿用同一對話。刪除 LibreChat 對話時既有的 delete mirror 會連動軟刪 pwc_tars 對話與記憶檔。
+- **所有權**:pwc_tars 的 `get_memory_data` 不按 user 過濾、`update_status`/`delete` 無 auth——LibreChat 端一律以 `created_by === User.tarsId` 過濾/預檢(content 路由做所有權 gate)。未連結 tars 的帳號 403。
+- **路由**:`/api/tars/memory/*`(`requireJwtAuth`,thin JS → `packages/api/src/tars/memory/{client,pending,prime}.ts`):`POST /upload`、`GET /list/:tarsConversationId`、`PUT /documents/:id/status`、`DELETE /documents/:id`、`GET /documents/:id/{content,download}`。
+- **取捨**:TARS 記憶模式下圖片**不再以 vision 進模型**,只剩 pwc_tars VLM 解析文字;暫時對話(temporary chat)隱藏上傳鈕(記憶列會留存,與暫時語意矛盾)。
+
+**三個新工具**(皆走 `/api/langflow-service/*`,同 sql_agent 的 service key(sys_config `KEY_LANGFLOW_API_KEY`,無 LibreChat 端覆寫——pwc_tars 整個 blueprint 只驗這一列)、model 解析(chat model 比對 model_profile,不符則交給 pwc_tars 預設 sys_model,無 pin)與 gateway 頭(一律送出,見下);共用 client 在 `packages/api/src/tars/langflow/client.ts`,sql_agent 已重構改用之):
+
+| 工具 | 端點 | 啟用方式 | 行為 |
+|---|---|---|---|
+| `chart_agent` 產生圖表 | `POST /chart` | **AgentCapabilities 位階**,比照 sql_agent 全套(capability + CHART_AGENT 權限 + `interface.chartAgent` + composer badge/pin + ToolsDropdown,librechat.yaml capabilities 需列 `chart_agent`) | 把數據寫進 request,pwc_tars 端寫 matplotlib 產 PNG,回 `![chart](http://<HOST>/static/quickchart/...)`,直接嵌 markdown(**pwc_tars sys_config `HOST` 必須是瀏覽器可達**,`/static` 無認證) |
+| `data_query` | `POST /data` | **自動裝備**:對話長期記憶有 status=1 的 csv/xlsx/xls 即掛上(無 badge、ephemeral 與 saved agent 皆生效) | 對附掛試算表問答(pwc_tars DuckDB workspace),`document_ids` 預設全部、模型可指定子集(限本對話的檔,越界 id 直接丟棄) |
+| `table_task` | `POST /table-task` | 同上自動裝備 | 逐列批次作業:每列對專用腦綁定的知識庫 enrich(KB 解析同 buildTarsSqlContext 但不過濾 has_sql_database;無腦/無 KB 先擋下不呼叫),回增強表格 + xlsx 下載連結;timeout 預設 1740s(`TARS_TABLE_TASK_TIMEOUT_MS`),留意反代 idle timeout |
+
+**LLM 一律走 LibreChat gateway**:四個工具(sql/chart/data/table-task)呼叫 pwc_tars 時固定帶 `X-Use-Librechat-Gateway: true` 與 `X-Librechat-User-Id`,pwc_tars 的巢狀 loop 因此回打 LibreChat `/api/agents/v1m/chat/completions`,額度算在該使用者身上——pwc_tars 只掛工具、不再自帶語言模型。LibreChat 端沒有開關,唯一的閘門是 pwc_tars sys_config `FLAG_USE_LIBRECHAT_LLM`(需搭配 `KEY_LIBRECHAT_BASE_URL`);關掉它 pwc_tars 就會退回直連 provider。**注意**:`upload_memory_data` 的解析階段(圖片 VLM、音訊 STT、Excel 結構分析)不在 `langflow-service` blueprint 內,pwc_tars 端沒有呼叫 `mark_gateway_request`,所以那段仍走 pwc_tars 自己的 key。
+
+**env(全部可選)**:`TARS_CHART_AGENT_TIMEOUT_MS`、`TARS_DATA_AGENT_TIMEOUT_MS`、`TARS_TABLE_TASK_TIMEOUT_MS`、`TARS_MEMORY_CONTEXT_MAX_CHARS`。service key 與 model 一律由 pwc_tars sys_config / model_profile 決定,LibreChat 端不再定義覆寫用的 env。
+
+**pwc_tars 端**:零改動(upload 接受空白 conversation_id;`/data`、`/table-task` 收 `document_ids`)。已知缺口(記錄,不修):memory 路由無認證、`get_memory_data` 不按 user 過濾——內網信任模型,LibreChat 端已補過濾。
+
+**關鍵檔案**:`packages/api/src/tars/memory/{client,pending,prime}.ts`、`packages/api/src/tars/langflow/{client,chart,data,table}.ts`、`packages/api/src/agents/initialize.ts`(auto-equip + context 注入)、`api/server/routes/tars/memory.js`、`api/server/controllers/agents/request.js`(tarsConversationId 領養)、`api/server/services/ToolService.js` + `api/app/clients/tools/util/handleTools.js`(gate + dispatch)、`client/src/components/Chat/Input/Files/TarsMemoryAttach.tsx`(+ `AttachFileChat` 置換點)、`client/src/components/SidePanel/TarsMemory/`、`client/src/hooks/Files/useTarsMemoryUpload.ts`、`client/src/components/Chat/Input/ChartAgent.tsx`。
+
+**驗證**(live LLM 只用 gpt-5.4-mini):
+```bash
+# 1. 新聊天 → 迴紋針上傳 PDF + xlsx → 側邊欄「長期記憶」面板出現兩列,pwc_tars 端建立對話
+# 2. 送出第一則訊息 → convo doc 取得 tarsConversationId;問 PDF 內容(直接回答)、
+#    問 xlsx 內容(模型呼叫 data_query)
+# 3. 面板關掉 PDF 的納入開關 → 下一回合模型看不到該檔
+# 4. 工具選單開「產生圖表」→ 要求畫圖 → 回覆內嵌 PNG(需 pwc_tars HOST 可達)
+# 5. 綁 KB 的專用腦 + xlsx → 要求逐列比對 → table_task 回表格 + xlsx 下載連結
+# 6. 拿掉 TARS_AUTH_URL 重啟 → 迴紋針/面板回到原生行為
+```
+
+---
+
 ## 7. Langflow 整合
 
 把 `~/Downloads/langflow`(本機跑在 `http://localhost:7860`)整進聊天室。**純設定 + 少量後端程式,沒有改 `packages/*`。**

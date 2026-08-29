@@ -5,6 +5,7 @@ import {
   Brain,
   Globe,
   Database,
+  BarChart3,
   ScrollText,
   Settings,
   Settings2,
@@ -50,6 +51,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     memoryEnabled,
     webSearchEnabled,
     sqlAgentEnabled,
+    chartAgentEnabled,
     artifactsEnabled,
     fileSearchEnabled,
     skillsEnabled,
@@ -85,6 +87,11 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     permission: Permissions.USE,
   });
 
+  const canUseChartAgent = useHasAccess({
+    permissionType: PermissionTypes.CHART_AGENT,
+    permission: Permissions.USE,
+  });
+
   const canUseMemory = useHasMemoryAccess();
   const showMemory = canUseMemory && memoryEnabled && user?.personalization?.memories !== false;
 
@@ -94,6 +101,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     skills,
     memory,
     sqlAgent,
+    chartAgent,
     webSearch,
     artifacts,
     fileSearch,
@@ -115,6 +123,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
   const { isPinned: isSkillsPinned, setIsPinned: setIsSkillsPinned } = skills ?? {};
   const { isPinned: isMemoryPinned, setIsPinned: setIsMemoryPinned } = memory ?? {};
   const { isPinned: isSqlAgentPinned, setIsPinned: setIsSqlAgentPinned } = sqlAgent ?? {};
+  const { isPinned: isChartAgentPinned, setIsPinned: setIsChartAgentPinned } = chartAgent ?? {};
 
   const showWebSearchSettings = useMemo(() => {
     const authTypes = webSearchAuthData?.authTypes ?? [];
@@ -178,6 +187,11 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     const newValue = !sqlAgent?.toggleState;
     sqlAgent?.debouncedChange({ value: newValue });
   }, [sqlAgent]);
+
+  const handleChartAgentToggle = useCallback(() => {
+    const newValue = !chartAgent?.toggleState;
+    chartAgent?.debouncedChange({ value: newValue });
+  }, [chartAgent]);
 
   const mcpPlaceholder = startupConfig?.interface?.mcpServers?.placeholder;
 
@@ -294,6 +308,38 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
           >
             <div className="h-4 w-4">
               <PinIcon unpin={isSqlAgentPinned} />
+            </div>
+          </button>
+        </div>
+      ),
+    });
+  }
+
+  if (canUseChartAgent && chartAgentEnabled && startupConfig?.tarsAuth === true) {
+    dropdownItems.push({
+      onClick: handleChartAgentToggle,
+      hideOnClick: false,
+      render: (props) => (
+        <div {...props} data-testid="tools-menu-chart-agent">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="icon-md" aria-hidden="true" />
+            <span>{localize('com_ui_tars_chart_agent')}</span>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsChartAgentPinned?.(!isChartAgentPinned);
+            }}
+            className={cn(
+              'rounded p-1 transition-all duration-200',
+              'hover:bg-surface-secondary hover:shadow-sm',
+              !isChartAgentPinned && 'text-text-secondary hover:text-text-primary',
+            )}
+            aria-label={isChartAgentPinned ? localize('com_ui_unpin') : localize('com_ui_pin')}
+          >
+            <div className="h-4 w-4">
+              <PinIcon unpin={isChartAgentPinned} />
             </div>
           </button>
         </div>
