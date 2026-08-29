@@ -21,6 +21,7 @@ interface BadgeRowContextType {
   memory: ReturnType<typeof useToolToggle>;
   webSearch: ReturnType<typeof useToolToggle>;
   sqlAgent: ReturnType<typeof useToolToggle>;
+  chartAgent: ReturnType<typeof useToolToggle>;
   artifacts: ReturnType<typeof useToolToggle>;
   fileSearch: ReturnType<typeof useToolToggle>;
   codeInterpreter: ReturnType<typeof useToolToggle>;
@@ -108,6 +109,7 @@ export default function BadgeRowProvider({
       const skillsToggleKey = `${LocalStorageKeys.LAST_SKILLS_TOGGLE_}${storageSuffix}`;
       const memoryToggleKey = `${LocalStorageKeys.LAST_MEMORY_TOGGLE_}${storageSuffix}`;
       const sqlAgentToggleKey = `${LocalStorageKeys.LAST_SQL_AGENT_TOGGLE_}${storageSuffix}`;
+      const chartAgentToggleKey = `${LocalStorageKeys.LAST_CHART_AGENT_TOGGLE_}${storageSuffix}`;
 
       const codeToggleValue = getTimestampedValue(codeToggleKey);
       const webSearchToggleValue = getTimestampedValue(webSearchToggleKey);
@@ -116,6 +118,7 @@ export default function BadgeRowProvider({
       const skillsToggleValue = getTimestampedValue(skillsToggleKey);
       const memoryToggleValue = getTimestampedValue(memoryToggleKey);
       const sqlAgentToggleValue = getTimestampedValue(sqlAgentToggleKey);
+      const chartAgentToggleValue = getTimestampedValue(chartAgentToggleKey);
 
       const initialValues: Record<string, boolean | string> = {};
 
@@ -172,6 +175,14 @@ export default function BadgeRowProvider({
           initialValues[Tools.sql_agent] = JSON.parse(sqlAgentToggleValue);
         } catch (e) {
           console.error('Failed to parse SQL agent toggle value:', e);
+        }
+      }
+
+      if (chartAgentToggleValue !== null) {
+        try {
+          initialValues[Tools.chart_agent] = JSON.parse(chartAgentToggleValue);
+        } catch (e) {
+          console.error('Failed to parse chart agent toggle value:', e);
         }
       }
 
@@ -259,6 +270,15 @@ export default function BadgeRowProvider({
     isAuthenticated: true,
   });
 
+  /** pwc_tars chart agent (產生圖表) — a plain capability toggle like the SQL agent. */
+  const chartAgent = useToolToggle({
+    conversationId,
+    storageContextKey,
+    toolKey: Tools.chart_agent,
+    localStorageKey: LocalStorageKeys.LAST_CHART_AGENT_TOGGLE_,
+    isAuthenticated: true,
+  });
+
   const fileSearch = useToolToggle({
     conversationId,
     storageContextKey,
@@ -317,6 +337,7 @@ export default function BadgeRowProvider({
     mcpServerManager,
     tarsMcpTools,
     sqlAgent,
+    chartAgent,
   };
 
   return <BadgeRowContext.Provider value={value}>{children}</BadgeRowContext.Provider>;

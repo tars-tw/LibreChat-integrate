@@ -24,6 +24,9 @@ export type RequestBody = {
   timezone?: string;
   codeApprovalMode?: CodeApprovalMode;
   codeWorkspaces?: CodeWorkspaceSelection[];
+  /** Linked pwc_tars conversation; on a first send it carries the id a pre-send
+   *  long-term-memory upload created, pending adoption by `request.js`. */
+  tarsConversationId?: string;
 };
 
 export type ServerRequest = Request<unknown, unknown, RequestBody> & {
@@ -38,4 +41,8 @@ export type ServerRequest = Request<unknown, unknown, RequestBody> & {
   resolvedConversation?: Partial<IConversation> | null;
   /** Passport strategy that populated req.user for this request. */
   authStrategy?: string;
+  /** The pwc_tars conversation this turn's long-term memory lives on, resolved
+   *  by `request.js` from the conversation doc (or adopted from the body on a
+   *  first send). */
+  tarsConversationId?: string;
 };

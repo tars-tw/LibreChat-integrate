@@ -1448,6 +1448,7 @@ export type TConversationTag = z.infer<typeof tConversationTagSchema>;
 export const googleBaseSchema = tConversationSchema.pick({
   chatProjectId: true,
   domain_id: true,
+  tarsConversationId: true,
   model: true,
   modelLabel: true,
   promptPrefix: true,
@@ -1585,6 +1586,7 @@ export const agentsBaseSchema = tConversationSchema.pick({
   imageDetail: true,
   agent_id: true,
   domain_id: true,
+  tarsConversationId: true,
   instructions: true,
   promptPrefix: true,
   iconURL: true,
@@ -1606,6 +1608,7 @@ export const agentsSchema = agentsBaseSchema
     imageDetail: obj.imageDetail ?? ImageDetail.auto,
     agent_id: obj.agent_id ?? undefined,
     domain_id: obj.domain_id ?? undefined,
+    tarsConversationId: obj.tarsConversationId ?? undefined,
     instructions: obj.instructions ?? undefined,
     promptPrefix: obj.promptPrefix ?? null,
     iconURL: obj.iconURL ?? undefined,
@@ -1623,6 +1626,7 @@ export const agentsSchema = agentsBaseSchema
     imageDetail: ImageDetail.auto,
     agent_id: undefined,
     domain_id: undefined,
+    tarsConversationId: undefined,
     instructions: undefined,
     promptPrefix: null,
     iconURL: undefined,
@@ -1633,6 +1637,7 @@ export const agentsSchema = agentsBaseSchema
 export const openAIBaseSchema = tConversationSchema.pick({
   chatProjectId: true,
   domain_id: true,
+  tarsConversationId: true,
   model: true,
   modelLabel: true,
   chatGptLabel: true,
@@ -1693,6 +1698,7 @@ export const compactGoogleSchema = googleBaseSchema
 export const anthropicBaseSchema = tConversationSchema.pick({
   chatProjectId: true,
   domain_id: true,
+  tarsConversationId: true,
   model: true,
   modelLabel: true,
   promptPrefix: true,
@@ -1742,6 +1748,9 @@ export const compactAgentsBaseSchema = tConversationSchema.pick({
   greeting: true,
   agent_id: true,
   domain_id: true,
+  /** Rides the send body so a pre-send long-term-memory upload's pwc_tars
+   *  conversation can be adopted on the first message (`request.js`). */
+  tarsConversationId: true,
   instructions: true,
   additional_instructions: true,
 });
