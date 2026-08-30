@@ -1,390 +1,81 @@
-# LibreChat × pwc_tars 整合與本地執行指南
+# TARS.ai(LibreChat × pwc_tars)啟動與更新指南
 
-本 repo 是 **LibreChat 作為 `pwc_tars` 產品(UI/UX 層)** 的整合版本。`pwc_tars`已具備 LLM 服務、知識庫、SQL agent 等後端能力,LibreChat 只是包在它外面的前端。
+本 repo 是 LibreChat 作為 pwc_tars 產品(UI/UX 層)的整合版本。本文件只講三件事:
 
-- **pwc_tars 是認證與使用者/權限的真相來源**;LibreChat 不重實作,而是對接。
-- **pwc_tars 技術棧**:Flask + PostgreSQL(SQLAlchemy)+ JWT;認證入口 `POST /api/auth/login`,以 **`username`**(非 email)登入。
-- **整合原則**:LibreChat 端維持薄轉接層(`/api` 的 JS wrapper 呼叫 `packages/api` 的 TS 邏輯),**不**把 LibreChat 的 MongoDB 使用者庫換成 PostgreSQL —— 所有下游功能(對話、檔案、agents、餘額、權限)都以 MongoDB `User._id` 為外鍵。改採「驗證 pwc_tars + 在本地建立連動的影子使用者」。
+1. [第一次啟動](#1-第一次啟動) — 從 clone 到跑起來的完整步驟
+2. [Commit 更新後如何更新](#2-commit-更新後如何更新)
+3. [設定檔變更紀錄](#3-設定檔變更紀錄) — `.env` / `librechat.yaml` 每次異動記在這裡
 
-> 工作區邊界、程式風格等開發規範見根目錄 [CLAUDE.md](../CLAUDE.md)。
+> 各整合功能(認證、LLM gateway、MCP gateway、SQL agent、長期記憶…)的架構與關鍵檔案說明在根目錄 [CLAUDE.md](../CLAUDE.md);本文件不重複。
 
 ---
 
-## 1. 快速啟動(Dev 模式,最常用)★
+## 1. 第一次啟動
 
-> **記住兩個 port:`:3080` = 後端 API(同時吐出打包好的前端);`:3090` = 前端 dev server(Vite,即時熱更新)。日常開發看 `:3090`。**
+### 1.1 前置需求
 
-**首次初始化(只做一次)**:
-
-```bash
-nvm use                                  # 讀 .nvmrc 切到 24.16.0(沒裝先 nvm install 24.16.0)
-cp .env.example .env                     # 複製後依下表解註解/填值(全部在 .env.example 中被註解掉)
-#  建立 librechat.yaml(被 .gitignore,新機器要自建;內容直接抄 §7.2,全是 ${...} 參照可照貼)
-# 建立 docker-compose.override.yml(被 .gitignore,每台機器自建;內容見下方)
-docker compose up -d mongodb meilisearch # 只起依賴服務(MongoDB :27017 + Meilisearch)
-npm ci                                   # 安裝依賴(或 npm install)
-npm run frontend                         # build 全部 packages(dev 必要)+ client;純 dev 也可用更快的 npm run build
-```
-
-**`cp` 後一定要自己填的 `.env` 值** —— 這兩個在 `.env.example` 是**註解掉的**,複製過來預設沒生效,務必解註解並填:
-
-| 變數 | 填什麼 | 不填的後果 |
+| 需求 | 說明 | 檢查 |
 |---|---|---|
-| `TARS_AUTH_URL` | `http://localhost:5000`(pwc_tars Flask 位置) | **整個 tars 整合不啟用** —— 退回原生 LibreChat(email 登入、無影子使用者) |
-| `VITE_LANGFLOW_URL` | Langflow URL,如 `http://localhost:7860`(**單一來源**,餵 iframe + MCP url host + SSRF 白名單) | 用 Langflow 才需要;**Vite build-time,改了要重 build 前端** |
-| `LANGFLOW_API_KEY` | Langflow 的 API key | 用 Langflow 才需要 |
+| Node.js **24.16.0** | `nvm use` 讀 `.nvmrc`;沒裝先 `nvm install 24.16.0` | `node -v` |
+| Docker | 只用來跑依賴服務(MongoDB + Meilisearch),**不跑官方 api image** | `docker info` |
+| **pwc_tars** (`:5000`) | 登入/知識庫/工具的真正後端,由 pwc_tars 專案自己啟動 | `curl localhost:5000/api/auth/sso/status` |
+| Langflow (`:7860`) | 用 Langflow 整合才需要;**開機時要在線**(project id 開機探測一次) | `curl localhost:7860/health` |
 
-> LLM gateway(Langflow TarsAgent 的「用 LibreChat 模型驅動」)所需的 `LLM_GATEWAY_ALLOW_UNAUTHENTICATED=true` 已在 `.env.example` **預設開啟**,本機開發不用動;**對外部署**時務必改成 `LLM_GATEWAY_SERVICE_KEY`(見 [§6.4](#64-llm-gatewaypwc_tars-反向取用-librechat-模型))。
-
-> Langflow 的 **project id 不用設** —— 開機時後端從你唯一的 Langflow 專案自動探測(`.env`、`librechat.yaml` 都不寫)。
-
-其餘關鍵值(`JWT_SECRET`、`JWT_REFRESH_SECRET`、`CREDS_KEY`、`CREDS_IV`、`MEILI_MASTER_KEY`、`HOST=127.0.0.1`)`.env.example` 已內建可用範例值,本機 dev **不必動**;各家模型 API key(`OPENAI_API_KEY` 等)維持哨兵值 `user_provided` —— 實際 key 的解析鏈是「使用者聊天室自設 > pwc_tars sys_config(系統參數設定頁)> 提示設 key」(見 [§6.4](#64-llm-gatewaypwc_tars-反向取用-librechat-模型)),`.env` 不放真 key。完整變數說明見 [§6.2](#62-環境變數env)。
-
-> ⚠️ 上述範例 secret 是公開 repo 內人人可見的值,**對外/共享環境請重新產生 `JWT_*` 與 `CREDS_*`**。
-
-> **`docker-compose.override.yml` 沒進版控**(被 `.gitignore` 忽略),新機器 clone 後**沒有此檔**,要自己建。它把依賴服務的 port 對外開放,本機 `npm run backend` 才連得到:
->
-> ```yaml
-> # 本機開發用:把依賴服務的 port 對外開放,讓本機 npm run backend 連得到。
-> # 只啟動 mongodb 與 meilisearch,不啟動官方 api image。
-> services:
->   mongodb:
->     ports:
->       - "27017:27017"
->   meilisearch:
->     ports:
->       - "7700:7700"
-> ```
-
-**日常啟動(Dev,兩個常駐分頁)**:
+### 1.2 初始化指令(只做一次)
 
 ```bash
-# pwc_tars(:5000)要先在跑;改過 packages/* 後先 npm run build(或對應 build:*)
-
-# 分頁 A — 後端:nodemon,改 /api 的 .js 自動重啟,跑在 :3080
-npm run backend:dev
-
-# 分頁 B — 前端 dev server:Vite HMR,跑在 :3090
-npm run frontend:dev
+nvm use
+cp .env.example .env                       # 再依 §1.3 填值
+# 建立 librechat.yaml(§1.5 全文照貼;被 .gitignore,新機器要自建)
+# 建立 docker-compose.override.yml(§1.4 全文照貼;被 .gitignore,新機器要自建)
+docker compose up -d mongodb meilisearch   # 只起依賴服務
+npm ci
+npm run frontend                           # build 全部 packages + client
 ```
 
-→ 瀏覽器開 **http://localhost:3090**,用 pwc_tars 帳號登入。
+### 1.3 `.env` 一定要設的值
 
-之後幾乎只在 `client/` 和 `/api/` 改,都會自動更新;只有動到 `packages/*` 才需回去重建 + 重啟前端(見 [§5](#5-改了-x-要重建什麼速查))。
+`cp .env.example .env` 之後,以下值在範例檔是**註解掉或未填**的,務必解註解/補上(即目前實機 `.env` 的實際設定):
 
----
-
-## 2. 架構心智模型(先懂這個,後面就不會亂)
-
-```
-packages/data-provider ─┐
-packages/data-schemas  ─┼─► 各自編譯成 dist/ ─► 被 /api(後端) 與 /client(前端) 引用
-packages/api           ─┤
-packages/client        ─┘
-
-/api    (Express 後端)  ── 跑在 :3080 ── 同時把 client/dist(打包好的前端) 當靜態網站吐出
-/client (React 前端)    ── dev 跑在 :3090 (Vite),正式時 build 成 client/dist
-```
-
-三個關鍵事實:
-
-1. **`packages/*` 是「先編譯成 dist 才被用」**。改了 `packages/*` 一定要重新 `build:該套件`,否則 `/api` 和 `/client` 用到的還是舊 dist。`nodemon`(`backend:dev`)只 watch `/api`,**不會**自動重建 packages。
-2. **只有 `:3090`(dev)有熱更新**;`:3080` 看到的是「上次 `client build` 的結果」,不重建就永遠是舊畫面。
-3. 兩種模式都需要後端 `:3080` 在跑(`:3090` 的前端會把 API 請求 proxy 到 `:3080`)。
-
----
-
-## 3. 前置服務(兩種模式都要先有)
-
-| 服務 | 用途 | 啟動方式 | 檢查 |
-|---|---|---|---|
-| **MongoDB** (:27017) + **Meilisearch** | LibreChat 的使用者/對話資料庫(+ 全文搜尋) | `docker compose up -d mongodb meilisearch`(只起依賴服務,不起官方 api image) | `nc -z localhost 27017` |
-| **pwc_tars** (:5000) | 登入 / 專用腦 / 知識庫的真正後端 | 由 pwc_tars 專案自己啟動 | `curl localhost:5000/api/auth/sso/status` |
-| **環境變數** | `.env` 內 `TARS_AUTH_URL=http://localhost:5000`(已設)、`MONGO_URI=mongodb://127.0.0.1:27017/LibreChat` | — | — |
-
-> 每個長駐指令請各自開「一個獨立終端機分頁」並保持開著。關掉分頁＝關掉那個服務。
-
----
-
-## 4. 兩種執行模式
-
-### 模式一:Dev(開發用,最即時)★ 推薦
-
-見 [§1 快速啟動](#1-快速啟動dev-模式最常用)。看 **http://localhost:3090**,前端改動秒更新(HMR)。
-
-### 模式二:Production build(只用 `:3080` 單一服務)
-
-模擬正式環境、或不想開兩個 server。看 **http://localhost:3080**。
-
-```bash
-# 完整建置(套件 + 前端一次到位)
-npm run frontend
-# 等同 build:data-provider → build:data-schemas → build:api → build:client-package → cd client && npm run build
-# 產物:client/dist(打包好的前端)
-
-# 啟動後端(會一併把 client/dist 當前端吐出);NODE_ENV=production,跑在 :3080
-npm run backend
-```
-
-> ⚠️ 「3080 看不到更新」幾乎都是因為:production 前端是**預先打包的靜態檔**,改了 `client/` 卻沒重跑 `npm run frontend`(或 `cd client && npm run build`),3080 自然永遠是舊畫面。
-
----
-
-## 5. 改了 X 要重建什麼(速查)
-
-| 改動範圍 | Dev(`:3090`) | Production(`:3080`) |
+| 變數 | 設成 | 作用 / 不設的後果 |
 |---|---|---|
-| `client/`(React、含 `locales` 翻譯) | 自動 HMR,什麼都不用做 | `cd client && npm run build`,重新整理瀏覽器 |
-| `/api/`(後端 JS) | nodemon 自動重啟,等一兩秒 | 重啟 `npm run backend`(Ctrl+C 再跑) |
-| `packages/data-provider` | `npm run build:data-provider` → **重啟前端 `frontend:dev`** + 後端自動重啟 | `npm run frontend` → 重啟 `npm run backend` |
-| `packages/data-schemas` | `npm run build:data-schemas` → 重啟後端 | `npm run frontend` → 重啟 `npm run backend` |
-| `packages/api` | `npm run build:api` → 重啟後端 | `npm run frontend` → 重啟 `npm run backend` |
-| 多處 / 不確定 | `npm run build`(turbo 全部重建)→ 重啟前後端 | `npm run frontend` → 重啟 `npm run backend` |
+| `TARS_AUTH_URL` | `http://localhost:5000` | **整個 TARS 整合的總開關**。不設就退回原生 LibreChat(email 登入、無影子使用者、所有 tars 功能不啟用) |
+| `HOST` | `127.0.0.1`(同機)或 `0.0.0.0`(跨機) | 預設 `localhost` 在 macOS 綁 IPv6-only,pwc_tars 走 IPv4 探測會 `ECONNREFUSED` |
+| `MONGO_URI` | `mongodb://127.0.0.1:27017/LibreChat` | 後端在本機跑,連 override 打開的 27017 |
+| `VITE_LANGFLOW_URL` | `http://localhost:7860` | Langflow URL 單一來源(iframe + MCP url host + SSRF 白名單)。**Vite build-time,改了要重 build 前端** |
+| `LANGFLOW_API_KEY` | 你的 Langflow API key | `librechat.yaml` 以 `${LANGFLOW_API_KEY}` 帶入 MCP header |
+| `SCHEDULES_SINGLE_PROCESS` | `true` | 單機跑排程,避免多實例重複執行 |
 
-> **Vite 不會自動偵測 `packages/*/dist` 的變更**。所以只要動到 `packages/*`,dev 前端就要手動重啟才看得到(必要時先刪 `client/node_modules/.vite` 再重啟)。
+以下在 `.env.example` **已預設可用**,本機 dev 不用動,但要知道它們的意義:
 
-### 5.1 `git pull` / 更版後一定要重建 ★
-
-上表是「**你自己**改了 X」;但別人的 commit 改了 `packages/*` 時,你的 `dist/` 一樣是舊的——拉完不重建,後端就會用到過時的 dist,典型症狀是 `xxx is not a function`(原始碼有該匯出,但 dist 還沒編出來)。
-
-所以 **每次 `git pull` / 切換分支 / 更版後,先重建再啟動**。分兩種情況:
-
-**(a) `package-lock.json` 沒變 → 只要重編(預設,非破壞性):**
-
-```bash
-npm run build             # turbo 全部 packages 重建;有快取,沒變的 package 自動 skip,很快
-```
-
-**(b) `package-lock.json` 變了 → 先補裝依賴再重編:**
-
-```bash
-git diff HEAD@{1} -- package-lock.json   # 想確認有沒有變可先看這個(空 = 沒變,走 (a) 即可)
-npm ci                                    # 依 lockfile 補裝
-npm run build
-```
-
-> 拿不準 lockfile 有沒有變,就直接走 (a) 的 `npm run build`;真的缺套件,build 會明確報錯(`xxx: command not found` / `Cannot find module`),那時再補 `npm ci`。重建後再 `npm run backend:dev` / `npm run backend`。
-
-#### ⚠️ 關於 `npm run smart-reinstall`(更版用它要先懂兩個地雷)
-
-`smart-reinstall` 會自動判斷 lockfile 有沒有變、該不該重裝,看起來最省事,但它在**需要重裝依賴**那條路上是**破壞性**的——`config/smart-reinstall.js` 的 `installDeps()` 順序是:**①先刪光所有 `node_modules` → ②`npm cache clean --force` → ③`npm ci`**。
-
-1. **中途失敗會把環境弄得比原本更糟**。若 ② 失敗(見下),`node_modules` 已被刪、③ 還沒跑,你會落到「完全沒有依賴」的狀態,接著任何 `npm run build` 都會 `rimraf: command not found`。
-2. **②`npm cache clean --force` 會踩 `~/.npm` 權限地雷**。若你過去用過 `sudo npm`,`~/.npm` 裡會有 root 擁有的檔案,清不掉而報 `EACCES … root-owned files`,整個腳本中斷。**一次性修法**(npm 官方建議):
->
-> ```bash
-> sudo chown -R $(id -u):$(id -g) ~/.npm   # 把 cache 擁有權改回目前使用者
-> ```
-
-修掉權限後 `smart-reinstall` 才能順跑。但**日常更版建議優先用上面 (a)/(b) 的 `npm run build` / `npm ci`**:非破壞性、失敗了也只是沒做事,不會把你既有的 `node_modules` 先砍掉。`smart-reinstall` 留給「想一鍵重來」時用,且請接受它是破壞性的。
-
----
-
-## 6. 已整合的功能
-
-### 6.1 認證與使用者(pwc_tars)
-
-| 功能 | 說明 | 關鍵檔案 |
+| 變數 | 預設 | 說明 |
 |---|---|---|
-| **登入委派** | 登入改打 pwc_tars Flask `POST /api/auth/login` 驗證帳密,成功後由 LibreChat 自簽 JWT + refresh | `packages/api/src/auth/tars.ts`、`api/strategies/tarsStrategy.js` |
-| **影子使用者** | 驗證成功在 MongoDB 建立/同步一筆 `provider: 'tars'`、以 `tarsId` 對應 `sys_user.id` 的使用者 | `api/strategies/tarsStrategy.js` |
-| **角色/權限保留** | 完整保留 pwc_tars 的 `role_id`、`user_group_id`、`menu_items` 到 `tars*` 欄位(不 flatten);`user.role` 另依 `role_id` 映射成 LibreChat ADMIN/USER | `packages/data-schemas/src/schema/user.ts` |
-| **License 擋登入** | 登入回應 `license_status !== 'activate'` 時擋下 | `api/strategies/tarsStrategy.js` |
-| **登出反向通知** | LibreChat 登出時 best-effort 通知 pwc_tars `POST /api/auth/logout`(更新 `last_active_at`) | `api/server/controllers/auth/LogoutController.js` |
-| **SSO 登入 (LDAP)** | 登入頁依 pwc_tars `GET /api/auth/sso/status` 顯示「使用 SSO 登入 (LDAP)」勾選框;勾選則送 `use_sso: true` 走 LDAP bind | `client/src/components/Auth/LoginForm.tsx`、`api/server/routes/config.js` |
+| `LLM_GATEWAY_ALLOW_UNAUTHENTICATED` | `true` | `/api/agents/v1m` gateway 免認證(pwc_tars 反向借模型用)。**僅限封閉內網;對外部署改設 `LLM_GATEWAY_SERVICE_KEY`** |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GOOGLE_KEY` | `user_provided` | 哨兵值,`.env` 不放真 key。實際 key 解析鏈:使用者聊天室自設 > pwc_tars sys_config > 提示設 key |
+| `JWT_SECRET` / `JWT_REFRESH_SECRET` / `CREDS_KEY` / `CREDS_IV` / `MEILI_MASTER_KEY` | 內建範例值 | ⚠️ 是公開 repo 人人可見的值,**對外/共享環境務必重新產生** |
+| `TARS_ADMIN_ROLE_IDS` | `1` | pwc_tars `role_id` 屬此集合者 → LibreChat ADMIN |
 
-**尚未實作(Roadmap)**:OIDC/SAML(redirect 式)、`domain_ids`(專用腦範圍)、登入後即時 status/role 同步(refresh 輪詢)、聊天資料雙向同步(Mongo ↔ PostgreSQL)。
+> Langflow 的 project id **不用設**:開機時後端從唯一的 Langflow 專案自動探測。Langflow 有多個專案時才需在 `.env` 設 `LANGFLOW_PROJECT_ID`。
 
-### 6.2 環境變數(`.env`)
+### 1.4 `docker-compose.override.yml`(全文)
 
-| 變數 | 必填 | 說明 |
-|---|---|---|
-| `TARS_AUTH_URL` | ✅ | pwc_tars Flask 服務基底 URL。**設了才會啟用整個 tars 整合**(登入改走 pwc_tars、登入頁變 username、註冊/密碼重設自動關閉)。 |
-| `TARS_ADMIN_ROLE_IDS` | ⬜ | 逗號清單;pwc_tars `role_id` 屬此集合者 → LibreChat `ADMIN`。預設 `1`(對應 pwc_tars 種子的 Admin 角色)。 |
-| `LLM_GATEWAY_ALLOW_UNAUTHENTICATED` | ⬜ | 開放 `/v1m` gateway 免認證(僅限封閉內網)。**`.env.example` 已預設 `true`**,本機開發即開即用;對外部署改設 `LLM_GATEWAY_SERVICE_KEY`,詳見 [§6.4](#64-llm-gatewaypwc_tars-反向取用-librechat-模型)。 |
+被 `.gitignore`,新機器 clone 後沒有此檔,照貼即可。作用:把依賴服務 port 對外開放,讓本機 `npm run backend` 連得到;不啟動官方 api image。
 
-沿用 LibreChat 既有(LibreChat 自簽自己的 token):`JWT_SECRET`、`JWT_REFRESH_SECRET`、`SESSION_EXPIRY`、`REFRESH_TOKEN_EXPIRY`。
-
-啟用 `TARS_AUTH_URL` 時建議(且部分由程式強制):`ALLOW_REGISTRATION=false`、不啟用 `ALLOW_PASSWORD_RESET` —— 註冊/改密碼由 pwc_tars 管。`.env.example` 內 `# pwc_tars Auth` 區塊已含這些範例。
-
-### 6.3 Docker / 網路設定
-
-目前的跑法:**LibreChat 後端在本機 `npm run backend`(不在容器裡),pwc_tars Flask 在本機 `:5000`**。Docker 只用來起依賴服務(`mongodb` / `meilisearch`),由 `docker-compose.override.yml` 把它們的 port 對外開放(見 [§1](#1-快速啟動dev-模式最常用));**不啟動官方 api image**。
-
-因此 `.env` 設 `TARS_AUTH_URL=http://localhost:5000` 即可,後端直接以 host 連 pwc_tars。
-
-### 6.4 LLM Gateway(pwc_tars 反向取用 LibreChat 模型)
-
-**方向**:與認證/Langflow 相反。這裡是 **pwc_tars → LibreChat**:pwc_tars 把自己的 chat-completion LLM 呼叫,改打到 LibreChat 的 OpenAI 相容 passthrough 端點,由 LibreChat 用它既有的 provider 設定/金鑰去呼叫 gpt / gemini / claude。pwc_tars 仍保留自己的 multi-agent 編排,只換掉 LLM transport。本期只做 chat(embedding 之後再說)。
-
-**觸發是 per-request,不是全域**:只有「明確要求」的請求才走 gateway,pwc_tars 自己的原生服務維持直連。目前唯一的觸發點是 `langflow-service`——當呼叫端(例如 LibreChat 情境下的 Langflow `TarsAgent` component)帶 header `X-Use-Librechat-Gateway: true` 時,那一次 RAG/SQL 的 LLM 才走 gateway。`langflow-service` route 收到 header → `llm_factory.mark_gateway_request(True)` → `LLMManager.__init__` 讀到 → 該請求改走 gateway。
-
-**端點**:`POST /api/agents/v1m/chat/completions`(`v1m` = model passthrough)。`model` 帶**真實模型名 + provider 前綴**,例如 `openAI/gpt-5.4-mini`、`anthropic/claude-...`、`google/gemini-...`(LibreChat 沒有 model→provider 反查,所以前綴必填)。不跑 agent pipeline(無 tools / 無 system prompt)。
-
-**認證**(LibreChat 端,擇一;見 `.env` `# LLM Gateway` 區塊):
-| 設定 | 行為 |
-|---|---|
-| `LLM_GATEWAY_ALLOW_UNAUTHENTICATED=true` | 完全不認證(僅限封閉內網;3080 不可對外) |
-| `LLM_GATEWAY_SERVICE_KEY=<隨機字串>` | 共用 service key;呼叫端帶 `Authorization: Bearer <同字串>`(優先於 unauthenticated) |
-| 皆未設 | 退回 per-user remote-agent API key(LibreChat 預設) |
-
-**pwc_tars 端設定**(存在 `sys_config` DB,非 .env;由 `LLMManager.__init__` 在請求 thread 經 `g` 讀取):
-| key | 角色 | 說明 |
-|---|---|---|
-| `FLAG_USE_LIBRECHAT_LLM` | **主開關 / kill switch** | `false` 時完全不走 gateway(即使有帶 header);要啟用整個功能才設 `true` |
-| `KEY_LIBRECHAT_BASE_URL` | gateway 位址 | 例 `http://localhost:3080/api/agents/v1m` |
-
-走 gateway 的條件 = **主開關 on** ＋ **請求帶 `X-Use-Librechat-Gateway` header** ＋ base_url 有設,三者都成立。任一不成立 → 用 pwc_tars 自己的模型直連。所以:pwc_tars 原生聊天(message route)永遠不帶 header → 直連;只有標了那個開關的 Langflow flow 才走 gateway。
-
-pwc_tars 只走 **unauthenticated** gateway(不送 key),所以 LibreChat 端請設 `LLM_GATEWAY_ALLOW_UNAUTHENTICATED=true`。若日後要改用 `LLM_GATEWAY_SERVICE_KEY`,需在 pwc_tars 這側再加一個 sys_config key 帶 Bearer token(目前刻意不做)。
-
-**Gateway 的 API key 解析與使用者身分轉發**:LibreChat 端 provider key 的解析鏈是「發話者聊天室自設的個人 key > sys_config 的 key(`KEY_OPEN_AI_API` / `KEY_ANTHROPIC_API` / `KEY_GEMINI_API`,經 LibreChat 系統參數設定頁管理)> 提示設 key」(`.env` 三個 provider key 都設哨兵值 `user_provided`)。gateway 請求預設是 service 身分(synthetic user),只吃得到 sys_config 的 key;若請求帶 `X-Librechat-User-Id: <LibreChat user id>` header(**僅在 service 認證模式下受信任**),LibreChat 會改以該使用者身分解析他的個人 key。整條自動傳遞鏈:LibreChat 聊天 → MCP header `x-langflow-global-var-librechat_user_id: {{LIBRECHAT_USER_ID}}`(見 §7.2)→ Langflow 放進 `graph.context.request_variables` → `TarsAgent` component 自動讀取(欄位留空時)→ 轉發 pwc_tars(`langflow-service` route → `mark_gateway_user`)→ `LLMManager` 對 gateway 的 LLM 呼叫掛上 header。使用者不需要手動填任何 ID。
-> ⚠️ `LLM_GATEWAY_ALLOW_UNAUTHENTICATED=true` 模式下,內網任何請求都可用這個 header 冒名任一使用者的 key——與開放 gateway 本身同一信任邊界,3080 不可對外。
-
-種子/migration:`pwc_tars/backend/sql/2_insert_values/sys_config.sql`(全新)與 `sql/3_update_sql/librechat_integration.sql`(既有 DB)。
-
-**關鍵檔案**:`packages/api/src/agents/passthrough.ts`(解析前綴 + 建無工具 ephemeral agent)、`api/server/controllers/agents/passthrough.js`、`api/server/routes/agents/passthrough.js`、`api/server/routes/agents/middleware.js`(`gatewayServiceAuth`)。串流核心重用 `packages/api/src/agents/openai/service.ts` 的 `createAgentChatCompletion`。
-
-**⚠️ IPv4 雷**:pwc_tars 的連線探測走 IPv4;LibreChat 預設 `HOST=localhost` 在 macOS 綁 IPv6-only(`::1`),會讓 pwc_tars 收到 ECONNREFUSED。請設 `HOST=127.0.0.1`(同機)或 `0.0.0.0`(跨機)。
-
-**驗證**(無認證模式;不帶 Authorization 應成功):
-```bash
-curl http://localhost:3080/api/agents/v1m/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"openAI/gpt-5.4-mini","messages":[{"role":"user","content":"hi"}]}'
-```
-打通後,pwc_tars log 會顯示 `Using OpenAI-compatible model: openAI/gpt-5.4-mini at http://localhost:3080/api/agents/v1m`。
-
-### 6.5 vLLM 地端模型(自動探索自 pwc_tars model registry)
-
-**方向**:LibreChat → 地端 vLLM。在模型選單多一個 **vLLM** endpoint(目前部署 `gemma-4-31B`),走 LibreChat 標準 custom endpoint 管線,所以參數面板、串流、標題生成、agents 等功能全部可用。
-
-**權威來源是 `model_profile.endpoint`,不是 sys_config**。這是踩過的雷:pwc_tars 解析地端模型 URL 的唯一來源是 `model_profile` 表的 `endpoint` 欄位(per-model),`sys_config.VLLM_API_ENDPOINT` 在 pwc_tars 的 Python 端**零引用、是死值**。而且地端模型是 **per-host** 的——`gemma-4-31B` 和某個 `deepseek-reasoner` build 可能在**不同機器**,一個全域 sys_config 值天生表達不了。所以 LibreChat 完全改讀 pwc_tars 的 model registry。
-
-**設定來源:sentinel `baseURL: 'tars://local'`**。`librechat.yaml` 的 vLLM endpoint 把 `baseURL` 設成特殊標記 `tars://local`,告訴 LibreChat「這個 endpoint 的模型清單與每個模型的 host 都即時向 pwc_tars 探索」。實際打的是 pwc_tars 的 `GET /api/model/health_status`(回 `endpoint → loaded_models`,只含地端 vLLM 主機),共用 `packages/api/src/tars/models.ts` 的 30 秒 TTL 快取。兩件事:
-- **顯示哪些模型** = 當下所有 vLLM 主機上「已載入(loaded_models)」的地端模型的聯集。**可用性閘控**:沒有任何模型在跑(或 pwc_tars 連不上)→ 清單為空 → 前端把整個 vLLM endpoint 藏起來(不 fallback 到 `models.default`)。
-- **每個模型路由到自己的 host**:聊天初始化時(`initializeCustom`)拿當前選的 `model` 去 `health_status` 映射查出它所在的 vLLM 主機,把 baseURL 設成 `<該主機>/v1`。不同模型 → 不同主機,per-request 解析。
-
-**改 pwc_tars 不用重啟 LibreChat**,最慢 30 秒生效(前端模型清單另有 2 分鐘快取)。
-
-**新增地端模型 = 純 pwc_tars 端操作,LibreChat 零設定**:
-1. 在 pwc_tars `model_profile` 註冊該模型(`name` + `endpoint` = 它的 vLLM 主機),並在該主機用 vLLM serve 起來(`--served-model-name` 要跟 `model_profile.name` 一致)。
-2. pwc_tars 的 health checker 探測到 → `health_status` 的 `loaded_models` 就有它 → LibreChat 下次重新整理自動出現在 vLLM 選單,並自動路由到正確主機。
-3. 跨幾台 host 都行,不需要在 `librechat.yaml` 加任何 block。`models.default: ['gemma-4-31B']` 只是 schema 要求的佔位(至少一項),實際清單永遠以 pwc_tars 為準。
-
-> ⚠️ pwc_tars 的健康檢查預設只在啟動時探測一次(`ENABLE_PERIODIC_CHECK=False`)。若地端模型是在 pwc_tars 啟動**之後**才起來、卻沒出現在 LibreChat,通常是 pwc_tars 尚未重新探測——在 pwc_tars 端開週期探測或重啟 pwc_tars 即可。
-
-**關鍵檔案**:`packages/api/src/tars/models.ts`(`health_status` 探索 + `model→host` 映射 + TTL 快取 + `isTarsLocalEndpoint`/`getTarsLocalModelNames`/`resolveTarsLocalModelBaseURL`)、`packages/api/src/endpoints/config/models.ts`(模型清單來自探索、可用性閘控)、`packages/api/src/endpoints/custom/initialize.ts`(聊天時 per-model 解析 host)、`packages/api/src/agents/run.ts`(summarization 對 marker 的防禦)、`client/src/hooks/Endpoint/useEndpoints.ts`(隱藏空的 custom endpoint)、`librechat.yaml`(vLLM endpoint 定義)。
-
-**驗證**:
-```bash
-# 1. pwc_tars 眼中哪些地端模型活著、在哪台
-curl http://<tars-host>:5000/api/model/health_status
-#    → {"endpoints":[{"endpoint":"http://219.86.90.151:11434","loaded_models":["gemma-4-31B"]}, ...]}
-# 2. LibreChat 端看得到(登入後的 cookie/token 帶著打)
-curl http://localhost:3080/api/models | jq '.vLLM'
+```yaml
+# 本機開發用：把依賴服務的 port 對外開放，讓本機 npm run backend 連得到。
+# 只啟動 mongodb 與 meilisearch，不啟動官方 api image。
+services:
+  mongodb:
+    ports:
+      - "27017:27017"
+  meilisearch:
+    ports:
+      - "7700:7700"
 ```
 
----
+### 1.5 `librechat.yaml`(全文)
 
-### 6.6 TARS MCP Gateway(pwc_tars 的 MCP 工具 → LibreChat;pwc_tars 為唯一 MCP 管理來源)
-
-**方向**:LibreChat → pwc_tars。pwc_tars 的 MCP 設定裡 `openapi`(Swagger 匯入)、`custom_api`(手寫 REST 工具)與 `external`(真 MCP server:stdio / streamable_http,由 pwc_tars 連線執行)三種 server 的工具,自動出現在 LibreChat 的 MCP 工具體系——聊天輸入框的 MCP 下拉選單、Agent 工具掛載都能用。**pwc_tars 是 source of truth**:工具定義、domain 權限、per-user 開關/憑證、`mcp_logs` 稽核全部留在 pwc_tars,LibreChat 不落地任何工具設定。**TARS 啟用時,LibreChat 原生的 MCP server 管理 UI(側邊欄新增/編輯、agent 工具市集的新增 MCP)一併隱藏**(startup config `tarsMcpEnabled`),librechat.yaml 的內部 server(如 langflow)不受影響。
-
-**原理:per-server loopback MCP server**。LibreChat 在 `POST /api/tars/mcp/:serverId` 自架 stateless streamable-http 的真 MCP server(用 `@modelcontextprotocol/sdk`),它的 `tools/list` / `tools/call` 全部代理到 pwc_tars 的 `/api/mcp` REST API(`GET /available-tools?user_id=`、`POST /execute`)。base-config 載入時(`TARS_AUTH_URL` 有設即自動)向 pwc_tars 抓 server 清單,**每台 enabled 的 proxied server 注入一個 `mcpConfig` 項目,名為 `tars_<code>`**(title/description 帶 server 名稱與描述),所以聊天下拉裡每台 pwc_tars server 都是獨立開關,LibreChat 既有的 MCP 管線(連線管理、工具快取、權限、UI)**零改動**直接吃到。pwc_tars 開機時連不上 → 不注入、記 warning、60 秒後自動重試一次 config 失效;經 LibreChat 代理的任何 admin 異動(create/update/delete/sync/工具啟停/domain 綁定)都會立即失效 config 與工具快取。舊的聚合入口 `POST /api/tars/mcp`(單一 `tars` server)保留供 YAML 釘住者使用,已標 deprecated。
-
-- **使用者身分與權限**:注入的 header `X-Tars-User-Id: {{LIBRECHAT_USER_ID}}` 使連線 per-user;gateway route 把 Mongo user id 換成 `User.tarsId` 後帶給 pwc_tars,由 pwc_tars 套用**完整權限堆疊**——domain 授權(`sys_domain_mcp.is_enabled`)、domain 工具白名單(`mcp_tool_ids`,空 = 整台 server)、per-user server 開關與工具覆寫(`sys_user_mcp.is_enabled` / `tool_config`)。`POST /execute` 也帶 `user_id`:pwc_tars 會再做一次工具可見性檢查(403 擋越權)、合併該使用者的 per-user 憑證(`sys_user_mcp.auth_credentials`,自動挑存有憑證的 domain),`mcp_logs` 稽核記到真實使用者。pwc_tars admin(role_id=1)不受 domain 白名單限制,但**自己的 per-user 工具開關仍生效**;個人設定寫入時若 server 未連結任何可存取 domain,偏好會 fallback 落在第一個(可存取)domain。**Server 預設全關(opt-in)**——使用者要在「TARS Tools」面板明確開啟 server 後,其工具才會進入聊天(admin 亦同),避免大量工具灌爆模型的 tool 上限。**沒綁 tars 帳號的使用者 fail-closed(零工具)**。
-- **安全**:route 不走 JWT(呼叫者是 LibreChat 自己),改用 gateway key(`X-Tars-Gateway-Key`)驗證——預設由 `JWT_SECRET` HMAC 派生(多實例共享 env 即一致),可用 `TARS_MCP_GATEWAY_KEY` 覆寫。
-- **工具命名**:per-server 入口下工具名**不加前綴**(server 身分已在 LibreChat 附加的後綴裡),最終為 `<tool>_mcp_tars_<code>`;舊聚合入口維持 `<server code>__<tool name>_mcp_tars`。
-- **快取**:工具清單 per-user 30 秒 TTL;經 LibreChat 代理的 admin 異動立即失效(含注入的 server 清單);直接在 pwc_tars 前台改的設定最慢 30 秒(工具層)/ 到下次 config 重載(server 清單層)反映。
-- **下拉可見性**:`tars_*` 項目在前端依使用者的 per-user 啟用狀態過濾(未啟用/未連結 tars 的使用者看不到);實質權限仍由 pwc_tars 端 fail-closed 把關。比對用的是後端回傳的 `gateway_name`(注入時實際採用的項目名,含撞名後綴),不再由前端從 `code` 反推——沒有 `code` 的 server 以往會永遠不出現在下拉,已修正。
-- **未 opt-in 的 server 不再隱形**:pwc_tars 的 server 預設全關(`sys_user_mcp.is_enabled`,opt-in),所以「權限設定明明綁給這個腦袋、聊天室卻看不到」是常見困惑。聊天下拉現在在清單下方多一區「Allowed by this brain」,把腦袋允許但使用者尚未啟用的 server 以灰階列出(附工具數),點一下即 `PUT /api/tars/mcp/user/servers/:id { is_enabled: true }` 啟用並自動刷新;啟用後它會移到正常清單,再自行勾選與挑工具。判定 opt-in 以 `user-settings` 為權威(而非「未出現在 available-tools」),所以「已啟用但工具被逐一關光」的 server 不會重複列在兩區。
-- **腦袋(domain)工具範圍 + 逐工具勾選**:聊天下拉會再依**當前對話綁定的腦袋**(`conversation.domain_id`)過濾——`GET /api/tars/mcp/user/domains/:domainId/tools`(代理 pwc_tars `available-tools?user_id&domain_id`)回傳該腦袋可用的 server 與工具(含完整 tool key `<tool>_mcp_tars_<code>`),不在清單內的 `tars_*` server 直接隱藏並自動取消勾選(legacy 聚合入口 `tars` 不受影響)。已勾選的 server 下方會展開**工具勾選清單**(預設全勾),勾選結果寫入 `ephemeralAgent.mcp_tools`(`{serverName: [toolKey...]}`,per-conversation 持久化於 `LAST_MCP_TOOLS_<key>`),後端 `loadEphemeralAgent`/`loadAddedAgent` 依此白名單過濾實際掛載的工具(request-scoped server 改推明確 tool key 取代 `mcp_all` 佔位符;非法/跨 server 的 key 會被剔除)。換腦袋時前端自動 reconcile:移除該腦袋不可用的 server、修剪過期 tool key。該端點同時回傳腦袋允許但未 opt-in 的 server(`user_enabled: false` + `tool_count`),並以使用者可存取的 domain 清單做授權守衛(傳入非自己的 domain_id 一律回空)。關鍵檔案:`packages/api/src/tars/mcp/user.ts`(`getUserTarsDomainMcpTools`)、`packages/api/src/tars/mcp/config.ts`(`tarsMcpEntryName` 注入名 registry)、`packages/api/src/mcp/utils.ts`(`selectedMCPToolKeys`)、`client/src/hooks/MCP/useTarsMcpTools.ts`、`client/src/components/MCP/{MCPServerMenuItem,MCPPendingServerItem}.tsx`。
-
-**env(全部可選)**:`TARS_MCP_ENABLED=false` 關閉;`TARS_MCP_GATEWAY_KEY` 覆寫金鑰;`TARS_MCP_SELF_URL` 覆寫 loopback URL(預設 `http://localhost:<PORT>/api/tars/mcp`,反代/多實例才需要);`TARS_MCP_EXECUTE_TIMEOUT_MS` 工具執行逾時(預設 60000);`TARS_MCP_MAX_TOOLS` 工具數上限(預設 100,per-server 入口下為**每台 server** 各自套用;OpenAI 單請求上限 128 涵蓋**所有**工具來源——多台 server 同時勾選時是加總,超過的會被截斷並記 warning。正解是在 pwc_tars 端用 domain 工具白名單或 server 的 `tool_config` 過濾,不要靠截斷)。
-
-**pwc_tars 端配套改動**(同次完成,在 pwc_tars repo):`routes.py` 新增 `resolve_user_visible_tool_map`(server→可見工具集合,跨 domain 取聯集)與 `resolve_credential_domain_id`;`GET /available-tools` 落實原本保留的 `user_id` 過濾並新增 `server_code` 欄位;`POST /execute` 接受 body `user_id` / `domain_id`(可見性檢查 + per-user 憑證合併 + 稽核歸戶);新增 `GET|PUT /api/mcp/user-settings` 與 `PUT|DELETE /api/mcp/user-settings/credentials`(免 domain 語境的使用者聚合設定/工具開關/憑證,供 LibreChat 面板)。**已知限制**:`builtin` 型 server 不代理(pwc_tars `/execute` 不支援)。
-
-**LibreChat 內建管理/使用者 UI**(免開 pwc_tars 前台)。**主要入口在側邊欄的 MCP 面板**:tars 使用者會看到一張「TARS Tools」卡片(TARS 啟用時原生的新增按鈕與 server 卡片列表都隱藏),點卡片開工具面板;tars admin 卡片上多一顆齒輪直達 `/mcp-settings` 管理頁(帳號選單也保留「MCP Tool Settings」入口)。
-- **管理頁 `/mcp-settings`**(pwc_tars admin 限定),分三個分頁:
-  - **伺服器管理**:列出/新增/編輯/刪除 `openapi`、`custom_api`、`external` server——OpenAPI 貼 swagger URL 可「Parse」預覽工具清單;custom_api 以 JSON 編輯工具定義;external 選 transport(streamable_http:URL + headers + bearer/api_key;stdio:command + args + env_vars,指令在 pwc_tars 主機執行)。表單含 priority、tags;auth 支援 none/bearer/api_key/basic/login(external 限 bearer/api_key)。每列可展開做 **per-tool 啟停**(`PUT /admin/tools/:toolId`);儲存後自動 sync 並回報 created/updated/deleted;test/sync 都在操作列。
-  - **權限設定**:domain(專用腦)多選 + server→tool 勾選樹,對應 pwc_tars 的 `sys_domain_mcp` 綁定與 `mcp_tool_ids` 工具白名單(空 = 整台 server);儲存為**全覆寫**(未勾選的 server 解除綁定;多 domain 同存會複製設定)。
-  - **執行紀錄**:`mcp_logs` 檢視(工具/伺服器/使用者/狀態/耗時/時間,可依 conversation_id 篩選)。
-  - 後端全部代理到 pwc_tars(`/api/tars/mcp/admin/*`,`requireTarsAdmin`),異動後自動失效 gateway 與 config 快取。
-- **使用者面板**(帳號選單「TARS Tools」,所有 tars 使用者):顯示自己可用的 server 與工具(名稱/說明/參數 schema 即時同步自 pwc_tars),可逐 server、逐工具開關(寫回 `sys_user_mcp`);需要帳密/token 的 server 有「Credentials required / set」徽章,展開即可輸入,儲存前 pwc_tars 會**先向目標 API 驗證**(Verify & Save,失敗回傳原因)。設定變更會立即失效 gateway 快取;若聊天中已連線,重勾一次 MCP 下拉的 TARS 即可拿到最新工具清單。
-- 關鍵檔案:`client/src/components/McpSettings/`(管理頁)、`client/src/components/Tars/McpToolsDialog.tsx`(使用者面板)、`client/src/data-provider/Tars/{queries,mutations}.ts`、`packages/api/src/tars/mcp/{admin,user}.ts`、`api/server/routes/tars/mcp.js`(admin/user 代理路由)。
-
-**關鍵檔案**:`packages/api/src/tars/mcp/client.ts`(pwc_tars REST client + 快取 + 名稱對映)、`server.ts`(MCP protocol server + `handleTarsMcpRequest`)、`config.ts`(gateway key 派生 + `withTarsMcpConfig` 設定注入)、`api/server/routes/tars/mcp.js`(薄路由)、`api/server/services/Config/app.js`(注入掛載點)。
-
-**驗證**:
-```bash
-# 1. pwc_tars 端有 enabled 的 openapi/custom_api server 且已 sync 工具
-curl "http://<tars-host>:5000/api/mcp/servers?enabled_only=true"
-# 2. LibreChat 啟動 log 無 [tars-mcp] 警告;登入並在 TARS Tools 面板啟用 server 後,
-#    聊天輸入框 MCP 下拉出現各台 pwc_tars server(tars_<code>,顯示 server 名稱)
-# 3. 選用後對話中直接請模型呼叫某工具,或在 /mcp-settings 的執行紀錄分頁 /
-#    pwc_tars 查 mcp_logs 確認有執行紀錄
-```
-
----
-
-### 6.7 長期記憶區 + chart / data / table-task 工具(pwc_tars langflow capabilities)
-
-**方向**:LibreChat → pwc_tars。`TARS_AUTH_URL` 有設即整組生效,無另外的開關。
-
-**長期記憶區(聊天上傳的唯一路徑)**。TARS 啟用時(startup config `tarsMemoryEnabled`),聊天輸入框的迴紋針**完全取代**原生上傳選單(上傳至供應商/以文字形式上傳/file_search/execute_code 全部隱藏),檔案(含圖片與拖放)一律進 pwc_tars 長期記憶區(`POST /api/conversation/upload_memory_data`,pwc_tars 端解析:pdf/docx/ppt/音訊 STT/圖片 VLM/csv・xlsx 結構摘要)。側邊欄「附加檔案」面板同時換成**長期記憶管理器**(列表、納入開關、預覽解析文字、下載原檔、刪除、token 用量條)。語意完全鏡射 pwc_tars:檔案綁在 **pwc_tars 對話**上、`status=1` 的列**每一回合**都生效——非結構化檔的解析文字(`summary`)注入 system prompt(`toolContextMap['tars_memory']`,`TARS_MEMORY_CONTEXT_MAX_CHARS` 上限、比例截斷),csv/xlsx/xls 則改走 data 工具。每回合由 `primeTarsMemory`(`packages/api/src/agents/initialize.ts` 三處掛點)並行抓一次 `get_memory_data`(10s cap、fail-soft),同一 snapshot 供工具工廠重用。
-
-- **對話綁定**:沿用 conversation mirror 的 `tarsConversationId`(存 LibreChat convo doc)。**新聊天**先上傳時 pwc_tars 自建對話(名為 長期記憶對話_MMDD),回傳 id 由前端寫入 conversation state、隨首次送訊上行(`agentsBaseSchema` pick list),`request.js` 經 pending 註冊表(in-memory TTL)或文件所有權驗證後領養,之後 mirror 沿用同一對話。刪除 LibreChat 對話時既有的 delete mirror 會連動軟刪 pwc_tars 對話與記憶檔。
-- **所有權**:pwc_tars 的 `get_memory_data` 不按 user 過濾、`update_status`/`delete` 無 auth——LibreChat 端一律以 `created_by === User.tarsId` 過濾/預檢(content 路由做所有權 gate)。未連結 tars 的帳號 403。
-- **路由**:`/api/tars/memory/*`(`requireJwtAuth`,thin JS → `packages/api/src/tars/memory/{client,pending,prime}.ts`):`POST /upload`、`GET /list/:tarsConversationId`、`PUT /documents/:id/status`、`DELETE /documents/:id`、`GET /documents/:id/{content,download}`。
-- **取捨**:TARS 記憶模式下圖片**不再以 vision 進模型**,只剩 pwc_tars VLM 解析文字;暫時對話(temporary chat)隱藏上傳鈕(記憶列會留存,與暫時語意矛盾)。
-
-**三個新工具**(皆走 `/api/langflow-service/*`,同 sql_agent 的 service key(sys_config `KEY_LANGFLOW_API_KEY`,無 LibreChat 端覆寫——pwc_tars 整個 blueprint 只驗這一列)、model 解析(chat model 比對 model_profile,不符則交給 pwc_tars 預設 sys_model,無 pin)與 gateway 頭(一律送出,見下);共用 client 在 `packages/api/src/tars/langflow/client.ts`,sql_agent 已重構改用之):
-
-| 工具 | 端點 | 啟用方式 | 行為 |
-|---|---|---|---|
-| `chart_agent` 產生圖表 | `POST /chart` | **AgentCapabilities 位階**,比照 sql_agent 全套(capability + CHART_AGENT 權限 + `interface.chartAgent` + composer badge/pin + ToolsDropdown,librechat.yaml capabilities 需列 `chart_agent`) | 把數據寫進 request,pwc_tars 端寫 matplotlib 產 PNG,回 `![chart](http://<HOST>/static/quickchart/...)`,直接嵌 markdown(**pwc_tars sys_config `HOST` 必須是瀏覽器可達**,`/static` 無認證) |
-| `data_query` | `POST /data` | **自動裝備**:對話長期記憶有 status=1 的 csv/xlsx/xls 即掛上(無 badge、ephemeral 與 saved agent 皆生效) | 對附掛試算表問答(pwc_tars DuckDB workspace),`document_ids` 預設全部、模型可指定子集(限本對話的檔,越界 id 直接丟棄) |
-| `table_task` | `POST /table-task` | 同上自動裝備 | 逐列批次作業:每列對專用腦綁定的知識庫 enrich(KB 解析同 buildTarsSqlContext 但不過濾 has_sql_database;無腦/無 KB 先擋下不呼叫),回增強表格 + xlsx 下載連結;timeout 預設 1740s(`TARS_TABLE_TASK_TIMEOUT_MS`),留意反代 idle timeout |
-
-**LLM 一律走 LibreChat gateway**:四個工具(sql/chart/data/table-task)呼叫 pwc_tars 時固定帶 `X-Use-Librechat-Gateway: true` 與 `X-Librechat-User-Id`,pwc_tars 的巢狀 loop 因此回打 LibreChat `/api/agents/v1m/chat/completions`,額度算在該使用者身上——pwc_tars 只掛工具、不再自帶語言模型。LibreChat 端沒有開關,唯一的閘門是 pwc_tars sys_config `FLAG_USE_LIBRECHAT_LLM`(需搭配 `KEY_LIBRECHAT_BASE_URL`);關掉它 pwc_tars 就會退回直連 provider。**注意**:`upload_memory_data` 的解析階段(圖片 VLM、音訊 STT、Excel 結構分析)不在 `langflow-service` blueprint 內,pwc_tars 端沒有呼叫 `mark_gateway_request`,所以那段仍走 pwc_tars 自己的 key。
-
-**env(全部可選)**:`TARS_CHART_AGENT_TIMEOUT_MS`、`TARS_DATA_AGENT_TIMEOUT_MS`、`TARS_TABLE_TASK_TIMEOUT_MS`、`TARS_MEMORY_CONTEXT_MAX_CHARS`。service key 與 model 一律由 pwc_tars sys_config / model_profile 決定,LibreChat 端不再定義覆寫用的 env。
-
-**pwc_tars 端**:零改動(upload 接受空白 conversation_id;`/data`、`/table-task` 收 `document_ids`)。已知缺口(記錄,不修):memory 路由無認證、`get_memory_data` 不按 user 過濾——內網信任模型,LibreChat 端已補過濾。
-
-**關鍵檔案**:`packages/api/src/tars/memory/{client,pending,prime}.ts`、`packages/api/src/tars/langflow/{client,chart,data,table}.ts`、`packages/api/src/agents/initialize.ts`(auto-equip + context 注入)、`api/server/routes/tars/memory.js`、`api/server/controllers/agents/request.js`(tarsConversationId 領養)、`api/server/services/ToolService.js` + `api/app/clients/tools/util/handleTools.js`(gate + dispatch)、`client/src/components/Chat/Input/Files/TarsMemoryAttach.tsx`(+ `AttachFileChat` 置換點)、`client/src/components/SidePanel/TarsMemory/`、`client/src/hooks/Files/useTarsMemoryUpload.ts`、`client/src/components/Chat/Input/ChartAgent.tsx`。
-
-**驗證**(live LLM 只用 gpt-5.4-mini):
-```bash
-# 1. 新聊天 → 迴紋針上傳 PDF + xlsx → 側邊欄「長期記憶」面板出現兩列,pwc_tars 端建立對話
-# 2. 送出第一則訊息 → convo doc 取得 tarsConversationId;問 PDF 內容(直接回答)、
-#    問 xlsx 內容(模型呼叫 data_query)
-# 3. 面板關掉 PDF 的納入開關 → 下一回合模型看不到該檔
-# 4. 工具選單開「產生圖表」→ 要求畫圖 → 回覆內嵌 PNG(需 pwc_tars HOST 可達)
-# 5. 綁 KB 的專用腦 + xlsx → 要求逐列比對 → table_task 回表格 + xlsx 下載連結
-# 6. 拿掉 TARS_AUTH_URL 重啟 → 迴紋針/面板回到原生行為
-```
-
----
-
-## 7. Langflow 整合
-
-把 `~/Downloads/langflow`(本機跑在 `http://localhost:7860`)整進聊天室。**純設定 + 少量後端程式,沒有改 `packages/*`。**
-
-### 7.1 三個入口(在 LibreChat 裡長這樣)
-
-| 入口 | 位置 | 用途 |
-|---|---|---|
-| **內嵌 Langflow 頁面** | 左側 rail 的 **Langflow**(流程圖示)→ 全頁 `/langflow` iframe | 在 LibreChat 裡直接編輯 Langflow flow |
-| **每個 flow 一個共享 Agent** | endpoint 切 **Agents** → 選 `Langflow · <flow 名>` | 明確指定用哪個 flow;對話會顯示 tool-call 卡片 |
-| ~~一般聊天的 MCP「Langflow」開關~~ | 已用 `chatMenu: false` 隱藏 | 避免「所有 flow 一起、模型自動挑」造成混淆 |
-
-> Agent 屬於 **Agents endpoint**,不在 `gpt-5.4-mini` 那層。共享的 agent 出現在 **Agents 市場**(「My Agents」只列你自己擁有的)。
-
-### 7.2 設定檔:`librechat.yaml` 全文
-
-`librechat.yaml` 被 `.gitignore`,新機器要自建。下面就是**我們實際在跑的整份內容**(含 §6.5 的 vLLM 地端模型 endpoint)——全用 `${...}` 帶 `.env` 的值或 `tars://local` 探索標記,host、api key、project id 都不寫死,所以**照貼到專案根目錄 `librechat.yaml` 即可,一個字都不用改**:
+被 `.gitignore`,新機器要自建。全用 `${...}` 帶 `.env` 的值或 `tars://local` 探索標記,host、api key、project id 都不寫死,**照貼到專案根目錄即可,一個字都不用改**:
 
 ```yaml
 # LibreChat configuration
@@ -407,6 +98,8 @@ endpoints:
       - artifacts
       - execute_code
       - web_search
+      - sql_agent
+      - chart_agent
       - skills
       - context
 
@@ -430,7 +123,7 @@ endpoints:
       apiKey: 'EMPTY'
       baseURL: 'tars://local'
       models:
-        default: ['gemma-4-31B']
+        default: ['gemma-4-31B', 'gemma-4-26B-A4B']
       titleConvo: true
       titleModel: 'current_model'
       modelDisplayLabel: 'vLLM'
@@ -460,115 +153,74 @@ mcpServers:
     startup: true
 ```
 
-搭配的 `.env` 只要兩個值:`VITE_LANGFLOW_URL`(Langflow URL,單一來源)、`LANGFLOW_API_KEY`。yaml 把 server 掛上去、`.env` 提供連線值,**兩邊都要**才會生效。
+### 1.6 啟動
 
-> **project id 自動探測,不用設。** 開機時後端用 `LANGFLOW_API_KEY` 打 Langflow `GET /api/v1/projects/`,若**只有一個專案**就取它的 id 塞進 `process.env.LANGFLOW_PROJECT_ID`(`api/server/services/langflow/project.js`),yaml 的 `${LANGFLOW_PROJECT_ID}` 隨之填好。固定單一專案就完全免設;若有多個專案,探測會放棄並要你在 `.env` 設 `LANGFLOW_PROJECT_ID` 指定。
+先確認 pwc_tars(`:5000`)與依賴服務(`docker compose up -d mongodb meilisearch`)都在跑。
 
-> **SSRF 白名單也自動處理,不用手動加。** `localhost` 本會被 LibreChat 當 SSRF 目標擋掉,但後端會在載入 app config 時從 `VITE_LANGFLOW_URL` 推導出 `host:port` 自動加進 `mcpSettings.allowedAddresses`(`api/server/services/Config/app.js` 的 `withLangflowAllowedAddress`,單一注入點,連線與工具執行兩條路都吃得到),所以你**不需要**在 `mcpSettings.allowedAddresses` 寫 `localhost:7860`。Docker 內跑後端時 `VITE_LANGFLOW_URL` 設成 `http://host.docker.internal:7860`,白名單也會跟著對。
+**Dev 模式(日常開發)★ — 兩個常駐終端機分頁:**
 
-> ⚠️ project id 探測在**開機時**做一次:Langflow 那時必須在線。若開機時 Langflow 沒起來,langflow MCP 這次會連不上;待 Langflow 起來後**重啟後端**即可。
+```bash
+npm run backend:dev
+```
 
-### 7.3 自動同步:新增 flow → 馬上出現(零腳本)
+```bash
+npm run frontend:dev
+```
 
-機制在 `api/server/services/langflow/reconcile.js`:**每次有人打開 agent 清單**,後端就把 Langflow 專案裡 **已標 MCP 曝露(`mcp_enabled`)** 的 flow 對齊成「公開、admin 擁有」的 agent。
+→ 瀏覽器開 **http://localhost:3090**,用 pwc_tars 帳號(username)登入。
 
-- **新增 flow 流程**:在 Langflow 建好 flow → 在該 project 的 MCP 設定**打開該 flow 的開關** → 回 LibreChat 打開 Agents 選單,它就在了。**不用跑任何腳本。**
-- **只新增、不刪除**:在 Langflow 停用/改名 flow,舊 agent 不會自動消失,需手動刪。
-- 編排模型預設 `gpt-5.4-mini`(key 解析鏈:你聊天室自設的個人 key > sys_config 的 `KEY_OPEN_AI_API`;`.env` 為哨兵值 `OPENAI_API_KEY=user_provided`,見 §6.4)。
+- `:3090` = Vite dev server,前端改動即時熱更新;API 請求 proxy 到 `:3080`。
+- `/api/`(後端 JS)改動 nodemon 自動重啟;**改到 `packages/*` 要先跑對應 `npm run build:<套件>` 再重啟前端 dev server**(Vite 不會偵測 `packages/*/dist` 變更)。
 
-### 7.4 必填與可選 env
+**實際服務(production,單一服務):**
 
-**必填(兩個)**,寫在 `.env`:
+```bash
+npm run frontend     # 完整建置:packages + client,VITE_* 在此固化進前端
+npm run backend      # Express 在 :3080 同時 serve 打包好的前端 + API
+```
 
-| 變數 | 用途 |
-|---|---|
-| `VITE_LANGFLOW_URL` | Langflow URL **單一來源** —— 同時餵前端 iframe、`librechat.yaml` MCP url 的 host、SSRF 白名單。**build-time(Vite),改了要重 build 前端** |
-| `LANGFLOW_API_KEY` | Langflow API key(`librechat.yaml` 以 `${LANGFLOW_API_KEY}` 帶入 header) |
+→ 瀏覽器開 **http://localhost:3080**。
 
-> project id **不是 env**,開機自動探測(單一專案);yaml/.env 都不用寫。
-
-**可選覆寫**(全有預設、非必填):
-
-| 變數 | 預設 | 用途 |
-|---|---|---|
-| `LANGFLOW_AGENT_MODEL` | `gpt-5.4-mini` | agent 編排模型 |
-| `LANGFLOW_AGENT_PROVIDER` | `openAI` | 編排 endpoint(**注意大小寫是 `openAI`**)|
-| `LANGFLOW_AGENT_OWNER_EMAIL` | 第一個 ADMIN | 共享 agent 的擁有者 |
-| `LANGFLOW_PROJECT_ID` | 開機自動探測 | 覆寫 project id;**Langflow 有多個專案**(探測無法唯一決定)時才需設 |
-| `LANGFLOW_BASE_URL` | = `VITE_LANGFLOW_URL` | 後端專用的**過時別名**,留空即可 |
-
-### 7.5 搬到其他機器要改的環境值
-
-**只改 `.env` 兩個值,`librechat.yaml` 完全不用動**:
-
-1. `.env`:`VITE_LANGFLOW_URL`(該環境的 host)、`LANGFLOW_API_KEY`。
-2. build + 起 backend/frontend(Langflow 要在線,開機才探測得到 project id)→ 第一次有人打開 Agents 選單,agent 自動建好。**不需要設 project id、不需要 seed 腳本、不需要動白名單。**
+- `:3080` 吐的是「上次 build 的靜態前端」——改了 `client/` 沒重跑 `npm run frontend`(或 `cd client && npm run build`)就永遠是舊畫面。
+- 對外部署時把網域指到 `:3080`,並改 `.env`:`VITE_LANGFLOW_URL` 設為對外 Langflow 網址(**要用主站同網域的子網域**,否則 iframe 被第三方 cookie 政策擋)、重新產生 `JWT_*`/`CREDS_*`、`LLM_GATEWAY_ALLOW_UNAUTHENTICATED` 改為 `LLM_GATEWAY_SERVICE_KEY`。改任何 `VITE_*` 都要重跑 `npm run frontend`。
 
 ---
 
-## 8. 驗證(end-to-end)
+## 2. Commit 更新後如何更新
 
-前置:pwc_tars Flask + PostgreSQL 起來,`sys_user` 有一個 `status='active'` 的測試帳號;LibreChat 端設好 `TARS_AUTH_URL`,MongoDB 已啟動。
+`packages/*` 是先編譯成 `dist/` 才被 `/api` 與 `/client` 引用;拉了別人的 commit 不重建,後端就用到過時的 dist(典型症狀:`xxx is not a function`)。所以**每次 `git pull` / 切分支後,先重建再啟動**:
 
-1. **設定旗標**:`curl http://localhost:3080/api/config` 應含 `"tarsAuth":true`;若 pwc_tars 啟用 LDAP,還會有 `"tarsSso":{"enabled":true,"type":"ldap"}`。
-2. **登入頁**:`http://localhost:3080/login`(或 dev `:3090`)欄位為 **username**;LDAP 啟用時出現「Sign in with SSO (LDAP)」勾選框。
-3. **登入**:用 pwc_tars 帳號登入(例:`Chris`)→ 進入 `/c/new`;cookie 含 `refreshToken`、`token_provider=librechat`。
-4. **影子使用者**:MongoDB `users` 該筆應有 `provider:'tars'`、`tarsId`、`role`、`tarsRoleId`、`tarsMenuItems`、`tarsMenuKeys`、`tarsStatus`。
-   ```bash
-   docker exec chat-mongodb mongosh LibreChat --quiet --eval \
-     "db.users.find({provider:'tars'},{username:1,role:1,tarsRoleId:1,tarsStatus:1,tarsMenuKeys:1}).pretty()"
-   ```
-5. **角色治理**:在 pwc_tars 改該帳號角色,重新登入後 MongoDB `role` / `tarsMenuItems` 應同步更新。
-6. **License / SSO**:pwc_tars 回 `license_status: deactivate` → 登入被擋;勾 LDAP 登入 → 後端送 `use_sso:true`。
-7. **專用腦選擇器**:對話頁上方,model 選擇器右邊的「No specialized brain」。
-8. **專用腦／知識庫管理**:左下角**頭像** → 帳號選單 → **「Specialized Brains」**(僅 ADMIN+tars 可見)。
-9. **Langflow project 探測**:後端啟動 log 應有 `[langflow/project] Discovered Langflow project id <uuid>`;接著 `[MCP][langflow] Tools: ...` 列出 flow 工具。
-10. **Langflow agent**:endpoint 切 **Agents** → 應看到 `Langflow · <flow 名>`;內嵌頁開左側 rail 的 **Langflow**。
-11. **Langflow 工具執行**:用某個 `Langflow · <flow>` agent 送一則訊息,應正常呼叫工具(若回 `Tool ..._mcp_langflow not found`,代表白名單沒生效 —— 見常見問題)。
+**(a) `package-lock.json` 沒變(預設走這條):**
+
+```bash
+npm run build        # turbo 全部 packages 重建,有快取沒變的自動 skip
+```
+
+**(b) `package-lock.json` 變了(先補依賴):**
+
+```bash
+npm ci
+npm run build
+```
+
+> 拿不準 lockfile 有沒有變就直接走 (a);真的缺套件 build 會明確報錯(`Cannot find module`),那時再 `npm ci`。
+
+重建後重啟:
+
+- Dev:重啟 `npm run backend:dev` 與 `npm run frontend:dev`(必要時先刪 `client/node_modules/.vite`)。
+- Production:重跑 `npm run frontend` + `npm run backend`。
+- 瀏覽器硬重新整理 **Cmd+Shift+R** 清舊 bundle。
+
+同時檢查 [§3 變更紀錄](#3-設定檔變更紀錄):若這次更新有新的 `.env` / `librechat.yaml` 要求,照紀錄補上再啟動。
+
+> ⚠️ **`npm run smart-reinstall` 是破壞性的**:需要重裝時它會「先刪光 `node_modules` → `npm cache clean --force` → `npm ci`」,中途失敗(常見:`~/.npm` 有 root-owned 檔案報 `EACCES`)會落到完全沒依賴的狀態。日常更新優先用上面 (a)/(b);要用它先修權限:`sudo chown -R $(id -u):$(id -g) ~/.npm`。
 
 ---
 
-## 9. 上線到實際網域
+## 3. 設定檔變更紀錄
 
-對外把兩個網址各指到本機 port:`www.pwctars.com → :3080`(prod)/ `:3090`(dev)、`langflow.pwctars.com → :7860`。**Langflow 要用主站的子網域**(同網域),否則 iframe 會因跨站第三方 cookie 被擋而一直卡 loading。
+`.env` 與 `librechat.yaml` 都被 `.gitignore`,git 看不到它們的歷史——**每次異動必須在此表新增一列**(新的放最上面),更新環境的人照表補設定。
 
-### 9.1 要改的 env(`.env`)
-
-```bash
-VITE_LANGFLOW_URL=https://langflow.pwctars.com   # Langflow 對外網址(build-time,改了要重 build)
-```
-
-> 只改這一個。iframe、`librechat.yaml` 的 MCP url、SSRF 白名單都從它推導。
-
-### 9.2 啟動指令
-
-**Prod(上線用,推薦):指向 `:3080`**
-```bash
-npm run frontend     # 重 build,VITE_* 固化進前端;改任何 VITE_ 值都要重跑
-npm run backend      # Express 在 :3080 同時 serve 前端 + API
-```
-
-**Dev(只在要邊改邊看時):指向 `:3090`**
-```bash
-VITE_ALLOWED_HOSTS=www.pwctars.com,pwctars.com npm run frontend:dev
-```
-
-> ⚠️ `VITE_ALLOWED_HOSTS` **必須在指令前面帶,放 `.env` 無效**(config 用 `process.env` 讀,`.env` 不會注入)。不帶會被 Vite 擋:`Blocked request. This host ... not allowed`。Prod 沒這問題。
-
----
-
-## 10. 常見問題
-
-- **「3080 看不到更新」** → 你看的是 production,改了前端要 `npm run frontend`(或 `cd client && npm run build`);日常開發改用 `:3090` dev。
-- **「整個打不開 / 一直轉」** → 後端 `:3080` 沒在跑。`curl localhost:3080/health` 應回 `200`;不是就重開 `npm run backend(:dev)`。在「自己的終端機分頁」跑、別關分頁。
-- **「改了還是舊的」** → 硬重新整理瀏覽器 **Cmd+Shift+R**(清掉舊 bundle 快取),或開無痕視窗。
-- **「dev 改了 packages 沒反應」** → Vite 不自動重抓套件 dist:`build:該套件` 後**重啟 `frontend:dev`**(必要時先刪 `client/node_modules/.vite` 再重啟)。
-- **「Specialized Brains 選單沒出現」** → 沒用 tars admin 帳號登入,或前端是舊 bundle(重建 + 硬重新整理)。
-- **「Agents 選單看不到 Langflow agent」** → 多半是舊快取,硬重新整理 **Cmd+Shift+R**;並確認 endpoint 切到 **Agents 市場**(My Agents 只列自己擁有的)。
-- **「內嵌 Langflow 頁面一片空白」** → Langflow 服務(`:7860`)沒跑,或被反向代理加了 `X-Frame-Options` 擋 iframe。
-- **「對外網址報 `Blocked request. This host ... not allowed`」** → Vite dev server 的 host 檢查。指令前帶 `VITE_ALLOWED_HOSTS=<網域>`(放 `.env` 無效),或直接改用 prod。見 [§9.2](#92-啟動指令)。
-- **「對外開 Langflow 一直卡 loading,但 localhost 正常」** → 跨站第三方 cookie 被瀏覽器擋。Langflow 要改用**與 LibreChat 同網域的子網域**(如 `langflow.pwctars.com`),不要用另一個獨立網域。
-- **「`Tool <flow>_mcp_langflow not found` / `Domain no longer allowed`」** → `VITE_LANGFLOW_URL` 推導的 host 沒進 SSRF 白名單。確認 `.env` 有設 `VITE_LANGFLOW_URL` 且**重啟後端**(白名單在載入 app config 時注入);Docker 內跑後端要用 `host.docker.internal:7860`。
-- **「Langflow agent 沒出現 / project 探測失敗」** → 開機時 Langflow 沒在線(探測在開機做一次),或 Langflow 有多個專案(探測放棄)。前者待 Langflow 起來後重啟後端;後者在 `.env` 設 `LANGFLOW_PROJECT_ID` 指定。
-</content>
-</invoke>
+| 日期 | 檔案 | 變更內容 | 相關 commit |
+|---|---|---|---|
+| 2026-08-29 | `librechat.yaml` | `endpoints.agents.capabilities` 新增 `sql_agent`、`chart_agent`(TARS SQL agent 與產生圖表工具的 capability 閘門);vLLM `models.default` 佔位清單加入 `gemma-4-26B-A4B`。`.env` 無新必填值(僅新增可選的 `TARS_*_TIMEOUT_MS` 覆寫)。 | `1eacbe6e1`、`241a7e08d` |
