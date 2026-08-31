@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import * as Ariakit from '@ariakit/react';
-import { MCPIcon } from '@librechat/client';
-import { Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { MCPIcon, chipVariants } from '@librechat/client';
+import { Check, ChevronDown, ChevronRight, KeyRound } from 'lucide-react';
 import type { TTarsMcpDomainTool } from 'librechat-data-provider';
+import type { TarsMcpCredentialsStatus } from '~/hooks/MCP/useTarsMcpTools';
 import type { MCPServerDefinition } from '~/hooks/MCP/useMCPServerManager';
 import type { MCPServerStatusIconProps } from './MCPServerStatusIcon';
 import {
@@ -28,6 +29,9 @@ interface MCPServerMenuItemProps {
   /** Checked tool keys; `null`/undefined = every tool checked. */
   selectedToolKeys?: Set<string> | null;
   onToggleTool?: (serverName: string, toolKey: string) => void;
+  /** Set for pwc_tars servers needing the user's own credentials — renders the key badge. */
+  credentialsStatus?: TarsMcpCredentialsStatus;
+  onCredentialsClick?: (serverName: string) => void;
 }
 
 function MCPServerToolList({
@@ -110,6 +114,8 @@ export default function MCPServerMenuItem({
   toolList,
   selectedToolKeys,
   onToggleTool,
+  credentialsStatus,
+  onCredentialsClick,
 }: MCPServerMenuItemProps) {
   const localize = useLocalize();
   const displayName = server.config?.title || server.serverName;
@@ -117,6 +123,10 @@ export default function MCPServerMenuItem({
   const statusTextKey = getStatusTextKey(server.serverName, connectionStatus, isInitializing);
   const statusText = localize(statusTextKey as Parameters<typeof localize>[0]);
   const showActionButton = shouldShowActionButton(statusIconProps);
+  const credentialsLabel =
+    credentialsStatus === 'needed'
+      ? localize('com_ui_tars_mcp_creds_needed')
+      : localize('com_ui_tars_mcp_creds_set');
 
   // Include status in aria-label so screen readers announce it
   const accessibleLabel = `${displayName}, ${statusText}`;
@@ -169,6 +179,24 @@ export default function MCPServerMenuItem({
             <p className="truncate text-xs text-text-secondary">{server.config.description}</p>
           )}
         </div>
+
+        {/* Per-user pwc_tars credentials - amber until the server is authenticated */}
+        {credentialsStatus != null && onCredentialsClick != null && (
+          <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => onCredentialsClick(server.serverName)}
+              aria-label={`${displayName}, ${credentialsLabel}`}
+              title={credentialsLabel}
+              className={cn(
+                chipVariants({ tone: credentialsStatus === 'needed' ? 'warning' : 'success' }),
+                'px-1.5 hover:opacity-80',
+              )}
+            >
+              <KeyRound className="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
         {/* Action Button - only show when actionable */}
         {showActionButton && statusIconProps && (
