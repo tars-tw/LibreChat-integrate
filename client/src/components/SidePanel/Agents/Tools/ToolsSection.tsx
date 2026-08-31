@@ -373,7 +373,7 @@ function SelectedSection({
           type="button"
           onClick={onAdd}
           aria-label={addLabel}
-          className="text-text-secondary hover:bg-surface-secondary hover:text-text-primary focus-visible:ring-ring-primary inline-flex h-7 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition focus:outline-hidden focus-visible:ring-2"
+          className="text-[#FD5108] hover:bg-surface-secondary hover:text-[#FD5108] focus-visible:ring-ring-primary inline-flex h-7 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition focus:outline-hidden focus-visible:ring-2"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
           {localize('com_ui_add')}
