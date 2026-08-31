@@ -1,4 +1,4 @@
-import React, { memo, useRef, useMemo, useEffect } from 'react';
+import React, { memo, useRef, useMemo, useEffect, useCallback } from 'react';
 import * as Ariakit from '@ariakit/react';
 import { ChevronDown } from 'lucide-react';
 import { PermissionTypes, Permissions } from 'librechat-data-provider';
@@ -63,6 +63,15 @@ function MCPSelectContent() {
     const selectedSet = new Set(manager.mcpValues);
     return visibleServers.filter((s) => selectedSet.has(s.serverName));
   }, [visibleServers, manager?.mcpValues]);
+
+  /** The menu is modal, so it must yield focus before the credential dialog opens. */
+  const handleCredentialsClick = useCallback(
+    (serverName: string) => {
+      menuStore.hide();
+      tarsMcpTools?.openCredentials(serverName);
+    },
+    [menuStore, tarsMcpTools],
+  );
 
   /** Counts what the menu actually offers, never the raw selection: a name the
    *  catalog has not returned — or one the admin has hidden — renders no row,
@@ -155,6 +164,8 @@ function MCPSelectContent() {
                 toolList={tarsMcpTools?.getDomainTools(server.serverName)}
                 selectedToolKeys={tarsMcpTools?.getSelectedToolKeys(server.serverName)}
                 onToggleTool={tarsMcpTools?.toggleToolSelection}
+                credentialsStatus={tarsMcpTools?.getCredentialsStatus(server.serverName)}
+                onCredentialsClick={handleCredentialsClick}
               />
             ))}
             {(tarsMcpTools?.pendingServers?.length ?? 0) > 0 && (

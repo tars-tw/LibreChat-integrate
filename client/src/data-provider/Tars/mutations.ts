@@ -798,6 +798,8 @@ export const useSaveTarsMcpUserCredentialsMutation = (
       ...options,
       onSuccess: (...args) => {
         queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+        /** pwc_tars re-syncs the server's tools once it authenticates. */
+        queryClient.invalidateQueries([QueryKeys.tarsMcpDomainTools]);
         options?.onSuccess?.(...args);
       },
     },
@@ -812,6 +814,7 @@ export const useClearTarsMcpUserCredentialsMutation = (
     ...options,
     onSuccess: (...args) => {
       queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+      queryClient.invalidateQueries([QueryKeys.tarsMcpDomainTools]);
       options?.onSuccess?.(...args);
     },
   });

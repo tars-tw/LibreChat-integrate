@@ -1,23 +1,9 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, KeyRound } from 'lucide-react';
-import {
-  Label,
-  Input,
-  Button,
-  Switch,
-  Spinner,
-  Checkbox,
-  OGDialog,
-  OGDialogTemplate,
-  useToastContext,
-} from '@librechat/client';
+import { Switch, Spinner, Checkbox, chipVariants, useToastContext } from '@librechat/client';
 import type { TTarsMcpUserServer, TTarsMcpUserTool } from 'librechat-data-provider';
-import {
-  useTarsMcpUserSettingsQuery,
-  useUpdateTarsMcpUserServerMutation,
-  useSaveTarsMcpUserCredentialsMutation,
-  useClearTarsMcpUserCredentialsMutation,
-} from '~/data-provider';
+import { useTarsMcpUserSettingsQuery, useUpdateTarsMcpUserServerMutation } from '~/data-provider';
+import McpCredentialsForm from '~/components/Tars/McpCredentialsForm';
 import { useLocalize } from '~/hooks';
 
 interface ToolParam {
@@ -78,87 +64,6 @@ function ExpandableText({ text }: { text: string }) {
   );
 }
 
-function CredentialsForm({ server }: { server: TTarsMcpUserServer }) {
-  const localize = useLocalize();
-  const { showToast } = useToastContext();
-  const isToken = server.auth_type === 'bearer' || server.auth_type === 'api_key';
-  const fieldNames = (() => {
-    if (isToken) {
-      return ['value'];
-    }
-    if (server.auth_type === 'basic') {
-      return ['username', 'password'];
-    }
-    return server.login_fields.length > 0 ? server.login_fields : ['username', 'password'];
-  })();
-  const [values, setValues] = useState<Record<string, string>>({});
-
-  const saveMutation = useSaveTarsMcpUserCredentialsMutation({
-    onSuccess: () => {
-      setValues({});
-      showToast({ message: localize('com_ui_tars_mcp_creds_saved'), status: 'success' });
-    },
-    onError: (error) =>
-      showToast({
-        message: (error as Error)?.message || localize('com_ui_tars_mcp_creds_failed'),
-        status: 'error',
-      }),
-  });
-  const clearMutation = useClearTarsMcpUserCredentialsMutation({
-    onSuccess: () =>
-      showToast({ message: localize('com_ui_tars_mcp_creds_cleared'), status: 'success' }),
-    onError: (error) =>
-      showToast({ message: (error as Error)?.message ?? 'Error', status: 'error' }),
-  });
-
-  const handleSave = () => {
-    const missing = fieldNames.some((name) => !values[name]?.trim());
-    if (missing) {
-      showToast({ message: localize('com_ui_tars_mcp_creds_required'), status: 'error' });
-      return;
-    }
-    saveMutation.mutate({ id: server.id, credentials: values });
-  };
-
-  const isSecretField = (name: string) => name === 'value' || /password|secret|token/i.test(name);
-
-  return (
-    <div className="mt-2 space-y-2 rounded-lg bg-surface-secondary p-3">
-      <div className="grid grid-cols-2 gap-2">
-        {fieldNames.map((name) => (
-          <div key={name} className={fieldNames.length === 1 ? 'col-span-2' : ''}>
-            <Label className="text-xs">
-              {name === 'value' ? localize('com_ui_tars_mcp_creds_token') : name}
-            </Label>
-            <Input
-              type={isSecretField(name) ? 'password' : 'text'}
-              value={values[name] ?? ''}
-              onChange={(e) => setValues((prev) => ({ ...prev, [name]: e.target.value }))}
-            />
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center justify-end gap-2">
-        {server.has_credentials && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => clearMutation.mutate(server.id)}
-            disabled={clearMutation.isLoading}
-          >
-            {clearMutation.isLoading ? <Spinner /> : localize('com_ui_tars_mcp_creds_clear')}
-          </Button>
-        )}
-        <Button size="sm" onClick={handleSave} disabled={saveMutation.isLoading}>
-          {saveMutation.isLoading
-            ? localize('com_ui_tars_mcp_creds_verifying')
-            : localize('com_ui_tars_mcp_creds_save')}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function ServerCard({ server }: { server: TTarsMcpUserServer }) {
   const localize = useLocalize();
   const { showToast } = useToastContext();
@@ -210,11 +115,7 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
           <button
             type="button"
             onClick={() => setShowCredentials((prev) => !prev)}
-            className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
-              needsCredentials
-                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
-                : 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-            }`}
+            className={chipVariants({ tone: needsCredentials ? 'warning' : 'success' })}
           >
             <KeyRound className="h-3 w-3" aria-hidden="true" />
             {needsCredentials
@@ -238,7 +139,7 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
 
       {showCredentials && server.requires_user_credentials && (
         <div className="px-3 pb-3">
-          <CredentialsForm server={server} />
+          <McpCredentialsForm server={server} />
         </div>
       )}
 
@@ -284,44 +185,31 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
   );
 }
 
-export default function McpToolsDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+/**
+ * The signed-in user's own pwc_tars tool catalog: per-server and per-tool
+ * toggles plus credential entry. Every pwc_tars account sees this tab; the
+ * management tabs beside it are admin-only.
+ */
+export default function McpUserToolsTab() {
   const localize = useLocalize();
-  const { data: servers = [], isLoading } = useTarsMcpUserSettingsQuery({ enabled: open });
+  const { data: servers = [], isLoading } = useTarsMcpUserSettingsQuery({ refetchOnMount: true });
 
   return (
-    <OGDialog open={open} onOpenChange={onOpenChange}>
-      <OGDialogTemplate
-        title={localize('com_ui_tars_mcp_my_tools')}
-        showCloseButton={true}
-        showCancelButton={false}
-        className="w-11/12 md:max-w-2xl"
-        main={
-          <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">
-            <p className="text-sm text-text-secondary">
-              {localize('com_ui_tars_mcp_my_tools_hint')}
-            </p>
-            {isLoading && (
-              <div className="flex h-32 items-center justify-center">
-                <Spinner />
-              </div>
-            )}
-            {!isLoading && servers.length === 0 && (
-              <p className="py-8 text-center text-sm text-text-secondary">
-                {localize('com_ui_tars_mcp_no_servers')}
-              </p>
-            )}
-            {servers.map((server) => (
-              <ServerCard key={server.id} server={server} />
-            ))}
-          </div>
-        }
-      />
-    </OGDialog>
+    <div className="space-y-3">
+      <p className="text-sm text-text-secondary">{localize('com_ui_tars_mcp_my_tools_hint')}</p>
+      {isLoading && (
+        <div className="flex h-40 items-center justify-center">
+          <Spinner />
+        </div>
+      )}
+      {!isLoading && servers.length === 0 && (
+        <p className="py-12 text-center text-sm text-text-secondary">
+          {localize('com_ui_tars_mcp_no_servers')}
+        </p>
+      )}
+      {servers.map((server) => (
+        <ServerCard key={server.id} server={server} />
+      ))}
+    </div>
   );
 }

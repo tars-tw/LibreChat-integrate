@@ -9,17 +9,24 @@ import {
   LocalStorageKeys,
   TARS_MCP_SERVER_PREFIX,
 } from 'librechat-data-provider';
-import type { TTarsMcpDomainTool, TTarsMcpDomainServer } from 'librechat-data-provider';
+import type {
+  TTarsMcpUserServer,
+  TTarsMcpDomainTool,
+  TTarsMcpDomainServer,
+} from 'librechat-data-provider';
 import { ephemeralAgentByConvoId, mcpValuesAtomFamily, mcpToolValuesAtomFamily } from '~/store';
+import { useTarsMcpDomainToolsQuery, useTarsMcpUserSettingsQuery } from '~/data-provider';
 import { useUpdateTarsMcpUserServerMutation } from '~/data-provider/Tars/mutations';
 import { useSelectedTarsDomain } from '~/components/Chat/Menus/Tars/domain';
-import { useTarsMcpDomainToolsQuery } from '~/data-provider';
 import { useAuthContext } from '~/hooks/AuthContext';
 import { setTimestamp } from '~/utils/timestamps';
 
 /** Only the injected per-server entries are brain-scoped — the legacy `tars` aggregate is not. */
 const isScopedServerName = (serverName: string): boolean =>
   serverName.startsWith(TARS_MCP_SERVER_PREFIX);
+
+/** Whether a server's per-user credentials are still missing on the pwc_tars side. */
+export type TarsMcpCredentialsStatus = 'needed' | 'set';
 
 export interface TarsMcpToolsControl {
   /** Whether a `tars_*` dropdown entry may show for the active brain (fail-open while loading). */
@@ -34,6 +41,12 @@ export interface TarsMcpToolsControl {
   /** Opts a pending server in (`sys_user_mcp.is_enabled`), moving it into the usable list. */
   enableServer: (serverId: string) => void;
   enablingServerId: string | null;
+  /** Credential state of a gateway server; undefined when it needs none. */
+  getCredentialsStatus: (serverName: string) => TarsMcpCredentialsStatus | undefined;
+  /** The server whose credential form is open, kept in sync with the latest fetch. */
+  credentialsServer: TTarsMcpUserServer | null;
+  openCredentials: (serverName: string) => void;
+  closeCredentials: () => void;
 }
 
 /**
@@ -76,6 +89,40 @@ export default function useTarsMcpTools({
   const pendingServers = useMemo(
     () => (domainServers ?? []).filter((server) => !server.user_enabled),
     [domainServers],
+  );
+
+  /**
+   * Credential state per gateway entry. Shares its cache with the TARS tools
+   * panel, so a server authenticated there is immediately marked here (and vice
+   * versa) — the chat menu is just a second entry point to the same form.
+   */
+  const { data: userServers } = useTarsMcpUserSettingsQuery({ enabled: isTarsUser });
+  const credentialServers = useMemo(() => {
+    const map = new Map<string, TTarsMcpUserServer>();
+    for (const server of userServers ?? []) {
+      if (!server.requires_user_credentials || server.gateway_name == null) {
+        continue;
+      }
+      map.set(server.gateway_name, server);
+    }
+    return map;
+  }, [userServers]);
+
+  const [credentialsServerName, setCredentialsServerName] = useState<string | null>(null);
+  const openCredentials = useCallback((serverName: string) => {
+    setCredentialsServerName(serverName);
+  }, []);
+  const closeCredentials = useCallback(() => setCredentialsServerName(null), []);
+
+  const getCredentialsStatus = useCallback(
+    (serverName: string): TarsMcpCredentialsStatus | undefined => {
+      const server = credentialServers.get(serverName);
+      if (server == null) {
+        return undefined;
+      }
+      return server.has_credentials ? 'set' : 'needed';
+    },
+    [credentialServers],
   );
 
   const queryClient = useQueryClient();
@@ -235,5 +282,10 @@ export default function useTarsMcpTools({
     pendingServers,
     enableServer,
     enablingServerId,
+    getCredentialsStatus,
+    credentialsServer:
+      credentialsServerName == null ? null : (credentialServers.get(credentialsServerName) ?? null),
+    openCredentials,
+    closeCredentials,
   };
 }
