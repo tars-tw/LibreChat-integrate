@@ -3,16 +3,13 @@ import { Plus } from 'lucide-react';
 import isEqual from 'lodash/isEqual';
 import { Button, useToastContext } from '@librechat/client';
 import { useWatch, useForm, FormProvider } from 'react-hook-form';
-import { useGetModelsQuery } from 'librechat-data-provider/react-query';
 import {
   MemoryScope,
   SystemRoles,
   ResourceType,
   EModelEndpoint,
-  LocalStorageKeys,
   PermissionBits,
   removeCodeExecutionCaller,
-  resolveModelCatalogKey,
   resolveStatefulCodeEnvironment,
   isAssistantsEndpoint,
 } from 'librechat-data-provider';
@@ -28,20 +25,18 @@ import {
   useGetAgentByIdQuery,
   useGetExpandedAgentByIdQuery,
   useUploadAgentAvatarMutation,
+  useListAgentsQuery,
+  useTarsAllowedModelsQuery,
 } from '~/data-provider';
 import {
   isRestrictedInstructionsPrompt,
   getInstructionsPromptErrorCode,
   instructionsPromptErrorKeys,
 } from './instructionsPromptUtils';
-import {
-  createProviderOption,
-  getAvailableAgentSelection,
-  getDefaultAgentFormValues,
-} from '~/utils';
 import { pruneAgentModelParameters, resolveAgentParameterSettings } from './parameters';
+import { useSelectAgent, useLocalize, useAuthContext, useEndpoints } from '~/hooks';
+import { createProviderOption, getDefaultAgentFormValues } from '~/utils';
 import { useResourcePermissions } from '~/hooks/useResourcePermissions';
-import { useSelectAgent, useLocalize, useAuthContext } from '~/hooks';
 import { useAgentPanelContext } from '~/Providers/AgentPanelContext';
 import { resolveCapabilityTools } from './Tools/items/capabilities';
 import ResetApprovals from '~/components/Agents/ResetApprovals';
@@ -482,7 +477,6 @@ export default function AgentPanel() {
 
   const { onSelect: onSelectAgent } = useSelectAgent();
 
-  const modelsQuery = useGetModelsQuery({ refetchOnMount: 'always' });
   const basicAgentQuery = useGetAgentByIdQuery(current_agent_id);
 
   const { hasPermission, isLoading: permissionsLoading } = useResourcePermissions(
@@ -511,6 +505,50 @@ export default function AgentPanel() {
 
   const agentQuery =
     hasEditorAccess && expandedAgentQuery.data ? expandedAgentQuery : basicAgentQuery;
+  const { data: agentsData } = useListAgentsQuery({
+    requiredPermission: PermissionBits.VIEW,
+  });
+
+  const agents = agentsData?.data;
+
+  const { mappedEndpoints: rawEndpoints } = useEndpoints({
+    agents,
+    assistantsMap: undefined,
+    startupConfig: undefined,
+    endpointsConfig: endpointsConfig ?? {},
+  });
+
+  const { data: tarsAllowedModels } = useTarsAllowedModelsQuery();
+
+  const tarsAllowedSet = useMemo(() => {
+    if (!tarsAllowedModels) {
+      return new Set<string>();
+    }
+
+    return new Set(tarsAllowedModels.map((name) => name.toLowerCase()));
+  }, [tarsAllowedModels]);
+
+  const modelsByProvider = useMemo(() => {
+    const result: Record<string, string[]> = {};
+
+    for (const endpoint of rawEndpoints ?? []) {
+      if (!endpoint.value || !endpoint.models) {
+        continue;
+      }
+
+      result[endpoint.value] = endpoint.models
+        .map((model) => {
+          if (typeof model === 'string') {
+            return model;
+          }
+
+          return model.name;
+        })
+        .filter((model) => model && tarsAllowedSet.has(model.toLowerCase()));
+    }
+
+    return result;
+  }, [rawEndpoints, tarsAllowedSet]);
 
   const isPersistedAgent = Boolean(current_agent_id) && !isEphemeralAgent(current_agent_id);
   /** `instructionsPrompt` only ever arrives on the expanded query. A persisted,
@@ -524,15 +562,6 @@ export default function AgentPanel() {
     expandedAgentQuery.refetch();
   }, [expandedAgentQuery]);
 
-  const modelsReady = modelsQuery.isFetchedAfterMount && !modelsQuery.isFetching;
-  const modelsError = modelsQuery.isFetchedAfterMount && !modelsQuery.isSuccess;
-  /** The models query is seeded with a static fallback config, so its entries only describe the
-   *  active server once the fetch issued on mount has resolved. Until then there is nothing
-   *  authoritative to offer, and an outright failure must not fall back to the seed either. */
-  const models = useMemo(
-    () => (modelsQuery.isFetchedAfterMount && !modelsError ? (modelsQuery.data ?? {}) : {}),
-    [modelsError, modelsQuery.isFetchedAfterMount, modelsQuery.data],
-  );
   const methods = useForm<AgentForm>({
     defaultValues: getBlankAgentFormValues(),
     mode: 'onChange',
@@ -685,56 +714,6 @@ export default function AgentPanel() {
         .map((provider) => createProviderOption(provider)),
     [endpointsConfig, allowedProviders],
   );
-  useEffect(() => {
-    if (endpointsConfig == null || !modelsReady || !modelsQuery.isSuccess) {
-      return;
-    }
-
-    const storedProvider = localStorage.getItem(LocalStorageKeys.LAST_AGENT_PROVIDER) ?? '';
-    const storedModel = localStorage.getItem(LocalStorageKeys.LAST_AGENT_MODEL) ?? '';
-    const storedSelection = getAvailableAgentSelection({
-      provider: storedProvider,
-      model: storedModel,
-      providers,
-      models,
-    });
-
-    if (storedSelection.provider !== storedProvider) {
-      localStorage.removeItem(LocalStorageKeys.LAST_AGENT_PROVIDER);
-      localStorage.removeItem(LocalStorageKeys.LAST_AGENT_MODEL);
-    } else if (storedSelection.model !== storedModel) {
-      localStorage.removeItem(LocalStorageKeys.LAST_AGENT_MODEL);
-    }
-
-    if (current_agent_id || dirtyFields.provider === true || dirtyFields.model === true) {
-      return;
-    }
-
-    const selectedProviderOption = getValues('provider');
-    const selectedProvider =
-      (typeof selectedProviderOption === 'string'
-        ? selectedProviderOption
-        : (selectedProviderOption as StringOption | undefined)?.value) ?? '';
-    const selectedModel = getValues('model') ?? '';
-
-    if (storedSelection.provider !== selectedProvider) {
-      setValue('provider', createProviderOption(storedSelection.provider));
-    }
-    if (storedSelection.model !== selectedModel) {
-      setValue('model', storedSelection.model);
-    }
-  }, [
-    current_agent_id,
-    dirtyFields.model,
-    dirtyFields.provider,
-    endpointsConfig,
-    getValues,
-    models,
-    modelsQuery.isSuccess,
-    modelsReady,
-    providers,
-    setValue,
-  ]);
 
   /* Mutations */
   const update = useUpdateAgentMutation({
@@ -918,13 +897,13 @@ export default function AgentPanel() {
           status: 'error',
         });
       }
-      if (!modelsReady || modelsError) {
+      if (!tarsAllowedModels) {
         return showToast({
           message: localize('com_error_models_not_loaded'),
           status: 'error',
         });
       }
-      if (!(models[resolveModelCatalogKey(provider, models)] ?? []).includes(model)) {
+      if (!(modelsByProvider[provider] ?? []).includes(model)) {
         return showToast({
           message: localize('com_error_model_not_found'),
           status: 'error',
@@ -959,9 +938,8 @@ export default function AgentPanel() {
       endpointsConfig,
       handleAvatarUpload,
       instructionsPromptStatus,
-      models,
-      modelsError,
-      modelsReady,
+      modelsByProvider,
+      tarsAllowedModels,
       update,
       showToast,
       startupConfig,
@@ -982,7 +960,6 @@ export default function AgentPanel() {
 
     return hasEditorAccess;
   }, [agentQuery.data?.id, hasEditorAccess]);
-
 
   return (
     <FormProvider {...methods}>
@@ -1054,7 +1031,7 @@ export default function AgentPanel() {
           )}
           {canEditAgent && !agentQuery.isInitialLoading && activePanel === Panel.builder && (
             <AgentConfig
-              models={models}
+              modelsByProvider={modelsByProvider}
               providers={providers}
               instructionsPromptStatus={instructionsPromptStatus}
               onRetryInstructionsPrompt={retryInstructionsPrompt}
