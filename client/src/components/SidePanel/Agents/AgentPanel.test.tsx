@@ -6,20 +6,14 @@ import { render, waitFor, fireEvent, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { UseFormReturn } from 'react-hook-form';
 import type { Agent } from 'librechat-data-provider';
-import type { AgentForm, AgentModelPanelProps } from '~/common';
+import type { AgentForm } from '~/common';
 
 // Mock toast context - define this after all mocks
 let mockShowToast: jest.Mock;
-let mockModelsQuery: {
-  data: Record<string, string[]>;
-  isFetchedAfterMount: boolean;
-  isSuccess: boolean;
-  isFetching?: boolean;
-} = { data: {}, isFetchedAfterMount: true, isSuccess: true };
-let mockModelPanelProps: Pick<
-  AgentModelPanelProps,
-  'models' | 'modelsError' | 'modelsReady'
-> | null = null;
+type MockEndpoint = { value?: string; models?: Array<{ name: string; isGlobal?: boolean }> };
+let mockMappedEndpoints: MockEndpoint[] = [];
+let mockTarsAllowedModels: string[] | undefined;
+let mockAgentConfigProps: { modelsByProvider: Record<string, string[]> } | null = null;
 let mockFormDefaults: Partial<AgentForm> = {};
 let mockAgentPanelContext = {
   activePanel: 'builder',
@@ -97,7 +91,6 @@ jest.mock('@librechat/client', () => ({
 
 // Mock other dependencies
 jest.mock('librechat-data-provider/react-query', () => ({
-  useGetModelsQuery: () => mockModelsQuery,
   useGetEffectivePermissionsQuery: () => ({
     data: { permissionBits: 0xffffffff }, // All permissions
     isLoading: false,
@@ -107,8 +100,6 @@ jest.mock('librechat-data-provider/react-query', () => ({
 
 jest.mock('~/utils', () => ({
   createProviderOption: jest.fn((provider: string) => ({ value: provider, label: provider })),
-  getAvailableAgentSelection: jest.requireActual('~/utils/agentModelSelection')
-    .getAvailableAgentSelection,
   getDefaultAgentFormValues: jest.fn(() => ({
     id: '',
     name: '',
@@ -122,6 +113,7 @@ jest.mock('~/hooks', () => ({
   useSelectAgent: () => ({ onSelect: jest.fn() }),
   useLocalize: () => (key: string) => key,
   useAuthContext: () => ({ user: { id: 'user-123', role: 'USER' } }),
+  useEndpoints: () => ({ mappedEndpoints: mockMappedEndpoints }),
 }));
 
 jest.mock('~/hooks/useResourcePermissions', () => ({
@@ -159,20 +151,15 @@ jest.mock('./Advanced/AdvancedPanel', () => ({
 
 jest.mock('./AgentConfig', () => ({
   __esModule: true,
-  default: () => <div>{`Agent Config`}</div>,
+  default: (props: { modelsByProvider: Record<string, string[]> }) => {
+    mockAgentConfigProps = props;
+    return <div>{`Agent Config`}</div>;
+  },
 }));
 
 jest.mock('./AgentSelect', () => ({
   __esModule: true,
   default: () => <div>{`Agent Select`}</div>,
-}));
-
-jest.mock('./ModelPanel', () => ({
-  __esModule: true,
-  default: (props: Pick<AgentModelPanelProps, 'models' | 'modelsError' | 'modelsReady'>) => {
-    mockModelPanelProps = props;
-    return <div>{`Model Panel`}</div>;
-  },
 }));
 
 // Mock AgentFooter to provide a save button
@@ -237,6 +224,8 @@ jest.mock('~/data-provider', () => {
     useGetAgentByIdQuery: jest.fn(),
     useGetExpandedAgentByIdQuery: jest.fn(),
     useUpdateAgentMutation: actual.useUpdateAgentMutation,
+    useListAgentsQuery: () => ({ data: undefined }),
+    useTarsAllowedModelsQuery: () => ({ data: mockTarsAllowedModels }),
   };
 });
 
@@ -318,13 +307,10 @@ describe('AgentPanel - Update Agent Toast Messages', () => {
     mockShowToast = jest.fn();
     mockFormSubmitHandler = null;
     capturedFormMethods = null;
-    mockModelPanelProps = null;
+    mockAgentConfigProps = null;
     mockFormDefaults = {};
-    mockModelsQuery = {
-      data: { openai: ['gpt-4'] },
-      isFetchedAfterMount: true,
-      isSuccess: true,
-    };
+    mockMappedEndpoints = [{ value: 'openai', models: [{ name: 'gpt-4' }] }];
+    mockTarsAllowedModels = ['gpt-4'];
     mockAgentPanelContext = {
       activePanel: 'builder',
       agentsConfig: { allowedProviders: [] },
@@ -337,109 +323,36 @@ describe('AgentPanel - Update Agent Toast Messages', () => {
   });
 
   describe('AgentPanel', () => {
-    it('restores saved defaults from the current model catalogue', async () => {
+    it('offers only whitelisted models to the builder', async () => {
       const { mockUseGetAgentByIdQuery } = setupMocks();
       mockAgentQuery(mockUseGetAgentByIdQuery, {});
-      mockAgentPanelContext = {
-        ...mockAgentPanelContext,
-        endpointsConfig: { custom: {} },
-        agent_id: undefined,
-      };
-      mockModelsQuery = {
-        data: { custom: ['cached-model'] },
-        isFetchedAfterMount: true,
-        isSuccess: true,
-        isFetching: true,
-      };
-      localStorage.setItem('lastAgentProvider', 'custom');
-      localStorage.setItem('lastAgentModel', 'current-model');
+      mockMappedEndpoints = [
+        { value: 'openai', models: [{ name: 'GPT-4' }, { name: 'o3' }] },
+        { value: 'anthropic', models: [{ name: 'claude-3' }] },
+      ];
+      mockTarsAllowedModels = ['gpt-4', 'claude-3'];
 
       const Wrapper = createWrapper();
-      const { rerender } = render(<AgentPanel />, { wrapper: Wrapper });
+      render(<AgentPanel />, { wrapper: Wrapper });
 
-      mockModelsQuery = {
-        data: { custom: ['current-model'] },
-        isFetchedAfterMount: true,
-        isSuccess: true,
-        isFetching: false,
-      };
-      rerender(<AgentPanel />);
-
-      await waitFor(() => {
-        expect(capturedFormMethods?.getValues('provider')).toEqual({
-          value: 'custom',
-          label: 'custom',
-        });
-        expect(capturedFormMethods?.getValues('model')).toBe('current-model');
+      await waitFor(() => expect(mockAgentConfigProps).not.toBeNull());
+      expect(mockAgentConfigProps?.modelsByProvider).toEqual({
+        openai: ['GPT-4'],
+        anthropic: ['claude-3'],
       });
     });
 
-    it('clears unavailable saved defaults', async () => {
+    it('offers no models until the whitelist has loaded', async () => {
       const { mockUseGetAgentByIdQuery } = setupMocks();
       mockAgentQuery(mockUseGetAgentByIdQuery, {});
-      mockAgentPanelContext = {
-        ...mockAgentPanelContext,
-        endpointsConfig: { custom: {} },
-        agent_id: undefined,
-      };
-      mockModelsQuery = {
-        data: { custom: ['current-model'] },
-        isFetchedAfterMount: true,
-        isSuccess: true,
-      };
-      localStorage.setItem('lastAgentProvider', 'custom');
-      localStorage.setItem('lastAgentModel', 'removed-model');
+      mockMappedEndpoints = [{ value: 'openai', models: [{ name: 'gpt-4' }] }];
+      mockTarsAllowedModels = undefined;
 
       const Wrapper = createWrapper();
       render(<AgentPanel />, { wrapper: Wrapper });
 
-      await waitFor(() => {
-        expect(capturedFormMethods?.getValues('provider')).toEqual({
-          value: 'custom',
-          label: 'custom',
-        });
-        expect(capturedFormMethods?.getValues('model')).toBe('');
-      });
-      expect(localStorage.getItem('lastAgentModel')).toBeNull();
-    });
-
-    it('withholds the seeded catalogue until the mounted fetch resolves', async () => {
-      const { mockUseGetAgentByIdQuery } = setupMocks();
-      mockAgentQuery(mockUseGetAgentByIdQuery, {});
-      mockAgentPanelContext = { ...mockAgentPanelContext, activePanel: 'model' };
-      mockModelsQuery = {
-        data: { openai: ['seeded-fallback-model'] },
-        isFetchedAfterMount: false,
-        isSuccess: true,
-        isFetching: true,
-      };
-
-      const Wrapper = createWrapper();
-      render(<AgentPanel />, { wrapper: Wrapper });
-
-      await waitFor(() => expect(mockModelPanelProps).not.toBeNull());
-      expect(mockModelPanelProps?.models).toEqual({});
-      expect(mockModelPanelProps?.modelsReady).toBe(false);
-      expect(mockModelPanelProps?.modelsError).toBe(false);
-    });
-
-    it('withholds the seeded catalogue when the models request fails', async () => {
-      const { mockUseGetAgentByIdQuery } = setupMocks();
-      mockAgentQuery(mockUseGetAgentByIdQuery, {});
-      mockAgentPanelContext = { ...mockAgentPanelContext, activePanel: 'model' };
-      mockModelsQuery = {
-        data: { openai: ['seeded-fallback-model'] },
-        isFetchedAfterMount: true,
-        isSuccess: false,
-        isFetching: false,
-      };
-
-      const Wrapper = createWrapper();
-      render(<AgentPanel />, { wrapper: Wrapper });
-
-      await waitFor(() => expect(mockModelPanelProps).not.toBeNull());
-      expect(mockModelPanelProps?.models).toEqual({});
-      expect(mockModelPanelProps?.modelsError).toBe(true);
+      await waitFor(() => expect(mockAgentConfigProps).not.toBeNull());
+      expect(mockAgentConfigProps?.modelsByProvider).toEqual({ openai: [] });
     });
 
     it("preserves an existing agent's configured model", async () => {
@@ -448,11 +361,6 @@ describe('AgentPanel - Update Agent Toast Messages', () => {
       mockAgentPanelContext = {
         ...mockAgentPanelContext,
         endpointsConfig: { bedrock: {} },
-      };
-      mockModelsQuery = {
-        data: { bedrock: ['current-model'] },
-        isFetchedAfterMount: true,
-        isSuccess: true,
       };
 
       const Wrapper = createWrapper();
@@ -684,12 +592,7 @@ describe('AgentPanel - Update Agent Toast Messages', () => {
       it('refuses to create an agent while the catalogue is unavailable', async () => {
         const { mockUseGetAgentByIdQuery } = setupMocks();
         mockAgentQuery(mockUseGetAgentByIdQuery, {});
-        mockModelsQuery = {
-          data: { openai: ['gpt-4'] },
-          isFetchedAfterMount: true,
-          isSuccess: false,
-          isFetching: false,
-        };
+        mockTarsAllowedModels = undefined;
 
         await renderAndSubmitNewAgent();
 
@@ -702,12 +605,8 @@ describe('AgentPanel - Update Agent Toast Messages', () => {
       it('refuses to create an agent with a model the catalogue no longer offers', async () => {
         const { mockUseGetAgentByIdQuery } = setupMocks();
         mockAgentQuery(mockUseGetAgentByIdQuery, {});
-        mockModelsQuery = {
-          data: { openai: ['gpt-4o'] },
-          isFetchedAfterMount: true,
-          isSuccess: true,
-          isFetching: false,
-        };
+        mockMappedEndpoints = [{ value: 'openai', models: [{ name: 'gpt-4o' }] }];
+        mockTarsAllowedModels = ['gpt-4o'];
 
         await renderAndSubmitNewAgent();
 
@@ -721,12 +620,6 @@ describe('AgentPanel - Update Agent Toast Messages', () => {
         const { mockUseGetAgentByIdQuery } = setupMocks();
         mockAgentQuery(mockUseGetAgentByIdQuery, {});
         (dataService.createAgent as jest.Mock).mockResolvedValue(createMockAgent());
-        mockModelsQuery = {
-          data: { openai: ['gpt-4'] },
-          isFetchedAfterMount: true,
-          isSuccess: true,
-          isFetching: false,
-        };
 
         await renderAndSubmitNewAgent();
 
