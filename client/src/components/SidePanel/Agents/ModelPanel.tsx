@@ -1,10 +1,10 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { RotateCcw, X } from 'lucide-react';
-import { Button, ControlCombobox } from '@librechat/client';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { alternateName, LocalStorageKeys, resolveModelCatalogKey } from 'librechat-data-provider';
+import { Button, ControlCombobox } from '@librechat/client';
+import { alternateName, LocalStorageKeys } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
-import type { AgentForm, AgentModelPanelProps, StringOption } from '~/common';
+import type { AgentForm, StringOption } from '~/common';
 import { pruneAgentModelParameters, resolveAgentParameterSettings } from './parameters';
 import { componentMapping } from '~/components/SidePanel/Parameters/components';
 import { useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
@@ -16,10 +16,12 @@ export default function ModelPanel({
   open,
   onClose,
   providers,
-  models: modelsData,
-}: Pick<AgentModelPanelProps, 'models' | 'providers'> & {
+  modelsByProvider,
+}: {
   open: boolean;
   onClose: () => void;
+  providers: StringOption[];
+  modelsByProvider: Record<string, string[]>;
 }) {
   const localize = useLocalize();
   const { announcePolite } = useLiveAnnouncer();
@@ -35,9 +37,9 @@ export default function ModelPanel({
 
   const [tempProvider, setTempProvider] = useState<string>('');
   const [tempModel, setTempModel] = useState<string>('');
-  const [tempModelParameters, setTempModelParameters] = useState<
-    t.AgentModelParameters
-  >({} as t.AgentModelParameters);
+  const [tempModelParameters, setTempModelParameters] = useState<t.AgentModelParameters>(
+    {} as t.AgentModelParameters,
+  );
 
   const initializedRef = useRef(false);
 
@@ -46,13 +48,11 @@ export default function ModelPanel({
       const providerValue =
         typeof currentProvider === 'string'
           ? currentProvider
-          : (currentProvider as StringOption | undefined)?.value ?? '';
+          : ((currentProvider as StringOption | undefined)?.value ?? '');
 
       setTempProvider(providerValue);
       setTempModel(currentModel ?? '');
-      setTempModelParameters(
-        currentModelParameters ?? ({} as t.AgentModelParameters),
-      );
+      setTempModelParameters(currentModelParameters ?? ({} as t.AgentModelParameters));
 
       initializedRef.current = true;
     }
@@ -60,24 +60,22 @@ export default function ModelPanel({
     if (!open) {
       initializedRef.current = false;
     }
-  }, [open]);
+  }, [open, currentProvider, currentModel, currentModelParameters]);
 
   const models = useMemo(
-    () =>
-      tempProvider ? (modelsData[resolveModelCatalogKey(tempProvider, modelsData)] ?? []) : [],
-    [modelsData, tempProvider],
+    () => modelsByProvider[tempProvider] ?? [],
+    [modelsByProvider, tempProvider],
   );
 
   useEffect(() => {
-    if (!open || !tempProvider) {
+    if (!tempProvider) {
       return;
     }
 
     if (!tempModel || !models.includes(tempModel)) {
       setTempModel(models[0] ?? '');
     }
-  }, [open, tempProvider, models, tempModel]);
-
+  }, [tempProvider, models, tempModel]);
   const { data: endpointsConfig = {} } = useGetEndpointsQuery();
   const { data: startupConfig } = useGetStartupConfig();
 
@@ -107,18 +105,15 @@ export default function ModelPanel({
     setTempModelParameters((current) => pruneAgentModelParameters(current, parameterSettings));
   }, [parameterSettings]);
 
-  const setOption =
-    (optionKey: keyof t.AgentModelParameters) =>
-    (value: t.AgentParameterValue) => {
-      setTempModelParameters((prev) => ({
-        ...prev,
-        [optionKey]: value,
-      }));
-    };
+  const setOption = (optionKey: keyof t.AgentModelParameters) => (value: t.AgentParameterValue) => {
+    setTempModelParameters((prev) => ({
+      ...prev,
+      [optionKey]: value,
+    }));
+  };
 
   const handleProviderChange = (value: string | StringOption) => {
-    const providerValue =
-      typeof value === 'string' ? value : value.value;
+    const providerValue = typeof value === 'string' ? value : (value.value ?? '');
 
     setTempProvider(providerValue);
     setTempModel('');
@@ -159,14 +154,8 @@ export default function ModelPanel({
       shouldValidate: true,
     });
 
-    localStorage.setItem(
-      LocalStorageKeys.LAST_AGENT_MODEL,
-      tempModel,
-    );
-    localStorage.setItem(
-      LocalStorageKeys.LAST_AGENT_PROVIDER,
-      tempProvider,
-    );
+    localStorage.setItem(LocalStorageKeys.LAST_AGENT_MODEL, tempModel);
+    localStorage.setItem(LocalStorageKeys.LAST_AGENT_PROVIDER, tempProvider);
 
     initializedRef.current = false;
     onClose();
@@ -193,10 +182,7 @@ export default function ModelPanel({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <header className="flex flex-shrink-0 items-center justify-between border-b border-border-light px-5 py-4">
-          <h2
-            id="agent-model-modal-title"
-            className="text-base font-semibold text-text-primary"
-          >
+          <h2 id="agent-model-modal-title" className="text-base font-semibold text-text-primary">
             {localize('com_ui_model_parameters')}
           </h2>
 
@@ -208,11 +194,7 @@ export default function ModelPanel({
             aria-label={localize('com_ui_close')}
             className="h-9 w-9 rounded-xl text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
           >
-            <X
-              className="h-5 w-5"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
+            <X className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
           </Button>
         </header>
 
@@ -225,29 +207,18 @@ export default function ModelPanel({
                   className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-text-secondary"
                   htmlFor="provider"
                 >
-                  {localize('com_ui_provider')}{' '}
-                  <span className="text-text-destructive">*</span>
+                  {localize('com_ui_provider')} <span className="text-text-destructive">*</span>
                 </label>
 
                 <ControlCombobox
                   selectedValue={tempProvider}
                   displayValue={alternateName[tempProvider] ?? tempProvider}
-                  selectPlaceholder={localize(
-                    'com_ui_select_provider',
-                  )}
-                  searchPlaceholder={localize(
-                    'com_ui_select_search_provider',
-                  )}
+                  selectPlaceholder={localize('com_ui_select_provider')}
+                  searchPlaceholder={localize('com_ui_select_search_provider')}
                   setValue={handleProviderChange}
                   items={providers.map((provider) => ({
-                    label:
-                      typeof provider === 'string'
-                        ? provider
-                        : provider.label,
-                    value:
-                      typeof provider === 'string'
-                        ? provider
-                        : provider.value,
+                    label: typeof provider === 'string' ? provider : provider.label,
+                    value: typeof provider === 'string' ? provider : provider.value,
                   }))}
                   ariaLabel={localize('com_ui_provider')}
                   isCollapsed={false}
@@ -264,35 +235,18 @@ export default function ModelPanel({
                   )}
                   htmlFor="model"
                 >
-                  {localize('com_ui_model')}{' '}
-                  <span className="text-text-destructive">*</span>
+                  {localize('com_ui_model')} <span className="text-text-destructive">*</span>
                 </label>
 
                 <ControlCombobox
                   selectedValue={tempModel}
-                  selectPlaceholder={
-                    tempProvider
-                      ? localize('com_ui_select_model')
-                      : localize(
-                          'com_ui_select_provider_first',
-                        )
-                  }
-                  searchPlaceholder={localize(
-                    'com_ui_select_model',
-                  )}
-                  setValue={(value) => {
-                    setTempModel(
-                      typeof value === 'string'
-                        ? value
-                        : value.value,
-                    );
-                  }}
+                  selectPlaceholder={localize('com_ui_select_model')}
+                  searchPlaceholder={localize('com_ui_select_model')}
+                  setValue={setTempModel}
                   items={models.map((modelItem) => ({
                     label: modelItem,
                     value: modelItem,
                   }))}
-                  disabled={!tempProvider}
-                  className="disabled:opacity-50"
                   ariaLabel={localize('com_ui_model')}
                   isCollapsed={false}
                   showCarat={true}
@@ -301,23 +255,15 @@ export default function ModelPanel({
             </div>
             <div className="grid grid-cols-2 gap-3">
               {parameters.map((setting) => {
-                const Component =
-                  componentMapping[setting.component];
+                const Component = componentMapping[setting.component];
 
                 if (!Component) {
                   return null;
                 }
 
-                const {
-                  key,
-                  default: defaultValue,
-                  ...rest
-                } = setting;
+                const { key, default: defaultValue, ...rest } = setting;
 
-                if (
-                  key === 'region' &&
-                  bedrockRegions.length
-                ) {
+                if (key === 'region' && bedrockRegions.length) {
                   rest.options = bedrockRegions;
                 }
 
@@ -335,9 +281,7 @@ export default function ModelPanel({
                       defaultValue={defaultValue}
                       {...rest}
                       setOption={setOption as t.TSetOption}
-                      conversation={
-                        tempModelParameters as Partial<t.TConversation>
-                      }
+                      conversation={tempModelParameters as Partial<t.TConversation>}
                     />
                   </div>
                 );
@@ -350,15 +294,9 @@ export default function ModelPanel({
               onClick={handleResetParameters}
               className="mt-2 h-9 w-full rounded-xl px-4 font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
             >
-              <RotateCcw
-                className="h-4 w-4"
-                strokeWidth={1.75}
-                aria-hidden="true"
-              />
+              <RotateCcw className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
               {localize('com_ui_reset_var', {
-                0: localize(
-                  'com_ui_model_parameters',
-                ),
+                0: localize('com_ui_model_parameters'),
               })}
             </Button>
           </div>
