@@ -200,7 +200,13 @@ function AgentSelect({
       createMutation.reset();
       if (!agentExists) {
         setCurrentAgentId(undefined);
-        return reset(getDefaultAgentFormValues(defaultStatefulCodeEnvironment));
+        const defaultValues = getDefaultAgentFormValues(defaultStatefulCodeEnvironment);
+
+        return reset({
+          ...defaultValues,
+          model: '',
+          provider: createProviderOption(''),
+        });
       }
 
       setCurrentAgentId(selectedId);
