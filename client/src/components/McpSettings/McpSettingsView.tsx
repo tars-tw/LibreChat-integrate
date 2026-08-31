@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Input,
   Button,
@@ -27,7 +27,9 @@ import {
 } from '~/data-provider';
 import McpServerToolsPanel from './McpServerToolsPanel';
 import { useLocalize, useIsTarsAdmin } from '~/hooks';
+import { useAuthContext } from '~/hooks/AuthContext';
 import McpPermissionsTab from './McpPermissionsTab';
+import McpUserToolsTab from './McpUserToolsTab';
 import McpServerModal from './McpServerModal';
 import McpLogsTab from './McpLogsTab';
 
@@ -39,16 +41,37 @@ const TYPE_LABEL_KEYS = {
   custom_api: 'com_ui_tars_mcp_type_custom',
 } as const;
 
-type SettingsTab = 'servers' | 'permissions' | 'logs';
+type SettingsTab = 'mytools' | 'servers' | 'permissions' | 'logs';
+
+/** `mytools` is every pwc_tars account's own catalog; the rest are admin-only. */
+const TABS = [
+  ['mytools', 'com_ui_tars_mcp_tab_my_tools'],
+  ['servers', 'com_ui_tars_mcp_tab_servers'],
+  ['permissions', 'com_ui_tars_mcp_tab_permissions'],
+  ['logs', 'com_ui_tars_mcp_tab_logs'],
+] as const;
+
+const isSettingsTab = (value: string | null): value is SettingsTab =>
+  TABS.some(([key]) => key === value);
 
 export default function McpSettingsView() {
   const localize = useLocalize();
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const isTarsAdmin = useIsTarsAdmin();
   const { showToast } = useToastContext();
-  const { data: servers = [], isLoading } = useTarsMcpServersQuery();
+  const [searchParams] = useSearchParams();
+  const { data: servers = [], isLoading } = useTarsMcpServersQuery({ enabled: isTarsAdmin });
 
-  const [tab, setTab] = useState<SettingsTab>('servers');
+  /** `?tab=` lets the side panel's TARS card land straight on the user's own
+   *  catalog; anything an account may not open falls back to its default tab. */
+  const [tab, setTab] = useState<SettingsTab>(() => {
+    const requested = searchParams.get('tab');
+    if (isSettingsTab(requested) && (isTarsAdmin || requested === 'mytools')) {
+      return requested;
+    }
+    return isTarsAdmin ? 'servers' : 'mytools';
+  });
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TTarsMcpServer | null>(null);
@@ -80,7 +103,7 @@ export default function McpSettingsView() {
     );
   }, [servers, search]);
 
-  if (!isTarsAdmin) {
+  if (user?.provider !== 'tars') {
     navigate('/c/new', { replace: true });
     return null;
   }
@@ -137,20 +160,16 @@ export default function McpSettingsView() {
           )}
         </div>
 
-        <p className="text-sm text-text-secondary">{localize('com_ui_tars_mcp_settings_hint')}</p>
+        {tab === 'servers' && (
+          <p className="text-sm text-text-secondary">{localize('com_ui_tars_mcp_settings_hint')}</p>
+        )}
 
         <div
           role="tablist"
           aria-label={localize('com_ui_tars_mcp_settings')}
           className="flex gap-1 border-b border-border-light"
         >
-          {(
-            [
-              ['servers', 'com_ui_tars_mcp_tab_servers'],
-              ['permissions', 'com_ui_tars_mcp_tab_permissions'],
-              ['logs', 'com_ui_tars_mcp_tab_logs'],
-            ] as const
-          ).map(([key, labelKey]) => (
+          {TABS.filter(([key]) => key === 'mytools' || isTarsAdmin).map(([key, labelKey]) => (
             <button
               key={key}
               type="button"
@@ -168,6 +187,7 @@ export default function McpSettingsView() {
           ))}
         </div>
 
+        {tab === 'mytools' && <McpUserToolsTab />}
         {tab === 'permissions' && <McpPermissionsTab />}
         {tab === 'logs' && <McpLogsTab />}
 
