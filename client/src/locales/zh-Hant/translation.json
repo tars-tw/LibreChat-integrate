@@ -85,7 +85,7 @@
   "com_agents_memory_scope_info": "啟用後，此 Agent 會讀寫自己的獨立記憶，與你的共用記憶及其他 Agent 隔離。此 Agent 不會看到現有的共用記憶。",
   "com_agents_missing_name": "在建立agent之前，請先輸入名稱",
   "com_agents_missing_provider_model": "請在建立代理前選擇供應商和模型。",
-  "com_agents_name_placeholder": "選填：代理人的名稱",
+  "com_agents_name_placeholder": "必填：代理人的名稱",
   "com_agents_no_access": "您沒有權限編輯此助理",
   "com_agents_no_agent_id_error": "找不到 Agent ID。請先建立 Agent。",
   "com_agents_no_contact_available": "沒有可用的聯絡資訊",
