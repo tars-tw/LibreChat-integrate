@@ -1,8 +1,8 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import keyBy from 'lodash/keyBy';
 import { RotateCcw, X } from 'lucide-react';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { Button, ControlCombobox } from '@librechat/client';
-import { useFormContext, useWatch, Controller } from 'react-hook-form';
 import {
   alternateName,
   getSettingsKeys,
@@ -13,7 +13,7 @@ import {
   applyModelAwareDefaults,
 } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
-import type { AgentForm, AgentModelPanelProps, StringOption } from '~/common';
+import type { AgentForm, StringOption } from '~/common';
 import { componentMapping } from '~/components/SidePanel/Parameters/components';
 import { useGetEndpointsQuery } from '~/data-provider';
 import { useLiveAnnouncer } from '~/Providers';
@@ -24,15 +24,17 @@ export default function ModelPanel({
   open,
   onClose,
   providers,
-  models: modelsData,
-}: Pick<AgentModelPanelProps, 'models' | 'providers'> & {
+  modelsByProvider,
+}: {
   open: boolean;
   onClose: () => void;
+  providers: StringOption[];
+  modelsByProvider: Record<string, string[]>;
 }) {
   const localize = useLocalize();
   const { announcePolite } = useLiveAnnouncer();
 
-  const { control, setValue, getValues } = useFormContext<AgentForm>();
+  const { control, setValue } = useFormContext<AgentForm>();
 
   const currentProvider = useWatch({ control, name: 'provider' });
   const currentModel = useWatch({ control, name: 'model' });
@@ -43,9 +45,9 @@ export default function ModelPanel({
 
   const [tempProvider, setTempProvider] = useState<string>('');
   const [tempModel, setTempModel] = useState<string>('');
-  const [tempModelParameters, setTempModelParameters] = useState<
-    t.AgentModelParameters
-  >({} as t.AgentModelParameters);
+  const [tempModelParameters, setTempModelParameters] = useState<t.AgentModelParameters>(
+    {} as t.AgentModelParameters,
+  );
 
   const initializedRef = useRef(false);
 
@@ -54,13 +56,11 @@ export default function ModelPanel({
       const providerValue =
         typeof currentProvider === 'string'
           ? currentProvider
-          : (currentProvider as StringOption | undefined)?.value ?? '';
+          : ((currentProvider as StringOption | undefined)?.value ?? '');
 
       setTempProvider(providerValue);
       setTempModel(currentModel ?? '');
-      setTempModelParameters(
-        currentModelParameters ?? ({} as t.AgentModelParameters),
-      );
+      setTempModelParameters(currentModelParameters ?? ({} as t.AgentModelParameters));
 
       initializedRef.current = true;
     }
@@ -68,23 +68,22 @@ export default function ModelPanel({
     if (!open) {
       initializedRef.current = false;
     }
-  }, [open]);
+  }, [open, currentProvider, currentModel, currentModelParameters]);
 
   const models = useMemo(
-    () => (tempProvider ? (modelsData[tempProvider] ?? []) : []),
-    [modelsData, tempProvider],
+    () => modelsByProvider[tempProvider] ?? [],
+    [modelsByProvider, tempProvider],
   );
 
   useEffect(() => {
-    if (!open || !tempProvider) {
+    if (!tempProvider) {
       return;
     }
 
     if (!tempModel || !models.includes(tempModel)) {
       setTempModel(models[0] ?? '');
     }
-  }, [open, tempProvider, models, tempModel]);
-
+  }, [tempProvider, models, tempModel]);
   const { data: endpointsConfig = {} } = useGetEndpointsQuery();
 
   const bedrockRegions = useMemo(() => {
@@ -97,24 +96,19 @@ export default function ModelPanel({
   );
 
   const parameters = useMemo((): SettingDefinition[] => {
-    const customParams =
-      endpointsConfig[tempProvider]?.customParams ?? {};
+    const customParams = endpointsConfig[tempProvider]?.customParams ?? {};
 
     const [combinedKey, endpointKey] = getSettingsKeys(
       endpointType ?? tempProvider,
       tempModel ?? '',
     );
 
-    const overriddenEndpointKey =
-      customParams.defaultParamsEndpoint ?? endpointKey;
+    const overriddenEndpointKey = customParams.defaultParamsEndpoint ?? endpointKey;
 
     const defaultParams =
-      agentParamSettings[combinedKey] ??
-      agentParamSettings[overriddenEndpointKey] ??
-      [];
+      agentParamSettings[combinedKey] ?? agentParamSettings[overriddenEndpointKey] ?? [];
 
-    const overriddenParams =
-      endpointsConfig[tempProvider]?.customParams?.paramDefinitions ?? [];
+    const overriddenParams = endpointsConfig[tempProvider]?.customParams?.paramDefinitions ?? [];
 
     const overriddenParamsMap = keyBy(overriddenParams, 'key');
 
@@ -125,28 +119,19 @@ export default function ModelPanel({
     );
 
     return modelAwareParams.map(
-      (param) =>
-        (overriddenParamsMap[param.key] as SettingDefinition) ?? param,
+      (param) => (overriddenParamsMap[param.key] as SettingDefinition) ?? param,
     );
-  }, [
-    endpointType,
-    endpointsConfig,
-    tempModel,
-    tempProvider,
-  ]);
+  }, [endpointType, endpointsConfig, tempModel, tempProvider]);
 
-  const setOption =
-    (optionKey: keyof t.AgentModelParameters) =>
-    (value: t.AgentParameterValue) => {
-      setTempModelParameters((prev) => ({
-        ...prev,
-        [optionKey]: value,
-      }));
-    };
+  const setOption = (optionKey: keyof t.AgentModelParameters) => (value: t.AgentParameterValue) => {
+    setTempModelParameters((prev) => ({
+      ...prev,
+      [optionKey]: value,
+    }));
+  };
 
   const handleProviderChange = (value: string | StringOption) => {
-    const providerValue =
-      typeof value === 'string' ? value : value.value;
+    const providerValue = typeof value === 'string' ? value : (value.value ?? '');
 
     setTempProvider(providerValue);
     setTempModel('');
@@ -187,14 +172,8 @@ export default function ModelPanel({
       shouldValidate: true,
     });
 
-    localStorage.setItem(
-      LocalStorageKeys.LAST_AGENT_MODEL,
-      tempModel,
-    );
-    localStorage.setItem(
-      LocalStorageKeys.LAST_AGENT_PROVIDER,
-      tempProvider,
-    );
+    localStorage.setItem(LocalStorageKeys.LAST_AGENT_MODEL, tempModel);
+    localStorage.setItem(LocalStorageKeys.LAST_AGENT_PROVIDER, tempProvider);
 
     initializedRef.current = false;
     onClose();
@@ -221,10 +200,7 @@ export default function ModelPanel({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <header className="flex flex-shrink-0 items-center justify-between border-b border-border-light px-5 py-4">
-          <h2
-            id="agent-model-modal-title"
-            className="text-base font-semibold text-text-primary"
-          >
+          <h2 id="agent-model-modal-title" className="text-base font-semibold text-text-primary">
             {localize('com_ui_model_parameters')}
           </h2>
 
@@ -236,11 +212,7 @@ export default function ModelPanel({
             aria-label={localize('com_ui_close')}
             className="h-9 w-9 rounded-xl text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
           >
-            <X
-              className="h-5 w-5"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
+            <X className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
           </Button>
         </header>
 
@@ -253,29 +225,18 @@ export default function ModelPanel({
                   className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-text-secondary"
                   htmlFor="provider"
                 >
-                  {localize('com_ui_provider')}{' '}
-                  <span className="text-red-500">*</span>
+                  {localize('com_ui_provider')} <span className="text-red-500">*</span>
                 </label>
 
                 <ControlCombobox
                   selectedValue={tempProvider}
                   displayValue={alternateName[tempProvider] ?? tempProvider}
-                  selectPlaceholder={localize(
-                    'com_ui_select_provider',
-                  )}
-                  searchPlaceholder={localize(
-                    'com_ui_select_search_provider',
-                  )}
+                  selectPlaceholder={localize('com_ui_select_provider')}
+                  searchPlaceholder={localize('com_ui_select_search_provider')}
                   setValue={handleProviderChange}
                   items={providers.map((provider) => ({
-                    label:
-                      typeof provider === 'string'
-                        ? provider
-                        : provider.label,
-                    value:
-                      typeof provider === 'string'
-                        ? provider
-                        : provider.value,
+                    label: typeof provider === 'string' ? provider : provider.label,
+                    value: typeof provider === 'string' ? provider : provider.value,
                   }))}
                   ariaLabel={localize('com_ui_provider')}
                   isCollapsed={false}
@@ -292,35 +253,18 @@ export default function ModelPanel({
                   )}
                   htmlFor="model"
                 >
-                  {localize('com_ui_model')}{' '}
-                  <span className="text-red-500">*</span>
+                  {localize('com_ui_model')} <span className="text-red-500">*</span>
                 </label>
 
                 <ControlCombobox
                   selectedValue={tempModel}
-                  selectPlaceholder={
-                    tempProvider
-                      ? localize('com_ui_select_model')
-                      : localize(
-                          'com_ui_select_provider_first',
-                        )
-                  }
-                  searchPlaceholder={localize(
-                    'com_ui_select_model',
-                  )}
-                  setValue={(value) => {
-                    setTempModel(
-                      typeof value === 'string'
-                        ? value
-                        : value.value,
-                    );
-                  }}
+                  selectPlaceholder={localize('com_ui_select_model')}
+                  searchPlaceholder={localize('com_ui_select_model')}
+                  setValue={setTempModel}
                   items={models.map((modelItem) => ({
                     label: modelItem,
                     value: modelItem,
                   }))}
-                  disabled={!tempProvider}
-                  className="disabled:opacity-50"
                   ariaLabel={localize('com_ui_model')}
                   isCollapsed={false}
                   showCarat={true}
@@ -329,23 +273,15 @@ export default function ModelPanel({
             </div>
             <div className="grid grid-cols-2 gap-3">
               {parameters.map((setting) => {
-                const Component =
-                  componentMapping[setting.component];
+                const Component = componentMapping[setting.component];
 
                 if (!Component) {
                   return null;
                 }
 
-                const {
-                  key,
-                  default: defaultValue,
-                  ...rest
-                } = setting;
+                const { key, default: defaultValue, ...rest } = setting;
 
-                if (
-                  key === 'region' &&
-                  bedrockRegions.length
-                ) {
+                if (key === 'region' && bedrockRegions.length) {
                   rest.options = bedrockRegions;
                 }
 
@@ -363,9 +299,7 @@ export default function ModelPanel({
                       defaultValue={defaultValue}
                       {...rest}
                       setOption={setOption as t.TSetOption}
-                      conversation={
-                        tempModelParameters as Partial<t.TConversation>
-                      }
+                      conversation={tempModelParameters as Partial<t.TConversation>}
                     />
                   </div>
                 );
@@ -378,15 +312,9 @@ export default function ModelPanel({
               onClick={handleResetParameters}
               className="mt-2 h-9 w-full rounded-xl px-4 font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
             >
-              <RotateCcw
-                className="h-4 w-4"
-                strokeWidth={1.75}
-                aria-hidden="true"
-              />
+              <RotateCcw className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
               {localize('com_ui_reset_var', {
-                0: localize(
-                  'com_ui_model_parameters',
-                ),
+                0: localize('com_ui_model_parameters'),
               })}
             </Button>
           </div>

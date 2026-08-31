@@ -3,28 +3,25 @@ import { Input, Label } from '@librechat/client';
 import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import type { AgentForm, StringOption } from '~/common';
 import { ResolvedProviderIcon } from '~/components/Endpoints/ResolvedProviderIcon';
-import ModelPanel from './ModelPanel';
 import { useLocalize, useAgentCapabilities } from '~/hooks';
 import { useAgentFileEntries } from './Tools/hooks';
 import { useAgentPanelContext } from '~/Providers';
 import { useProviderIcon } from '~/hooks/Endpoint';
 import ToolsSection from './Tools/ToolsSection';
-import { validateEmail, cn } from '~/utils';
 import Instructions from './Instructions';
 import FileContext from './FileContext';
 import AgentAvatar from './AgentAvatar';
+import ModelPanel from './ModelPanel';
+import { cn } from '~/utils';
 
 const fieldClass = 'h-9';
 
 interface AgentConfigProps {
-  models: Record<string, string[]>;
+  modelsByProvider: Record<string, string[]>;
   providers: StringOption[];
 }
 
-export default function AgentConfig({
-  models,
-  providers,
-}: AgentConfigProps) {
+export default function AgentConfig({ modelsByProvider, providers }: AgentConfigProps) {
   const localize = useLocalize();
   const methods = useFormContext<AgentForm>();
   const { endpointsConfig, agentsConfig } = useAgentPanelContext();
@@ -39,11 +36,7 @@ export default function AgentConfig({
   const model = useWatch({ control, name: 'model' });
   const agent = useWatch({ control, name: 'agent' });
   const agent_id = useWatch({ control, name: 'id' });
-  const category = useWatch({ control, name: 'category' });
   const name = useWatch({ control, name: 'name' });
-  const description = useWatch({ control, name: 'description' });
-  const instructions = useWatch({ control, name: 'instructions' });
-  const tools = useWatch({ control, name: 'tools' });
   const [showModelModal, setShowModelModal] = useState(false);
 
   const { contextFiles } = useAgentFileEntries();
@@ -86,17 +79,11 @@ export default function AgentConfig({
                   placeholder={localize('com_agents_name_placeholder')}
                   aria-label={localize('com_ui_agent_name')}
                   aria-invalid={!!errors.name}
-                  aria-describedby={
-                    errors.name ? 'agent-name-error' : undefined
-                  }
+                  aria-describedby={errors.name ? 'agent-name-error' : undefined}
                 />
 
                 {errors.name && (
-                  <div
-                    id="agent-name-error"
-                    className="mt-1 text-xs text-red-500"
-                    role="alert"
-                  >
+                  <div id="agent-name-error" className="mt-1 text-xs text-red-500" role="alert">
                     {errors.name.message}
                   </div>
                 )}
@@ -156,9 +143,7 @@ export default function AgentConfig({
                   </div>
                 )}
 
-                <span className="truncate">
-                  {model ? model : localize('com_ui_select_model')}
-                </span>
+                <span className="truncate">{model ? model : localize('com_ui_select_model')}</span>
               </div>
             </button>
           </div>
@@ -174,10 +159,7 @@ export default function AgentConfig({
       {/* FILE CONTEXT — standalone section, separate from the tool library */}
       {showStep3 && contextEnabled && (
         <div className="mb-3">
-          <FileContext
-            agent_id={agent_id}
-            files={contextFiles}
-          />
+          <FileContext agent_id={agent_id} files={contextFiles} />
         </div>
       )}
       {/* SUPPORT CONTACT */}
@@ -259,7 +241,7 @@ export default function AgentConfig({
       <ModelPanel
         open={showModelModal}
         onClose={() => setShowModelModal(false)}
-        models={models}
+        modelsByProvider={modelsByProvider}
         providers={providers}
       />
     </div>
