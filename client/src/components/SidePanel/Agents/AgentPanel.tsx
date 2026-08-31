@@ -51,7 +51,6 @@ import { Panel, isEphemeralAgent } from '~/common';
 import AgentConfig from './AgentConfig';
 import AgentSelect from './AgentSelect';
 import AgentFooter from './AgentFooter';
-import ModelPanel from './ModelPanel';
 
 /* Helpers */
 function getUpdateToastMessage(
@@ -500,6 +499,16 @@ export default function AgentPanel() {
     enabled: !isEphemeralAgent(current_agent_id) && hasEditorAccess && !permissionsLoading,
   });
 
+  const getBlankAgentFormValues = () => {
+    const defaultValues = getDefaultAgentFormValues(defaultStatefulCodeEnvironment);
+
+    return {
+      ...defaultValues,
+      model: '',
+      provider: createProviderOption(''),
+    };
+  };
+
   const agentQuery =
     hasEditorAccess && expandedAgentQuery.data ? expandedAgentQuery : basicAgentQuery;
 
@@ -525,7 +534,7 @@ export default function AgentPanel() {
     [modelsError, modelsQuery.isFetchedAfterMount, modelsQuery.data],
   );
   const methods = useForm<AgentForm>({
-    defaultValues: getDefaultAgentFormValues(defaultStatefulCodeEnvironment),
+    defaultValues: getBlankAgentFormValues(),
     mode: 'onChange',
   });
 
@@ -974,6 +983,7 @@ export default function AgentPanel() {
     return hasEditorAccess;
   }, [agentQuery.data?.id, hasEditorAccess]);
 
+
   return (
     <FormProvider {...methods}>
       <form
@@ -1000,7 +1010,14 @@ export default function AgentPanel() {
                   variant="outline"
                   className="w-full justify-center"
                   onClick={() => {
-                    reset(getDefaultAgentFormValues(defaultStatefulCodeEnvironment));
+                    const defaultValues = getDefaultAgentFormValues(defaultStatefulCodeEnvironment);
+
+                    reset({
+                      ...defaultValues,
+                      model: '',
+                      provider: createProviderOption(''),
+                    });
+
                     setCurrentAgentId(undefined);
                   }}
                   disabled={agentQuery.isInitialLoading}
@@ -1035,17 +1052,10 @@ export default function AgentPanel() {
               </div>
             </div>
           )}
-          {canEditAgent && !agentQuery.isInitialLoading && activePanel === Panel.model && (
-            <ModelPanel
-              models={models}
-              providers={providers}
-              modelsError={modelsError}
-              modelsReady={modelsReady}
-              setActivePanel={setActivePanel}
-            />
-          )}
           {canEditAgent && !agentQuery.isInitialLoading && activePanel === Panel.builder && (
             <AgentConfig
+              models={models}
+              providers={providers}
               instructionsPromptStatus={instructionsPromptStatus}
               onRetryInstructionsPrompt={retryInstructionsPrompt}
             />

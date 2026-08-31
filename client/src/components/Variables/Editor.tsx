@@ -137,7 +137,7 @@ export default function VariableEditor({
                 variant="ghost"
                 onClick={() => setIsDialogOpen(true)}
                 aria-label={localize('com_ui_expand_editor')}
-                className="text-text-secondary hover:bg-surface-secondary h-7 w-7 p-0"
+                className="h-7 w-7 p-0 text-[#FD5108] hover:text-[#e84805]"
               >
                 <Maximize2 className="h-4 w-4" strokeWidth={1.75} aria-hidden={true} />
               </Button>
