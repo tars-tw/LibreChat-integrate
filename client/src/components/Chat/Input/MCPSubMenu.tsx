@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import * as Ariakit from '@ariakit/react';
 import { ChevronRight } from 'lucide-react';
 import { MCPIcon, PinIcon } from '@librechat/client';
@@ -24,6 +24,15 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
       showTimeout: 100,
       placement: 'right',
     });
+
+    const openCredentials = tarsMcpTools?.openCredentials;
+    const handleCredentialsClick = useCallback(
+      (serverName: string) => {
+        menuStore.hide();
+        openCredentials?.(serverName);
+      },
+      [menuStore, openCredentials],
+    );
 
     if (!mcpServerManager) {
       return null;
@@ -114,6 +123,8 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
                   toolList={tarsMcpTools?.getDomainTools(server.serverName)}
                   selectedToolKeys={tarsMcpTools?.getSelectedToolKeys(server.serverName)}
                   onToggleTool={tarsMcpTools?.toggleToolSelection}
+                  credentialsStatus={tarsMcpTools?.getCredentialsStatus(server.serverName)}
+                  onCredentialsClick={handleCredentialsClick}
                 />
               ))}
               {pendingServers.length > 0 && tarsMcpTools && (
