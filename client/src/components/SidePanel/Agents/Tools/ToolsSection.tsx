@@ -528,7 +528,7 @@ function SelectedSection({
           aria-hidden={!showAdd || undefined}
           tabIndex={showAdd ? 0 : -1}
           className={cn(
-            'inline-flex h-7 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-text-secondary transition hover:bg-surface-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring-primary',
+            'inline-flex h-7 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-[#FD5108] transition hover:bg-surface-secondary hover:text-[#FD5108] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring-primary',
             !showAdd && 'pointer-events-none opacity-0',
           )}
         >
