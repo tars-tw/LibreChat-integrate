@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Input, Label } from '@librechat/client';
 import { Controller, useWatch, useFormContext } from 'react-hook-form';
-import type { AgentForm } from '~/common';
+import type { AgentForm, StringOption } from '~/common';
 import { ResolvedProviderIcon } from '~/components/Endpoints/ResolvedProviderIcon';
-import AgentCategorySelector from './AgentCategorySelector';
+import ModelPanel from './ModelPanel';
 import { useLocalize, useAgentCapabilities } from '~/hooks';
 import { useAgentFileEntries } from './Tools/hooks';
 import { useAgentPanelContext } from '~/Providers';
@@ -12,25 +13,47 @@ import { validateEmail, cn } from '~/utils';
 import Instructions from './Instructions';
 import FileContext from './FileContext';
 import AgentAvatar from './AgentAvatar';
-import { Panel } from '~/common';
 
 const fieldClass = 'h-9';
 
-export default function AgentConfig() {
+interface AgentConfigProps {
+  models: Record<string, string[]>;
+  providers: StringOption[];
+}
+
+export default function AgentConfig({
+  models,
+  providers,
+}: AgentConfigProps) {
   const localize = useLocalize();
   const methods = useFormContext<AgentForm>();
-  const { setActivePanel, endpointsConfig, agentsConfig } = useAgentPanelContext();
+  const { endpointsConfig, agentsConfig } = useAgentPanelContext();
   const { contextEnabled } = useAgentCapabilities(agentsConfig?.capabilities);
 
   const {
     control,
     formState: { errors },
   } = methods;
+
   const provider = useWatch({ control, name: 'provider' });
   const model = useWatch({ control, name: 'model' });
   const agent = useWatch({ control, name: 'agent' });
   const agent_id = useWatch({ control, name: 'id' });
+  const category = useWatch({ control, name: 'category' });
+  const name = useWatch({ control, name: 'name' });
+  const description = useWatch({ control, name: 'description' });
+  const instructions = useWatch({ control, name: 'instructions' });
+  const tools = useWatch({ control, name: 'tools' });
+  const [showModelModal, setShowModelModal] = useState(false);
+
   const { contextFiles } = useAgentFileEntries();
+
+  const step1Completed = Boolean(name?.trim() && !errors.name);
+
+  const step2Completed = Boolean(typeof model === 'string' && model.trim());
+
+  const showStep2 = step1Completed;
+  const showStep3 = showStep2 && step2Completed;
 
   const providerValue = typeof provider === 'string' ? provider : provider?.value;
   const { provider: providerId, imageURL } = useProviderIcon({
@@ -45,6 +68,7 @@ export default function AgentConfig() {
         <div className="flex-shrink-0">
           <AgentAvatar avatar={agent?.['avatar'] ?? null} />
         </div>
+
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <Controller
             name="name"
@@ -62,16 +86,24 @@ export default function AgentConfig() {
                   placeholder={localize('com_agents_name_placeholder')}
                   aria-label={localize('com_ui_agent_name')}
                   aria-invalid={!!errors.name}
-                  aria-describedby={errors.name ? 'agent-name-error' : undefined}
+                  aria-describedby={
+                    errors.name ? 'agent-name-error' : undefined
+                  }
                 />
+
                 {errors.name && (
-                  <div id="agent-name-error" className="mt-1 text-xs text-red-500" role="alert">
+                  <div
+                    id="agent-name-error"
+                    className="mt-1 text-xs text-red-500"
+                    role="alert"
+                  >
                     {errors.name.message}
                   </div>
                 )}
               </div>
             )}
           />
+
           <Controller
             name="description"
             control={control}
@@ -92,67 +124,64 @@ export default function AgentConfig() {
       </div>
 
       {/* MODEL + CATEGORY — balanced 2-column grid */}
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        <div className="flex min-w-0 flex-col">
-          <Label
-            className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-text-secondary"
-            htmlFor="provider"
-          >
-            {localize('com_ui_model')} <span className="text-red-500">*</span>
-          </Label>
-          <button
-            id="provider"
-            type="button"
-            onClick={() => setActivePanel(Panel.model)}
-            title={model || undefined}
-            className={cn(
-              'relative flex h-9 w-full min-w-0 items-center overflow-hidden rounded-lg border border-border-light bg-surface-secondary text-sm font-medium text-text-primary transition-colors hover:bg-surface-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring-primary',
-              model != null && model ? 'px-1' : 'px-3',
-            )}
-          >
-            <div className="flex w-full min-w-0 items-center gap-2">
-              {providerValue !== undefined && (
-                <div className="shadow-stroke relative flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-white text-black dark:bg-white">
-                  <ResolvedProviderIcon
-                    provider={providerId}
-                    imageURL={imageURL}
-                    size={16}
-                    className="h-2/3 w-2/3"
-                  />
-                </div>
+      {showStep2 && (
+        <div className="mb-3 w-full">
+          <div className="flex w-full min-w-0 flex-col">
+            <Label
+              className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-text-secondary"
+              htmlFor="provider"
+            >
+              {localize('com_ui_model')} <span className="text-red-500">*</span>
+            </Label>
+
+            <button
+              id="provider"
+              type="button"
+              onClick={() => setShowModelModal(true)}
+              title={model || undefined}
+              className={cn(
+                'relative flex h-9 w-full min-w-0 items-center overflow-hidden rounded-lg border border-border-light bg-surface-secondary text-sm font-medium text-text-primary transition-colors hover:bg-surface-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring-primary',
+                model != null && model ? 'px-1' : 'px-3',
               )}
-              <span className="truncate">
-                {model != null && model ? model : localize('com_ui_select_model')}
-              </span>
-            </div>
-          </button>
-        </div>
-        <div className="flex flex-col">
-          <Label
-            className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-text-secondary"
-            htmlFor="category-selector"
-          >
-            {localize('com_ui_category')} <span className="text-red-500">*</span>
-          </Label>
-          <AgentCategorySelector className="w-full rounded-lg" />
-        </div>
-      </div>
+            >
+              <div className="flex w-full min-w-0 items-center gap-2">
+                {providerValue !== undefined && (
+                  <div className="shadow-stroke relative flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-white text-black dark:bg-white">
+                    <ResolvedProviderIcon
+                      provider={providerId}
+                      imageURL={imageURL}
+                      size={16}
+                      className="h-2/3 w-2/3"
+                    />
+                  </div>
+                )}
 
-      {/* INSTRUCTIONS */}
-      <Instructions />
-
-      {/* TOOLS — unified built-ins / tools / actions / mcp / skills */}
-      <ToolsSection agentId={agent_id} />
-
-      {/* FILE CONTEXT — standalone section, separate from the tool library */}
-      {contextEnabled && (
-        <div className="mb-3">
-          <FileContext agent_id={agent_id} files={contextFiles} />
+                <span className="truncate">
+                  {model ? model : localize('com_ui_select_model')}
+                </span>
+              </div>
+            </button>
+          </div>
         </div>
       )}
 
+      {/* INSTRUCTIONS */}
+      {showStep2 && <Instructions />}
+
+      {/* TOOLS — unified built-ins / tools / actions / mcp / skills */}
+      {showStep3 && <ToolsSection agentId={agent_id} />}
+
+      {/* FILE CONTEXT — standalone section, separate from the tool library */}
+      {showStep3 && contextEnabled && (
+        <div className="mb-3">
+          <FileContext
+            agent_id={agent_id}
+            files={contextFiles}
+          />
+        </div>
+      )}
       {/* SUPPORT CONTACT */}
-      <div className="mb-3 flex flex-col">
+      {/* <div className="mb-3 flex flex-col">
         <Label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-text-secondary">
           {localize('com_ui_support_contact')}
         </Label>
@@ -226,7 +255,13 @@ export default function AgentConfig() {
             )}
           />
         </div>
-      </div>
+      </div> */}
+      <ModelPanel
+        open={showModelModal}
+        onClose={() => setShowModelModal(false)}
+        models={models}
+        providers={providers}
+      />
     </div>
   );
 }
