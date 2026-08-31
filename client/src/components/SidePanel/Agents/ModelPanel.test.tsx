@@ -2,16 +2,20 @@
  * @jest-environment jsdom
  */
 import React from 'react';
-import { Providers } from 'librechat-data-provider';
 import { FormProvider, useForm } from 'react-hook-form';
 import { fireEvent, render } from '@testing-library/react';
+import type { UseFormReturn } from 'react-hook-form';
 import type { AgentForm } from '~/common';
 import ModelPanel from './ModelPanel';
 
 jest.mock('@librechat/client', () => ({
-  Alert: ({ children }: { children: React.ReactNode }) => <div role="alert">{children}</div>,
-  Button: ({ children, onClick, type }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button type={type} onClick={onClick}>
+  Button: ({
+    children,
+    onClick,
+    type,
+    disabled,
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type={type} onClick={onClick} disabled={disabled}>
       {children}
     </button>
   ),
@@ -19,7 +23,6 @@ jest.mock('@librechat/client', () => ({
     ariaLabel,
     disabled,
     items,
-    selectId,
     selectedValue,
     selectPlaceholder,
     setValue,
@@ -27,13 +30,12 @@ jest.mock('@librechat/client', () => ({
     ariaLabel: string;
     disabled?: boolean;
     items: Array<{ label: string; value: string }>;
-    selectId?: string;
     selectedValue: string;
     selectPlaceholder?: string;
     setValue: (value: string) => void;
   }) => (
     <div>
-      <button id={selectId} type="button" disabled={disabled} aria-label={ariaLabel}>
+      <button type="button" disabled={disabled} aria-label={ariaLabel}>
         {selectedValue || selectPlaceholder}
       </button>
       <span data-testid={`${ariaLabel}-selected`}>{selectedValue}</span>
@@ -73,19 +75,21 @@ jest.mock('~/utils', () => ({
   cn: (...classes: Array<string | false | undefined>) => classes.filter(Boolean).join(' '),
 }));
 
+let capturedFormMethods: UseFormReturn<AgentForm> | null = null;
+
 function TestForm({
+  open = true,
+  onClose = jest.fn(),
   defaultModel = '',
   defaultProvider = '',
-  models,
-  modelsError = false,
-  modelsReady,
+  modelsByProvider,
   providers = [{ label: 'Custom', value: 'custom' }],
 }: {
+  open?: boolean;
+  onClose?: () => void;
   defaultModel?: string;
   defaultProvider?: string;
-  models: Record<string, string[]>;
-  modelsError?: boolean;
-  modelsReady: boolean;
+  modelsByProvider: Record<string, string[]>;
   providers?: Array<{ label: string; value: string }>;
 }) {
   const methods = useForm<AgentForm>({
@@ -96,36 +100,48 @@ function TestForm({
     },
   });
 
+  capturedFormMethods = methods;
+
   return (
     <FormProvider {...methods}>
       <ModelPanel
+        open={open}
+        onClose={onClose}
         providers={providers}
-        models={models}
-        modelsError={modelsError}
-        modelsReady={modelsReady}
-        setActivePanel={jest.fn()}
+        modelsByProvider={modelsByProvider}
       />
     </FormProvider>
   );
 }
 
 describe('ModelPanel', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    capturedFormMethods = null;
+  });
 
-  it('disables model selection until the model catalogue is ready', () => {
+  it('renders nothing while closed', () => {
+    const { container } = render(
+      <TestForm open={false} modelsByProvider={{ custom: ['custom-model'] }} />,
+    );
+
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('initializes the dialog from the current form selection', () => {
     const { getByTestId } = render(
       <TestForm
         defaultProvider="custom"
-        models={{ custom: ['custom-model'] }}
-        modelsReady={false}
+        defaultModel="second-model"
+        modelsByProvider={{ custom: ['first-model', 'second-model'] }}
       />,
     );
 
-    expect(getByTestId('com_ui_provider-custom')).toBeDisabled();
-    expect(getByTestId('com_ui_model-custom-model')).toBeDisabled();
+    expect(getByTestId('com_ui_provider-selected')).toHaveTextContent('custom');
+    expect(getByTestId('com_ui_model-selected')).toHaveTextContent('second-model');
   });
 
-  it('selects and saves the first model when the provider changes', () => {
+  it('selects the first model of a newly chosen provider without touching the form', () => {
     const providers = [
       { label: 'Original', value: 'original' },
       { label: 'Alternate', value: 'alternate' },
@@ -134,8 +150,7 @@ describe('ModelPanel', () => {
       <TestForm
         defaultProvider="original"
         defaultModel="original-model"
-        models={{ original: ['original-model'], alternate: ['alternate-model'] }}
-        modelsReady={true}
+        modelsByProvider={{ original: ['original-model'], alternate: ['alternate-model'] }}
         providers={providers}
       />,
     );
@@ -143,119 +158,58 @@ describe('ModelPanel', () => {
     fireEvent.click(getByTestId('com_ui_provider-alternate'));
 
     expect(getByTestId('com_ui_model-selected')).toHaveTextContent('alternate-model');
-    expect(localStorage.getItem('lastAgentProvider')).toBe('alternate');
-    expect(localStorage.getItem('lastAgentModel')).toBe('alternate-model');
+    expect(capturedFormMethods?.getValues('provider')).toBe('original');
+    expect(capturedFormMethods?.getValues('model')).toBe('original-model');
+    expect(localStorage.getItem('lastAgentProvider')).toBeNull();
+    expect(localStorage.getItem('lastAgentModel')).toBeNull();
   });
 
-  it('selects the Google catalog for a Vertex AI provider', () => {
-    const providers = [
-      { label: 'Original', value: 'original' },
-      { label: 'Vertex AI', value: Providers.VERTEXAI },
-    ];
-    const { getByTestId } = render(
+  it('commits the selection to the form and storage on confirm', () => {
+    const onClose = jest.fn();
+    const { getByTestId, getByText } = render(
       <TestForm
-        defaultProvider="original"
-        defaultModel="original-model"
-        models={{ original: ['original-model'], google: ['gemini-3.7-flash'] }}
-        modelsReady={true}
-        providers={providers}
-      />,
-    );
-
-    fireEvent.click(getByTestId(`com_ui_provider-${Providers.VERTEXAI}`));
-
-    expect(getByTestId('com_ui_model-selected')).toHaveTextContent('gemini-3.7-flash');
-    expect(localStorage.getItem('lastAgentProvider')).toBe(Providers.VERTEXAI);
-    expect(localStorage.getItem('lastAgentModel')).toBe('gemini-3.7-flash');
-  });
-
-  it('selects an exact Vertex AI catalog when configured', () => {
-    const providers = [
-      { label: 'Original', value: 'original' },
-      { label: 'Vertex AI', value: Providers.VERTEXAI },
-    ];
-    const { getByTestId } = render(
-      <TestForm
-        defaultProvider="original"
-        defaultModel="original-model"
-        models={{
-          original: ['original-model'],
-          google: ['gemini-3.7-flash'],
-          [Providers.VERTEXAI]: ['custom-vertex-model'],
-        }}
-        modelsReady={true}
-        providers={providers}
-      />,
-    );
-
-    fireEvent.click(getByTestId(`com_ui_provider-${Providers.VERTEXAI}`));
-
-    expect(getByTestId('com_ui_model-selected')).toHaveTextContent('custom-vertex-model');
-    expect(localStorage.getItem('lastAgentProvider')).toBe(Providers.VERTEXAI);
-    expect(localStorage.getItem('lastAgentModel')).toBe('custom-vertex-model');
-  });
-
-  it('preserves the model when the current provider is selected again', () => {
-    const { getByTestId } = render(
-      <TestForm
-        defaultProvider="custom"
-        defaultModel="second-model"
-        models={{ custom: ['first-model', 'second-model'] }}
-        modelsReady={true}
-      />,
-    );
-
-    fireEvent.click(getByTestId('com_ui_provider-custom'));
-
-    expect(getByTestId('com_ui_model-selected')).toHaveTextContent('second-model');
-  });
-
-  it('saves an explicitly selected model', () => {
-    const { getByTestId } = render(
-      <TestForm
+        onClose={onClose}
         defaultProvider="custom"
         defaultModel="first-model"
-        models={{ custom: ['first-model', 'second-model'] }}
-        modelsReady={true}
+        modelsByProvider={{ custom: ['first-model', 'second-model'] }}
       />,
     );
 
     fireEvent.click(getByTestId('com_ui_model-second-model'));
+    fireEvent.click(getByText('com_ui_confirm'));
 
+    expect(capturedFormMethods?.getValues('provider')).toBe('custom');
+    expect(capturedFormMethods?.getValues('model')).toBe('second-model');
     expect(localStorage.getItem('lastAgentProvider')).toBe('custom');
     expect(localStorage.getItem('lastAgentModel')).toBe('second-model');
+    expect(onClose).toHaveBeenCalled();
   });
 
-  it('announces the pending catalogue instead of inviting a selection', () => {
-    const { getByTestId } = render(
-      <TestForm defaultProvider="custom" models={{}} modelsReady={false} />,
+  it('discards the pending selection on cancel', () => {
+    const onClose = jest.fn();
+    const { getByTestId, getByText } = render(
+      <TestForm
+        onClose={onClose}
+        defaultProvider="custom"
+        defaultModel="first-model"
+        modelsByProvider={{ custom: ['first-model', 'second-model'] }}
+      />,
     );
 
-    expect(getByTestId('com_ui_model-placeholder')).toHaveTextContent('com_ui_loading');
-  });
+    fireEvent.click(getByTestId('com_ui_model-second-model'));
+    fireEvent.click(getByText('com_ui_close'));
 
-  it('offers no models and explains the failure when the catalogue cannot be loaded', () => {
-    const { getByRole, getByTestId, queryByTestId } = render(
-      <TestForm defaultProvider="custom" models={{}} modelsError={true} modelsReady={true} />,
-    );
-
-    expect(getByRole('alert')).toHaveTextContent('com_error_models_not_loaded');
-    expect(queryByTestId('com_ui_model-placeholder')).toHaveTextContent('com_ui_select_model');
-    expect(getByTestId('com_ui_provider-custom')).toBeDisabled();
+    expect(capturedFormMethods?.getValues('model')).toBe('first-model');
+    expect(localStorage.getItem('lastAgentModel')).toBeNull();
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('labels the provider and model controls', () => {
     const { container } = render(
-      <TestForm
-        defaultProvider="custom"
-        models={{ custom: ['custom-model'] }}
-        modelsReady={true}
-      />,
+      <TestForm defaultProvider="custom" modelsByProvider={{ custom: ['custom-model'] }} />,
     );
 
     expect(container.querySelector('label[for="provider"]')).not.toBeNull();
     expect(container.querySelector('label[for="model"]')).not.toBeNull();
-    expect(container.querySelector('#provider')).not.toBeNull();
-    expect(container.querySelector('#model')).not.toBeNull();
   });
 });
