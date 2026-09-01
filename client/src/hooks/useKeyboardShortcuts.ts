@@ -823,7 +823,11 @@ export function useShortcutActions(): ShortcutAction[] {
   const handleOpenAgents = useCallback(() => handleOpenPanel('agents'), [handleOpenPanel]);
   const handleOpenPrompts = useCallback(() => handleOpenPanel('prompts'), [handleOpenPanel]);
   const handleOpenMemories = useCallback(() => handleOpenPanel('memories'), [handleOpenPanel]);
-  const handleOpenParameters = useCallback(() => handleOpenPanel('parameters'), [handleOpenPanel]);
+  /** Parameters left the side panel for the header's model-picker cluster. */
+  const handleOpenParameters = useCallback(
+    () => clickElement('[data-testid="header-parameters-button"]'),
+    [],
+  );
   const handleOpenFiles = useCallback(() => handleOpenPanel('files'), [handleOpenPanel]);
   const handleOpenBookmarks = useCallback(() => handleOpenPanel('bookmarks'), [handleOpenPanel]);
   const handleOpenMCP = useCallback(() => handleOpenPanel('mcp-builder'), [handleOpenPanel]);
