@@ -47,6 +47,7 @@ import type { LCAvailableTools, RequestScopedMCPConnectionStore } from '../mcp/t
 import type { ContentTraversalLimitError } from '../protection/adapters/nested';
 import type { SkillContentInput } from '../protection/adapters/submissions';
 import type { TextContentFragment } from '../protection/types';
+import type { TarsMemorySnapshot } from '~/tars/memory/prime';
 import type { TFilterFilesByAgentAccess } from './resources';
 import type { MCPToolAlias } from '~/tools/classification';
 import type { AgentExecutionContext } from './runtime';
@@ -758,8 +759,11 @@ export async function initializeAgent(
 
   /** pwc_tars long-term memory for this conversation, loaded in parallel with
    *  the rest of init. Fail-soft: resolves `null` unless TARS is configured,
-   *  the user is linked, and the conversation maps to a pwc_tars one. */
-  const tarsMemoryPromise = primeTarsMemory(req);
+   *  the user is linked, and the conversation maps to a pwc_tars one.
+   *  Request-free hosts carry no pwc_tars conversation mapping, so they skip it. */
+  const tarsMemoryPromise = params.req
+    ? primeTarsMemory(params.req)
+    : Promise.resolve<TarsMemorySnapshot | null>(null);
 
   /**
    * Reject the stored agent definition before initialization performs usage
