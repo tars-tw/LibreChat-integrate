@@ -2313,6 +2313,7 @@
   "com_ui_tars_mcp_tab_my_tools": "我的工具",
   "com_ui_tars_mcp_tab_permissions": "權限設定",
   "com_ui_tars_mcp_tab_logs": "執行紀錄",
+  "com_ui_tars_mcp_logs_hint": "PwC TARS MCP 工具的執行紀錄，由新到舊排序，可依工具、伺服器、使用者或狀態搜尋。",
   "com_ui_tars_mcp_toggle_tools": "展開/收合工具清單",
   "com_ui_tars_mcp_tool_enabled": "啟用工具 {{name}}",
   "com_ui_tars_mcp_server_tool_count": "共 {{count}} 個工具",

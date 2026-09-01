@@ -3071,6 +3071,7 @@
   "com_ui_tars_mcp_tab_my_tools": "My Tools",
   "com_ui_tars_mcp_tab_permissions": "Permissions",
   "com_ui_tars_mcp_tab_logs": "Execution Logs",
+  "com_ui_tars_mcp_logs_hint": "Execution history for PwC TARS MCP tool calls, newest first — search by tool, server, user, or status.",
   "com_ui_tars_mcp_toggle_tools": "Toggle tool list",
   "com_ui_tars_mcp_tool_enabled": "Enable tool {{name}}",
   "com_ui_tars_mcp_server_tool_count": "{{count}} tools",

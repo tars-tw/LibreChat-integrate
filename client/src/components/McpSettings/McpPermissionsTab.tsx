@@ -279,9 +279,6 @@ export default function McpPermissionsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="mb-3 text-xs text-text-secondary">
-          {localize('com_ui_tars_mcp_permissions_hint')}
-        </p>
         {domains.length === 0 ? (
           <p className="text-sm text-text-secondary">{localize('com_ui_tars_mcp_no_domains')}</p>
         ) : (

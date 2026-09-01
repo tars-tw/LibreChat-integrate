@@ -91,6 +91,13 @@ const TYPE_STYLES: Record<string, string> = {
 const TAB_PANEL = 'mt-4 p-0';
 /** The shared trigger only shifts the background when active, which reads as barely selected. */
 const TAB_TRIGGER = 'data-[state=active]:text-brand-primary';
+/** One hint per tab, rendered in a single shared spot so every tab reads consistently. */
+const TAB_HINT_KEYS: Record<SettingsTab, TranslationKeys> = {
+  mytools: 'com_ui_tars_mcp_my_tools_hint',
+  servers: 'com_ui_tars_mcp_settings_hint',
+  permissions: 'com_ui_tars_mcp_permissions_hint',
+  logs: 'com_ui_tars_mcp_logs_hint',
+};
 
 export default function McpSettingsView() {
   const localize = useLocalize();
@@ -227,17 +234,13 @@ export default function McpSettingsView() {
 
   return (
     <div className="h-full w-full overflow-y-auto bg-presentation">
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
+      <div className="mx-auto max-w-7xl space-y-8 p-6">
         <h1 className="text-2xl font-semibold text-text-primary">
           {localize('com_ui_tars_mcp_settings')}
         </h1>
 
-        {tab === 'servers' && (
-          <p className="text-sm text-text-secondary">{localize('com_ui_tars_mcp_settings_hint')}</p>
-        )}
-
         <Tabs value={tab} onValueChange={(value) => setTab(value as SettingsTab)}>
-          <TabsList className="-ml-3 w-fit">
+          <TabsList className="w-fit">
             <TabsTrigger value="mytools" className={TAB_TRIGGER}>
               {localize('com_ui_tars_mcp_tab_my_tools')}
             </TabsTrigger>
@@ -257,6 +260,8 @@ export default function McpSettingsView() {
               </TabsTrigger>
             )}
           </TabsList>
+
+          <p className="mt-4 text-sm text-text-secondary">{localize(TAB_HINT_KEYS[tab])}</p>
 
           <TabsContent value="mytools" className={TAB_PANEL}>
             <McpUserToolsTab />
