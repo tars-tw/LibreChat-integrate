@@ -6,6 +6,8 @@
  * In the future, this will be extended to support the Responses API.
  */
 
+import type { LCTool } from '@librechat/agents';
+
 /**
  * Content part types for OpenAI format
  */
@@ -37,6 +39,32 @@ export interface ToolCall {
 }
 
 /**
+ * A caller-supplied ("client-side") function tool. The gateway binds these to
+ * the model but never executes them: a call comes back to the caller as
+ * `tool_calls` with `finish_reason: 'tool_calls'`, and the caller runs the tool
+ * and sends the result back as a `role: 'tool'` message on the next request.
+ */
+export interface ChatCompletionTool {
+  type: 'function';
+  function: {
+    name: string;
+    description?: string;
+    parameters?: LCTool['parameters'];
+  };
+}
+
+/**
+ * Only `'auto'` and `'none'` are honored — the agent graph binds tools without
+ * a forcing option, so `'required'` and named choices are rejected rather than
+ * silently downgraded to `'auto'`.
+ */
+export type ChatCompletionToolChoice =
+  | 'none'
+  | 'auto'
+  | 'required'
+  | { type: 'function'; function: { name: string } };
+
+/**
  * OpenAI chat message format
  */
 export interface ChatMessage {
@@ -55,6 +83,10 @@ export interface ChatCompletionRequest {
   model: string;
   /** Conversation messages */
   messages: ChatMessage[];
+  /** Caller-supplied function tools the model may call back to the caller. */
+  tools?: ChatCompletionTool[];
+  /** Whether the model may call those tools (`'auto'`) or not (`'none'`). */
+  tool_choice?: ChatCompletionToolChoice;
   /** Whether to stream the response */
   stream?: boolean;
   /** Maximum tokens to generate */

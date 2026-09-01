@@ -3,9 +3,11 @@
  *
  * Unlike the agent endpoint (`controllers/agents/openai.js`) where `model` is an
  * agent_id, here `model` is a real `"<provider>/<model>"` pair (e.g.
- * `openAI/gpt-5.4-mini`). It builds a bare ephemeral agent (no tools, no system
- * prompt) and reuses the shared `createAgentChatCompletion` streaming core, so
- * LibreChat acts as a plain LLM gateway to its configured providers.
+ * `openAI/gpt-5.4-mini`). It builds a bare ephemeral agent (no LibreChat-side
+ * tools, no system prompt) and reuses the shared `createAgentChatCompletion`
+ * streaming core, so LibreChat acts as a plain LLM gateway to its configured
+ * providers. Caller-supplied `tools` are bound to the model but never executed
+ * here — they come back as `tool_calls` for the caller to run.
  */
 const { logger } = require('@librechat/data-schemas');
 const {
