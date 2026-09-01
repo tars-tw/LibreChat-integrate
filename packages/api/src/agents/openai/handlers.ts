@@ -214,8 +214,17 @@ export interface ToolEndData {
   };
 }
 
+/** A completed model tool call, as the graph reports it on the final message. */
+export interface ModelToolCall {
+  id?: string;
+  name?: string;
+  args?: unknown;
+}
+
 export interface ModelEndData {
   output?: {
+    /** Present when the model asked for tools on this turn. */
+    tool_calls?: ModelToolCall[];
     usage_metadata?: {
       input_tokens?: number;
       output_tokens?: number;

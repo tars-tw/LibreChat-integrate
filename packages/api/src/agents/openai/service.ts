@@ -20,6 +20,12 @@
  */
 import { nanoid } from 'nanoid';
 import { AgentCapabilities } from 'librechat-data-provider';
+import {
+  AIMessage,
+  HumanMessage,
+  SystemMessage,
+  ToolMessage,
+} from '@librechat/agents/langchain/messages';
 import type {
   FiltersConfig,
   MessageFilterConfig,
@@ -27,12 +33,16 @@ import type {
   StatefulCodeEnvironment,
   TAgentsEndpoint,
 } from 'librechat-data-provider';
+import type { ToolExecuteBatchRequest, ToolCallRequest, LCTool } from '@librechat/agents';
+import type { BaseMessage, MessageContent } from '@librechat/agents/langchain/messages';
 import type { Response as ServerResponse, Request } from 'express';
 import type {
+  ChatCompletionToolChoice,
   ChatCompletionResponse,
   OpenAIResponseContext,
   ChatCompletionRequest,
   OpenAIErrorResponse,
+  ChatCompletionTool,
   CompletionUsage,
   ChatMessage,
   ToolCall,
@@ -49,6 +59,7 @@ import type { OpenAIStreamHandlerConfig, EventHandler, ModelEndData } from './ha
 import type { MCPRuntimeRequestBody } from '~/mcp/request';
 import type { ToolExecuteOptions } from '../handlers';
 import {
+  extractAgentContent,
   extractMessageContent,
   extractModelParameterContent,
   getBlockedOpaqueFileField,
@@ -334,6 +345,19 @@ function inspectSubmittedRequest(
     messageFragments.push(...getContentTraversalFragments(error));
     traversalErrors.push(error);
   }
+  /** Caller-supplied tool schemas reach the model verbatim, so they are
+   *  inspected exactly like the agent's own definitions. */
+  if (request.tools != null && request.tools.length > 0) {
+    try {
+      messageFragments.push(...extractAgentContent({ toolDefinitions: request.tools }));
+    } catch (error) {
+      if (!isContentTraversalLimitError(error)) {
+        throw error;
+      }
+      messageFragments.push(...getContentTraversalFragments(error));
+      traversalErrors.push(error);
+    }
+  }
 
   const finding = inspectContent(messageFragments, {
     filters,
@@ -386,35 +410,82 @@ interface DeltaEventData {
   };
 }
 
-/**
- * Convert OpenAI messages to LibreChat format
- */
-export function convertMessages(messages: ChatMessage[]): unknown[] {
-  return messages.map((msg) => {
-    let content: string | unknown[];
-    if (typeof msg.content === 'string') {
-      content = msg.content;
-    } else if (msg.content) {
-      content = msg.content.map((part) => {
-        if (part.type === 'text') {
-          return { type: 'text', text: part.text };
-        }
-        if (part.type === 'image_url') {
-          return { type: 'image_url', image_url: part.image_url };
-        }
-        return part;
-      });
-    } else {
-      content = '';
-    }
+function normalizeContent(content: ChatMessage['content']): MessageContent {
+  if (typeof content === 'string') {
+    return content;
+  }
+  if (!content) {
+    return '';
+  }
+  return content.map((part) => ({ ...part }));
+}
 
-    return {
-      role: msg.role,
-      content,
-      ...(msg.name && { name: msg.name }),
-      ...(msg.tool_calls && { tool_calls: msg.tool_calls }),
-      ...(msg.tool_call_id && { tool_call_id: msg.tool_call_id }),
-    };
+/**
+ * `function.arguments` is a JSON string on the wire but an object on
+ * `AIMessage`. A provider can emit a truncated or malformed string, which must
+ * not fail the whole request: the empty object keeps the tool call visible to
+ * the model with no arguments rather than dropping the turn.
+ */
+function parseToolArguments(args: string | undefined): Record<string, unknown> {
+  if (!args) {
+    return {};
+  }
+  try {
+    const parsed: unknown = JSON.parse(args);
+    return parsed != null && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function toLangChainToolCall(toolCall: ToolCall): {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+  type: 'tool_call';
+} {
+  return {
+    id: toolCall.id,
+    name: toolCall.function?.name ?? '',
+    args: parseToolArguments(toolCall.function?.arguments),
+    type: 'tool_call',
+  };
+}
+
+/** Sentinel that unwinds the graph once a client-side tool call is collected. */
+class ClientToolCallStop extends Error {}
+
+/**
+ * Convert OpenAI messages to the LangChain messages the graph runs on.
+ *
+ * These must be real `BaseMessage` instances: `@librechat/agents` reads
+ * `message.getType()` off the run input before LangGraph's state reducer
+ * coerces anything, so plain `{ role, content }` objects abort the run with
+ * `message.getType is not a function`. Building them here also carries
+ * `tool_calls` / `tool_call_id` across in LangChain's shape, which a bare
+ * role-tagged object would have lost.
+ */
+export function convertMessages(messages: ChatMessage[]): BaseMessage[] {
+  return messages.map((msg) => {
+    const content = normalizeContent(msg.content);
+    const name = msg.name ? { name: msg.name } : {};
+
+    if (msg.role === 'system') {
+      return new SystemMessage({ content, ...name });
+    }
+    if (msg.role === 'assistant') {
+      return new AIMessage({
+        content,
+        ...name,
+        ...(msg.tool_calls && { tool_calls: msg.tool_calls.map(toLangChainToolCall) }),
+      });
+    }
+    if (msg.role === 'tool') {
+      return new ToolMessage({ content, tool_call_id: msg.tool_call_id ?? '', ...name });
+    }
+    return new HumanMessage({ content, ...name });
   });
 }
 
@@ -470,6 +541,55 @@ export function isChatCompletionValidationFailure(
 /**
  * Validate the chat completion request
  */
+/**
+ * The graph binds tools without a forcing option, so a caller that demands a
+ * tool call would silently get `'auto'` behavior. Reject instead of pretending.
+ */
+function validateToolChoice(toolChoice: unknown): string | null {
+  if (toolChoice === undefined || toolChoice === 'auto' || toolChoice === 'none') {
+    return null;
+  }
+  return "tool_choice must be 'auto' or 'none'; this endpoint cannot force a tool call";
+}
+
+function validateClientTools(tools: unknown): string | null {
+  if (tools === undefined) {
+    return null;
+  }
+  if (!Array.isArray(tools)) {
+    return 'tools must be an array';
+  }
+  for (let i = 0; i < tools.length; i++) {
+    const tool = tools[i] as { type?: unknown; function?: { name?: unknown } } | null;
+    if (tool == null || tool.type !== 'function') {
+      return `tools[${i}].type must be 'function'`;
+    }
+    if (typeof tool.function?.name !== 'string' || tool.function.name === '') {
+      return `tools[${i}].function.name is required`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Caller tools become schema-only definitions: the graph binds them to the
+ * model and dispatches `ON_TOOL_EXECUTE` instead of invoking anything, which is
+ * where the run is stopped and the calls are handed back to the caller.
+ */
+export function toClientToolDefinitions(
+  tools: ChatCompletionTool[] | undefined,
+  toolChoice: ChatCompletionToolChoice | undefined,
+): LCTool[] {
+  if (toolChoice === 'none' || tools == null) {
+    return [];
+  }
+  return tools.map((tool) => ({
+    name: tool.function.name,
+    ...(tool.function.description != null && { description: tool.function.description }),
+    ...(tool.function.parameters != null && { parameters: tool.function.parameters }),
+  }));
+}
+
 export function validateRequest(body: unknown): ChatCompletionValidationResult {
   if (!body || typeof body !== 'object') {
     return { valid: false, error: 'Request body is required' };
@@ -501,6 +621,9 @@ export function validateRequest(body: unknown): ChatCompletionValidationResult {
         error: `messages[${i}].role must be one of: system, user, assistant, tool`,
       };
     }
+    if (msg.role === 'tool' && (!msg.tool_call_id || typeof msg.tool_call_id !== 'string')) {
+      return { valid: false, error: `messages[${i}].tool_call_id is required for role 'tool'` };
+    }
     const toolCalls = msg.tool_calls;
     if (toolCalls === undefined) {
       continue;
@@ -525,6 +648,16 @@ export function validateRequest(body: unknown): ChatCompletionValidationResult {
         };
       }
     }
+  }
+
+  const toolChoiceError = validateToolChoice(request.tool_choice);
+  if (toolChoiceError) {
+    return { valid: false, error: toolChoiceError };
+  }
+
+  const toolsError = validateClientTools(request.tools);
+  if (toolsError) {
+    return { valid: false, error: toolsError };
   }
 
   if (request.conversation_id !== undefined && typeof request.conversation_id !== 'string') {
@@ -657,6 +790,10 @@ export async function createAgentChatCompletion(
     abortController.abort();
   });
 
+  const clientToolDefinitions = toClientToolDefinitions(request.tools, request.tool_choice);
+  let clientToolCallStop = false;
+  let finalizeResponse: () => void = () => undefined;
+
   try {
     // Build allowed providers set (empty = all allowed)
     const allowedProviders = new Set<string>();
@@ -750,6 +887,26 @@ export async function createAgentChatCompletion(
       files: [...modelBoundFiles, ...getDynamicToolContexts(modelBoundAgents)],
     });
 
+    /**
+     * Caller tools are only bound when the target agent brings none of its own:
+     * a non-empty `toolDefinitions` switches the whole run to event-driven
+     * dispatch, which would route the agent's own tools through the stop
+     * handler below and break them. `/v1m` always resolves a bare agent.
+     */
+    if (clientToolDefinitions.length > 0) {
+      const agentToolDefinitions = initializedAgent.toolDefinitions as LCTool[] | undefined;
+      if (initializedAgent.tools.length > 0 || (agentToolDefinitions?.length ?? 0) > 0) {
+        sendErrorResponse(
+          res,
+          400,
+          'tools are not supported for an agent that has tools of its own',
+          'invalid_request_error',
+        );
+        return;
+      }
+      initializedAgent.toolDefinitions = clientToolDefinitions;
+    }
+
     // Determine if streaming is enabled (check both request and agent config)
     const streamingDisabled = !!(initializedAgent.model_parameters as Record<string, unknown>)
       ?.disableStreaming;
@@ -781,6 +938,67 @@ export async function createAgentChatCompletion(
             tracker,
           }
         : null;
+
+    finalizeResponse = (): void => {
+      if (isStreaming && handlerConfig) {
+        sendFinalChunk(handlerConfig, clientToolCallStop ? 'tool_calls' : 'stop');
+        res.end();
+        return;
+      }
+      if (!aggregator) {
+        return;
+      }
+      const usage: CompletionUsage = {
+        prompt_tokens: aggregator.usage.promptTokens,
+        completion_tokens: aggregator.usage.completionTokens,
+        total_tokens: aggregator.usage.promptTokens + aggregator.usage.completionTokens,
+        ...(aggregator.usage.reasoningTokens > 0 && {
+          completion_tokens_details: { reasoning_tokens: aggregator.usage.reasoningTokens },
+        }),
+      };
+      res.json(
+        buildNonStreamingResponse(
+          context,
+          aggregator.getText(),
+          aggregator.getReasoning(),
+          aggregator.toolCalls,
+          usage,
+        ),
+      );
+    };
+
+    /**
+     * Client-side tool calls are taken from the dispatch batch the graph is
+     * about to hand out — the run is stopped there, so that batch is exactly
+     * what the caller must execute and send back.
+     */
+    let clientToolCallIndex = 0;
+    const recordClientToolCalls = (calls: readonly ToolCallRequest[]): void => {
+      for (const call of calls) {
+        if (typeof call?.name !== 'string' || call.name === '') {
+          continue;
+        }
+        const toolCall: ToolCall = {
+          id: call.id || `call_${nanoid()}`,
+          type: 'function',
+          function: { name: call.name, arguments: JSON.stringify(call.args ?? {}) },
+        };
+        const index = clientToolCallIndex++;
+        if (isStreaming && tracker) {
+          tracker.toolCalls.set(index, toolCall);
+          writeSSE(
+            res,
+            createChunk(context, {
+              tool_calls: [
+                { index, id: toolCall.id, type: 'function', function: toolCall.function },
+              ],
+            }),
+          );
+        } else if (aggregator) {
+          aggregator.toolCalls.set(index, toolCall);
+        }
+      }
+    };
 
     // Stream text/reasoning as SSE chunks when streaming, otherwise accumulate
     // into the aggregator for the final JSON response.
@@ -851,6 +1069,26 @@ export async function createAgentChatCompletion(
       },
     };
 
+    /**
+     * Client-side tools are schema-only, so the graph dispatches this event
+     * instead of invoking anything. Stopping here is what makes `/v1m` a pure
+     * passthrough: LibreChat hands the calls back and the caller executes them,
+     * exactly as an OpenAI client expects. Both the reject and the abort are
+     * needed — the reject unblocks the waiting ToolNode batch, the abort
+     * guarantees the graph cannot start another model turn.
+     */
+    if (clientToolDefinitions.length > 0) {
+      eventHandlers[GraphEvents.ON_TOOL_EXECUTE] = {
+        handle: (_event, data) => {
+          const batch = data as ToolExecuteBatchRequest;
+          clientToolCallStop = true;
+          recordClientToolCalls(batch.toolCalls);
+          batch.reject(new ClientToolCallStop());
+          abortController.abort();
+        },
+      };
+    }
+
     /** Deferred (lazy) tool loading still applies here: the graph emits this event
      *  when a tool call names a tool the run has not materialized yet. */
     if (deps.toolExecuteOptions) {
@@ -918,30 +1156,15 @@ export async function createAgentChatCompletion(
       }
     }
 
-    // Finalize response
-    if (isStreaming && handlerConfig) {
-      sendFinalChunk(handlerConfig);
-      res.end();
-    } else if (aggregator) {
-      // Build and send non-streaming response
-      const usage: CompletionUsage = {
-        prompt_tokens: aggregator.usage.promptTokens,
-        completion_tokens: aggregator.usage.completionTokens,
-        total_tokens: aggregator.usage.promptTokens + aggregator.usage.completionTokens,
-        ...(aggregator.usage.reasoningTokens > 0 && {
-          completion_tokens_details: { reasoning_tokens: aggregator.usage.reasoningTokens },
-        }),
-      };
-      const response = buildNonStreamingResponse(
-        context,
-        aggregator.getText(),
-        aggregator.getReasoning(),
-        aggregator.toolCalls,
-        usage,
-      );
-      res.json(response);
-    }
+    finalizeResponse();
   } catch (error) {
+    /** A client-side tool call is a normal completion, not a failure: the run
+     *  was stopped on purpose once the model asked for a tool the caller owns,
+     *  so the collected calls are returned instead of an error. */
+    if (clientToolCallStop) {
+      finalizeResponse();
+      return;
+    }
     if (isContentFilterError(error) && !res.headersSent) {
       sendErrorResponse(
         res,

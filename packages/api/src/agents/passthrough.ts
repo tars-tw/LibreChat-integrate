@@ -94,8 +94,11 @@ function extractModelParameters(
  *
  * The request body is intentionally NOT forwarded to `loadEphemeralAgent`:
  * sampling params are extracted explicitly, and `promptPrefix` / `ephemeralAgent`
- * are dropped so a caller cannot turn the bare passthrough into a tool-enabled
- * or instruction-bearing agent.
+ * are dropped so a caller cannot equip the bare passthrough with LibreChat-side
+ * tools or instructions. A caller's own `tools` are a different thing entirely
+ * and are handled by {@link createAgentChatCompletion}: they are bound to the
+ * model schema-only and handed back as `tool_calls` for the caller to execute,
+ * so nothing runs inside LibreChat either way.
  */
 export function buildPassthroughGetAgent(
   req: LoadAgentParams['req'],
