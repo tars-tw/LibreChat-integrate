@@ -1,8 +1,8 @@
 import { ErrorTypes, EModelEndpoint, mapModelToAzureConfig } from 'librechat-data-provider';
 import type {
-  BaseInitializeParams,
   InitializeResultBase,
   OpenAIConfigOptions,
+  ProviderInitializeParams,
   UserKeyValues,
 } from '~/types';
 import {
@@ -14,6 +14,7 @@ import {
   getAzureCredentials,
 } from '~/utils';
 import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
+import { resolveEndpointRuntime } from '~/types';
 import { validateEndpointURL } from '~/auth';
 import { getOpenAIConfig } from './config';
 
@@ -25,13 +26,11 @@ import { getOpenAIConfig } from './config';
  * @returns Promise resolving to OpenAI configuration options
  * @throws Error if API key is missing or user key has expired
  */
-export async function initializeOpenAI({
-  req,
-  endpoint,
-  model_parameters,
-  db,
-}: BaseInitializeParams): Promise<InitializeResultBase> {
-  const appConfig = req.config;
+export async function initializeOpenAI(
+  params: ProviderInitializeParams,
+): Promise<InitializeResultBase> {
+  const { endpoint, model_parameters, db } = params;
+  const { appConfig, user, requestBody } = resolveEndpointRuntime(params);
   const openAIConfig = appConfig?.endpoints?.[EModelEndpoint.openAI];
   const allConfig = appConfig?.endpoints?.all;
   const { PROXY, AZURE_API_KEY, OPENAI_REVERSE_PROXY, AZURE_OPENAI_BASEURL } = process.env;
@@ -41,7 +40,7 @@ export async function initializeOpenAI({
     EModelEndpoint.openAI,
   );
 
-  const { key: expiresAt } = req.body;
+  const { key: expiresAt } = requestBody;
   const modelName = model_parameters?.model as string | undefined;
 
   const credentials = {
@@ -76,10 +75,10 @@ export async function initializeOpenAI({
   const shouldFetchUserValues =
     !expiredKeyCovered &&
     ((!!expiresAt && (userProvidesKey || userProvidesURL)) ||
-      (isOpenAIProvider && userProvidesKey && !!req.user?.id));
+      (isOpenAIProvider && userProvidesKey && !!user?.id));
   if (shouldFetchUserValues) {
     try {
-      userValues = await db.getUserKeyValues({ userId: req.user?.id ?? '', name: endpoint });
+      userValues = await db.getUserKeyValues({ userId: user?.id ?? '', name: endpoint });
     } catch (error) {
       /** A missing personal key is tolerated only where sys_config can supply
        *  the openAI key below; Azure and user-provided-URL flows keep throwing. */
@@ -144,7 +143,7 @@ export async function initializeOpenAI({
     }
     clientOptions.headers = resolveHeaders({
       headers: { ...headers, ...(clientOptions.headers ?? {}) },
-      user: req.user,
+      user,
     });
     /** `endpoints.all` headers apply globally, but stay unresolved here — they are
      *  resolved once at request time by `resolveConfigHeaders`. Resolving them now
@@ -215,7 +214,7 @@ export async function initializeOpenAI({
   const modelOptions = {
     ...(model_parameters ?? {}),
     model: modelName,
-    user: req.user?.id,
+    user: user?.id,
   };
 
   const finalClientOptions: OpenAIConfigOptions = {

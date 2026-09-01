@@ -554,6 +554,14 @@ export type TSearchResults = {
   filter: object;
 };
 
+export type TPublicCodeEnvironment = {
+  id: string;
+  name: string;
+  type: 'managed' | 'attached';
+  default?: boolean;
+  pairingAvailable?: boolean;
+};
+
 export type TConfig = {
   order: number;
   type?: EModelEndpoint;
@@ -579,6 +587,7 @@ export type TConfig = {
   capabilities?: string[];
   statefulCodeSessions?: {
     allowedEnvironments: StatefulCodeEnvironment[];
+    environments?: TPublicCodeEnvironment[];
   };
   /** Effective subagents-per-agent cap served from `endpoints.agents.maxSubagents`. */
   maxSubagents?: number;

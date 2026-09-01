@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import * as Ariakit from '@ariakit/react';
 import { ChevronRight } from 'lucide-react';
 import { MCPIcon, PinIcon } from '@librechat/client';
@@ -24,6 +24,15 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
       showTimeout: 100,
       placement: 'right',
     });
+
+    const openCredentials = tarsMcpTools?.openCredentials;
+    const handleCredentialsClick = useCallback(
+      (serverName: string) => {
+        menuStore.hide();
+        openCredentials?.(serverName);
+      },
+      [menuStore, openCredentials],
+    );
 
     if (!mcpServerManager) {
       return null;
@@ -95,9 +104,11 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
           <Ariakit.Menu
             portal={true}
             unmountOnHide={true}
+            gutter={12}
+            flip="left bottom-end top-end"
             aria-label={localize('com_ui_mcp_servers')}
             className={cn(
-              'animate-popover-left z-40 ml-3 flex min-w-[260px] max-w-[320px] flex-col rounded-xl',
+              'animate-popover-left z-40 flex min-w-[min(260px,calc(100vw-1rem))] max-w-[min(320px,calc(100vw-1rem))] flex-col rounded-xl',
               'border border-border-light bg-presentation p-1.5 shadow-lg',
             )}
           >
@@ -114,6 +125,8 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
                   toolList={tarsMcpTools?.getDomainTools(server.serverName)}
                   selectedToolKeys={tarsMcpTools?.getSelectedToolKeys(server.serverName)}
                   onToggleTool={tarsMcpTools?.toggleToolSelection}
+                  credentialsStatus={tarsMcpTools?.getCredentialsStatus(server.serverName)}
+                  onCredentialsClick={handleCredentialsClick}
                 />
               ))}
               {pendingServers.length > 0 && tarsMcpTools && (

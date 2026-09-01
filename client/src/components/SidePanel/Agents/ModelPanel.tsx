@@ -179,6 +179,10 @@ export default function ModelPanel({
     onClose();
   };
 
+  if (!open) {
+    return null;
+  }
+
   return (
     <ParametersModal
       open={open}

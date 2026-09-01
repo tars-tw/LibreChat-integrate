@@ -65,9 +65,11 @@ const {
   createSteerIndexOffsetHandlers,
   createSteerDrainHook,
   createSteerPreemptBoundaryHook,
+  createSteerTerminalContinuationHook,
   createSteerPreemptPoll,
   isSteeringSupported,
   isSteerPreemptSupported,
+  isSteerTerminalContinuationSupported,
   buildSteerMedia,
   collectSteerStampTargets,
   stampSteerPartMedia,
@@ -115,6 +117,7 @@ const {
   hasYouTubeVideoParts,
   appendYouTubeVideoParts,
   resolveGoogleVideoError,
+  resolveLangChainError,
   resolveYouTubeInjectionConfig,
   decrementPendingRequest,
   maybePrewarmCodeSandbox,
@@ -130,7 +133,7 @@ const {
   createSkillContentDigest,
   normalizeAgentEventActorDiscoveredTools,
   createCompactionSemanticIndexProjection,
-  restoreCompactionSemanticIndex,
+  restoreCompactionSemanticIndexSnapshot,
   MAX_AGENT_CONTEXT_SKILLS,
 } = require('@librechat/api');
 const {
@@ -158,6 +161,7 @@ const {
   isAgentsEndpoint,
   isEphemeralAgentId,
   removeNullishValues,
+  stripLangChainTroubleshootingUrl,
   DEFAULT_MEMORY_MAX_INPUT_TOKENS,
 } = require('librechat-data-provider');
 const { filterFilesByAgentAccess } = require('~/server/services/Files/permissions');
@@ -232,6 +236,12 @@ function getLatestEventActorSummary(contentParts) {
   return undefined;
 }
 
+/**
+ * User-visible text for a failed run. LangChain classifies provider errors by mutating
+ * `error.message` with a docs URL, so a classified failure becomes typed copy the client localizes
+ * and everything else keeps the provider's own wording with that URL removed. The untouched error
+ * still reaches the logs through `getSafeErrorMetadata`.
+ */
 function getUserFacingRequestError(baseMessage, error, appConfig) {
   const protectionEnabled = hasModelBoundContentProtection(
     appConfig?.filters,
@@ -240,7 +250,15 @@ function getUserFacingRequestError(baseMessage, error, appConfig) {
   if (protectionEnabled || !error?.message) {
     return baseMessage;
   }
-  return `${baseMessage}: ${error.message}`;
+  const typedError = resolveLangChainError(error);
+  if (typedError != null) {
+    return typedError;
+  }
+  const message = stripLangChainTroubleshootingUrl(error.message);
+  if (!message) {
+    return baseMessage;
+  }
+  return `${baseMessage}: ${message}`;
 }
 
 class AgentClient extends BaseClient {
@@ -289,9 +307,9 @@ class AgentClient extends BaseClient {
     this.eventActorSkillPrimeResult = undefined;
     this.eventActorDiscoveredToolNames = undefined;
     this.eventActorSummary = undefined;
-    /** Advisory compaction guidance retained across graph reconstruction.
-     * @type {import('@librechat/agents').CompactionSemanticIndex | undefined} */
-    this.compactionSemanticIndex = undefined;
+    /** Advisory compaction guidance retained and evolved across graph reconstruction.
+     * @type {import('@librechat/agents').CompactionSemanticIndexSnapshot | undefined} */
+    this.compactionSemanticIndexSnapshot = undefined;
 
     /** @type {AgentRun} */
     this.run;
@@ -402,6 +420,9 @@ class AgentClient extends BaseClient {
             hide_sequential_outputs: agent.hide_sequential_outputs,
             stateful_code_sessions: agent.stateful_code_sessions,
             stateful_code_environment: agent.stateful_code_environment,
+            execution_route_key:
+              agent.codeExecutionContext?.executionRouteKey ??
+              agent.codeExecutionContext?.executionProfile,
             artifacts: agent.artifacts,
             recursion_limit: agent.recursion_limit,
             subagents: agent.subagents,
@@ -557,9 +578,9 @@ class AgentClient extends BaseClient {
 
   /**
    * The `steering` fragment for `createRun`: the run-scoped PostToolBatch
-   * drain hook — plus, when the SDK can seal mid-stream, the PreemptBoundary
-   * twin and the preempt poll built from the SAME drain closures, so both
-   * boundaries inject byte-identical shapes. `undefined` when there is no
+   * drain hook — plus the capability-gated PreemptBoundary and terminal Stop
+   * twins built from the SAME drain closures, so every boundary injects
+   * byte-identical shapes. `undefined` when there is no
    * resumable job surface or the installed SDK cannot inject hook messages
    * (draining would drop them).
    *
@@ -591,6 +612,9 @@ class AgentClient extends BaseClient {
       ...(isSteerPreemptSupported() && {
         preemptHook: createSteerPreemptBoundaryHook(drainOptions),
         preemption: createSteerPreemptPoll(streamId),
+      }),
+      ...(isSteerTerminalContinuationSupported() && {
+        terminalHook: createSteerTerminalContinuationHook(drainOptions),
       }),
     };
   }
@@ -1667,6 +1691,7 @@ class AgentClient extends BaseClient {
       {
         provider: this.options.agent.provider,
         endpoint: this.options.endpoint,
+        imageDetail: this.options.imageDetail,
       },
       VisionModes.agents,
     );
@@ -1703,7 +1728,9 @@ class AgentClient extends BaseClient {
       discoveredToolNames = normalizeAgentEventActorDiscoveredTools(state.discoveredToolNames);
       summary = normalizeEventActorSummary(state.summary);
       contextMeta = normalizeEventActorContextMeta(state.contextMeta);
-      compactionSemanticIndex = restoreCompactionSemanticIndex(state.compactionSemanticIndex);
+      compactionSemanticIndex = restoreCompactionSemanticIndexSnapshot(
+        state.compactionSemanticIndex,
+      );
     } catch {
       return undefined;
     }
@@ -1731,7 +1758,7 @@ class AgentClient extends BaseClient {
     this.eventActorDiscoveredToolNames = discoveredToolNames;
     this.eventActorSummary = summary;
     this.contextMeta = contextMeta;
-    this.compactionSemanticIndex = compactionSemanticIndex;
+    this.compactionSemanticIndexSnapshot = compactionSemanticIndex;
     const context = await this.getEventActorContext(storedManifest, discoveredToolNames);
     const skillBodies = new Map(skillPrimeResult?.skills ?? []);
     const rootAgentContext = this.eventActorAgentContextSources?.[0];
@@ -1791,7 +1818,7 @@ class AgentClient extends BaseClient {
     const summary = getLatestEventActorSummary(this.contentParts) ?? this.eventActorSummary;
     this.eventActorSummary = summary;
     const compactionSemanticIndex = createCompactionSemanticIndexProjection(
-      this.compactionSemanticIndex,
+      this.compactionSemanticIndexSnapshot,
     );
     return {
       fingerprint: createInitializedAgentContextFingerprint({
@@ -1826,7 +1853,7 @@ class AgentClient extends BaseClient {
        * non-checkpointed state from durable history, never from that stale head. */
       this.eventActorSummary = undefined;
       this.contextMeta = undefined;
-      this.compactionSemanticIndex = undefined;
+      this.compactionSemanticIndexSnapshot = undefined;
     }
     /** Always pass mapMethod; getMessagesForConversation applies it only to messages with addedConvo flag */
     const orderedMessages = this.constructor.getMessagesForConversation({
@@ -3701,7 +3728,7 @@ class AgentClient extends BaseClient {
       discoveredTools,
       activityPhaseSnapshot: this.activityPhaseWiring?.snapshot?.(),
       compactionSemanticIndex: createCompactionSemanticIndexProjection(
-        this.compactionSemanticIndex,
+        this.compactionSemanticIndexSnapshot,
       ),
     };
     if (this.eventActorInvocationId != null) {
@@ -3878,47 +3905,43 @@ class AgentClient extends BaseClient {
         this.options.agent,
         ...(this.agentConfigs?.values() ?? []),
       ]);
-      const deriveCompactionSemanticIndex = this.eventActorContinuation !== 'warm';
       const messageFormatOptions = {
         ...(needsReasoningContentFormat ? { preserveReasoningContent: true } : {}),
         ...(freshSkillPrimeNames.size > 0 ? { skipSkillBodyNames: freshSkillPrimeNames } : {}),
         ...(useLegacyContent ? { legacyContent: true } : {}),
       };
-      let semanticIntentToolNames;
-      if (deriveCompactionSemanticIndex) {
-        semanticIntentToolNames = new Set();
-        const semanticIntentBlockedToolNames = new Set();
-        for (const agent of reachableAgents) {
-          for (const toolName of agent.semanticIntentToolNames ?? []) {
-            semanticIntentToolNames.add(toolName);
-          }
-          for (const toolName of agent.semanticIntentBlockedToolNames ?? []) {
-            semanticIntentBlockedToolNames.add(toolName);
-          }
+      const semanticIntentToolNames = new Set();
+      const semanticIntentBlockedToolNames = new Set();
+      for (const agent of reachableAgents) {
+        for (const toolName of agent.semanticIntentToolNames ?? []) {
+          semanticIntentToolNames.add(toolName);
         }
-        for (const toolName of semanticIntentBlockedToolNames) {
-          semanticIntentToolNames.delete(toolName);
+        for (const toolName of agent.semanticIntentBlockedToolNames ?? []) {
+          semanticIntentBlockedToolNames.add(toolName);
         }
+      }
+      for (const toolName of semanticIntentBlockedToolNames) {
+        semanticIntentToolNames.delete(toolName);
       }
       const hasMessageFormatOptions =
         needsReasoningContentFormat || freshSkillPrimeNames.size > 0 || useLegacyContent;
-      const formatOptions =
-        hasMessageFormatOptions || deriveCompactionSemanticIndex
-          ? {
-              ...messageFormatOptions,
-              ...(deriveCompactionSemanticIndex
-                ? { compactionSemanticIndex: { intentToolNames: semanticIntentToolNames } }
-                : {}),
-            }
-          : undefined;
+      const formatOptions = {
+        ...messageFormatOptions,
+        compactionSemanticIndex: {
+          ...(this.eventActorContinuation === 'warm' && this.compactionSemanticIndexSnapshot != null
+            ? { baseSnapshot: this.compactionSemanticIndexSnapshot }
+            : {}),
+          intentToolNames: semanticIntentToolNames,
+        },
+      };
       let {
         messages: initialMessages,
         indexTokenCountMap,
         summary: initialSummary,
         boundaryTokenAdjustment,
-        compactionSemanticIndex,
+        compactionSemanticIndexSnapshot,
       } = formatAgentMessages(
-        deriveCompactionSemanticIndex ? payload : stripActivityLabelParts(payload),
+        payload,
         this.indexTokenCountMap,
         toolSet,
         skillPrimeResult?.skills,
@@ -3926,14 +3949,13 @@ class AgentClient extends BaseClient {
       );
       if (this.eventActorContinuation !== 'warm') {
         this.eventActorSummary = initialSummary;
-        this.compactionSemanticIndex = compactionSemanticIndex;
       }
+      this.compactionSemanticIndexSnapshot =
+        compactionSemanticIndexSnapshot ??
+        (this.eventActorContinuation === 'warm' ? this.compactionSemanticIndexSnapshot : undefined);
       const continuationSummary =
         this.eventActorContinuation === 'warm' ? this.eventActorSummary : initialSummary;
-      const continuationCompactionSemanticIndex =
-        this.eventActorContinuation === 'warm'
-          ? this.compactionSemanticIndex
-          : compactionSemanticIndex;
+      const continuationCompactionSemanticIndex = this.compactionSemanticIndexSnapshot?.entries;
       if (boundaryTokenAdjustment) {
         logger.debug(
           `[AgentClient] Boundary token adjustment: ${boundaryTokenAdjustment.original} → ${boundaryTokenAdjustment.adjusted} (${boundaryTokenAdjustment.remainingChars}/${boundaryTokenAdjustment.totalChars} chars)`,
@@ -4558,7 +4580,8 @@ class AgentClient extends BaseClient {
       }
 
       const tokenCounter = await createCachedTokenCounter(this.getEncoding());
-      this.compactionSemanticIndex = restoreCompactionSemanticIndex(compactionSemanticIndex);
+      this.compactionSemanticIndexSnapshot =
+        restoreCompactionSemanticIndexSnapshot(compactionSemanticIndex);
       const agents = collectReachableAgents([
         this.options.agent,
         ...(this.agentConfigs?.size > 0 ? this.agentConfigs.values() : []),
@@ -4690,9 +4713,9 @@ class AgentClient extends BaseClient {
         // batches keep claiming slots and generating group headers.
         activityLabel,
         activityPhase,
-        ...(this.compactionSemanticIndex == null
+        ...(this.compactionSemanticIndexSnapshot == null
           ? {}
-          : { compactionSemanticIndex: this.compactionSemanticIndex }),
+          : { compactionSemanticIndex: this.compactionSemanticIndexSnapshot.entries }),
         // Replay deferred tools discovered before the pause. With `messages: []` the
         // discovery scan finds nothing, so these names restore the schemas to the
         // rebuilt model binding. Undefined/empty for non-deferred turns is a no-op.

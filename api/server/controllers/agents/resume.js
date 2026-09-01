@@ -1736,6 +1736,8 @@ const ResumeAgentController = async (req, res, next, initializeClient, addTitle)
     generationProtocolVersion,
   );
 
+  req.turnStartedAt = job.createdAt;
+
   // Restore the conversation's createdAt so temporal prompt vars ({{current_datetime}},
   // {{iso_datetime}}, ...) resolve against the SAME anchor the paused graph used rather
   // than the resume wall-clock. initializeAgent reads `req.conversationCreatedAt`; the

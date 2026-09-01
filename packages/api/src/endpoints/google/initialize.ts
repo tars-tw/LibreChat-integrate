@@ -2,13 +2,14 @@ import path from 'path';
 import { Providers } from '@librechat/agents';
 import { ErrorTypes, EModelEndpoint, AuthKeys } from 'librechat-data-provider';
 import type {
-  BaseInitializeParams,
   InitializeResultBase,
   GoogleConfigOptions,
   GoogleCredentials,
+  ProviderInitializeParams,
 } from '~/types';
 import { isEnabled, mergeHeaders, resolveHeaders, loadServiceKey, isNoUserKeyError } from '~/utils';
 import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
+import { resolveEndpointRuntime } from '~/types';
 import { getGoogleConfig } from './llm';
 
 /**
@@ -19,13 +20,11 @@ import { getGoogleConfig } from './llm';
  * @returns Promise resolving to Google configuration options
  * @throws Error if no valid credentials are provided
  */
-export async function initializeGoogle({
-  req,
-  endpoint,
-  model_parameters,
-  db,
-}: BaseInitializeParams): Promise<InitializeResultBase> {
-  const appConfig = req.config;
+export async function initializeGoogle(
+  params: ProviderInitializeParams,
+): Promise<InitializeResultBase> {
+  const { endpoint, model_parameters, db } = params;
+  const { appConfig, user, requestBody } = resolveEndpointRuntime(params);
   const { GOOGLE_REVERSE_PROXY, GOOGLE_AUTH_HEADER, PROXY } = process.env;
   const isVertexEndpoint = endpoint === Providers.VERTEXAI;
   /** sys_config-managed key overrides env; the Vertex path never consults pwc_tars. */
@@ -34,7 +33,7 @@ export async function initializeGoogle({
     : await resolveTarsProviderKey(process.env.GOOGLE_KEY, EModelEndpoint.google);
   const isUserProvided = GOOGLE_KEY === 'user_provided';
   const useUserProvidedGoogleKey = !isVertexEndpoint && isUserProvided;
-  const { key: expiresAt } = req.body;
+  const { key: expiresAt } = requestBody;
 
   let userKey = null;
   let tarsFallbackKey: string | undefined;
@@ -44,9 +43,9 @@ export async function initializeGoogle({
     const expiredKeyCovered = expiresAt
       ? await isExpiredKeyCoveredByTars(expiresAt, EModelEndpoint.google)
       : false;
-    if (!expiredKeyCovered && req.user?.id) {
+    if (!expiredKeyCovered && user?.id) {
       try {
-        userKey = await db.getUserKey({ userId: req.user.id, name: EModelEndpoint.google });
+        userKey = await db.getUserKey({ userId: user.id, name: EModelEndpoint.google });
       } catch (error) {
         /** No stored personal key is a soft miss — sys_config may cover it below. */
         if (!isNoUserKeyError(error)) {
@@ -116,15 +115,16 @@ export async function initializeGoogle({
    * admin templates here — before that key-derived header is added — keeps the
    * key out of placeholder/env expansion (a user-provided `${ENV}` key can't leak
    * server env) while still resolving admin headers (env, user, conversationId).
-   * `req.body` lacks the assistant message id at init, so `{{LIBRECHAT_BODY_MESSAGEID}}`
+   * The initialization request body lacks the assistant message id, so
+   * `{{LIBRECHAT_BODY_MESSAGEID}}`
    * is the one body placeholder unavailable here.
    */
   const mergedHeaders = mergeHeaders(allConfig?.headers, googleConfig?.headers);
   const headers = mergedHeaders
     ? resolveHeaders({
         headers: mergedHeaders,
-        user: req.user,
-        body: req.body,
+        user,
+        body: requestBody,
         stripUnresolved: true,
       })
     : undefined;

@@ -10,7 +10,6 @@ import {
 } from 'librechat-data-provider';
 import type { CodeEnvFile, ToolSessionMap, CodeSessionContext } from '@librechat/agents';
 import type { Types } from 'mongoose';
-import type { CodeExecutionContext } from './execution';
 import type { ServerRequest } from '~/types';
 import {
   extractFileContent,
@@ -22,6 +21,7 @@ import {
 } from '~/protection';
 import { seedCodeFilesIntoSessions, type CodeExecutionProfileRoute } from './codeFilesSession';
 import { ContentFilterError, isContentFilterError } from '~/middleware/contentFilter';
+import { getCodeExecutionRouteKey, type CodeExecutionContext } from './execution';
 import { createConcurrencyLimiter, getSafeErrorMetadata } from '~/utils';
 import { assertSkillFileContentAllowed } from '~/skills/protection';
 import { createSkillContentDigest } from './compatibility';
@@ -89,7 +89,10 @@ export interface PrimeSkillFilesParams {
     },
   ) => Promise<string | null>;
   /** Trusted Code API route selected for the executing agent. */
-  codeExecutionContext?: Pick<CodeExecutionContext, 'baseUrl' | 'executionProfile'>;
+  codeExecutionContext?: Pick<
+    CodeExecutionContext,
+    'baseUrl' | 'executionProfile' | 'executionRouteKey'
+  >;
   /** 23-hour freshness check */
   checkIfActive?: (dateString: string) => boolean;
   /** Persists `codeEnvRef` on skill files after upload. Implementations
@@ -134,6 +137,14 @@ const uploadSlots = createConcurrencyLimiter(SKILL_UPLOAD_CONCURRENCY);
 const inflightPrimes = new Map<string, Promise<PrimeSkillFilesResult | null>>();
 
 type SkillUploadFiles = Array<{ stream: NodeJS.ReadableStream; filename: string }>;
+type SkillCodeEnvRef = Extract<CodeEnvRef, { kind: 'skill' }>;
+
+function isCurrentSkillRef(
+  ref: CodeEnvRef | undefined,
+  skillVersion: number,
+): ref is SkillCodeEnvRef {
+  return ref?.kind === 'skill' && ref.version === skillVersion;
+}
 
 function getRetryAfterMs(error: unknown): number | null {
   if (!isAxiosError(error) || error.response?.status !== 429) {
@@ -344,7 +355,10 @@ export async function primeSkillFiles(
    * resource-scoped (`<tenant>:skill:<id>:v:<version>`), so sharing the
    * result across requests is sound. Per-process best-effort; the awaited
    * codeEnvRef persist covers cross-turn and cross-node dedupe. */
-  const flightKey = `${params.codeExecutionContext?.executionProfile ?? 'default'}:${params.skill._id}:v:${params.skill.version}`;
+  const executionRouteKey = params.codeExecutionContext
+    ? getCodeExecutionRouteKey(params.codeExecutionContext)
+    : 'default';
+  const flightKey = `${executionRouteKey}:${params.skill._id}:v:${params.skill.version}`;
   const inflight = inflightPrimes.get(flightKey);
   if (inflight) {
     return inflight;
@@ -371,6 +385,9 @@ async function executePrimeSkillFiles(
     codeExecutionContext,
   } = params;
   const executionProfile = codeExecutionContext?.executionProfile ?? 'default';
+  const executionRouteKey = codeExecutionContext
+    ? getCodeExecutionRouteKey(codeExecutionContext)
+    : executionProfile;
   const inspectStoredMetadata = shouldInspectStoredSkillFileMetadata(req);
   const inspectBundledFileContent = shouldInspectStoredSkillFileContent(req);
   const inspectedBuffers = new Map<SkillFileRecord, Buffer>();
@@ -418,16 +435,18 @@ async function executePrimeSkillFiles(
    * previous prime. Check freshness against codeapi for every distinct
    * storage session; if all are still active, reuse without
    * re-uploading. The skill version is part of the ref — when the
-   * skill is edited, the upsert clears the ref and forces a fresh
-   * upload on the next prime. */
+   * skill version has been bumped (e.g. by a SKILL.md edit), stale
+   * refs are treated as cache misses and the files are re-uploaded
+   * under the new version's session key. */
   if (getSessionInfo && checkIfActive && skillFiles.length > 0) {
-    const allHaveRefs = skillFiles.every(
-      (sf) => getCodeEnvRefForProfile(sf, executionProfile) !== undefined,
-    );
+    const allHaveRefs = skillFiles.every((sf) => {
+      const ref = getCodeEnvRefForProfile(sf, executionRouteKey);
+      return isCurrentSkillRef(ref, skill.version);
+    });
     if (allHaveRefs) {
       const refsBySession = new Map<string, CodeEnvRef>();
       for (const sf of skillFiles) {
-        const ref = getCodeEnvRefForProfile(sf, executionProfile);
+        const ref = getCodeEnvRefForProfile(sf, executionRouteKey);
         if (ref && !refsBySession.has(ref.storage_session_id)) {
           refsBySession.set(ref.storage_session_id, ref);
         }
@@ -445,7 +464,7 @@ async function executePrimeSkillFiles(
         if (allActive) {
           const files: PrimeSkillFilesResult['files'] = [];
           for (const sf of skillFiles) {
-            const ref = getCodeEnvRefForProfile(sf, executionProfile);
+            const ref = getCodeEnvRefForProfile(sf, executionRouteKey);
             if (!ref) continue;
             /* Cache-hit refs already carry resource identity (kind / id /
              * version) — pull them through so the artifact emitted by
@@ -574,6 +593,7 @@ async function executePrimeSkillFiles(
             file_id: f.fileId,
             version: skill.version,
             executionProfile,
+            ...(executionRouteKey !== executionProfile ? { executionRouteKey } : {}),
           };
           return {
             skillId: skill._id,
@@ -737,15 +757,22 @@ export async function primeInvokedSkills(
     // ALL distinct sessions for freshness. If all are active, return cached
     // references with zero re-uploads. If any expired, re-upload everything.
     const executionProfile = deps.codeExecutionContext?.executionProfile ?? 'default';
+    const executionRouteKey = deps.codeExecutionContext
+      ? getCodeExecutionRouteKey(deps.codeExecutionContext)
+      : executionProfile;
     if (!inspectStoredSkillFileContent && deps.getSessionInfo && deps.checkIfActive) {
       const allResolved = fileListResults.flatMap((r) =>
         r.files.map((f) => ({
+          skill: r.skill,
           skillName: r.skill.name,
           file: f,
-          ref: getCodeEnvRefForProfile(f, executionProfile),
+          ref: getCodeEnvRefForProfile(f, executionRouteKey),
         })),
       );
-      const resolvedWithRef = allResolved.filter((x) => x.ref !== undefined);
+      const resolvedWithRef = allResolved.filter(
+        (entry): entry is typeof entry & { ref: SkillCodeEnvRef } =>
+          isCurrentSkillRef(entry.ref, entry.skill.version),
+      );
 
       // Only use cache when ALL files have refs (no partial persistence)
       if (resolvedWithRef.length > 0 && resolvedWithRef.length === allResolved.length) {

@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search,
   Plus,
@@ -35,7 +35,9 @@ import {
 import McpServerToolsPanel from './McpServerToolsPanel';
 import { useLocalize, useIsTarsAdmin } from '~/hooks';
 import McpBulkDeleteModal from './McpBulkDeleteModal';
+import { useAuthContext } from '~/hooks/AuthContext';
 import McpPermissionsTab from './McpPermissionsTab';
+import McpUserToolsTab from './McpUserToolsTab';
 import McpServerModal from './McpServerModal';
 import McpLogsTab from './McpLogsTab';
 
@@ -51,7 +53,11 @@ const PAGE_SIZES = [10, 25, 50, 100];
 const PAGE_SIZE_OPTIONS = PAGE_SIZES.map(String);
 const MAX_TAG_BADGES = 3;
 
-type SettingsTab = 'servers' | 'permissions' | 'logs';
+type SettingsTab = 'mytools' | 'servers' | 'permissions' | 'logs';
+
+/** `?tab=` lets the side panel's TARS card land straight on the user's own catalog. */
+const isSettingsTab = (value: string | null): value is SettingsTab =>
+  value === 'mytools' || value === 'servers' || value === 'permissions' || value === 'logs';
 
 type ServerStatus = 'disabled' | 'pending' | 'connected';
 
@@ -89,11 +95,21 @@ const TAB_TRIGGER = 'data-[state=active]:text-brand-primary';
 export default function McpSettingsView() {
   const localize = useLocalize();
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const isTarsAdmin = useIsTarsAdmin();
   const { showToast } = useToastContext();
-  const { data: servers = [], isLoading } = useTarsMcpServersQuery();
+  const [searchParams] = useSearchParams();
+  const { data: servers = [], isLoading } = useTarsMcpServersQuery({ enabled: isTarsAdmin });
 
-  const [tab, setTab] = useState<SettingsTab>('servers');
+  /** `?tab=` lets the side panel's TARS card land straight on the user's own
+   *  catalog; anything an account may not open falls back to its default tab. */
+  const [tab, setTab] = useState<SettingsTab>(() => {
+    const requested = searchParams.get('tab');
+    if (isSettingsTab(requested) && (isTarsAdmin || requested === 'mytools')) {
+      return requested;
+    }
+    return isTarsAdmin ? 'servers' : 'mytools';
+  });
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
@@ -167,7 +183,7 @@ export default function McpSettingsView() {
       return next;
     });
 
-  if (!isTarsAdmin) {
+  if (user?.provider !== 'tars') {
     navigate('/c/new', { replace: true });
     return null;
   }
@@ -216,324 +232,350 @@ export default function McpSettingsView() {
           {localize('com_ui_tars_mcp_settings')}
         </h1>
 
-        <p className="text-sm text-text-secondary">{localize('com_ui_tars_mcp_settings_hint')}</p>
+        {tab === 'servers' && (
+          <p className="text-sm text-text-secondary">{localize('com_ui_tars_mcp_settings_hint')}</p>
+        )}
 
         <Tabs value={tab} onValueChange={(value) => setTab(value as SettingsTab)}>
           <TabsList className="-ml-3 w-fit">
-            <TabsTrigger value="servers" className={TAB_TRIGGER}>
-              {localize('com_ui_tars_mcp_tab_servers')}
+            <TabsTrigger value="mytools" className={TAB_TRIGGER}>
+              {localize('com_ui_tars_mcp_tab_my_tools')}
             </TabsTrigger>
-            <TabsTrigger value="permissions" className={TAB_TRIGGER}>
-              {localize('com_ui_tars_mcp_tab_permissions')}
-            </TabsTrigger>
-            <TabsTrigger value="logs" className={TAB_TRIGGER}>
-              {localize('com_ui_tars_mcp_tab_logs')}
-            </TabsTrigger>
+            {isTarsAdmin && (
+              <TabsTrigger value="servers" className={TAB_TRIGGER}>
+                {localize('com_ui_tars_mcp_tab_servers')}
+              </TabsTrigger>
+            )}
+            {isTarsAdmin && (
+              <TabsTrigger value="permissions" className={TAB_TRIGGER}>
+                {localize('com_ui_tars_mcp_tab_permissions')}
+              </TabsTrigger>
+            )}
+            {isTarsAdmin && (
+              <TabsTrigger value="logs" className={TAB_TRIGGER}>
+                {localize('com_ui_tars_mcp_tab_logs')}
+              </TabsTrigger>
+            )}
           </TabsList>
 
-          <TabsContent value="permissions" className={TAB_PANEL}>
-            <McpPermissionsTab />
+          <TabsContent value="mytools" className={TAB_PANEL}>
+            <McpUserToolsTab />
           </TabsContent>
 
-          <TabsContent value="logs" className={TAB_PANEL}>
-            <McpLogsTab />
-          </TabsContent>
+          {isTarsAdmin && (
+            <TabsContent value="permissions" className={TAB_PANEL}>
+              <McpPermissionsTab />
+            </TabsContent>
+          )}
 
-          <TabsContent value="servers" className={`${TAB_PANEL} space-y-4`}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative w-64 max-w-full">
-                  <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-                  <Input
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setPage(0);
-                    }}
-                    placeholder={localize('com_ui_tars_mcp_search')}
-                    className="pl-9"
-                  />
-                </div>
-                <Button variant="submit" onClick={() => setCreating(true)}>
-                  <Plus className="icon-sm mr-1" aria-hidden="true" />
-                  {localize('com_ui_tars_mcp_add_server')}
-                </Button>
-              </div>
-              <div className="flex items-center gap-2">
-                {selectedIds.size > 0 && (
-                  <Button variant="ghost" onClick={() => setSelectedIds(new Set())}>
-                    {localize('com_ui_tars_mcp_clear_selection', { count: selectedIds.size })}
-                  </Button>
-                )}
-                <Button
-                  variant="destructive"
-                  onClick={() => setBulkDeleting(true)}
-                  disabled={selectedIds.size === 0}
-                >
-                  {localize('com_ui_tars_mcp_bulk_delete')}
-                </Button>
-              </div>
-            </div>
+          {isTarsAdmin && (
+            <TabsContent value="logs" className={TAB_PANEL}>
+              <McpLogsTab />
+            </TabsContent>
+          )}
 
-            {isLoading && (
-              <div className="flex h-40 items-center justify-center">
-                <Spinner />
-              </div>
-            )}
-            {!isLoading && rows.length === 0 && (
-              <p className="py-12 text-center text-sm text-text-secondary">
-                {localize('com_ui_tars_mcp_empty')}
-              </p>
-            )}
-            {!isLoading && rows.length > 0 && (
-              <>
-                <div className="overflow-x-auto rounded-lg border border-border-light">
-                  <table className="w-full min-w-[72rem] table-fixed text-sm">
-                    <thead className="bg-surface-secondary text-left text-text-secondary">
-                      <tr>
-                        <th className="w-10 px-3 py-2">
-                          <Checkbox
-                            aria-label={localize('com_ui_tars_mcp_select_all')}
-                            checked={allPageRowsSelected}
-                            onCheckedChange={toggleAllPageRows}
-                          />
-                        </th>
-                        <th className="w-[15%] px-3 py-2 font-medium">{localize('com_ui_name')}</th>
-                        <th className="w-[8%] px-3 py-2 font-medium">
-                          {localize('com_ui_tars_mcp_type')}
-                        </th>
-                        <th className="w-[25%] px-3 py-2 font-medium">
-                          {localize('com_ui_description')}
-                        </th>
-                        <th className="w-[7%] px-3 py-2 font-medium">
-                          {localize('com_ui_tars_mcp_permissions_tools_header')}
-                        </th>
-                        <th className="w-[7%] px-3 py-2 font-medium">
-                          {localize('com_ui_tars_mcp_priority')}
-                        </th>
-                        <th className="w-[15%] px-3 py-2 font-medium">
-                          {localize('com_ui_tars_mcp_tags')}
-                        </th>
-                        <th className="w-[9%] px-3 py-2 font-medium">
-                          {localize('com_ui_tars_mcp_status')}
-                        </th>
-                        <th className="w-[11%] px-3 py-2 text-right font-medium">
-                          {localize('com_ui_actions')}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageRows.map((server) => {
-                        const status = serverStatus(server);
-                        const tags = server.tags ?? [];
-                        const isSelected = selectedIds.has(server.id);
-                        return (
-                          <Fragment key={server.id}>
-                            <tr
-                              className={`border-t border-border-light ${
-                                isSelected ? 'bg-brand-primary-subtle/40' : 'hover:bg-surface-hover'
-                              }`}
-                            >
-                              <td className="px-3 py-2">
-                                <Checkbox
-                                  aria-label={localize('com_ui_tars_mcp_select_row', {
-                                    name: server.name,
-                                  })}
-                                  checked={isSelected}
-                                  onCheckedChange={() => toggleRow(server.id)}
-                                />
-                              </td>
-                              <td className="px-3 py-2">
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    aria-label={localize('com_ui_tars_mcp_toggle_tools')}
-                                    aria-expanded={expandedServerId === server.id}
-                                    onClick={() =>
-                                      setExpandedServerId((prev) =>
-                                        prev === server.id ? null : server.id,
-                                      )
-                                    }
-                                    className="rounded p-0.5 text-text-secondary hover:text-text-primary"
-                                  >
-                                    {expandedServerId === server.id ? (
-                                      <ChevronDown className="icon-sm text-brand-primary" />
-                                    ) : (
-                                      <ChevronRight className="icon-sm" />
-                                    )}
-                                  </button>
-                                  <div className="min-w-0">
-                                    <span
-                                      className="block truncate font-medium text-text-primary"
-                                      title={server.name}
-                                    >
-                                      {server.name}
-                                    </span>
-                                    {server.code != null && server.code !== '' && (
-                                      <span className="block truncate font-mono text-xs text-text-secondary">
-                                        {server.code}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-2">
-                                <span
-                                  className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${
-                                    TYPE_STYLES[server.type] ?? TYPE_STYLES.custom_api
-                                  }`}
-                                >
-                                  {localize(
-                                    TYPE_LABEL_KEYS[server.type as keyof typeof TYPE_LABEL_KEYS] ??
-                                      'com_ui_tars_mcp_type_custom',
-                                  )}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 text-text-secondary">
-                                <span className="block truncate" title={server.description ?? ''}>
-                                  {server.description ?? '—'}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 text-text-secondary">
-                                {server.tool_count ?? 0}
-                              </td>
-                              <td className="px-3 py-2 text-text-secondary">
-                                {server.priority ?? 0}
-                              </td>
-                              <td className="px-3 py-2">
-                                {tags.length === 0 ? (
-                                  <span className="text-text-secondary">—</span>
-                                ) : (
-                                  <div className="flex flex-wrap gap-1">
-                                    {tags.slice(0, MAX_TAG_BADGES).map((tag) => (
-                                      <span
-                                        key={tag}
-                                        className="inline-block whitespace-nowrap rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary"
-                                      >
-                                        {tag}
-                                      </span>
-                                    ))}
-                                    {tags.length > MAX_TAG_BADGES && (
-                                      <span className="inline-block whitespace-nowrap rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
-                                        +{tags.length - MAX_TAG_BADGES}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-3 py-2">
-                                <span
-                                  className={`inline-block rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[status]}`}
-                                >
-                                  {localize(STATUS_LABEL_KEYS[status])}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2">
-                                <div className="flex justify-end gap-1">
-                                  {busyServerId === server.id ? (
-                                    <Spinner className="icon-sm" />
-                                  ) : (
-                                    <>
-                                      <button
-                                        type="button"
-                                        aria-label={localize('com_ui_tars_mcp_test')}
-                                        title={localize('com_ui_tars_mcp_test')}
-                                        onClick={() => handleTest(server)}
-                                        className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
-                                      >
-                                        <PlugZap className="icon-sm" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        aria-label={localize('com_ui_tars_mcp_sync')}
-                                        title={localize('com_ui_tars_mcp_sync')}
-                                        onClick={() => handleSync(server)}
-                                        className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
-                                      >
-                                        <RefreshCw className="icon-sm" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        aria-label={localize('com_ui_edit')}
-                                        title={localize('com_ui_edit')}
-                                        onClick={() => setEditing(server)}
-                                        className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
-                                      >
-                                        <Pencil className="icon-sm" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        aria-label={localize('com_ui_delete')}
-                                        title={localize('com_ui_delete')}
-                                        onClick={() => setDeleting(server)}
-                                        className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
-                                      >
-                                        <Trash2 className="icon-sm" />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                            {expandedServerId === server.id && (
-                              <tr className="border-t border-border-light">
-                                {/* `w-0` keeps this cell's long tool descriptions from
-                                    inflating the table's auto column widths — the row still
-                                    renders at the table's real (header-driven) width. */}
-                                <td colSpan={9} className="w-0 bg-surface-secondary px-6 py-2">
-                                  <McpServerToolsPanel serverId={server.id} />
-                                </td>
-                              </tr>
-                            )}
-                          </Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
-                  <div className="flex items-center gap-2">
-                    <span id="tars-mcp-page-size-label">
-                      {localize('com_ui_tars_mcp_rows_per_page')}
-                    </span>
-                    <Dropdown
-                      value={String(pageSize)}
-                      onChange={(value) => {
-                        setPageSize(Number(value));
+          {isTarsAdmin && (
+            <TabsContent value="servers" className={`${TAB_PANEL} space-y-4`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-64 max-w-full">
+                    <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                    <Input
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value);
                         setPage(0);
                       }}
-                      options={PAGE_SIZE_OPTIONS}
-                      aria-labelledby="tars-mcp-page-size-label"
-                      sizeClasses="min-w-[5rem]"
+                      placeholder={localize('com_ui_tars_mcp_search')}
+                      className="pl-9"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span>
-                      {localize('com_ui_tars_mcp_page_of', {
-                        current: currentPage + 1,
-                        total: pageCount,
-                      })}
-                    </span>
-                    <Button
-                      variant="outline"
-                      disabled={currentPage === 0}
-                      onClick={() => setPage(currentPage - 1)}
-                    >
-                      {localize('com_ui_tars_mcp_prev_page')}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={currentPage >= pageCount - 1}
-                      onClick={() => setPage(currentPage + 1)}
-                    >
-                      {localize('com_ui_tars_mcp_next_page')}
-                    </Button>
-                  </div>
+                  <Button variant="submit" onClick={() => setCreating(true)}>
+                    <Plus className="icon-sm mr-1" aria-hidden="true" />
+                    {localize('com_ui_tars_mcp_add_server')}
+                  </Button>
                 </div>
-              </>
-            )}
-          </TabsContent>
+                <div className="flex items-center gap-2">
+                  {selectedIds.size > 0 && (
+                    <Button variant="ghost" onClick={() => setSelectedIds(new Set())}>
+                      {localize('com_ui_tars_mcp_clear_selection', { count: selectedIds.size })}
+                    </Button>
+                  )}
+                  <Button
+                    variant="destructive"
+                    onClick={() => setBulkDeleting(true)}
+                    disabled={selectedIds.size === 0}
+                  >
+                    {localize('com_ui_tars_mcp_bulk_delete')}
+                  </Button>
+                </div>
+              </div>
+
+              {isLoading && (
+                <div className="flex h-40 items-center justify-center">
+                  <Spinner />
+                </div>
+              )}
+              {!isLoading && rows.length === 0 && (
+                <p className="py-12 text-center text-sm text-text-secondary">
+                  {localize('com_ui_tars_mcp_empty')}
+                </p>
+              )}
+              {!isLoading && rows.length > 0 && (
+                <>
+                  <div className="overflow-x-auto rounded-lg border border-border-light">
+                    <table className="w-full min-w-[72rem] table-fixed text-sm">
+                      <thead className="bg-surface-secondary text-left text-text-secondary">
+                        <tr>
+                          <th className="w-10 px-3 py-2">
+                            <Checkbox
+                              aria-label={localize('com_ui_tars_mcp_select_all')}
+                              checked={allPageRowsSelected}
+                              onCheckedChange={toggleAllPageRows}
+                            />
+                          </th>
+                          <th className="w-[15%] px-3 py-2 font-medium">
+                            {localize('com_ui_name')}
+                          </th>
+                          <th className="w-[8%] px-3 py-2 font-medium">
+                            {localize('com_ui_tars_mcp_type')}
+                          </th>
+                          <th className="w-[25%] px-3 py-2 font-medium">
+                            {localize('com_ui_description')}
+                          </th>
+                          <th className="w-[7%] px-3 py-2 font-medium">
+                            {localize('com_ui_tars_mcp_permissions_tools_header')}
+                          </th>
+                          <th className="w-[7%] px-3 py-2 font-medium">
+                            {localize('com_ui_tars_mcp_priority')}
+                          </th>
+                          <th className="w-[15%] px-3 py-2 font-medium">
+                            {localize('com_ui_tars_mcp_tags')}
+                          </th>
+                          <th className="w-[9%] px-3 py-2 font-medium">
+                            {localize('com_ui_tars_mcp_status')}
+                          </th>
+                          <th className="w-[11%] px-3 py-2 text-right font-medium">
+                            {localize('com_ui_actions')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pageRows.map((server) => {
+                          const status = serverStatus(server);
+                          const tags = server.tags ?? [];
+                          const isSelected = selectedIds.has(server.id);
+                          return (
+                            <Fragment key={server.id}>
+                              <tr
+                                className={`border-t border-border-light ${
+                                  isSelected
+                                    ? 'bg-brand-primary-subtle/40'
+                                    : 'hover:bg-surface-hover'
+                                }`}
+                              >
+                                <td className="px-3 py-2">
+                                  <Checkbox
+                                    aria-label={localize('com_ui_tars_mcp_select_row', {
+                                      name: server.name,
+                                    })}
+                                    checked={isSelected}
+                                    onCheckedChange={() => toggleRow(server.id)}
+                                  />
+                                </td>
+                                <td className="px-3 py-2">
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      aria-label={localize('com_ui_tars_mcp_toggle_tools')}
+                                      aria-expanded={expandedServerId === server.id}
+                                      onClick={() =>
+                                        setExpandedServerId((prev) =>
+                                          prev === server.id ? null : server.id,
+                                        )
+                                      }
+                                      className="rounded p-0.5 text-text-secondary hover:text-text-primary"
+                                    >
+                                      {expandedServerId === server.id ? (
+                                        <ChevronDown className="icon-sm text-brand-primary" />
+                                      ) : (
+                                        <ChevronRight className="icon-sm" />
+                                      )}
+                                    </button>
+                                    <div className="min-w-0">
+                                      <span
+                                        className="block truncate font-medium text-text-primary"
+                                        title={server.name}
+                                      >
+                                        {server.name}
+                                      </span>
+                                      {server.code != null && server.code !== '' && (
+                                        <span className="block truncate font-mono text-xs text-text-secondary">
+                                          {server.code}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="whitespace-nowrap px-3 py-2">
+                                  <span
+                                    className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${
+                                      TYPE_STYLES[server.type] ?? TYPE_STYLES.custom_api
+                                    }`}
+                                  >
+                                    {localize(
+                                      TYPE_LABEL_KEYS[
+                                        server.type as keyof typeof TYPE_LABEL_KEYS
+                                      ] ?? 'com_ui_tars_mcp_type_custom',
+                                    )}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-text-secondary">
+                                  <span className="block truncate" title={server.description ?? ''}>
+                                    {server.description ?? '—'}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-text-secondary">
+                                  {server.tool_count ?? 0}
+                                </td>
+                                <td className="px-3 py-2 text-text-secondary">
+                                  {server.priority ?? 0}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {tags.length === 0 ? (
+                                    <span className="text-text-secondary">—</span>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-1">
+                                      {tags.slice(0, MAX_TAG_BADGES).map((tag) => (
+                                        <span
+                                          key={tag}
+                                          className="inline-block whitespace-nowrap rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary"
+                                        >
+                                          {tag}
+                                        </span>
+                                      ))}
+                                      {tags.length > MAX_TAG_BADGES && (
+                                        <span className="inline-block whitespace-nowrap rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
+                                          +{tags.length - MAX_TAG_BADGES}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <span
+                                    className={`inline-block rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[status]}`}
+                                  >
+                                    {localize(STATUS_LABEL_KEYS[status])}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <div className="flex justify-end gap-1">
+                                    {busyServerId === server.id ? (
+                                      <Spinner className="icon-sm" />
+                                    ) : (
+                                      <>
+                                        <button
+                                          type="button"
+                                          aria-label={localize('com_ui_tars_mcp_test')}
+                                          title={localize('com_ui_tars_mcp_test')}
+                                          onClick={() => handleTest(server)}
+                                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                                        >
+                                          <PlugZap className="icon-sm" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          aria-label={localize('com_ui_tars_mcp_sync')}
+                                          title={localize('com_ui_tars_mcp_sync')}
+                                          onClick={() => handleSync(server)}
+                                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                                        >
+                                          <RefreshCw className="icon-sm" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          aria-label={localize('com_ui_edit')}
+                                          title={localize('com_ui_edit')}
+                                          onClick={() => setEditing(server)}
+                                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                                        >
+                                          <Pencil className="icon-sm" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          aria-label={localize('com_ui_delete')}
+                                          title={localize('com_ui_delete')}
+                                          onClick={() => setDeleting(server)}
+                                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                                        >
+                                          <Trash2 className="icon-sm" />
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                              {expandedServerId === server.id && (
+                                <tr className="border-t border-border-light">
+                                  {/* `w-0` keeps this cell's long tool descriptions from
+                                      inflating the table's auto column widths — the row still
+                                      renders at the table's real (header-driven) width. */}
+                                  <td colSpan={9} className="w-0 bg-surface-secondary px-6 py-2">
+                                    <McpServerToolsPanel serverId={server.id} />
+                                  </td>
+                                </tr>
+                              )}
+                            </Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
+                    <div className="flex items-center gap-2">
+                      <span id="tars-mcp-page-size-label">
+                        {localize('com_ui_tars_mcp_rows_per_page')}
+                      </span>
+                      <Dropdown
+                        value={String(pageSize)}
+                        onChange={(value) => {
+                          setPageSize(Number(value));
+                          setPage(0);
+                        }}
+                        options={PAGE_SIZE_OPTIONS}
+                        aria-labelledby="tars-mcp-page-size-label"
+                        sizeClasses="min-w-[5rem]"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span>
+                        {localize('com_ui_tars_mcp_page_of', {
+                          current: currentPage + 1,
+                          total: pageCount,
+                        })}
+                      </span>
+                      <Button
+                        variant="outline"
+                        disabled={currentPage === 0}
+                        onClick={() => setPage(currentPage - 1)}
+                      >
+                        {localize('com_ui_tars_mcp_prev_page')}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        disabled={currentPage >= pageCount - 1}
+                        onClick={() => setPage(currentPage + 1)}
+                      >
+                        {localize('com_ui_tars_mcp_next_page')}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 

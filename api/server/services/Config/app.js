@@ -1,11 +1,16 @@
+const mongoose = require('mongoose');
 const { CacheKeys } = require('librechat-data-provider');
 const { AppService, logger } = require('@librechat/data-schemas');
 const {
-  createAppConfigService,
-  clearMcpConfigCache,
+  cacheConfig,
+  standardCache,
+  hostPortFromUrl,
   withTarsMcpConfig,
   tarsMcpInjectionFailed,
-  hostPortFromUrl,
+  clearMcpConfigCache,
+  createAppConfigService,
+  createCodeEnvironmentRegistry,
+  mergeAccessibleCodeEnvironments,
 } = require('@librechat/api');
 const { setCachedTools, invalidateCachedTools } = require('./getCachedTools');
 const { loadAndFormatTools } = require('~/server/services/start/tools');
@@ -13,6 +18,23 @@ const loadCustomConfig = require('./loadCustomConfig');
 const getLogStores = require('~/cache/getLogStores');
 const paths = require('~/config/paths');
 const db = require('~/models');
+
+let codeEnvironmentRegistry;
+
+function getCodeEnvironmentRegistry() {
+  if (codeEnvironmentRegistry == null) {
+    codeEnvironmentRegistry = createCodeEnvironmentRegistry(mongoose, {
+      configurationCache: cacheConfig.USE_REDIS
+        ? standardCache('CODE_ENVIRONMENT_CONFIG')
+        : undefined,
+    });
+  }
+  return codeEnvironmentRegistry;
+}
+
+async function invalidateCodeEnvironmentConfigCache(tenantId) {
+  await getCodeEnvironmentRegistry().invalidateAccessibleConfigurations(tenantId);
+}
 
 /**
  * Exempts the local Langflow service from the MCP SSRF block by deriving its `host:port` from
@@ -83,6 +105,20 @@ const { getAppConfig, clearAppConfigCache, clearOverrideCache } = createAppConfi
   cacheKeys: CacheKeys,
   getApplicableConfigs: db.getApplicableConfigs,
   getUserPrincipals: db.getUserPrincipals,
+  augmentConfig: ({ appConfig, baseConfig, principals, options }) => {
+    if (!options.userId) return appConfig;
+    return mergeAccessibleCodeEnvironments({
+      appConfig,
+      deploymentConfig: baseConfig,
+      actor: {
+        userId: options.userId,
+        role: options.role ?? null,
+        idOnTheSource: options.idOnTheSource ?? null,
+        principals,
+      },
+      registry: getCodeEnvironmentRegistry(),
+    });
+  },
 });
 
 /**
@@ -114,5 +150,8 @@ async function invalidateConfigCaches(tenantId) {
 module.exports = {
   getAppConfig,
   clearAppConfigCache,
+  clearOverrideCache,
   invalidateConfigCaches,
+  getCodeEnvironmentRegistry,
+  invalidateCodeEnvironmentConfigCache,
 };

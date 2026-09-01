@@ -1,8 +1,13 @@
 import { ErrorTypes, EModelEndpoint, AuthKeys } from 'librechat-data-provider';
-import type { BaseInitializeParams, InitializeResultBase, AnthropicConfigOptions } from '~/types';
+import type {
+  InitializeResultBase,
+  AnthropicConfigOptions,
+  ProviderInitializeParams,
+} from '~/types';
 import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
 import { loadAnthropicVertexCredentials, getVertexCredentialOptions } from './vertex';
 import { isEnabled, isNoUserKeyError, mergeHeaders } from '~/utils';
+import { resolveEndpointRuntime } from '~/types';
 import { getLLMConfig } from './llm';
 
 /**
@@ -13,16 +18,14 @@ import { getLLMConfig } from './llm';
  * @returns Promise resolving to Anthropic configuration options
  * @throws Error if API key is not provided (when not using Vertex AI)
  */
-export async function initializeAnthropic({
-  req,
-  endpoint,
-  model_parameters,
-  db,
-}: BaseInitializeParams): Promise<InitializeResultBase> {
+export async function initializeAnthropic(
+  params: ProviderInitializeParams,
+): Promise<InitializeResultBase> {
+  const { endpoint, model_parameters, db } = params;
+  const { appConfig, user, requestBody } = resolveEndpointRuntime(params);
   void endpoint;
-  const appConfig = req.config;
   const { ANTHROPIC_API_KEY, ANTHROPIC_REVERSE_PROXY, PROXY } = process.env;
-  const { key: expiresAt } = req.body;
+  const { key: expiresAt } = requestBody;
 
   let credentials: Record<string, unknown> = {};
   let vertexOptions: { region?: string; projectId?: string } | undefined;
@@ -59,10 +62,10 @@ export async function initializeAnthropic({
       const expiredKeyCovered = expiresAt
         ? await isExpiredKeyCoveredByTars(expiresAt, EModelEndpoint.anthropic)
         : false;
-      if (!expiredKeyCovered && req.user?.id) {
+      if (!expiredKeyCovered && user?.id) {
         try {
           anthropicApiKey = await db.getUserKey({
-            userId: req.user.id,
+            userId: user.id,
             name: EModelEndpoint.anthropic,
           });
         } catch (error) {
@@ -98,7 +101,7 @@ export async function initializeAnthropic({
     reverseProxyUrl: ANTHROPIC_REVERSE_PROXY ?? undefined,
     modelOptions: {
       ...(model_parameters ?? {}),
-      user: req.user?.id,
+      user: user?.id,
     },
     ...(headers && { headers }),
     // Pass Vertex AI options if configured
