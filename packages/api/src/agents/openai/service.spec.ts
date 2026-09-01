@@ -1,7 +1,11 @@
 import { GraphEvents } from '@librechat/agents';
 import { ErrorTypes } from 'librechat-data-provider';
+import { isBaseMessage } from '@librechat/agents/langchain/messages';
+import type { AIMessage, BaseMessage, ToolMessage } from '@librechat/agents/langchain/messages';
 import type { FiltersConfig } from 'librechat-data-provider';
 import type { ChatCompletionDependencies } from './service';
+import type { ChatCompletionResponse } from './types';
+import type { EventHandler } from './handlers';
 import { createAgentChatCompletion } from './service';
 
 jest.mock('@librechat/data-schemas', () => ({
@@ -975,6 +979,322 @@ describe('createAgentChatCompletion - source-aware content protection', () => {
 
     expectRawFreeFilterError(res, rawValue, 'message_filter_pii_block');
     expect(getAgent).not.toHaveBeenCalled();
+    expect(createRun).not.toHaveBeenCalled();
+  });
+});
+
+describe('createAgentChatCompletion - LangChain run input', () => {
+  let createRun: jest.Mock;
+  let processStream: jest.Mock;
+  let deps: ChatCompletionDependencies;
+
+  beforeEach(() => {
+    processStream = jest.fn().mockResolvedValue(undefined);
+    createRun = jest.fn().mockResolvedValue({ processStream });
+
+    deps = {
+      getAgent: jest.fn().mockResolvedValue({
+        id: 'agent_test',
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        tools: [],
+      }),
+      initializeAgent: jest.fn().mockResolvedValue({
+        id: 'agent_test',
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        tools: [],
+        attachments: [],
+        toolContextMap: {},
+        maxContextTokens: 1000,
+        model_parameters: {},
+      }),
+      createRun: createRun as unknown as ChatCompletionDependencies['createRun'],
+    };
+  });
+
+  async function runWithMessages(messages: unknown[]): Promise<BaseMessage[]> {
+    const req = createMockReq(
+      { id: 'user-123', role: 'USER' },
+      { model: 'agent_test', messages, stream: false },
+    );
+    await createAgentChatCompletion(req, createMockRes(), deps);
+    expect(createRun).toHaveBeenCalledTimes(1);
+    return (createRun.mock.calls[0][0] as { messages: BaseMessage[] }).messages;
+  }
+
+  it('passes BaseMessage instances into the run, not role-tagged plain objects', async () => {
+    const messages = await runWithMessages([
+      { role: 'system', content: 'be brief' },
+      { role: 'user', content: 'hi' },
+    ]);
+
+    for (const message of messages) {
+      expect(isBaseMessage(message)).toBe(true);
+      expect(typeof message.getType).toBe('function');
+    }
+    expect(messages.map((message) => message.getType())).toEqual(['system', 'human']);
+
+    const streamInput = processStream.mock.calls[0][0] as { messages: BaseMessage[] };
+    expect(streamInput.messages).toBe(messages);
+  });
+
+  it('rebuilds an assistant tool call and its result as AIMessage/ToolMessage', async () => {
+    const messages = await runWithMessages([
+      { role: 'user', content: '目前我們資料庫有什麼模型' },
+      {
+        role: 'assistant',
+        content: '',
+        tool_calls: [
+          {
+            id: 'call_1',
+            type: 'function',
+            function: { name: 'sql_query', arguments: '{"question":"list models"}' },
+          },
+        ],
+      },
+      { role: 'tool', content: 'rows...', tool_call_id: 'call_1', name: 'sql_query' },
+    ]);
+
+    expect(messages.map((message) => message.getType())).toEqual(['human', 'ai', 'tool']);
+
+    const assistant = messages[1] as AIMessage;
+    expect(assistant.tool_calls).toEqual([
+      { id: 'call_1', name: 'sql_query', args: { question: 'list models' }, type: 'tool_call' },
+    ]);
+
+    const toolMessage = messages[2] as ToolMessage;
+    expect(toolMessage.tool_call_id).toBe('call_1');
+    expect(toolMessage.content).toBe('rows...');
+  });
+
+  it('keeps a tool call whose arguments are not valid JSON', async () => {
+    const messages = await runWithMessages([
+      { role: 'user', content: 'hi' },
+      {
+        role: 'assistant',
+        content: '',
+        tool_calls: [
+          { id: 'call_1', type: 'function', function: { name: 'sql_query', arguments: '{"que' } },
+        ],
+      },
+    ]);
+
+    expect((messages[1] as AIMessage).tool_calls).toEqual([
+      { id: 'call_1', name: 'sql_query', args: {}, type: 'tool_call' },
+    ]);
+  });
+
+  it('preserves multimodal user content as content blocks', async () => {
+    const messages = await runWithMessages([
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'what is this' },
+          { type: 'image_url', image_url: { url: 'https://example.com/a.png' } },
+        ],
+      },
+    ]);
+
+    expect(messages[0].getType()).toBe('human');
+    expect(messages[0].content).toEqual([
+      { type: 'text', text: 'what is this' },
+      { type: 'image_url', image_url: { url: 'https://example.com/a.png' } },
+    ]);
+  });
+
+  it('rejects a tool message with no tool_call_id instead of building a broken ToolMessage', async () => {
+    const req = createMockReq(
+      { id: 'user-123', role: 'USER' },
+      {
+        model: 'agent_test',
+        messages: [
+          { role: 'user', content: 'hi' },
+          { role: 'tool', content: 'rows...' },
+        ],
+        stream: false,
+      },
+    );
+    const res = createMockRes();
+
+    await createAgentChatCompletion(req, res, deps);
+
+    expect(getResponseMock(res, 'status')).toHaveBeenCalledWith(400);
+    expect(createRun).not.toHaveBeenCalled();
+  });
+});
+
+describe('createAgentChatCompletion - client-side tools', () => {
+  let createRun: jest.Mock;
+  let processStream: jest.Mock;
+  let deps: ChatCompletionDependencies;
+  let agentTools: unknown[];
+
+  const WEATHER_TOOL = {
+    type: 'function',
+    function: {
+      name: 'get_weather',
+      description: 'Get weather for a city',
+      parameters: {
+        type: 'object',
+        properties: { city: { type: 'string' } },
+        required: ['city'],
+      },
+    },
+  };
+
+  beforeEach(() => {
+    agentTools = [];
+    processStream = jest.fn().mockResolvedValue(undefined);
+    createRun = jest.fn().mockResolvedValue({ processStream });
+
+    deps = {
+      getAgent: jest.fn().mockResolvedValue({
+        id: 'agent_test',
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        tools: [],
+      }),
+      initializeAgent: jest.fn().mockImplementation(async () => ({
+        id: 'agent_test',
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        tools: agentTools,
+        attachments: [],
+        toolContextMap: {},
+        maxContextTokens: 1000,
+        model_parameters: {},
+      })),
+      createRun: createRun as unknown as ChatCompletionDependencies['createRun'],
+    };
+  });
+
+  function requestWith(body: Record<string, unknown>) {
+    return createMockReq(
+      { id: 'user-123', role: 'USER' },
+      {
+        model: 'agent_test',
+        messages: [{ role: 'user', content: 'weather in Taipei?' }],
+        stream: false,
+        ...body,
+      },
+    );
+  }
+
+  /** Drives the graph's tool dispatch the way ToolNode does: hand the batch to
+   *  the host handler, then unwind with whatever it rejected. */
+  function dispatchToolCall(toolCalls: Array<{ id: string; name: string; args: object }>): void {
+    processStream.mockImplementation(async () => {
+      const handlers = (
+        createRun.mock.calls[0][0] as { customHandlers: Record<string, EventHandler> }
+      ).customHandlers;
+      let rejection: unknown;
+      handlers.on_tool_execute.handle('on_tool_execute', {
+        toolCalls,
+        reject: (error: unknown) => {
+          rejection = error;
+        },
+      });
+      throw rejection ?? new Error('handler did not reject');
+    });
+  }
+
+  it('binds caller tools as schema-only definitions instead of executable tools', async () => {
+    const res = createMockRes();
+    await createAgentChatCompletion(requestWith({ tools: [WEATHER_TOOL] }), res, deps);
+
+    const runAgent = (createRun.mock.calls[0][0] as { agents: Array<Record<string, unknown>> })
+      .agents[0];
+    expect(runAgent.toolDefinitions).toEqual([
+      {
+        name: 'get_weather',
+        description: 'Get weather for a city',
+        parameters: WEATHER_TOOL.function.parameters,
+      },
+    ]);
+    expect(runAgent.tools).toEqual([]);
+  });
+
+  it('returns the tool call to the caller instead of executing it', async () => {
+    dispatchToolCall([{ id: 'call_1', name: 'get_weather', args: { city: 'Taipei' } }]);
+    const res = createMockRes();
+
+    await createAgentChatCompletion(requestWith({ tools: [WEATHER_TOOL] }), res, deps);
+
+    const body = getResponseMock(res, 'json').mock.calls[0][0] as ChatCompletionResponse;
+    expect(body.choices[0].finish_reason).toBe('tool_calls');
+    expect(body.choices[0].message.tool_calls).toEqual([
+      {
+        id: 'call_1',
+        type: 'function',
+        function: { name: 'get_weather', arguments: '{"city":"Taipei"}' },
+      },
+    ]);
+    expect(getResponseMock(res, 'status')).not.toHaveBeenCalledWith(500);
+  });
+
+  it('streams the tool call and closes with a tool_calls finish reason', async () => {
+    dispatchToolCall([{ id: 'call_1', name: 'get_weather', args: { city: 'Taipei' } }]);
+    const res = createMockRes();
+
+    await createAgentChatCompletion(
+      requestWith({ tools: [WEATHER_TOOL], stream: true }),
+      res,
+      deps,
+    );
+
+    const written = (res.write as unknown as jest.Mock).mock.calls.map((call) => String(call[0]));
+    const toolChunk = written.find((chunk) => chunk.includes('"tool_calls"'));
+    expect(toolChunk).toContain('"name":"get_weather"');
+    expect(toolChunk).toContain('{\\"city\\":\\"Taipei\\"}');
+    expect(written.some((chunk) => chunk.includes('"finish_reason":"tool_calls"'))).toBe(true);
+    expect(written.some((chunk) => chunk.includes('Error:'))).toBe(false);
+  });
+
+  it('leaves tools unbound when tool_choice is none', async () => {
+    const res = createMockRes();
+    await createAgentChatCompletion(
+      requestWith({ tools: [WEATHER_TOOL], tool_choice: 'none' }),
+      res,
+      deps,
+    );
+
+    const runAgent = (createRun.mock.calls[0][0] as { agents: Array<Record<string, unknown>> })
+      .agents[0];
+    expect(runAgent.toolDefinitions).toBeUndefined();
+  });
+
+  it('rejects a tool_choice the graph cannot honor rather than downgrading it', async () => {
+    const res = createMockRes();
+    await createAgentChatCompletion(
+      requestWith({ tools: [WEATHER_TOOL], tool_choice: 'required' }),
+      res,
+      deps,
+    );
+
+    expect(getResponseMock(res, 'status')).toHaveBeenCalledWith(400);
+    expect(createRun).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed tool entry', async () => {
+    const res = createMockRes();
+    await createAgentChatCompletion(
+      requestWith({ tools: [{ type: 'function', function: {} }] }),
+      res,
+      deps,
+    );
+
+    expect(getResponseMock(res, 'status')).toHaveBeenCalledWith(400);
+    expect(createRun).not.toHaveBeenCalled();
+  });
+
+  it('refuses caller tools when the target agent has tools of its own', async () => {
+    agentTools = [{ name: 'web_search' }];
+    const res = createMockRes();
+
+    await createAgentChatCompletion(requestWith({ tools: [WEATHER_TOOL] }), res, deps);
+
+    expect(getResponseMock(res, 'status')).toHaveBeenCalledWith(400);
     expect(createRun).not.toHaveBeenCalled();
   });
 });
