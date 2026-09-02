@@ -275,7 +275,7 @@ export function SubmenuGroup({
   );
 }
 
-function AdminMenuItem({ node }: { node: AdminMenuNode }) {
+function AdminMenuItem({ node, onNavigate }: { node: AdminMenuNode; onNavigate?: () => void }) {
   const localize = useLocalize();
   const navigate = useNavigate();
   const label = localize(node.labelKey);
@@ -285,14 +285,20 @@ function AdminMenuItem({ node }: { node: AdminMenuNode }) {
     return (
       <SubmenuGroup icon={Icon} label={label}>
         {node.children.map((child) => (
-          <AdminMenuItem key={child.labelKey} node={child} />
+          <AdminMenuItem key={child.labelKey} node={child} onNavigate={onNavigate} />
         ))}
       </SubmenuGroup>
     );
   }
 
   return (
-    <Menu.MenuItem onClick={() => navigate(node.path ?? '/c/new')} className="select-item text-sm">
+    <Menu.MenuItem
+      onClick={() => {
+        onNavigate?.();
+        navigate(node.path ?? '/c/new');
+      }}
+      className="select-item text-sm"
+    >
       <Icon className="icon-md" aria-hidden="true" />
       {label}
     </Menu.MenuItem>
@@ -300,11 +306,11 @@ function AdminMenuItem({ node }: { node: AdminMenuNode }) {
 }
 
 /** Hierarchical pwc_tars administration menu rendered inside the account menu. */
-export default function AdminMenu() {
+export default function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       {ADMIN_MENU.map((node) => (
-        <AdminMenuItem key={node.labelKey} node={node} />
+        <AdminMenuItem key={node.labelKey} node={node} onNavigate={onNavigate} />
       ))}
     </>
   );
