@@ -485,6 +485,8 @@ export const tarsModels = () => `${BASE_URL}/api/tars/models`;
 export const tarsMcpAdminServers = () => `${BASE_URL}/api/tars/mcp/admin/servers`;
 export const tarsMcpAdminServer = (id: string) =>
   `${BASE_URL}/api/tars/mcp/admin/servers/${encodeURIComponent(id)}`;
+export const tarsMcpAdminServersBatchDelete = () =>
+  `${BASE_URL}/api/tars/mcp/admin/servers/batch-delete`;
 export const tarsMcpAdminServerTest = (id: string) => `${tarsMcpAdminServer(id)}/test`;
 export const tarsMcpAdminServerSync = (id: string) => `${tarsMcpAdminServer(id)}/sync`;
 export const tarsMcpAdminParseOpenapi = () => `${BASE_URL}/api/tars/mcp/admin/parse-openapi`;
