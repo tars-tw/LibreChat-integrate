@@ -379,7 +379,7 @@ describe('useMCPSelect', () => {
       const { Wrapper, servers } = createWrapper(['server1', 'server2']);
 
       const TestComponent = () => {
-        const mcpHook = useMCPSelect({ servers });
+        const mcpHook = useMCPSelect({ servers, ownsChatSelection: true });
         const [ephemeralAgent, setEphemeralAgent] = useRecoilState(
           ephemeralAgentByConvoId(Constants.NEW_CONVO),
         );

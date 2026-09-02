@@ -7,8 +7,8 @@ import type {
   GoogleCredentials,
   ProviderInitializeParams,
 } from '~/types';
-import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
 import { isEnabled, mergeHeaders, resolveHeaders, loadServiceKey, isNoUserKeyError } from '~/utils';
+import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
 import { resolveEndpointRuntime } from '~/types';
 import { getGoogleConfig } from './llm';
 
