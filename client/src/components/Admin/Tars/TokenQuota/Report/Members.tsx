@@ -3,6 +3,7 @@ import { Button, Spinner } from '@librechat/client';
 import type { TTarsTokenUserUsage } from 'librechat-data-provider';
 import type { QuotaCeiling } from './helpers';
 import { ceilingShare, formatTokens, isOverWarning } from './helpers';
+import { personIdentity } from '../helpers';
 import { useLocalize } from '~/hooks';
 
 /**
@@ -81,6 +82,7 @@ export default function Members({
                 const ceiling = own ?? inherited;
                 const share = ceilingShare(member.total_tokens, ceiling);
                 const warning = isOverWarning(share, ceiling);
+                const { primary, secondary } = personIdentity(member, userId);
                 return (
                   <tr
                     key={userId}
@@ -88,12 +90,14 @@ export default function Members({
                     className="cursor-pointer border-t border-border-light hover:bg-surface-hover"
                   >
                     <td className="px-3 py-2">
-                      <span className="block truncate text-text-primary">
-                        {member.display_name ?? member.username ?? userId}
+                      <span className="block truncate font-medium text-text-primary">
+                        {primary}
                       </span>
-                      <span className="block truncate text-xs text-text-secondary">
-                        {member.username ?? '—'}
-                      </span>
+                      {secondary != null && (
+                        <span className="block truncate text-xs text-text-secondary">
+                          {secondary}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
                       {formatTokens(member.log_count)}
