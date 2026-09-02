@@ -101,3 +101,24 @@ export const groupConfigsByGroup = (
 /** The brains a group's roles grant, as a lookup the forms narrow their picker by. */
 export const allowedDomainSet = (allowedDomains: string[] | undefined): Set<string> =>
   new Set(allowedDomains ?? []);
+
+/**
+ * pwc_tars often leaves `display_name` unset, or sets it equal to `username`.
+ * Rendering both fields naively then repeats the same string on two lines, which
+ * is what made the user picker and member lists hard to scan. This picks one
+ * bold identity line and a secondary line that never restates it.
+ */
+export const personIdentity = (
+  person: { display_name?: string | null; username?: string | null; email?: string | null },
+  fallbackId: string,
+): { primary: string; secondary: string | null } => {
+  const hasOwnDisplayName =
+    person.display_name != null &&
+    person.display_name !== '' &&
+    person.display_name !== person.username;
+  const primary = person.display_name ?? person.username ?? fallbackId;
+  const secondary = [hasOwnDisplayName ? person.username : null, person.email]
+    .filter((part): part is string => part != null && part !== '')
+    .join(' · ');
+  return { primary, secondary: secondary === '' ? null : secondary };
+};
