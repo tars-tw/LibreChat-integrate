@@ -4,6 +4,9 @@ import { Switch, Spinner, Checkbox, chipVariants, useToastContext } from '@libre
 import type { TTarsMcpUserServer, TTarsMcpUserTool } from 'librechat-data-provider';
 import { useTarsMcpUserSettingsQuery, useUpdateTarsMcpUserServerMutation } from '~/data-provider';
 import McpCredentialsForm from '~/components/Tars/McpCredentialsForm';
+import McpPaginationControls from './McpPaginationControls';
+import { useClientPagination } from './useClientPagination';
+import ServerTypeBadge from './ServerTypeBadge';
 import { useLocalize } from '~/hooks';
 
 interface ToolParam {
@@ -40,7 +43,7 @@ function ExpandableText({ text }: { text: string }) {
   const isLong = text.length > EXPANDABLE_THRESHOLD;
 
   return (
-    <div>
+    <div className="mt-1">
       <p
         className={`whitespace-pre-line text-xs text-text-secondary ${
           isLong && !expanded ? 'line-clamp-2' : ''
@@ -90,7 +93,7 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
 
   return (
     <div className="rounded-lg border border-border-light">
-      <div className="flex items-center gap-2 p-3">
+      <div className="flex items-center gap-3 p-3">
         <button
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
@@ -101,13 +104,11 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
           {expanded ? <ChevronDown className="icon-sm" /> : <ChevronRight className="icon-sm" />}
         </button>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="truncate font-medium text-text-primary">{server.name}</span>
-            <span className="rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
-              {server.type}
-            </span>
+            <ServerTypeBadge type={server.type} />
             <span className="text-xs text-text-secondary">
-              {localize('com_ui_tars_mcp_tools_count')}: {server.tools.length}
+              {localize('com_ui_tars_mcp_server_tool_count', { count: server.tools.length })}
             </span>
           </div>
         </div>
@@ -160,7 +161,9 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
                   className="mt-0.5"
                 />
                 <div className="min-w-0 flex-1">
-                  <span className="font-mono text-sm text-text-primary">{tool.name}</span>
+                  <span className="inline-block rounded bg-surface-tertiary px-1.5 py-0.5 font-mono text-xs text-text-primary">
+                    {tool.name}
+                  </span>
                   {tool.description != null && tool.description !== '' && (
                     <ExpandableText text={tool.description} />
                   )}
@@ -193,9 +196,17 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
 export default function McpUserToolsTab() {
   const localize = useLocalize();
   const { data: servers = [], isLoading } = useTarsMcpUserSettingsQuery({ refetchOnMount: true });
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    pageCount,
+    pageItems: pageServers,
+  } = useClientPagination(servers);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {isLoading && (
         <div className="flex h-40 items-center justify-center">
           <Spinner />
@@ -206,9 +217,23 @@ export default function McpUserToolsTab() {
           {localize('com_ui_tars_mcp_no_servers')}
         </p>
       )}
-      {servers.map((server) => (
-        <ServerCard key={server.id} server={server} />
-      ))}
+      {pageServers.length > 0 && (
+        <div className="space-y-3">
+          {pageServers.map((server) => (
+            <ServerCard key={server.id} server={server} />
+          ))}
+        </div>
+      )}
+      {servers.length > 0 && (
+        <McpPaginationControls
+          labelId="tars-mcp-mytools-page-size-label"
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
     </div>
   );
 }
