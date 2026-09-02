@@ -1309,6 +1309,7 @@
   "com_ui_key": "鍵",
   "com_ui_key_required": "必須提供 API 金鑰",
   "com_ui_labels": "標籤",
+  "com_ui_langflow": "Workflow",
   "com_ui_latest": "最新",
   "com_ui_latest_activity": "最新活動",
   "com_ui_latest_footer": "讓每個人都能使用 AI",

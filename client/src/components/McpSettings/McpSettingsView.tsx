@@ -5,6 +5,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Workflow,
   RefreshCw,
   PlugZap,
   ChevronDown,
@@ -528,6 +529,13 @@ export default function McpSettingsView() {
             </TabsContent>
           )}
         </Tabs>
+
+        <div className="border-t border-border-light pt-6">
+          <Button variant="outline" onClick={() => navigate('/langflow')}>
+            <Workflow className="icon-sm mr-2" aria-hidden="true" />
+            {localize('com_ui_langflow')}
+          </Button>
+        </div>
       </div>
 
       {(creating || editing != null) && (
