@@ -864,7 +864,11 @@ export function useShortcutActions(): ShortcutAction[] {
   const handleOpenAgents = useCallback(() => handleOpenPanel('agents'), [handleOpenPanel]);
   const handleOpenPrompts = useCallback(() => handleOpenPanel('prompts'), [handleOpenPanel]);
   const handleOpenMemories = useCallback(() => handleOpenPanel('memories'), [handleOpenPanel]);
-  const handleOpenParameters = useCallback(() => handleOpenPanel('parameters'), [handleOpenPanel]);
+  /** Parameters left the side panel for the header's model-picker cluster. */
+  const handleOpenParameters = useCallback(
+    () => clickElement('[data-testid="header-parameters-button"]'),
+    [],
+  );
   /* The file manager moved out of the side panel and into a dialog, so there is
      no `nav-panel-files` button left for `handleOpenPanel` to find. */
   const handleOpenFiles = useCallback(() => {
