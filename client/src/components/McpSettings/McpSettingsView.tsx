@@ -16,7 +16,6 @@ import {
   Button,
   Checkbox,
   Spinner,
-  Dropdown,
   TabsList,
   OGDialog,
   TabsTrigger,
@@ -32,25 +31,20 @@ import {
   useSyncTarsMcpServerMutation,
   useDeleteTarsMcpServerMutation,
 } from '~/data-provider';
+import McpPaginationControls from './McpPaginationControls';
+import { useClientPagination } from './useClientPagination';
 import McpServerToolsPanel from './McpServerToolsPanel';
 import { useLocalize, useIsTarsAdmin } from '~/hooks';
 import McpBulkDeleteModal from './McpBulkDeleteModal';
 import { useAuthContext } from '~/hooks/AuthContext';
 import McpPermissionsTab from './McpPermissionsTab';
+import ServerTypeBadge from './ServerTypeBadge';
 import McpUserToolsTab from './McpUserToolsTab';
 import McpServerModal from './McpServerModal';
 import McpLogsTab from './McpLogsTab';
 
 const MANAGED_TYPES = new Set(['openapi', 'custom_api', 'external']);
 
-const TYPE_LABEL_KEYS = {
-  openapi: 'com_ui_tars_mcp_type_openapi',
-  external: 'com_ui_tars_mcp_type_external',
-  custom_api: 'com_ui_tars_mcp_type_custom',
-} as const;
-
-const PAGE_SIZES = [10, 25, 50, 100];
-const PAGE_SIZE_OPTIONS = PAGE_SIZES.map(String);
 const MAX_TAG_BADGES = 3;
 
 type SettingsTab = 'mytools' | 'servers' | 'permissions' | 'logs';
@@ -78,13 +72,6 @@ const STATUS_LABEL_KEYS: Record<ServerStatus, TranslationKeys> = {
   disabled: 'com_ui_tars_mcp_disabled',
   pending: 'com_ui_tars_mcp_status_pending',
   connected: 'com_ui_tars_mcp_status_connected',
-};
-
-/** Distinguishes server types at a glance, matching pwc_tars's own type-badge colors. */
-const TYPE_STYLES: Record<string, string> = {
-  openapi: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
-  external: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
-  custom_api: 'bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300',
 };
 
 /** `TabsContent` ships with `mt-2 p-6`; each panel owns its own spacing instead. */
@@ -118,8 +105,6 @@ export default function McpSettingsView() {
     return isTarsAdmin ? 'servers' : 'mytools';
   });
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TTarsMcpServer | null>(null);
@@ -152,12 +137,14 @@ export default function McpSettingsView() {
     );
   }, [servers, search]);
 
-  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
-  const currentPage = Math.min(page, pageCount - 1);
-  const pageRows = useMemo(
-    () => rows.slice(currentPage * pageSize, currentPage * pageSize + pageSize),
-    [rows, currentPage, pageSize],
-  );
+  const {
+    page: currentPage,
+    setPage,
+    pageSize,
+    setPageSize,
+    pageCount,
+    pageItems: pageRows,
+  } = useClientPagination(rows);
 
   const selectedServers = useMemo(
     () => rows.filter((server) => selectedIds.has(server.id)),
@@ -423,17 +410,7 @@ export default function McpSettingsView() {
                                   </div>
                                 </td>
                                 <td className="whitespace-nowrap px-3 py-2">
-                                  <span
-                                    className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${
-                                      TYPE_STYLES[server.type] ?? TYPE_STYLES.custom_api
-                                    }`}
-                                  >
-                                    {localize(
-                                      TYPE_LABEL_KEYS[
-                                        server.type as keyof typeof TYPE_LABEL_KEYS
-                                      ] ?? 'com_ui_tars_mcp_type_custom',
-                                    )}
-                                  </span>
+                                  <ServerTypeBadge type={server.type} />
                                 </td>
                                 <td className="px-3 py-2 text-text-secondary">
                                   <span className="block truncate" title={server.description ?? ''}>
@@ -538,45 +515,14 @@ export default function McpSettingsView() {
                     </table>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
-                    <div className="flex items-center gap-2">
-                      <span id="tars-mcp-page-size-label">
-                        {localize('com_ui_tars_mcp_rows_per_page')}
-                      </span>
-                      <Dropdown
-                        value={String(pageSize)}
-                        onChange={(value) => {
-                          setPageSize(Number(value));
-                          setPage(0);
-                        }}
-                        options={PAGE_SIZE_OPTIONS}
-                        aria-labelledby="tars-mcp-page-size-label"
-                        sizeClasses="min-w-[5rem]"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span>
-                        {localize('com_ui_tars_mcp_page_of', {
-                          current: currentPage + 1,
-                          total: pageCount,
-                        })}
-                      </span>
-                      <Button
-                        variant="outline"
-                        disabled={currentPage === 0}
-                        onClick={() => setPage(currentPage - 1)}
-                      >
-                        {localize('com_ui_tars_mcp_prev_page')}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        disabled={currentPage >= pageCount - 1}
-                        onClick={() => setPage(currentPage + 1)}
-                      >
-                        {localize('com_ui_tars_mcp_next_page')}
-                      </Button>
-                    </div>
-                  </div>
+                  <McpPaginationControls
+                    labelId="tars-mcp-servers-page-size-label"
+                    page={currentPage}
+                    pageCount={pageCount}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={setPageSize}
+                  />
                 </>
               )}
             </TabsContent>
