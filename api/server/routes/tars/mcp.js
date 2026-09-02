@@ -11,6 +11,7 @@ const {
   adminCreateTarsMcpServer,
   adminUpdateTarsMcpServer,
   adminDeleteTarsMcpServer,
+  adminBatchDeleteTarsMcpServers,
   adminTestTarsMcpServer,
   adminSyncTarsMcpServer,
   adminParseTarsOpenapi,
@@ -193,6 +194,23 @@ router.delete(
     await adminDeleteTarsMcpServer(req.params.serverId);
     await invalidateMcpCaches('DELETE /api/tars/mcp/admin/servers/:serverId');
     return { success: true };
+  }),
+);
+
+router.post(
+  '/mcp/admin/servers/batch-delete',
+  adminMiddleware,
+  adminHandler('POST /api/tars/mcp/admin/servers/batch-delete', async (req) => {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter(Boolean) : [];
+    if (ids.length === 0) {
+      const error = new Error('ids is required');
+      error.status = 400;
+      error.serverMessage = 'ids is required';
+      throw error;
+    }
+    const result = await adminBatchDeleteTarsMcpServers(ids);
+    await invalidateMcpCaches('POST /api/tars/mcp/admin/servers/batch-delete');
+    return { result };
   }),
 );
 
