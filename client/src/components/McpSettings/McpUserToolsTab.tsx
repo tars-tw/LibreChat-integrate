@@ -196,7 +196,6 @@ export default function McpUserToolsTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-text-secondary">{localize('com_ui_tars_mcp_my_tools_hint')}</p>
       {isLoading && (
         <div className="flex h-40 items-center justify-center">
           <Spinner />
