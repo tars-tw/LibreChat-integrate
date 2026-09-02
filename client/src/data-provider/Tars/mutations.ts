@@ -34,6 +34,7 @@ import type {
   TTarsMcpToolUpdate,
   TTarsMcpParsedSpec,
   TTarsMcpServerInput,
+  TTarsMcpBatchDeleteResult,
   TTarsMcpUserServerUpdate,
   TTarsDomainMcpSavePayload,
   TTarsUser,
@@ -713,6 +714,19 @@ export const useDeleteTarsMcpServerMutation = (
 ): UseMutationResult<{ success: boolean }, unknown, string> => {
   const queryClient = useQueryClient();
   return useMutation((id: string) => dataService.deleteTarsMcpServer(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateTarsMcp(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+export const useBatchDeleteTarsMcpServersMutation = (
+  options?: UseMutationOptions<{ result: TTarsMcpBatchDeleteResult }, unknown, string[]>,
+): UseMutationResult<{ result: TTarsMcpBatchDeleteResult }, unknown, string[]> => {
+  const queryClient = useQueryClient();
+  return useMutation((ids: string[]) => dataService.batchDeleteTarsMcpServers(ids), {
     ...options,
     onSuccess: (...args) => {
       invalidateTarsMcp(queryClient);
