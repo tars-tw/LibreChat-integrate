@@ -104,8 +104,8 @@ logic to keep our older copy of the same function. The exception is our own prod
 surface: TARS features, our design/theming, and our frontend components are
 authoritative, so where upstream restyles or re-lays-out a screen we own, keep ours.
 
-The same handful of files conflict nearly every round, and all of them resolve by
-**keeping both sides**:
+The same handful of files conflict nearly every round. Most resolve by **keeping both
+sides**; the MCP selection files are the exception, and are called out as such:
 
 | File | What conflicts | Resolution |
 |---|---|---|
@@ -114,11 +114,14 @@ The same handful of files conflict nearly every round, and all of them resolve b
 | `api/server/controllers/agents/request.js` | the `require('@librechat/api')` destructure | upstream's list **plus** our TARS names; drop the duplicate `saveConvo` |
 | `api/server/controllers/auth/LogoutController.js` | import line | fold `notifyTarsLogout` into upstream's `@librechat/api` require |
 | `client/src/components/Chat/Input/ChatForm.tsx` | import block + `useSubmitMessage()` destructure | upstream's imports, our `insertPrompt` and `Disclaimer` |
+| `client/src/components/Chat/Input/MCPSelect.tsx` | upstream keeps rewriting `selectedServers` / `displayText`, where we layer `visibleServers` (the `tars_*` filter) and `handleCredentialsClick` | keep our `visibleServers`-derived `selectedServers`; take **upstream's** `displayText` — it already reads from `selectedServers`, so our filter still applies. Additive helpers like `handleCredentialsClick` keep both |
+| `client/src/hooks/MCP/useMCPSelect.ts` | upstream's pruning refactors (`configuredServers` → `retainedServers` + `canPruneSelections` + `ownsChatSelection`) collide with our ephemeral-agent pruning | **take upstream wholesale.** Upstream has since absorbed our "prune `ephemeralAgent.mcp` too" behaviour with a better guard — delete our duplicate block rather than re-attaching it, and pass `ownsChatSelection: true` in the tests that assert pruning |
 | `.github/workflows/static-checks.yml`, `package.json` | our fork deletes the `paths:` trigger and the i18n + depcheck steps | re-apply those deletions **onto upstream's new file**, never restore our whole old copy |
 
 Upstream dependency bumps ride along with the rebase (this last round:
-`@librechat/agents` 3.7.1 → 3.7.8, `axios` → 1.20, new `helmet` and
-`express-rate-limit` in `packages/api`). `node_modules` is stale until you sync it,
+`@librechat/agents` 3.7.11 → 3.7.13 and `sanitize-html` 2.17.6 → 2.17.7 in both
+`api` and `packages/api`, plus new root `overrides` pinning `postcss-selector-parser`
+6 and 7). `node_modules` is stale until you sync it,
 and `packages/api` will not typecheck before then — **`npm run smart-reinstall` is
 part of the rebase, not an optional follow-up.**
 
