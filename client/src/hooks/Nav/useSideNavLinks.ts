@@ -1,20 +1,12 @@
 import { useMemo } from 'react';
 import { MCPIcon, AttachmentIcon, OpenAIMinimalIcon } from '@librechat/client';
+import { Bot, NotebookPen, ScrollText, CalendarClock, ArrowRightToLine } from 'lucide-react';
 import {
   Permissions,
   EModelEndpoint,
   PermissionTypes,
   isAssistantsEndpoint,
 } from 'librechat-data-provider';
-import {
-  Bot,
-  Brain,
-  Bookmark,
-  NotebookPen,
-  ScrollText,
-  CalendarClock,
-  ArrowRightToLine,
-} from 'lucide-react';
 import type { TInterfaceConfig, TEndpointsConfig } from 'librechat-data-provider';
 import type { NavLink } from '~/common';
 import {
@@ -25,11 +17,9 @@ import {
 } from '~/hooks';
 import MCPBuilderPanel from '~/components/SidePanel/MCPBuilder/MCPBuilderPanel';
 import AgentPanelSwitch from '~/components/SidePanel/Agents/AgentPanelSwitch';
-import BookmarkPanel from '~/components/SidePanel/Bookmarks/BookmarkPanel';
 import PanelSwitch from '~/components/SidePanel/Builder/PanelSwitch';
 import { TarsMemoryPanel } from '~/components/SidePanel/TarsMemory';
 import { SchedulePanel } from '~/components/SidePanel/Schedules';
-import { MemoryPanel } from '~/components/SidePanel/Memories';
 import FilesPanel from '~/components/SidePanel/Files/Panel';
 import { PromptsAccordion } from '~/components/Prompts';
 import { useGetStartupConfig } from '~/data-provider';
@@ -57,18 +47,6 @@ export default function useSideNavLinks({
   const hasAccessToSkills = useHasAccess({
     permissionType: PermissionTypes.SKILLS,
     permission: Permissions.USE,
-  });
-  const hasAccessToBookmarks = useHasAccess({
-    permissionType: PermissionTypes.BOOKMARKS,
-    permission: Permissions.USE,
-  });
-  const hasAccessToMemories = useHasAccess({
-    permissionType: PermissionTypes.MEMORIES,
-    permission: Permissions.USE,
-  });
-  const hasAccessToReadMemories = useHasAccess({
-    permissionType: PermissionTypes.MEMORIES,
-    permission: Permissions.READ,
   });
   const hasAccessToAgents = useHasAccess({
     permissionType: PermissionTypes.AGENTS,
@@ -134,13 +112,13 @@ export default function useSideNavLinks({
       });
     }
 
-    if (hasAccessToSkills && skillsEnabled) {
+    if (hasAccessToPrompts) {
       links.push({
-        title: 'com_ui_skills',
+        title: 'com_ui_prompts',
         label: '',
-        icon: ScrollText,
-        id: 'skills',
-        Component: SkillsAccordion,
+        icon: NotebookPen,
+        id: 'prompts',
+        Component: PromptsAccordion,
       });
     }
 
@@ -164,36 +142,6 @@ export default function useSideNavLinks({
       });
     }
 
-    if (hasAccessToPrompts) {
-      links.push({
-        title: 'com_ui_prompts',
-        label: '',
-        icon: NotebookPen,
-        id: 'prompts',
-        Component: PromptsAccordion,
-      });
-    }
-
-    if (hasAccessToMemories && hasAccessToReadMemories) {
-      links.push({
-        title: 'com_ui_memories',
-        label: '',
-        icon: Brain,
-        id: 'memories',
-        Component: MemoryPanel,
-      });
-    }
-
-    if (hasAccessToBookmarks) {
-      links.push({
-        title: 'com_sidepanel_conversation_tags',
-        label: '',
-        icon: Bookmark,
-        id: 'bookmarks',
-        Component: BookmarkPanel,
-      });
-    }
-
     /** TARS mode: the attach-files panel becomes the pwc_tars long-term memory manager. */
     links.push({
       title: tarsMemoryEnabled ? 'com_ui_tars_memory' : 'com_sidepanel_attach_files',
@@ -202,6 +150,16 @@ export default function useSideNavLinks({
       id: 'files',
       Component: tarsMemoryEnabled ? TarsMemoryPanel : FilesPanel,
     });
+
+    if (hasAccessToSkills && skillsEnabled) {
+      links.push({
+        title: 'com_ui_skills',
+        label: '',
+        icon: ScrollText,
+        id: 'skills',
+        Component: SkillsAccordion,
+      });
+    }
 
     if (
       (hasAccessToUseMCPSettings && availableMCPServers && availableMCPServers.length > 0) ||
@@ -236,11 +194,8 @@ export default function useSideNavLinks({
     hasAccessToPrompts,
     hasAccessToSkills,
     skillsEnabled,
-    hasAccessToMemories,
-    hasAccessToReadMemories,
     hasAccessToSchedules,
     interfaceConfig.schedules,
-    hasAccessToBookmarks,
     availableMCPServers,
     hasAccessToUseMCPSettings,
     hasAccessToCreateMCP,

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useRecoilValue } from 'recoil';
+import { BarChart3, MessagesSquare } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, MessagesSquare, Workflow } from 'lucide-react';
 import { useUserKeyQuery } from 'librechat-data-provider/react-query';
 import { getConfigDefaults, SystemRoles } from 'librechat-data-provider';
 import type { TEndpointsConfig } from 'librechat-data-provider';
@@ -62,16 +62,8 @@ export default function useUnifiedSidebarLinks() {
       Component: ConversationsSection,
     };
 
-    const langflowLink: NavLink = {
-      title: 'com_ui_langflow',
-      label: '',
-      icon: Workflow,
-      id: 'langflow',
-      onClick: () => navigate('/langflow'),
-    };
-
     if (!insightsFeatureEnabled || insightsAccess?.access !== true) {
-      return [conversationLink, ...sideNavLinks, langflowLink];
+      return [conversationLink, ...sideNavLinks];
     }
 
     const insightsLink: NavLink = {
@@ -89,7 +81,7 @@ export default function useUnifiedSidebarLinks() {
     const nextLinks = [...sideNavLinks];
     nextLinks.splice(mcpIndex >= 0 ? mcpIndex + 1 : nextLinks.length, 0, insightsLink);
 
-    return [conversationLink, ...nextLinks, langflowLink];
+    return [conversationLink, ...nextLinks];
   }, [insightsAccess?.access, insightsFeatureEnabled, location.pathname, navigate, sideNavLinks]);
 
   return links;
