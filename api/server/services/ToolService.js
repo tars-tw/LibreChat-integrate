@@ -1405,6 +1405,20 @@ async function loadToolDefinitionsWrapper({
     }
   }
 
+  /** The reachable databases follow the active 專用腦, so they are runtime
+   *  context rather than part of the registry definition. Non-fatal: without
+   *  it the model simply has to name a knowledge base itself. */
+  if (filteredTools.includes(Tools.sql_agent) && req.user?.tarsId) {
+    try {
+      toolContextMap[Tools.sql_agent] = await buildTarsSqlContext(
+        req.user.tarsId,
+        req.body?.domain_id,
+      );
+    } catch (error) {
+      logger.warn('[loadToolDefinitionsWrapper] Failed to build TARS SQL context', error);
+    }
+  }
+
   /**
    * `files` carry the upload session_ids; we surface them so client.js can
    * seed `Graph.sessions[EXECUTE_CODE]` before run start. Without that seed,

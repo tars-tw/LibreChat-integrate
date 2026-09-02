@@ -1527,6 +1527,12 @@ export const deleteTarsMcpServer = (id: string): Promise<{ success: boolean }> =
   return request.delete(endpoints.tarsMcpAdminServer(id));
 };
 
+export const batchDeleteTarsMcpServers = (
+  ids: string[],
+): Promise<{ result: t.TTarsMcpBatchDeleteResult }> => {
+  return request.post(endpoints.tarsMcpAdminServersBatchDelete(), { ids });
+};
+
 export const testTarsMcpServer = (id: string): Promise<{ result: Record<string, unknown> }> => {
   return request.post(endpoints.tarsMcpAdminServerTest(id), {});
 };

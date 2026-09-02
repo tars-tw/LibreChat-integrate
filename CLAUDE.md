@@ -364,6 +364,7 @@ Recommended dev setup: two terminals — `npm run backend:dev` (terminal A) and 
   `npm run static-checks -- --against origin/dev` reproduces what CI sees for a pull request, and
   `npm run static-checks:full` adds the slow gates (TypeScript, config migration tests, unused i18n
   keys, unused npm packages).
+
 ### Live LLM / chat testing
 
 - When exercising real chat / LLM flows (manual or end-to-end, e.g. verifying the pwc_tars conversation mirror), **only use the `gpt-5.4-mini` model**. Do not send live requests with any other model.

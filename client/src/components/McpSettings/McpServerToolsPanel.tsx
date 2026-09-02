@@ -34,27 +34,35 @@ export default function McpServerToolsPanel({ serverId }: { serverId: string }) 
   }
 
   return (
-    <ul className="divide-y divide-border-light">
-      {tools.map((tool) => (
-        <li key={tool.id} className="flex items-center justify-between gap-3 px-2 py-2">
-          <div className="min-w-0">
-            <p className="truncate font-mono text-xs text-text-primary">{tool.name}</p>
-            {tool.description != null && tool.description !== '' && (
-              <p className="truncate text-xs text-text-secondary" title={tool.description}>
-                {tool.description}
-              </p>
-            )}
-          </div>
-          <Switch
-            aria-label={localize('com_ui_tars_mcp_tool_enabled', { name: tool.name })}
-            checked={tool.is_enabled !== false}
-            disabled={updateTool.isLoading}
-            onCheckedChange={(checked) =>
-              updateTool.mutate({ id: tool.id, data: { is_enabled: checked } })
-            }
-          />
-        </li>
-      ))}
-    </ul>
+    <div>
+      <p className="mb-2 px-2 text-xs font-medium text-text-secondary">
+        {localize('com_ui_tars_mcp_server_tool_count', { count: tools.length })}
+      </p>
+      <ul className="divide-y divide-border-light">
+        {tools.map((tool) => (
+          <li key={tool.id} className="flex items-start justify-between gap-3 px-2 py-2">
+            <div className="min-w-0 flex-1">
+              <span className="inline-block rounded bg-surface-tertiary px-1.5 py-0.5 font-mono text-xs text-text-primary">
+                {tool.name}
+              </span>
+              {tool.description != null && tool.description !== '' && (
+                <p className="mt-1 whitespace-normal break-words text-xs text-text-secondary">
+                  {tool.description}
+                </p>
+              )}
+            </div>
+            <Switch
+              aria-label={localize('com_ui_tars_mcp_tool_enabled', { name: tool.name })}
+              checked={tool.is_enabled !== false}
+              disabled={updateTool.isLoading}
+              onCheckedChange={(checked) =>
+                updateTool.mutate({ id: tool.id, data: { is_enabled: checked } })
+              }
+              className="mt-0.5 shrink-0"
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
