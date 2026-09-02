@@ -1,24 +1,28 @@
 import { useEffect, useState } from 'react';
-import { Check, Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Input, Label, Spinner } from '@librechat/client';
 import type { TTarsTokenUser } from 'librechat-data-provider';
 import { useTarsTokenUsersQuery } from '~/data-provider';
+import { personIdentity } from './helpers';
 import { useLocalize } from '~/hooks';
 
 /** Long enough that typing a name does not fire a query per keystroke. */
 const DEBOUNCE_MS = 300;
 
 /**
- * Search-as-you-type picker for the personal-quota form. pwc_tars caps its
- * result at 20 rows and has no paging, so this stays a search box rather than a
- * dropdown of every account.
+ * Search-as-you-type picker for the personal-quota form, single-select: picking
+ * a row replaces `selected` rather than adding to it. The search list collapses
+ * into a summary card on a pick so it reads as "one user chosen," not as a list
+ * left open for more clicks; the card's clear button is the only way back into
+ * search, mirroring the read-only user card `QuotaModal` shows once a quota
+ * already has a fixed owner.
  */
 export default function UserPicker({
   selected,
   onSelect,
 }: {
   selected: TTarsTokenUser | null;
-  onSelect: (user: TTarsTokenUser) => void;
+  onSelect: (user: TTarsTokenUser | null) => void;
 }) {
   const localize = useLocalize();
   const [term, setTerm] = useState('');
@@ -30,6 +34,34 @@ export default function UserPicker({
   }, [term]);
 
   const { data: users = [], isFetching } = useTarsTokenUsersQuery(debounced);
+
+  if (selected != null) {
+    const { primary, secondary } = personIdentity(selected, selected.id);
+    return (
+      <div className="space-y-1.5">
+        <Label>{localize('com_ui_tars_quota_col_user')}</Label>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border-light px-3 py-2">
+          <span className="min-w-0">
+            <span className="block truncate font-medium text-text-primary">{primary}</span>
+            {secondary != null && (
+              <span className="block truncate text-xs text-text-secondary">{secondary}</span>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setTerm('');
+              onSelect(null);
+            }}
+            aria-label={localize('com_ui_clear')}
+            className="shrink-0 rounded-full p-1 text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-1.5">
@@ -60,29 +92,24 @@ export default function UserPicker({
           </p>
         )}
         {!isFetching &&
-          users.map((user) => (
-            <button
-              key={user.id}
-              type="button"
-              onClick={() => onSelect(user)}
-              className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-surface-hover ${
-                selected?.id === user.id ? 'bg-surface-tertiary' : ''
-              }`}
-            >
-              <span className="min-w-0">
-                <span className="block truncate text-text-primary">
-                  {user.display_name ?? user.username ?? user.id}
+          users.map((user) => {
+            const { primary, secondary } = personIdentity(user, user.id);
+            return (
+              <button
+                key={user.id}
+                type="button"
+                onClick={() => onSelect(user)}
+                className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-surface-hover"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-medium text-text-primary">{primary}</span>
+                  {secondary != null && (
+                    <span className="block truncate text-xs text-text-secondary">{secondary}</span>
+                  )}
                 </span>
-                <span className="block truncate text-xs text-text-secondary">
-                  {user.username ?? '—'}
-                  {user.email == null ? '' : ` · ${user.email}`}
-                </span>
-              </span>
-              {selected?.id === user.id && (
-                <Check className="size-4 shrink-0 text-brand-primary" aria-hidden />
-              )}
-            </button>
-          ))}
+              </button>
+            );
+          })}
       </div>
     </div>
   );
