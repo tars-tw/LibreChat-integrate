@@ -143,6 +143,25 @@ export async function adminDeleteTarsMcpServer(serverId: string): Promise<void> 
   await tarsMcpFetch(`/api/mcp/servers/${encodeURIComponent(serverId)}`, { method: 'DELETE' });
 }
 
+/** Result of `POST /api/mcp/servers/batch-delete` — some ids may be skipped or not found. */
+export interface TarsMcpBatchDeleteResult {
+  deleted: string[];
+  skipped: string[];
+  not_found: string[];
+  deleted_count: number;
+  skipped_count: number;
+  failed_count: number;
+}
+
+export async function adminBatchDeleteTarsMcpServers(
+  ids: string[],
+): Promise<TarsMcpBatchDeleteResult | undefined> {
+  return tarsMcpFetch<TarsMcpBatchDeleteResult>('/api/mcp/servers/batch-delete', {
+    method: 'POST',
+    body: { ids },
+  });
+}
+
 /** Type-specific connectivity + auth probe (parses spec / validates config / probes auth). */
 export async function adminTestTarsMcpServer(
   serverId: string,
