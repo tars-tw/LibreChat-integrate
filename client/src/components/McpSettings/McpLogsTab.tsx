@@ -1,19 +1,17 @@
 import { useMemo, useState } from 'react';
 import { Search, RefreshCw } from 'lucide-react';
-import { Input, Button, Spinner, Dropdown } from '@librechat/client';
+import { Input, Button, Spinner } from '@librechat/client';
 import { useTarsMcpServersQuery, useTarsMcpLogsQuery } from '~/data-provider';
+import McpPaginationControls from './McpPaginationControls';
+import { useClientPagination } from './useClientPagination';
 import { useLocalize } from '~/hooks';
 
 const LOGS_LIMIT = 100;
-const PAGE_SIZES = [10, 25, 50, 100];
-const PAGE_SIZE_OPTIONS = PAGE_SIZES.map(String);
 
 /** Read-only view over pwc_tars `mcp_logs` (newest first, client-side keyword search). */
 export default function McpLogsTab() {
   const localize = useLocalize();
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
   const { data: servers = [] } = useTarsMcpServersQuery();
   const {
     data: logs = [],
@@ -46,12 +44,14 @@ export default function McpLogsTab() {
     );
   }, [logs, search, serverNames]);
 
-  const pageCount = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
-  const currentPage = Math.min(page, pageCount - 1);
-  const pageLogs = useMemo(
-    () => filteredLogs.slice(currentPage * pageSize, currentPage * pageSize + pageSize),
-    [filteredLogs, currentPage, pageSize],
-  );
+  const {
+    page: currentPage,
+    setPage,
+    pageSize,
+    setPageSize,
+    pageCount,
+    pageItems: pageLogs,
+  } = useClientPagination(filteredLogs);
 
   return (
     <div className="space-y-4">
@@ -161,45 +161,14 @@ export default function McpLogsTab() {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
-            <div className="flex items-center gap-2">
-              <span id="tars-mcp-logs-page-size-label">
-                {localize('com_ui_tars_mcp_rows_per_page')}
-              </span>
-              <Dropdown
-                value={String(pageSize)}
-                onChange={(value) => {
-                  setPageSize(Number(value));
-                  setPage(0);
-                }}
-                options={PAGE_SIZE_OPTIONS}
-                aria-labelledby="tars-mcp-logs-page-size-label"
-                sizeClasses="min-w-[5rem]"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span>
-                {localize('com_ui_tars_mcp_page_of', {
-                  current: currentPage + 1,
-                  total: pageCount,
-                })}
-              </span>
-              <Button
-                variant="outline"
-                disabled={currentPage === 0}
-                onClick={() => setPage(currentPage - 1)}
-              >
-                {localize('com_ui_tars_mcp_prev_page')}
-              </Button>
-              <Button
-                variant="outline"
-                disabled={currentPage >= pageCount - 1}
-                onClick={() => setPage(currentPage + 1)}
-              >
-                {localize('com_ui_tars_mcp_next_page')}
-              </Button>
-            </div>
-          </div>
+          <McpPaginationControls
+            labelId="tars-mcp-logs-page-size-label"
+            page={currentPage}
+            pageCount={pageCount}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </>
       )}
     </div>
