@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { TooltipAnchor } from '@librechat/client';
-import { getConfigDefaults } from 'librechat-data-provider';
 import type { ModelSelectorProps } from '~/common';
 import {
   renderModelSpecs,
@@ -11,12 +10,10 @@ import {
 import { useShortcutAriaKey, useShortcutHint } from '~/hooks/useKeyboardShortcuts';
 import { useModelSelectorContext } from './ModelSelectorContext';
 import { getSelectedIcon, getDisplayValue } from './utils';
+import { useModelSelectorVisible } from './visibility';
 import { CustomMenu as Menu } from './CustomMenu';
-import { useTarsDomain } from '../Tars/domain';
 import DialogManager from './DialogManager';
 import { useLocalize } from '~/hooks';
-
-const defaultInterface = getConfigDefaults().interface;
 
 function ModelSelectorContent() {
   const localize = useLocalize();
@@ -130,18 +127,9 @@ function ModelSelectorContent() {
 }
 
 export default function ModelSelector({ startupConfig }: ModelSelectorProps) {
-  const interfaceConfig = startupConfig?.interface ?? defaultInterface;
-  const modelSpecs = startupConfig?.modelSpecs?.list ?? [];
-  const { domains, isGeneralDomain, selectedAgentId } = useTarsDomain();
+  const isVisible = useModelSelectorVisible(startupConfig);
 
-  /** A specialized brain and an agent both pin their own model — only a bare general
-   *  brain exposes the picker. */
-  if (domains.length > 0 && (!isGeneralDomain || selectedAgentId != null)) {
-    return null;
-  }
-
-  // Hide the selector when modelSelect is false and there are no model specs to show
-  if (interfaceConfig.modelSelect === false && modelSpecs.length === 0) {
+  if (!isVisible) {
     return null;
   }
 
