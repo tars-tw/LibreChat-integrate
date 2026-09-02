@@ -85,7 +85,7 @@ const TAB_PANEL = 'mt-4 p-0';
 const TAB_TRIGGER = 'data-[state=active]:text-brand-primary';
 
 const textareaClass =
-  'w-full resize-none rounded-lg border border-border-light bg-transparent px-3 py-2 font-mono text-xs text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-heavy';
+  'mt-1 w-full resize-none rounded-lg border border-border-light bg-transparent px-3 py-2 font-mono text-xs text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-heavy';
 
 function parseAuthForm(config: Record<string, unknown> | null | undefined): AuthForm {
   const auth = (config?.auth ?? {}) as Record<string, unknown>;
@@ -379,6 +379,7 @@ export default function McpServerModal({
               <div>
                 <Label>{localize('com_ui_tars_mcp_auth_key_name')}</Label>
                 <Input
+                  className="mt-1"
                   value={form.auth.name}
                   onChange={(e) => setAuth('name', e.target.value)}
                   placeholder="X-API-Key"
@@ -397,7 +398,7 @@ export default function McpServerModal({
                       : [{ value: 'query', label: localize('com_ui_tars_mcp_auth_in_query') }]),
                   ]}
                   sizeClasses="w-full"
-                  className="w-full"
+                  className="mt-1 w-full"
                 />
               </div>
             </>
@@ -405,6 +406,7 @@ export default function McpServerModal({
           <div className={form.auth.type === 'bearer' ? 'col-span-2' : 'col-span-2'}>
             <Label>{localize('com_ui_tars_mcp_auth_value')}</Label>
             <Input
+              className="mt-1"
               type="password"
               value={form.auth.value}
               onChange={(e) => setAuth('value', e.target.value)}
@@ -420,6 +422,7 @@ export default function McpServerModal({
           <div>
             <Label>{localize('com_ui_tars_mcp_auth_username')}</Label>
             <Input
+              className="mt-1"
               value={form.auth.username}
               onChange={(e) => setAuth('username', e.target.value)}
             />
@@ -427,6 +430,7 @@ export default function McpServerModal({
           <div>
             <Label>{localize('com_ui_tars_mcp_auth_password')}</Label>
             <Input
+              className="mt-1"
               type="password"
               value={form.auth.password}
               onChange={(e) => setAuth('password', e.target.value)}
@@ -443,6 +447,7 @@ export default function McpServerModal({
             <div>
               <Label>{localize('com_ui_tars_mcp_auth_token_url')}</Label>
               <Input
+                className="mt-1"
                 value={form.auth.tokenUrl}
                 onChange={(e) => setAuth('tokenUrl', e.target.value)}
                 placeholder="/api/auth/login"
@@ -451,6 +456,7 @@ export default function McpServerModal({
             <div>
               <Label>{localize('com_ui_tars_mcp_auth_token_field')}</Label>
               <Input
+                className="mt-1"
                 value={form.auth.tokenField}
                 onChange={(e) => setAuth('tokenField', e.target.value)}
                 placeholder="access_token"
@@ -482,6 +488,7 @@ export default function McpServerModal({
           <Label htmlFor="tars-mcp-name">{localize('com_ui_name')}</Label>
           <Input
             id="tars-mcp-name"
+            className="mt-1"
             value={form.name}
             onChange={(e) => set('name', e.target.value)}
           />
@@ -490,6 +497,7 @@ export default function McpServerModal({
           <Label htmlFor="tars-mcp-code">{localize('com_ui_tars_mcp_code')}</Label>
           <Input
             id="tars-mcp-code"
+            className="mt-1"
             value={form.code}
             onChange={(e) => set('code', e.target.value)}
             placeholder="issues"
@@ -503,6 +511,7 @@ export default function McpServerModal({
         <Label htmlFor="tars-mcp-desc">{localize('com_ui_description')}</Label>
         <Input
           id="tars-mcp-desc"
+          className="mt-1"
           value={form.description}
           onChange={(e) => set('description', e.target.value)}
         />
@@ -512,6 +521,7 @@ export default function McpServerModal({
           <Label htmlFor="tars-mcp-priority">{localize('com_ui_tars_mcp_priority')}</Label>
           <Input
             id="tars-mcp-priority"
+            className="mt-1"
             type="number"
             value={form.priority}
             onChange={(e) => set('priority', e.target.value)}
@@ -522,6 +532,7 @@ export default function McpServerModal({
           <Label htmlFor="tars-mcp-tags">{localize('com_ui_tars_mcp_tags')}</Label>
           <Input
             id="tars-mcp-tags"
+            className="mt-1"
             value={form.tags}
             onChange={(e) => set('tags', e.target.value)}
             placeholder={localize('com_ui_tars_mcp_tags_hint')}
@@ -562,7 +573,7 @@ export default function McpServerModal({
         <div className="space-y-3 rounded-lg border border-border-light p-3">
           <div>
             <Label htmlFor="tars-mcp-openapi-url">{localize('com_ui_tars_mcp_openapi_url')}</Label>
-            <div className="flex gap-2">
+            <div className="mt-1 flex gap-2">
               <Input
                 id="tars-mcp-openapi-url"
                 value={form.openapiUrl}
@@ -579,6 +590,7 @@ export default function McpServerModal({
               <Label htmlFor="tars-mcp-base-url">{localize('com_ui_tars_mcp_base_url')}</Label>
               <Input
                 id="tars-mcp-base-url"
+                className="mt-1"
                 value={form.baseUrl}
                 onChange={(e) => set('baseUrl', e.target.value)}
                 placeholder={localize('com_ui_tars_mcp_base_url_optional')}
@@ -588,6 +600,7 @@ export default function McpServerModal({
               <Label htmlFor="tars-mcp-timeout">{localize('com_ui_tars_mcp_timeout')}</Label>
               <Input
                 id="tars-mcp-timeout"
+                className="mt-1"
                 value={form.timeout}
                 onChange={(e) => set('timeout', e.target.value)}
               />
@@ -618,6 +631,7 @@ export default function McpServerModal({
           <Label htmlFor="tars-mcp-custom-base">{localize('com_ui_tars_mcp_base_url')}</Label>
           <Input
             id="tars-mcp-custom-base"
+            className="mt-1"
             value={form.baseUrl}
             onChange={(e) => set('baseUrl', e.target.value)}
             placeholder="https://api.example.com"
@@ -645,6 +659,7 @@ export default function McpServerModal({
                 <Label htmlFor="tars-mcp-external-url">{localize('com_ui_tars_mcp_url')}</Label>
                 <Input
                   id="tars-mcp-external-url"
+                  className="mt-1"
                   value={form.externalUrl}
                   onChange={(e) => set('externalUrl', e.target.value)}
                   placeholder="https://mcp.example.com/mcp"
@@ -672,6 +687,7 @@ export default function McpServerModal({
                 <Label htmlFor="tars-mcp-command">{localize('com_ui_tars_mcp_command')}</Label>
                 <Input
                   id="tars-mcp-command"
+                  className="mt-1"
                   value={form.command}
                   onChange={(e) => set('command', e.target.value)}
                   placeholder="uvx"
@@ -708,6 +724,7 @@ export default function McpServerModal({
         }
         showCloseButton={true}
         className="w-11/12 md:max-w-3xl"
+        mainClassName="px-0 pb-2 pt-6"
         main={
           <div className="max-h-[65vh] overflow-y-auto pr-1">
             <Tabs value={formTab} onValueChange={(value) => setFormTab(value as FormTab)}>
