@@ -690,6 +690,16 @@ export type TTarsMcpSyncResult = {
   deleted?: number;
 };
 
+/** Result of a batch server delete — some ids may be skipped or not found. */
+export type TTarsMcpBatchDeleteResult = {
+  deleted: string[];
+  skipped: string[];
+  not_found: string[];
+  deleted_count: number;
+  skipped_count: number;
+  failed_count: number;
+};
+
 /** Preview of a parsed OpenAPI/Swagger spec (pwc_tars `POST /parse-openapi`). */
 export type TTarsMcpParsedSpec = {
   api_info?: Record<string, unknown>;
