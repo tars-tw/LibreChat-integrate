@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import { MCPIcon, OpenAIMinimalIcon } from '@librechat/client';
 import {
+  Permissions,
+  EModelEndpoint,
+  PermissionTypes,
+  isAssistantsEndpoint,
+} from 'librechat-data-provider';
+import {
   Bot,
   Brain,
   Bookmark,
@@ -8,16 +14,7 @@ import {
   ScrollText,
   CalendarClock,
   ArrowRightToLine,
-  SlidersHorizontal,
 } from 'lucide-react';
-import {
-  Permissions,
-  EModelEndpoint,
-  PermissionTypes,
-  isParamEndpoint,
-  isAgentsEndpoint,
-  isAssistantsEndpoint,
-} from 'librechat-data-provider';
 import type { TInterfaceConfig, TEndpointsConfig } from 'librechat-data-provider';
 import type { NavLink } from '~/common';
 import {
@@ -32,7 +29,6 @@ import BookmarkPanel from '~/components/SidePanel/Bookmarks/BookmarkPanel';
 import PanelSwitch from '~/components/SidePanel/Builder/PanelSwitch';
 import { TarsMemoryPanel } from '~/components/SidePanel/TarsMemory';
 import { SchedulePanel } from '~/components/SidePanel/Schedules';
-import Parameters from '~/components/SidePanel/Parameters/Panel';
 import { MemoryPanel } from '~/components/SidePanel/Memories';
 import { PromptsAccordion } from '~/components/Prompts';
 import { useGetStartupConfig } from '~/data-provider';
@@ -42,7 +38,6 @@ export default function useSideNavLinks({
   hidePanel,
   keyProvided,
   endpoint,
-  endpointType,
   interfaceConfig,
   endpointsConfig,
   includeHidePanel = true,
@@ -50,7 +45,6 @@ export default function useSideNavLinks({
   hidePanel?: () => void;
   keyProvided: boolean;
   endpoint?: EModelEndpoint | null;
-  endpointType?: EModelEndpoint | null;
   interfaceConfig: Partial<TInterfaceConfig>;
   endpointsConfig: TEndpointsConfig;
   includeHidePanel?: boolean;
@@ -200,21 +194,6 @@ export default function useSideNavLinks({
     }
 
     if (
-      interfaceConfig.parameters === true &&
-      isParamEndpoint(endpoint ?? '', endpointType ?? '') === true &&
-      !isAgentsEndpoint(endpoint) &&
-      keyProvided
-    ) {
-      links.push({
-        title: 'com_sidepanel_parameters',
-        label: '',
-        icon: SlidersHorizontal,
-        id: 'parameters',
-        Component: Parameters,
-      });
-    }
-
-    if (
       (hasAccessToUseMCPSettings && availableMCPServers && availableMCPServers.length > 0) ||
       hasAccessToCreateMCP
     ) {
@@ -251,8 +230,6 @@ export default function useSideNavLinks({
     hasAccessToReadMemories,
     hasAccessToSchedules,
     interfaceConfig.schedules,
-    interfaceConfig.parameters,
-    endpointType,
     hasAccessToBookmarks,
     availableMCPServers,
     hasAccessToUseMCPSettings,
