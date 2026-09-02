@@ -10,6 +10,8 @@ import {
   useTarsDomainPrepareDataQuery,
 } from '~/data-provider';
 import Picker, { type PickerOption } from '~/components/Admin/Tars/Audit/Picker';
+import McpPaginationControls from './McpPaginationControls';
+import { useClientPagination } from './useClientPagination';
 import { useLocalize } from '~/hooks';
 
 /** Selection state: serverId → checked toolId set; empty set = whole server (`mcp_tool_ids: []`). */
@@ -160,6 +162,14 @@ export default function McpPermissionsTab() {
     () => servers.filter((server) => MANAGED_TYPES.has(server.type)),
     [servers],
   );
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    pageCount,
+    pageItems: pageServers,
+  } = useClientPagination(managedServers);
   const domainOptions: PickerOption[] = useMemo(
     () => domains.map((domain) => ({ value: String(domain.id), label: domain.name })),
     [domains],
@@ -277,7 +287,7 @@ export default function McpPermissionsTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         {domains.length === 0 ? (
           <p className="text-sm text-text-secondary">{localize('com_ui_tars_mcp_no_domains')}</p>
@@ -320,13 +330,13 @@ export default function McpPermissionsTab() {
 
       <div className="overflow-hidden rounded-lg border border-border-light">
         <div
-          className={`${PERMISSIONS_ROW_GRID} border-b border-border-light bg-surface-secondary text-xs font-medium text-text-secondary`}
+          className={`${PERMISSIONS_ROW_GRID} border-b border-border-light bg-surface-secondary text-sm font-medium text-text-secondary`}
         >
           <span aria-hidden="true" />
           <span>{localize('com_ui_name')}</span>
           <span className="text-right">{localize('com_ui_tars_mcp_permissions_tools_header')}</span>
         </div>
-        {managedServers.map((server) => (
+        {pageServers.map((server) => (
           <PermissionServerRow
             key={server.id}
             server={server}
@@ -343,6 +353,17 @@ export default function McpPermissionsTab() {
           </p>
         )}
       </div>
+
+      {managedServers.length > 0 && (
+        <McpPaginationControls
+          labelId="tars-mcp-permissions-page-size-label"
+          page={page}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       <div className="flex justify-end">
         <Button variant="submit" onClick={handleSave} disabled={saveMutation.isLoading}>
