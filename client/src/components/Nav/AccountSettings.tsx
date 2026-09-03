@@ -1,22 +1,14 @@
-import { useState, memo, useRef } from 'react';
+import { useState, memo, useRef, useCallback } from 'react';
 import * as Menu from '@ariakit/react/menu';
-import { useNavigate } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
-import {
-  Archive,
-  CircleHelp,
-  Keyboard,
-  LifeBuoy,
-  LogOut,
-  Scale,
-  ShieldCheck,
-  Wrench,
-} from 'lucide-react';
+import { Archive, CircleHelp, Keyboard, LifeBuoy, LogOut, Scale, ShieldCheck } from 'lucide-react';
 import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/ArchivedChatsModal';
 import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
+import useSidebarToggle from '~/hooks/Nav/useSidebarToggle';
 import AdminMenu, { SubmenuGroup } from './Tars/AdminMenu';
+import useSidebarState from '~/hooks/Nav/useSidebarState';
 import { useAuthContext } from '~/hooks/AuthContext';
 import { getHelpAndFaqURL } from '~/utils';
 import { useLocalize } from '~/hooks';
@@ -28,11 +20,13 @@ function HelpSubmenu({
   termsOfServiceURL,
   privacyPolicyURL,
   onShowShortcuts,
+  onNavigate,
 }: {
   helpAndFaqURL?: string;
   termsOfServiceURL?: string;
   privacyPolicyURL?: string;
   onShowShortcuts: () => void;
+  onNavigate: () => void;
 }) {
   const localize = useLocalize();
   const lang = useRecoilValue(store.lang);
@@ -44,20 +38,32 @@ function HelpSubmenu({
   return (
     <SubmenuGroup icon={CircleHelp} label={localize('com_nav_help')}>
       <Menu.MenuItem
-        onClick={() => window.open(helpURL, '_blank', 'noopener,noreferrer')}
+        onClick={() => {
+          onNavigate();
+          window.open(helpURL, '_blank', 'noopener,noreferrer');
+        }}
         className="select-item text-sm"
       >
         <LifeBuoy className="icon-md" aria-hidden="true" />
         {localize('com_nav_help_faq')}
       </Menu.MenuItem>
-      <Menu.MenuItem onClick={onShowShortcuts} className="select-item text-sm">
+      <Menu.MenuItem
+        onClick={() => {
+          onNavigate();
+          onShowShortcuts();
+        }}
+        className="select-item text-sm"
+      >
         <Keyboard className="icon-md" aria-hidden="true" />
         {localize('com_shortcut_keyboard_shortcuts')}
       </Menu.MenuItem>
       {showLegalDivider && <DropdownMenuSeparator />}
       {hasTos && (
         <Menu.MenuItem
-          onClick={() => window.open(termsOfServiceURL, '_blank', 'noopener,noreferrer')}
+          onClick={() => {
+            onNavigate();
+            window.open(termsOfServiceURL, '_blank', 'noopener,noreferrer');
+          }}
           className="select-item text-sm"
         >
           <Scale className="icon-md" aria-hidden="true" />
@@ -66,7 +72,10 @@ function HelpSubmenu({
       )}
       {hasPrivacy && (
         <Menu.MenuItem
-          onClick={() => window.open(privacyPolicyURL, '_blank', 'noopener,noreferrer')}
+          onClick={() => {
+            onNavigate();
+            window.open(privacyPolicyURL, '_blank', 'noopener,noreferrer');
+          }}
           className="select-item text-sm"
         >
           <ShieldCheck className="icon-md" aria-hidden="true" />
@@ -80,7 +89,6 @@ function HelpSubmenu({
 function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
   const localize = useLocalize();
   const { user, isAuthenticated, logout } = useAuthContext();
-  const navigate = useNavigate();
   const { data: startupConfig } = useGetStartupConfig();
   const balanceQuery = useGetUserBalance({
     enabled: !!isAuthenticated && startupConfig?.balance?.enabled,
@@ -90,6 +98,13 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
   const [showArchived, setShowArchived] = useState(false);
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
   const isTarsAdmin = user?.role === SystemRoles.ADMIN && user?.provider === 'tars';
+  const { expanded: sidebarExpanded } = useSidebarState();
+  const { setSidebarOpen } = useSidebarToggle();
+  const collapseSidebarIfExpanded = useCallback(() => {
+    if (sidebarExpanded) {
+      setSidebarOpen(false);
+    }
+  }, [sidebarExpanded, setSidebarOpen]);
 
   return (
     <Menu.MenuProvider placement={collapsed ? 'right-end' : undefined}>
@@ -145,20 +160,24 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
           termsOfServiceURL={startupConfig?.interface?.termsOfService?.externalUrl}
           privacyPolicyURL={startupConfig?.interface?.privacyPolicy?.externalUrl}
           onShowShortcuts={() => setShowShortcutsDialog(true)}
+          onNavigate={collapseSidebarIfExpanded}
         />
-        <Menu.MenuItem onClick={() => setShowArchived(true)} className="select-item text-sm">
+        <Menu.MenuItem
+          onClick={() => {
+            collapseSidebarIfExpanded();
+            setShowArchived(true);
+          }}
+          className="select-item text-sm"
+        >
           <Archive className="icon-md" aria-hidden="true" />
           {localize('com_nav_archived_chats')}
         </Menu.MenuItem>
-        {isTarsAdmin && <AdminMenu />}
-        {isTarsAdmin && (
-          <Menu.MenuItem onClick={() => navigate('/mcp-settings')} className="select-item text-sm">
-            <Wrench className="icon-md" aria-hidden="true" />
-            {localize('com_ui_tars_mcp_settings')}
-          </Menu.MenuItem>
-        )}
+        {isTarsAdmin && <AdminMenu onNavigate={collapseSidebarIfExpanded} />}
         <Menu.MenuItem
-          onClick={() => setShowSettings(true)}
+          onClick={() => {
+            collapseSidebarIfExpanded();
+            setShowSettings(true);
+          }}
           className="select-item text-sm"
           data-testid="nav-settings"
         >
@@ -166,7 +185,13 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
           {localize('com_nav_settings')}
         </Menu.MenuItem>
         <DropdownMenuSeparator />
-        <Menu.MenuItem onClick={() => logout()} className="select-item text-sm">
+        <Menu.MenuItem
+          onClick={() => {
+            collapseSidebarIfExpanded();
+            logout();
+          }}
+          className="select-item text-sm"
+        >
           <LogOut className="icon-md" aria-hidden="true" />
           {localize('com_nav_log_out')}
         </Menu.MenuItem>
