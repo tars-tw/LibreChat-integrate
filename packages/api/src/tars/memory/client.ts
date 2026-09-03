@@ -1,9 +1,38 @@
+import { Agent } from 'undici';
+import { logger } from '@librechat/data-schemas';
+import type { Dispatcher } from 'undici';
 import type { TarsUploadFile } from '~/tars/knowledge';
 import { tarsFetch, getTarsBaseUrl, TarsRequestError } from '~/tars/client';
 import { resolveLangflowModelName } from '~/tars/langflow/client';
 
 /** csv/xlsx/xls rows are queried via the data/table-task tools, not prompt-injected. */
 const STRUCTURED_EXTENSIONS = new Set(['csv', 'xlsx', 'xls']);
+
+type UploadFetchOptions = RequestInit & { dispatcher?: Dispatcher };
+
+/**
+ * pwc_tars parses and transcribes the whole upload inline before it answers, so
+ * a single audio file legitimately holds the connection for minutes. undici's
+ * 300s `headersTimeout`/`bodyTimeout` defaults would abort the request while
+ * pwc_tars keeps working and still writes the `memory_document` row, leaving an
+ * error in the UI for a file that exists. Override `TARS_MEMORY_UPLOAD_TIMEOUT_MS`
+ * together with the server-side `HTTP_REQUEST_TIMEOUT_MS`, which caps the same
+ * request from the browser's side.
+ */
+const DEFAULT_UPLOAD_TIMEOUT_MS = 30 * 60 * 1000;
+
+let uploadDispatcher: Agent | null = null;
+
+/** The long-timeout dispatcher for memory uploads, built once per process. */
+function getUploadDispatcher(): Dispatcher {
+  if (!uploadDispatcher) {
+    const configured = Number(process.env.TARS_MEMORY_UPLOAD_TIMEOUT_MS);
+    const timeout =
+      Number.isSafeInteger(configured) && configured > 0 ? configured : DEFAULT_UPLOAD_TIMEOUT_MS;
+    uploadDispatcher = new Agent({ headersTimeout: timeout, bodyTimeout: timeout });
+  }
+  return uploadDispatcher;
+}
 
 /** One `memory_document` row as pwc_tars serializes it (`MemoryDocument.to_dict()`). */
 export interface TarsMemoryDocument {
@@ -138,7 +167,9 @@ export async function uploadTarsMemoryFiles(
   if (input.tarsConversationId) {
     form.append('conversation_id', input.tarsConversationId);
   }
+  const modelStartedAt = Date.now();
   const modelName = await resolveLangflowModelName(input.modelName, 'tars-memory');
+  const modelMs = Date.now() - modelStartedAt;
   if (modelName) {
     form.append('model_name', modelName);
   }
@@ -146,12 +177,32 @@ export async function uploadTarsMemoryFiles(
   if (input.sttModelName) {
     form.append('stt_model_name', input.sttModelName);
   }
+  let bytes = 0;
   for (const file of input.files) {
+    bytes += file.buffer.length;
     const blob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });
     form.append('conversation_files', blob, file.filename);
   }
 
-  const response = await fetch(url, { method: 'POST', body: form });
+  const options: UploadFetchOptions = {
+    method: 'POST',
+    body: form,
+    dispatcher: getUploadDispatcher(),
+  };
+  const sentAt = Date.now();
+  const response = await fetch(url, options).catch((error: unknown) => {
+    logger.error(
+      `[tars-memory] upload_memory_data failed after ${Date.now() - sentAt}ms ` +
+        `(files=${input.files.length} bytes=${bytes} resolveModel=${modelMs}ms)`,
+      error,
+    );
+    throw error;
+  });
+  logger.debug(
+    `[tars-memory] upload_memory_data status=${response.status} ` +
+      `files=${input.files.length} bytes=${bytes} resolveModel=${modelMs}ms ` +
+      `tars=${Date.now() - sentAt}ms`,
+  );
   if (!response.ok) {
     let serverMessage: string | undefined;
     try {
