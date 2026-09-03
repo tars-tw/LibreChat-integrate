@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { QueryKeys, dataService } from 'librechat-data-provider';
 import type {
   TTarsDomain,
+  TTarsPrompt,
   TTarsChunk,
   TTarsDocument,
   TTarsUser,
@@ -360,6 +361,28 @@ export const useTarsPersonalPromptsQuery = (
   config?: UseQueryOptions<TTarsPromptsResponse>,
 ): QueryObserverResult<TTarsPromptsResponse> =>
   useTarsPromptsQuery(null, { enabled: true, ...config });
+
+/**
+ * Admin: one knowledge base's own prompts (`prompt_to_knowledge_base`), for
+ * the knowledge-base manager's "提示詞管理" dialog. Shares the `tarsPrompts`
+ * key prefix so the create/update/delete mutations' broad invalidation
+ * already covers it.
+ */
+export const useTarsKnowledgeBasePromptsQuery = (
+  knowledgeBaseId: string | null,
+  config?: UseQueryOptions<{ prompts: TTarsPrompt[] }, unknown, TTarsPrompt[]>,
+): QueryObserverResult<TTarsPrompt[]> => {
+  return useQuery<{ prompts: TTarsPrompt[] }, unknown, TTarsPrompt[]>(
+    [QueryKeys.tarsPrompts, 'knowledge-base', knowledgeBaseId],
+    () => dataService.getTarsKnowledgeBasePrompts(knowledgeBaseId as string),
+    {
+      select: (data) => data.prompts ?? [],
+      enabled: knowledgeBaseId != null && knowledgeBaseId !== '',
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
 
 /** Admin: pwc_tars 系統參數設定 rows. */
 export const useTarsSysConfigsQuery = (

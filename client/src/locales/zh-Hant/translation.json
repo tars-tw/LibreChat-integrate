@@ -1868,6 +1868,7 @@
   "com_ui_tars_kb_no_search_results": "沒有符合名稱的知識庫",
   "com_ui_tars_kb_overlap": "重疊字數",
   "com_ui_tars_kb_process_images": "圖片辨識（VLM）",
+  "com_ui_tars_kb_prompts": "提示詞管理",
   "com_ui_tars_kb_rename_prompt": "請輸入新的檔案名稱",
   "com_ui_tars_kb_reprocess": "重新處理",
   "com_ui_tars_kb_reprocess_confirm": "確定要重新切分並嵌入這份文件嗎？",
