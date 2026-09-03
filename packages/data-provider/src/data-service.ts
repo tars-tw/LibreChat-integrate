@@ -1,4 +1,4 @@
-import type { AxiosResponse } from 'axios';
+import type { AxiosResponse, AxiosRequestConfig } from 'axios';
 import type { TInsightsAccessResponse, TInsightsParams, TInsightsResponse } from './types/insights';
 import type { TFileConfig } from './file-config';
 import type * as t from './types';
@@ -1416,8 +1416,16 @@ export const uploadTarsKnowledgeBaseDocuments = (
   return request.postMultiPart(endpoints.tarsKnowledgeBaseDocuments(id), data);
 };
 
-export const uploadTarsMemoryFiles = (data: FormData): Promise<t.TTarsMemoryUploadResult> => {
-  return request.postMultiPart(endpoints.tarsMemoryUpload(), data);
+/**
+ * `onUploadProgress` reports the browser -> LibreChat leg only; LibreChat then
+ * re-posts the same bytes to pwc_tars, which parses and transcribes inline, so
+ * 100% means "handed over", not "done".
+ */
+export const uploadTarsMemoryFiles = (
+  data: FormData,
+  options?: AxiosRequestConfig,
+): Promise<t.TTarsMemoryUploadResult> => {
+  return request.postMultiPart(endpoints.tarsMemoryUpload(), data, options);
 };
 
 export const getTarsMemoryList = (tarsConversationId: string): Promise<t.TTarsMemoryList> => {
