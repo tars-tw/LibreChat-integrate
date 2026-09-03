@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LibreChat 前後端架構</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600&family=Noto+Serif+TC:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:     'Geist', 'Noto Sans TC', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif TC', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1000px; width: 100%; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 0.75rem;
+    }
+
+    .subtitle {
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      color: var(--color-muted);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+      max-width: 680px;
+    }
+
+    .subtitle b { color: var(--color-ink); font-weight: 600; }
+
+    svg { width: 100%; min-width: 760px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">前後端架構 · Diagram Design</p>
+    <h1>LibreChat 前後端架構</h1>
+    <p class="subtitle">改前端動 <b>Frontend</b>（<code>client/src</code>、<code>packages/client</code>）。新的後端邏輯一律寫在 <b>packages/api</b>（TS）—— <code>api</code> 只是薄 JS wrapper，呼叫進去即可。跨服務呼叫 pwc_tars 一律走 <code>packages/api</code> 的 <code>tarsFetch</code>。</p>
+
+    <svg viewBox="0 0 760 664" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="lc-arch-title lc-arch-desc">
+      <title id="lc-arch-title">LibreChat 前後端架構</title>
+      <desc id="lc-arch-desc">Frontend 透過 HTTP 呼叫 api，api 這個薄 wrapper 呼叫進 packages/api 執行實際邏輯，再經 data-schemas 存取 MongoDB；Frontend 與 api 都從 data-provider 匯入共用型別；packages/api 透過 tarsFetch 呼叫外部的 pwc_tars 服務，LLM Gateway 則是唯一反向呼叫。</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+      <!-- ===== Zone: LibreChat backend workspaces ===== -->
+      <rect x="40" y="248" width="468" height="224" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <rect x="204" y="252" width="140" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="274" y="261" fill="rgba(45,49,66,0.40)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">LIBRECHAT BACKEND</text>
+
+      <!-- ===== Arrows ===== -->
+
+      <!-- A1: Frontend -> api (HTTP, same x, straight) -->
+      <line x1="124" y1="104" x2="124" y2="288" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <rect x="134" y="190" width="36" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="152" y="199" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">HTTP</text>
+
+      <!-- A_fe_dp: Frontend -> data-provider (dashed, shared import) -->
+      <path d="M204,104 V140 Q204,148 212,148 H392 Q400,148 400,156 V192"
+            fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <rect x="278" y="128" width="48" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="302" y="137" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">IMPORT</text>
+
+      <!-- A_api_dp: api -> data-provider (dashed, shared import) -->
+      <path d="M184,288 V270 Q184,262 192,262 H492 Q500,262 500,254 V224"
+            fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <rect x="318" y="240" width="48" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="342" y="249" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">IMPORT</text>
+
+      <!-- A2: api -> packages/api (same y, straight — the thin-wrapper call) -->
+      <line x1="244" y1="320" x2="284" y2="320" stroke="#4f5d75" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+      <!-- A3: packages/api -> data-schemas (same x, straight) -->
+      <line x1="384" y1="352" x2="384" y2="392" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <!-- A4: data-schemas -> MongoDB (same x, straight) -->
+      <line x1="384" y1="456" x2="384" y2="496" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <!-- A5: packages/api -> pwc_tars (tarsFetch) -->
+      <path d="M484,308 H508 Q516,308 516,316 V348 Q516,356 524,356"
+            fill="none" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <rect x="524" y="326" width="60" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="554" y="335" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.04em">tarsFetch</text>
+
+      <!-- A6: pwc_tars -> packages/api (dashed, LLM Gateway, the one reverse call) -->
+      <path d="M524,384 H508 Q500,384 500,376 V344 Q500,336 492,336 H484"
+            fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <rect x="440" y="354" width="56" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="468" y="363" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.04em">GATEWAY</text>
+
+      <!-- ===== Nodes ===== -->
+
+      <!-- Frontend -->
+      <rect x="44" y="40" width="240" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="44" y="40" width="240" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="52" y="48" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+      <text x="68" y="57" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SPA</text>
+      <text x="164" y="76" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Frontend</text>
+      <text x="164" y="92" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">client/src · packages/client</text>
+
+      <!-- data-provider -->
+      <rect x="400" y="160" width="200" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="400" y="160" width="200" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="408" y="168" width="48" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+      <text x="432" y="177" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SHARED</text>
+      <text x="500" y="196" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">data-provider</text>
+      <text x="500" y="212" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">endpoints · types</text>
+
+      <!-- api -->
+      <rect x="64" y="288" width="180" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="64" y="288" width="180" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="72" y="296" width="24" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+      <text x="84" y="305" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">JS</text>
+      <text x="154" y="324" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">api</text>
+      <text x="154" y="340" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">thin wrapper · :3080</text>
+
+      <!-- packages/api (focal) -->
+      <rect x="284" y="288" width="200" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="284" y="288" width="200" height="64" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+      <rect x="292" y="296" width="24" height="12" rx="2" fill="transparent" stroke="rgba(235,108,54,0.50)" stroke-width="0.8"/>
+      <text x="304" y="305" fill="#eb6c36" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">TS</text>
+      <text x="384" y="324" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">packages/api</text>
+      <text x="384" y="340" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">new backend logic</text>
+
+      <!-- data-schemas -->
+      <rect x="284" y="392" width="200" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="284" y="392" width="200" height="64" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+      <rect x="292" y="400" width="36" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
+      <text x="310" y="409" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">MODEL</text>
+      <text x="384" y="428" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">data-schemas</text>
+      <text x="384" y="444" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">mongoose models</text>
+
+      <!-- MongoDB -->
+      <rect x="284" y="496" width="200" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="284" y="496" width="200" height="64" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+      <rect x="292" y="504" width="32" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
+      <text x="308" y="513" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DATA</text>
+      <text x="384" y="532" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">MongoDB</text>
+      <text x="384" y="548" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">users · convos · files</text>
+
+      <!-- pwc_tars (external) -->
+      <rect x="524" y="340" width="148" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="524" y="340" width="148" height="64" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+      <rect x="532" y="348" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+      <text x="546" y="357" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EXT</text>
+      <text x="598" y="376" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">pwc_tars</text>
+      <text x="598" y="392" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Flask · :85</text>
+
+      <!-- ===== Legend ===== -->
+      <line x1="40" y1="600" x2="720" y2="600" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="40" y="616" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGEND</text>
+
+      <rect x="40" y="632" width="14" height="10" rx="2" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+      <text x="60" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">新後端邏輯寫這 (packages/api)</text>
+
+      <rect x="300" y="632" width="14" height="10" rx="2" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+      <text x="320" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">資料 / schema</text>
+
+      <rect x="440" y="632" width="14" height="10" rx="2" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+      <text x="460" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">外部服務</text>
+
+      <line x1="560" y1="637" x2="588" y2="637" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <text x="596" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">HTTP 呼叫</text>
+
+      <rect x="40" y="650" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="60" y="658" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">服務層</text>
+
+      <line x1="160" y1="655" x2="188" y2="655" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <text x="196" y="658" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">共用 import / 反向呼叫</text>
+    </svg>
+  </div>
+</body>
+</html>
