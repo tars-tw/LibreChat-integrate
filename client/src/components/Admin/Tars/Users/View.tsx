@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { useLocalize, useIsTarsAdmin } from '~/hooks';
+import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import UserManager from './Manager';
 
 /** Full-page pwc_tars account administration (人員管理). */
 export default function UsersView() {
   const localize = useLocalize();
   const navigate = useNavigate();
-  const isTarsAdmin = useIsTarsAdmin();
+  const hasAccess = useHasTarsRouteAccess();
 
-  if (!isTarsAdmin) {
+  if (!hasAccess) {
     navigate('/c/new', { replace: true });
     return null;
   }

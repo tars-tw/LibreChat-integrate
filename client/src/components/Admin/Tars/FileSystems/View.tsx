@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { useLocalize, useIsTarsAdmin } from '~/hooks';
+import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import FileSystemManager from './Manager';
 
 /** Full-page pwc_tars document-group administration (文檔群組). */
 export default function FileSystemView() {
   const localize = useLocalize();
   const navigate = useNavigate();
-  const isTarsAdmin = useIsTarsAdmin();
+  const hasAccess = useHasTarsRouteAccess();
 
-  if (!isTarsAdmin) {
+  if (!hasAccess) {
     navigate('/c/new', { replace: true });
     return null;
   }
