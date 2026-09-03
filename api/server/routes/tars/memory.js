@@ -47,18 +47,25 @@ router.use('/memory', requireTarsLink);
 
 const errorStatus = (error) => (error instanceof TarsRequestError ? error.status : 500);
 
-/** Multer rejects oversized/too-many files from middleware, where the route's
- *  own try/catch cannot see it; answer 413 instead of a generic 500. */
-const acceptUpload = (req, res, next) =>
-  upload.array('files')(req, res, (error) => {
+/**
+ * Multer rejects oversized/too-many files from middleware, where the route's
+ * own try/catch cannot see it; answer 413 instead of a generic 500. The whole
+ * body is buffered here before the handler runs and pwc_tars logs nothing until
+ * it has the bytes, so the buffering leg is timed for the handler to report.
+ */
+const acceptUpload = (req, res, next) => {
+  const startedAt = Date.now();
+  return upload.array('files')(req, res, (error) => {
     if (error instanceof multer.MulterError) {
       logger.warn(`[POST /api/tars/memory/upload] Rejected by upload limits: ${error.code}`);
       return res.status(413).json({
         error: `Upload rejected: at most ${MAX_MEMORY_UPLOAD_FILES} files, ${MAX_MEMORY_UPLOAD_MB}MB each`,
       });
     }
+    req.tarsUploadTiming = { startedAt, bufferedMs: Date.now() - startedAt };
     return next(error);
   });
+};
 
 /**
  * The client percent-encodes filenames before appending them to the FormData
@@ -86,6 +93,21 @@ const toClientDocument = (doc) => ({
   structured: doc.structured,
   created_at: doc.created_at,
 });
+
+/**
+ * The one line that splits an upload's wall time into its three silent legs:
+ * buffering the body out of the browser, the pwc_tars round trip (parse plus
+ * inline audio transcription), and the rest of the handler.
+ */
+const logUploadTiming = (req, files, uploadStartedAt) => {
+  const { startedAt, bufferedMs } = req.tarsUploadTiming ?? {};
+  const bytes = files.reduce((total, file) => total + file.size, 0);
+  logger.debug(
+    `[tars-memory] POST /memory/upload files=${files.length} bytes=${bytes} ` +
+      `buffer=${bufferedMs ?? '?'}ms tars=${Date.now() - uploadStartedAt}ms ` +
+      `total=${startedAt ? Date.now() - startedAt : '?'}ms`,
+  );
+};
 
 /**
  * pwc_tars does not authorize `update_status`/`delete`, so ownership is proven
@@ -121,6 +143,7 @@ router.post('/memory/upload', acceptUpload, async (req, res) => {
       tarsConversationId = (await getConvo(req.user.id, conversationId))?.tarsConversationId;
     }
 
+    const uploadStartedAt = Date.now();
     const result = await uploadTarsMemoryFiles(req.user.tarsId, {
       files: files.map((file) => ({
         buffer: file.buffer,
@@ -133,6 +156,7 @@ router.post('/memory/upload', acceptUpload, async (req, res) => {
       processImages: req.body?.processImages !== 'false',
       sttModelName: req.body?.sttModelName || undefined,
     });
+    logUploadTiming(req, files, uploadStartedAt);
 
     if (result.tarsConversationId && result.tarsConversationId !== tarsConversationId) {
       if (conversationId) {
