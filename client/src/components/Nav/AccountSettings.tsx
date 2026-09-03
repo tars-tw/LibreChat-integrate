@@ -1,6 +1,5 @@
 import { useState, memo, useRef, useCallback } from 'react';
 import * as Menu from '@ariakit/react/menu';
-import { SystemRoles } from 'librechat-data-provider';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import { Archive, CircleHelp, Keyboard, LifeBuoy, LogOut, Scale, ShieldCheck } from 'lucide-react';
@@ -9,9 +8,9 @@ import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
 import useSidebarToggle from '~/hooks/Nav/useSidebarToggle';
 import AdminMenu, { SubmenuGroup } from './Tars/AdminMenu';
 import useSidebarState from '~/hooks/Nav/useSidebarState';
+import { useLocalize, useTarsAdminAccess } from '~/hooks';
 import { useAuthContext } from '~/hooks/AuthContext';
 import { getHelpAndFaqURL } from '~/utils';
-import { useLocalize } from '~/hooks';
 import Settings from './Settings';
 import store from '~/store';
 
@@ -97,7 +96,7 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
   const setShowShortcutsDialog = useSetRecoilState(store.showShortcutsDialog);
   const [showArchived, setShowArchived] = useState(false);
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
-  const isTarsAdmin = user?.role === SystemRoles.ADMIN && user?.provider === 'tars';
+  const { hasAny: hasTarsMenuAccess } = useTarsAdminAccess();
   const { expanded: sidebarExpanded } = useSidebarState();
   const { setSidebarOpen } = useSidebarToggle();
   const collapseSidebarIfExpanded = useCallback(() => {
@@ -172,7 +171,7 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
           <Archive className="icon-md" aria-hidden="true" />
           {localize('com_nav_archived_chats')}
         </Menu.MenuItem>
-        {isTarsAdmin && <AdminMenu onNavigate={collapseSidebarIfExpanded} />}
+        {hasTarsMenuAccess && <AdminMenu onNavigate={collapseSidebarIfExpanded} />}
         <Menu.MenuItem
           onClick={() => {
             collapseSidebarIfExpanded();
