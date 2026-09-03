@@ -243,12 +243,12 @@ export const router = createBrowserRouter(
             },
             {
               path: 'prompts',
-              element: <Navigate to="/c/new" replace={true} />,
+              element: <Navigate to="/prompts/new" replace={true} />,
             },
             {
-              /** Prompts are created from a dialog, so there is no "new" page to land on */
+              /** TARS prompts are created/edited on this page; "new" is TarsPromptForm's create-mode sentinel. */
               path: 'prompts/new',
-              element: <Navigate to="/c/new" replace={true} />,
+              lazy: loadInlinePromptsView,
             },
             {
               path: 'prompts/:promptId',
