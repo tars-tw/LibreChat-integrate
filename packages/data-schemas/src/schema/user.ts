@@ -101,6 +101,9 @@ const userSchema: Schema<IUser> = new Schema<IUser>(
     tarsMenuItems: {
       type: Array,
     },
+    tarsAdminMenuKeys: {
+      type: [String],
+    },
     githubId: {
       type: String,
     },
