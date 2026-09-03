@@ -67,6 +67,7 @@ const adminTarsUser = {
   roleId: 1,
   groupIds: 'g1,g2',
   menuItems: [{ id: 100, dom_id: 'chat-application', url: '/dashboard' }],
+  librechatMenuKeys: ['admin.users', 'admin.groups'],
 };
 
 const guestTarsUser = { ...adminTarsUser, roleId: 99 };
@@ -108,6 +109,7 @@ describe('tarsStrategy', () => {
         tarsGroupIds: 'g1,g2',
         tarsMenuItems: adminTarsUser.menuItems,
         tarsMenuKeys: ['chat-application'],
+        tarsAdminMenuKeys: ['admin.users', 'admin.groups'],
       }),
       expect.anything(),
     );
@@ -146,6 +148,7 @@ describe('tarsStrategy', () => {
         role: 'USER',
         tarsRoleId: 99,
         tarsMenuKeys: ['chat-application'],
+        tarsAdminMenuKeys: ['admin.users', 'admin.groups'],
       }),
     );
   });
