@@ -17,9 +17,9 @@ import VariablesDropdown from '../editor/VariablesDropdown';
 import PromptVariables from '../display/PromptVariables';
 import CategorySelector from './CategorySelector';
 import Description from '../fields/Description';
+import useScopedTarsPrompts from './hooks';
 import Command from '../fields/Command';
 import { useLocalize } from '~/hooks';
-import useTarsPrompts from './hooks';
 import { cn } from '~/utils';
 
 type TarsPromptFormValues = {
@@ -39,16 +39,29 @@ const emptyValues: TarsPromptFormValues = {
 };
 
 /**
- * Create/edit form for a pwc_tars "我的提示". Everything is written through
- * `/api/tars/prompts` to the personal prompt tier; `command` is sent along for
- * the forthcoming pwc_tars column and is currently ignored by the backend.
+ * Create/edit form for a pwc_tars "提示", scoped by whichever id the route
+ * carries: a specialized brain's own prompts, a knowledge base's own
+ * prompts, or (neither given) the user's personal prompts. `command` is sent
+ * along for the forthcoming pwc_tars column and is currently ignored by the
+ * backend.
  */
-export default function TarsPromptForm({ promptId }: { promptId?: string }) {
+export default function TarsPromptForm({
+  promptId,
+  domainId,
+  knowledgeBaseId,
+}: {
+  promptId?: string;
+  domainId?: string;
+  knowledgeBaseId?: string;
+}) {
   const localize = useLocalize();
   const navigate = useNavigate();
   const { showToast } = useToastContext();
   const isSmallScreen = useMediaQuery('(max-width: 768px)');
-  const { prompts, isLoading } = useTarsPrompts();
+  const { prompts, categories, isLoading, basePath } = useScopedTarsPrompts({
+    domainId,
+    knowledgeBaseId,
+  });
 
   const isEdit = promptId != null && promptId !== '';
   const prompt = useMemo(
@@ -86,7 +99,7 @@ export default function TarsPromptForm({ promptId }: { promptId?: string }) {
   const createPrompt = useCreateTarsPromptMutation({
     onSuccess: (response) => {
       showToast({ status: 'success', message: localize('com_ui_prompt_saved') });
-      navigate(`/prompts/${response.prompt.id}`, { replace: true });
+      navigate(`${basePath}/${response.prompt.id}`, { replace: true });
     },
     onError: () => showToast({ status: 'error', message: localize('com_ui_prompt_save_error') }),
   });
@@ -110,6 +123,8 @@ export default function TarsPromptForm({ promptId }: { promptId?: string }) {
       content: data.prompt,
       description: data.oneliner.trim(),
       command: data.command.trim(),
+      domain_id: domainId,
+      knowledge_base_id: knowledgeBaseId,
     };
 
     if (isEdit && promptId) {
@@ -121,11 +136,16 @@ export default function TarsPromptForm({ promptId }: { promptId?: string }) {
 
   if (isEdit && !prompt) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3">
         {isLoading ? (
           <Spinner />
         ) : (
-          <p className="text-text-secondary">{localize('com_ui_nothing_found')}</p>
+          <>
+            <p className="text-text-secondary">{localize('com_ui_nothing_found')}</p>
+            <Button type="button" variant="outline" onClick={handleCancel}>
+              {localize('com_ui_cancel')}
+            </Button>
+          </>
         )}
       </div>
     );
@@ -143,6 +163,7 @@ export default function TarsPromptForm({ promptId }: { promptId?: string }) {
             <CategorySelector
               value={category}
               onChange={(value) => setValue('category', value, { shouldDirty: true })}
+              categories={categories}
             />
           </div>
         ) : null}
@@ -188,7 +209,11 @@ export default function TarsPromptForm({ promptId }: { promptId?: string }) {
                 rules={{ required: localize('com_ui_prompt_category_required') }}
                 render={({ field }) => (
                   <div className="flex flex-col items-end">
-                    <CategorySelector value={field.value} onChange={field.onChange} />
+                    <CategorySelector
+                      value={field.value}
+                      onChange={field.onChange}
+                      categories={categories}
+                    />
                     <div
                       className={cn(
                         'mt-1 text-sm text-red-500',
