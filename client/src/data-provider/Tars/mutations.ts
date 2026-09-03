@@ -1706,6 +1706,13 @@ export const useDeleteTarsWebsiteSourceMutation = (
     options,
   );
 
+/** One long-term-memory upload plus the callback tracking its transfer. */
+export interface TarsMemoryUploadVariables {
+  formData: FormData;
+  /** 0-100 for the browser -> LibreChat leg; pwc_tars's own work follows it. */
+  onProgress?: (percent: number) => void;
+}
+
 /**
  * Upload chat files into the pwc_tars long-term memory area. On a brand-new
  * chat the response carries the pwc_tars conversation id the upload created;
@@ -1713,16 +1720,23 @@ export const useDeleteTarsWebsiteSourceMutation = (
  * it. Invalidates the memory listing of that conversation.
  */
 export const useUploadTarsMemoryMutation = (
-  options?: UseMutationOptions<TTarsMemoryUploadResult, unknown, FormData>,
-): UseMutationResult<TTarsMemoryUploadResult, unknown, FormData> => {
+  options?: UseMutationOptions<TTarsMemoryUploadResult, unknown, TarsMemoryUploadVariables>,
+): UseMutationResult<TTarsMemoryUploadResult, unknown, TarsMemoryUploadVariables> => {
   const queryClient = useQueryClient();
-  return useMutation((data: FormData) => dataService.uploadTarsMemoryFiles(data), {
-    ...options,
-    onSuccess: (result, variables, context) => {
-      queryClient.invalidateQueries([QueryKeys.tarsMemory, result.tars_conversation_id]);
-      options?.onSuccess?.(result, variables, context);
+  return useMutation(
+    ({ formData, onProgress }: TarsMemoryUploadVariables) =>
+      dataService.uploadTarsMemoryFiles(formData, {
+        onUploadProgress: ({ loaded, total }) =>
+          onProgress?.(total ? Math.round((loaded * 100) / total) : 0),
+      }),
+    {
+      ...options,
+      onSuccess: (result, variables, context) => {
+        queryClient.invalidateQueries([QueryKeys.tarsMemory, result.tars_conversation_id]);
+        options?.onSuccess?.(result, variables, context);
+      },
     },
-  });
+  );
 };
 
 /** Flip one memory document's include-in-chat flag. */
