@@ -1495,6 +1495,12 @@ export const getTarsPrompts = (domainId?: string | number): Promise<t.TTarsPromp
   return request.get(endpoints.tarsPrompts(domainId));
 };
 
+export const getTarsKnowledgeBasePrompts = (
+  knowledgeBaseId: string,
+): Promise<{ prompts: t.TTarsPrompt[] }> => {
+  return request.get(endpoints.tarsKnowledgeBasePrompts(knowledgeBaseId));
+};
+
 export const createTarsPrompt = (data: t.TTarsPromptInput): Promise<{ prompt: t.TTarsPrompt }> => {
   return request.post(endpoints.tarsPrompts(), data);
 };

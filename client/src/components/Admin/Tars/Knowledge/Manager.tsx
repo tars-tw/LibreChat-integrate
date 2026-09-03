@@ -57,6 +57,7 @@ export default function KnowledgeManager() {
   });
 
   const open = (kb: TTarsKnowledgeBase) => navigate(`/knowledge-bases/${kb.id}`);
+  const openPrompts = (kb: TTarsKnowledgeBase) => navigate(`/prompts/knowledge-base/${kb.id}/new`);
 
   const viewButton = (mode: ViewMode, icon: React.ReactNode, label: string) => (
     <Button
@@ -146,6 +147,7 @@ export default function KnowledgeManager() {
           onOpen={open}
           onEdit={setEditing}
           onDelete={setDeleting}
+          onManagePrompts={openPrompts}
         />
       )}
 
@@ -157,6 +159,7 @@ export default function KnowledgeManager() {
           onOpen={open}
           onEdit={setEditing}
           onDelete={setDeleting}
+          onManagePrompts={openPrompts}
         />
       )}
 

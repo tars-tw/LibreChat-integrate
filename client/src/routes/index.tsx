@@ -243,15 +243,34 @@ export const router = createBrowserRouter(
             },
             {
               path: 'prompts',
-              element: <Navigate to="/c/new" replace={true} />,
+              element: <Navigate to="/prompts/new" replace={true} />,
             },
             {
-              /** Prompts are created from a dialog, so there is no "new" page to land on */
+              /** TARS prompts are created/edited on this page; "new" is TarsPromptForm's create-mode sentinel. */
               path: 'prompts/new',
-              element: <Navigate to="/c/new" replace={true} />,
+              lazy: loadInlinePromptsView,
             },
             {
               path: 'prompts/:promptId',
+              lazy: loadInlinePromptsView,
+            },
+            {
+              /** "new" is a literal segment (create-mode sentinel), not `:promptId` — otherwise it's looked up as a real id and fails. */
+              path: 'prompts/domain/:domainId/new',
+              lazy: loadInlinePromptsView,
+            },
+            {
+              /** A specialized brain's own prompts, opened from its admin card. */
+              path: 'prompts/domain/:domainId/:promptId',
+              lazy: loadInlinePromptsView,
+            },
+            {
+              path: 'prompts/knowledge-base/:knowledgeBaseId/new',
+              lazy: loadInlinePromptsView,
+            },
+            {
+              /** A knowledge base's own prompts, opened from its admin card. */
+              path: 'prompts/knowledge-base/:knowledgeBaseId/:promptId',
               lazy: loadInlinePromptsView,
             },
             {
