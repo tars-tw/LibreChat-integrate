@@ -11,7 +11,7 @@ import {
   OGDialogTemplate,
   useToastContext,
 } from '@librechat/client';
-import type { TTarsPrompt, TPromptGroup } from 'librechat-data-provider';
+import type { TTarsPrompt, TPromptGroup, TTarsPromptScope } from 'librechat-data-provider';
 import { useDeleteTarsPromptMutation } from '~/data-provider';
 import { useLocalize, useSubmitMessage } from '~/hooks';
 import VariableDialog from '../dialogs/VariableDialog';
@@ -39,6 +39,8 @@ function TarsPromptItem({
   prompt: TTarsPrompt;
   isChatRoute?: boolean;
 }) {
+  const scope: TTarsPromptScope = prompt.scope ?? 'personal';
+  const isManageable = scope === 'personal';
   const menuId = useId();
   const params = useParams();
   const localize = useLocalize();
@@ -131,33 +133,35 @@ function TarsPromptItem({
               {snippet}
             </p>
           </div>
-          <div className="relative z-10 shrink-0">
-            <DropdownPopup
-              portal={true}
-              menuId={menuId}
-              focusLoop={true}
-              className="z-[125]"
-              unmountOnHide={true}
-              isOpen={menuOpen}
-              setIsOpen={setMenuOpen}
-              items={dropdownItems}
-              trigger={
-                <Ariakit.MenuButton
-                  ref={menuButtonRef}
-                  aria-label={localize('com_nav_convo_menu_options')}
-                  className={cn(
-                    'flex size-7 items-center justify-center rounded-md text-text-secondary transition-opacity hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring-primary',
-                    menuOpen
-                      ? 'opacity-100'
-                      : 'opacity-0 focus-visible:opacity-100 group-hover/prompt:opacity-100',
-                  )}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Ellipsis className="size-4" aria-hidden="true" />
-                </Ariakit.MenuButton>
-              }
-            />
-          </div>
+          {isManageable && (
+            <div className="relative z-10 shrink-0">
+              <DropdownPopup
+                portal={true}
+                menuId={menuId}
+                focusLoop={true}
+                className="z-[125]"
+                unmountOnHide={true}
+                isOpen={menuOpen}
+                setIsOpen={setMenuOpen}
+                items={dropdownItems}
+                trigger={
+                  <Ariakit.MenuButton
+                    ref={menuButtonRef}
+                    aria-label={localize('com_nav_convo_menu_options')}
+                    className={cn(
+                      'flex size-7 items-center justify-center rounded-md text-text-secondary transition-opacity hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring-primary',
+                      menuOpen
+                        ? 'opacity-100'
+                        : 'opacity-0 focus-visible:opacity-100 group-hover/prompt:opacity-100',
+                    )}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Ellipsis className="size-4" aria-hidden="true" />
+                  </Ariakit.MenuButton>
+                }
+              />
+            </div>
+          )}
         </div>
       </div>
       {isChatRoute && (
@@ -167,22 +171,24 @@ function TarsPromptItem({
           group={asPromptGroup(prompt)}
         />
       )}
-      <OGDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <OGDialogTemplate
-          title={localize('com_ui_delete_prompt')}
-          className="w-11/12 max-w-md"
-          main={<Label>{localize('com_ui_prompt_delete_confirm', { 0: prompt.name })}</Label>}
-          selection={
-            <Button
-              variant="destructive"
-              disabled={deletePrompt.isLoading}
-              onClick={() => deletePrompt.mutate({ id: promptId })}
-            >
-              {deletePrompt.isLoading ? <Spinner /> : localize('com_ui_delete')}
-            </Button>
-          }
-        />
-      </OGDialog>
+      {isManageable && (
+        <OGDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <OGDialogTemplate
+            title={localize('com_ui_delete_prompt')}
+            className="w-11/12 max-w-md"
+            main={<Label>{localize('com_ui_prompt_delete_confirm', { 0: prompt.name })}</Label>}
+            selection={
+              <Button
+                variant="destructive"
+                disabled={deletePrompt.isLoading}
+                onClick={() => deletePrompt.mutate({ id: promptId })}
+              >
+                {deletePrompt.isLoading ? <Spinner /> : localize('com_ui_delete')}
+              </Button>
+            }
+          />
+        </OGDialog>
+      )}
     </>
   );
 }
