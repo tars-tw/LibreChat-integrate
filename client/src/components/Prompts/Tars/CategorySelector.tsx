@@ -12,26 +12,28 @@ import {
 } from '@librechat/client';
 import type { MenuItemProps } from '@librechat/client';
 import { useLocalize } from '~/hooks';
-import useTarsPrompts from './hooks';
 import { cn } from '~/utils';
 
 /**
- * Category picker for pwc_tars prompts. Options are the categories already used
- * by the user's prompts; "add category" appends a local option that is persisted
- * only once a prompt is saved with it — pwc_tars stores categories on the prompt.
+ * Category picker for pwc_tars prompts. `categories` are the ones already
+ * used within the form's current scope (personal / this brain / this
+ * knowledge base); "add category" appends a local option that is persisted
+ * only once a prompt is saved with it — pwc_tars stores categories on the
+ * prompt, not in a category table.
  */
 export default function CategorySelector({
   value,
   onChange,
+  categories,
   className = '',
 }: {
   value: string;
   onChange: (category: string) => void;
+  categories: string[];
   className?: string;
 }) {
   const localize = useLocalize();
   const { showToast } = useToastContext();
-  const { categories } = useTarsPrompts();
 
   const [isOpen, setIsOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
