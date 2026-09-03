@@ -1,7 +1,6 @@
 import { useState, memo, useRef, useCallback } from 'react';
 import { useSetAtom } from 'jotai';
 import * as Menu from '@ariakit/react/menu';
-import { useNavigate } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
 import { useSetRecoilState } from 'recoil';
 import { GearIcon, Avatar } from '@librechat/client';
@@ -14,7 +13,6 @@ import {
   LogOut,
   Scale,
   ShieldCheck,
-  Wrench,
 } from 'lucide-react';
 import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/ArchivedChatsModal';
 import { filesDialogTriggerAtom, showFilesDialogAtom } from '~/store/filesDialog';
@@ -104,7 +102,6 @@ function HelpSubmenu({
 function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
   const localize = useLocalize();
   const { user, logout } = useAuthContext();
-  const navigate = useNavigate();
   const { data: startupConfig } = useGetStartupConfig();
   const { privacyPolicyUrl, termsOfServiceUrl } = policyUrls(startupConfig);
   const setShowSettings = useSetAtom(settingsOpenAtom);
@@ -194,18 +191,6 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
           {localize('com_nav_my_files')}
         </Menu.MenuItem>
         {isTarsAdmin && <AdminMenu onNavigate={collapseSidebarIfExpanded} />}
-        {isTarsAdmin && (
-          <Menu.MenuItem
-            onClick={() => {
-              collapseSidebarIfExpanded();
-              navigate('/mcp-settings');
-            }}
-            className="select-item text-sm"
-          >
-            <Wrench className="icon-md" aria-hidden="true" />
-            {localize('com_ui_tars_mcp_settings')}
-          </Menu.MenuItem>
-        )}
         <Menu.MenuItem
           onClick={() => {
             collapseSidebarIfExpanded();

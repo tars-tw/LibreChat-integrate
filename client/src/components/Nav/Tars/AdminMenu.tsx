@@ -15,8 +15,6 @@ import {
   Info,
   KeyRound,
   KeySquare,
-  LayoutGrid,
-  Library,
   List,
   MessageSquareText,
   MessageSquareWarning,
@@ -54,22 +52,16 @@ export const ADMIN_MENU: AdminMenuNode[] = [
     icon: Database,
     children: [
       {
-        labelKey: 'com_ui_tars_nav_kb_mgmt',
-        icon: Library,
-        children: [
-          {
-            labelKey: 'com_ui_tars_nav_kb_list',
-            icon: List,
-            key: 'kb.list',
-            path: '/knowledge-bases',
-          },
-          {
-            labelKey: 'com_ui_tars_nav_kb_schedule',
-            icon: CalendarClock,
-            key: 'kb.schedules',
-            path: '/kb-schedules',
-          },
-        ],
+        labelKey: 'com_ui_tars_nav_kb_list',
+        icon: List,
+        key: 'kb.list',
+        path: '/knowledge-bases',
+      },
+      {
+        labelKey: 'com_ui_tars_nav_kb_schedule',
+        icon: CalendarClock,
+        key: 'kb.schedules',
+        path: '/kb-schedules',
       },
       {
         labelKey: 'com_ui_tars_nav_datasource',
@@ -98,76 +90,10 @@ export const ADMIN_MENU: AdminMenuNode[] = [
     ],
   },
   {
-    labelKey: 'com_ui_tars_nav_app_system',
-    icon: LayoutGrid,
-    children: [
-      {
-        labelKey: 'com_ui_tars_nav_users_permissions',
-        icon: Users,
-        children: [
-          {
-            labelKey: 'com_ui_tars_nav_users',
-            icon: User,
-            key: 'admin.users',
-            path: '/admin/users',
-          },
-          {
-            labelKey: 'com_ui_tars_nav_groups',
-            icon: UsersRound,
-            key: 'admin.groups',
-            path: '/admin/groups',
-          },
-          {
-            labelKey: 'com_ui_tars_nav_permissions',
-            icon: KeyRound,
-            key: 'admin.permissions',
-            path: '/admin/permissions',
-          },
-          {
-            labelKey: 'com_ui_tars_nav_domains',
-            icon: BrainCircuit,
-            key: 'admin.domains',
-            path: '/admin/domains',
-          },
-        ],
-      },
-      {
-        labelKey: 'com_ui_tars_nav_system_mgmt',
-        icon: Cog,
-        children: [
-          {
-            labelKey: 'com_ui_tars_nav_system_settings',
-            icon: Settings,
-            key: 'admin.system_settings',
-            path: '/admin/system-settings',
-          },
-          {
-            labelKey: 'com_ui_tars_sys_config',
-            icon: SlidersHorizontal,
-            key: 'admin.system_config',
-            path: '/system-config',
-          },
-          {
-            labelKey: 'com_ui_tars_nav_model_keys',
-            icon: KeySquare,
-            key: 'admin.model_keys',
-            path: '/admin/model-keys',
-          },
-          {
-            labelKey: 'com_ui_tars_nav_issues',
-            icon: MessageSquareWarning,
-            key: 'admin.issues',
-            path: '/admin/issues',
-          },
-          {
-            labelKey: 'com_ui_tars_nav_about',
-            icon: Info,
-            key: 'admin.about',
-            path: '/admin/about',
-          },
-        ],
-      },
-    ],
+    labelKey: 'com_ui_tars_mcp_settings',
+    icon: Wrench,
+    key: 'admin.mcp_settings',
+    path: '/mcp-settings',
   },
   {
     labelKey: 'com_ui_tars_nav_audit',
@@ -199,23 +125,76 @@ export const ADMIN_MENU: AdminMenuNode[] = [
       },
     ],
   },
-];
-
-/**
- * Admin entries the account menu renders outside {@link ADMIN_MENU} but which
- * are still permission-controlled, so the permission editor can offer them.
- */
-export const STANDALONE_ADMIN_MENU: AdminMenuNode[] = [
   {
-    labelKey: 'com_ui_tars_mcp_settings',
-    icon: Wrench,
-    key: 'admin.mcp_settings',
-    path: '/mcp-settings',
+    labelKey: 'com_ui_tars_nav_users_permissions',
+    icon: Users,
+    children: [
+      {
+        labelKey: 'com_ui_tars_nav_users',
+        icon: User,
+        key: 'admin.users',
+        path: '/admin/users',
+      },
+      {
+        labelKey: 'com_ui_tars_nav_groups',
+        icon: UsersRound,
+        key: 'admin.groups',
+        path: '/admin/groups',
+      },
+      {
+        labelKey: 'com_ui_tars_nav_permissions',
+        icon: KeyRound,
+        key: 'admin.permissions',
+        path: '/admin/permissions',
+      },
+      {
+        labelKey: 'com_ui_tars_nav_domains',
+        icon: BrainCircuit,
+        key: 'admin.domains',
+        path: '/admin/domains',
+      },
+    ],
+  },
+  {
+    labelKey: 'com_ui_tars_nav_system_mgmt',
+    icon: Cog,
+    children: [
+      {
+        labelKey: 'com_ui_tars_nav_system_settings',
+        icon: Settings,
+        key: 'admin.system_settings',
+        path: '/admin/system-settings',
+      },
+      {
+        labelKey: 'com_ui_tars_sys_config',
+        icon: SlidersHorizontal,
+        key: 'admin.system_config',
+        path: '/system-config',
+      },
+      {
+        labelKey: 'com_ui_tars_nav_model_keys',
+        icon: KeySquare,
+        key: 'admin.model_keys',
+        path: '/admin/model-keys',
+      },
+      {
+        labelKey: 'com_ui_tars_nav_issues',
+        icon: MessageSquareWarning,
+        key: 'admin.issues',
+        path: '/admin/issues',
+      },
+      {
+        labelKey: 'com_ui_tars_nav_about',
+        icon: Info,
+        key: 'admin.about',
+        path: '/admin/about',
+      },
+    ],
   },
 ];
 
 /** Every permission-controlled admin entry, as one tree for the permission editor. */
-export const ADMIN_MENU_TREE: AdminMenuNode[] = [...ADMIN_MENU, ...STANDALONE_ADMIN_MENU];
+export const ADMIN_MENU_TREE: AdminMenuNode[] = ADMIN_MENU;
 
 /** Depth-first leaf keys of a menu tree — the values a role actually stores. */
 export function adminMenuLeafKeys(nodes: AdminMenuNode[] = ADMIN_MENU_TREE): string[] {
