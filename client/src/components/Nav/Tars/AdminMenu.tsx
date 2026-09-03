@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TranslationKeys } from '~/hooks';
-import { useLocalize } from '~/hooks';
+import { useLocalize, useTarsAdminAccess } from '~/hooks';
 
 /**
  * A node of the pwc_tars administration menu. `key` is the stable identifier a
@@ -222,6 +222,31 @@ export function adminMenuNodeKeys(node: AdminMenuNode): string[] {
   return node.key == null ? [] : [node.key];
 }
 
+/**
+ * Prunes a menu tree down to the nodes a given key predicate grants: a leaf
+ * survives only when `hasKey(node.key)` is true, and a branch survives only
+ * when at least one descendant does.
+ */
+export function filterMenuTree(
+  nodes: AdminMenuNode[],
+  hasKey: (key?: string | null) => boolean,
+): AdminMenuNode[] {
+  const filtered: AdminMenuNode[] = [];
+  for (const node of nodes) {
+    if (node.children?.length) {
+      const children = filterMenuTree(node.children, hasKey);
+      if (children.length > 0) {
+        filtered.push({ ...node, children });
+      }
+      continue;
+    }
+    if (hasKey(node.key)) {
+      filtered.push(node);
+    }
+  }
+  return filtered;
+}
+
 export function SubmenuGroup({
   icon: Icon,
   label,
@@ -284,11 +309,18 @@ function AdminMenuItem({ node, onNavigate }: { node: AdminMenuNode; onNavigate?:
   );
 }
 
-/** Hierarchical pwc_tars administration menu rendered inside the account menu. */
+/**
+ * Hierarchical pwc_tars administration menu rendered inside the account menu.
+ * A tars admin sees every entry; any other tars user sees only the branches
+ * and leaves their role's granted menu keys cover.
+ */
 export default function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
+  const { isTarsAdmin, hasKey } = useTarsAdminAccess();
+  const visibleMenu = isTarsAdmin ? ADMIN_MENU : filterMenuTree(ADMIN_MENU, hasKey);
+
   return (
     <>
-      {ADMIN_MENU.map((node) => (
+      {visibleMenu.map((node) => (
         <AdminMenuItem key={node.labelKey} node={node} onNavigate={onNavigate} />
       ))}
     </>

@@ -51,6 +51,7 @@ describe('authenticateTars', () => {
           user_group_id: 'g1,g2',
         },
         menu_items: menuItems,
+        librechat_menu_keys: ['admin.users', 'admin.groups'],
         license_status: 'activate',
       }),
     );
@@ -75,6 +76,7 @@ describe('authenticateTars', () => {
       roleId: 1,
       groupIds: 'g1,g2',
       menuItems,
+      librechatMenuKeys: ['admin.users', 'admin.groups'],
     });
   });
 
@@ -93,6 +95,7 @@ describe('authenticateTars', () => {
       roleId: null,
       groupIds: null,
       menuItems: [],
+      librechatMenuKeys: [],
     });
   });
 

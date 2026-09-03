@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { useLocalize, useIsTarsAdmin } from '~/hooks';
+import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import DomainManager from './Manager';
 
 /** Full-page pwc_tars specialized-brain administration (專用腦管理). */
 export default function DomainsView() {
   const localize = useLocalize();
   const navigate = useNavigate();
-  const isTarsAdmin = useIsTarsAdmin();
+  const hasAccess = useHasTarsRouteAccess();
 
-  if (!isTarsAdmin) {
+  if (!hasAccess) {
     navigate('/c/new', { replace: true });
     return null;
   }
