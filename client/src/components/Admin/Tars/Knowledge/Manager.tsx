@@ -14,7 +14,6 @@ import {
   useTarsKnowledgeBaseOverviewQuery,
   useDeleteTarsKnowledgeBaseMutation,
 } from '~/data-provider';
-import KnowledgePromptsDialog from './PromptsDialog';
 import { filterByName } from './helpers';
 import BatchModal from './BatchModal';
 import { useLocalize } from '~/hooks';
@@ -45,7 +44,6 @@ export default function KnowledgeManager() {
   const [editing, setEditing] = useState<TTarsKnowledgeBase | null | undefined>(undefined);
   const [deleting, setDeleting] = useState<TTarsKnowledgeBase | null>(null);
   const [showBatch, setShowBatch] = useState(false);
-  const [managingPrompts, setManagingPrompts] = useState<TTarsKnowledgeBase | null>(null);
 
   const filtered = useMemo(() => filterByName(knowledgeBases, search), [knowledgeBases, search]);
 
@@ -59,6 +57,7 @@ export default function KnowledgeManager() {
   });
 
   const open = (kb: TTarsKnowledgeBase) => navigate(`/knowledge-bases/${kb.id}`);
+  const openPrompts = (kb: TTarsKnowledgeBase) => navigate(`/prompts/knowledge-base/${kb.id}/new`);
 
   const viewButton = (mode: ViewMode, icon: React.ReactNode, label: string) => (
     <Button
@@ -148,7 +147,7 @@ export default function KnowledgeManager() {
           onOpen={open}
           onEdit={setEditing}
           onDelete={setDeleting}
-          onManagePrompts={setManagingPrompts}
+          onManagePrompts={openPrompts}
         />
       )}
 
@@ -160,7 +159,7 @@ export default function KnowledgeManager() {
           onOpen={open}
           onEdit={setEditing}
           onDelete={setDeleting}
-          onManagePrompts={setManagingPrompts}
+          onManagePrompts={openPrompts}
         />
       )}
 
@@ -209,14 +208,6 @@ export default function KnowledgeManager() {
             }
           />
         </OGDialog>
-      )}
-
-      {managingPrompts != null && (
-        <KnowledgePromptsDialog
-          knowledgeBaseId={managingPrompts.id}
-          knowledgeBaseName={managingPrompts.name}
-          onClose={() => setManagingPrompts(null)}
-        />
       )}
     </div>
   );
