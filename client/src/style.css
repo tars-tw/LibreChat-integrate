@@ -2349,6 +2349,18 @@ html[data-input-modality='keyboard']
   outline-offset: 2px;
 }
 
+/* Native date/time inputs paint their calendar/clock icon (and other browser
+   chrome, e.g. the spinner buttons) for light backgrounds unless told
+   otherwise — Tailwind has no utility for this, since it styles the browser's
+   own widget, not the element. */
+.dark input[type='date'],
+.dark input[type='datetime-local'],
+.dark input[type='month'],
+.dark input[type='time'],
+.dark input[type='week'] {
+  color-scheme: dark;
+}
+
 .popover-ui {
   display: flex;
   max-height: min(var(--popover-available-height, 1700px), 1700px);
