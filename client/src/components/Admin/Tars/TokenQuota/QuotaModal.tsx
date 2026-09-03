@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   Label,
+  Input,
   Button,
   Switch,
   Spinner,
@@ -15,9 +16,12 @@ import type {
   TTarsTokenPrepareData,
 } from 'librechat-data-provider';
 import {
+  RESET_TYPES,
   QUOTA_STATUS_ON,
   QUOTA_STATUS_OFF,
   TOKEN_PROVIDERS,
+  RESET_LABEL_KEYS,
+  usesResetDay,
   allowedDomainSet,
   isActiveQuota,
 } from './helpers';
@@ -53,6 +57,11 @@ export default function QuotaModal({
   const [provider, setProvider] = useState(quota?.provider ?? TOKEN_PROVIDERS[0]);
   const [customLimit, setCustomLimit] = useState(() => toLimitField(quota?.custom_limit));
   const [active, setActive] = useState(quota == null ? true : isActiveQuota(quota));
+  const [resetType, setResetType] = useState(quota?.reset_type ?? 'monthly');
+  const [resetDay, setResetDay] = useState(String(quota?.reset_day ?? 1));
+  const [warningPercent, setWarningPercent] = useState(
+    String(Math.round((quota?.warning_threshold ?? 0.8) * 100)),
+  );
 
   const domains = useMemo(() => options?.domains ?? [], [options]);
   const availableDomains = useMemo(() => {
@@ -85,6 +94,7 @@ export default function QuotaModal({
   const invalid =
     domainId === '' ||
     !isValidLimitField(customLimit) ||
+    Number.isNaN(Number(warningPercent)) ||
     (quota == null && (user == null || provider === ''));
 
   const handleSave = () => {
@@ -92,6 +102,9 @@ export default function QuotaModal({
       domain_id: domainId,
       provider,
       custom_limit: fromLimitField(customLimit),
+      reset_type: resetType,
+      reset_day: usesResetDay(resetType) ? Number(resetDay) : 1,
+      warning_threshold: Number(warningPercent) / 100,
       status: active ? QUOTA_STATUS_ON : QUOTA_STATUS_OFF,
     };
     if (quota == null) {
@@ -182,6 +195,53 @@ export default function QuotaModal({
                   aria-label={localize('com_ui_tars_quota_col_status')}
                   checked={active}
                   onCheckedChange={setActive}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="tars-quota-user-reset-type">
+                  {localize('com_ui_tars_quota_col_reset')}
+                </Label>
+                <select
+                  id="tars-quota-user-reset-type"
+                  className={SELECT_CLASS}
+                  value={resetType}
+                  onChange={(event) => setResetType(event.target.value)}
+                >
+                  {RESET_TYPES.map((candidate) => (
+                    <option key={candidate} value={candidate}>
+                      {localize(RESET_LABEL_KEYS[candidate])}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="tars-quota-user-reset-day">
+                  {localize('com_ui_tars_quota_reset_day')}
+                </Label>
+                <Input
+                  id="tars-quota-user-reset-day"
+                  type="number"
+                  min="1"
+                  max="31"
+                  disabled={!usesResetDay(resetType)}
+                  value={resetDay}
+                  onChange={(event) => setResetDay(event.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="tars-quota-user-threshold">
+                  {localize('com_ui_tars_quota_warning_threshold')}
+                </Label>
+                <Input
+                  id="tars-quota-user-threshold"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={warningPercent}
+                  onChange={(event) => setWarningPercent(event.target.value)}
                 />
               </div>
             </div>

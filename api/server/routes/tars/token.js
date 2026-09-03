@@ -79,6 +79,9 @@ const QUOTA_FIELDS = [
   'domain_id',
   'user_group_id',
   'custom_limit',
+  'reset_type',
+  'reset_day',
+  'warning_threshold',
   'status',
 ];
 
