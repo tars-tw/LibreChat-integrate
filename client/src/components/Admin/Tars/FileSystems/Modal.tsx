@@ -221,7 +221,7 @@ export default function FileSystemModal({
                       onClick={() => selectProtocol(protocol)}
                       className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors ${
                         active
-                          ? 'border-brand-primary bg-brand-primary-subtle text-text-primary'
+                          ? 'border-brand-primary bg-brand-primary-subtle text-brand-primary'
                           : 'border-border-light text-text-secondary hover:bg-surface-hover'
                       }`}
                     >

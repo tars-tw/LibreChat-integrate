@@ -120,6 +120,7 @@ export default function ScheduleManager() {
           disabled={schedulesQuery.isFetching}
           aria-label={localize('com_ui_refresh')}
           title={localize('com_ui_refresh')}
+          className="text-text-secondary"
         >
           {schedulesQuery.isFetching ? (
             <Spinner className="size-4" />
