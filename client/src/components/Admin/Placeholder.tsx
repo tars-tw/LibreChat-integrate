@@ -1,15 +1,15 @@
 import { Construction } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { TranslationKeys } from '~/hooks';
-import { useLocalize, useIsTarsAdmin } from '~/hooks';
+import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 
 /** Blank admin page shell used by menu entries whose feature is not built yet. */
 export default function AdminPlaceholder({ titleKey }: { titleKey: TranslationKeys }) {
   const localize = useLocalize();
   const navigate = useNavigate();
-  const isTarsAdmin = useIsTarsAdmin();
+  const hasAccess = useHasTarsRouteAccess();
 
-  if (!isTarsAdmin) {
+  if (!hasAccess) {
     navigate('/c/new', { replace: true });
     return null;
   }

@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { useLocalize, useIsTarsAdmin } from '~/hooks';
+import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import KnowledgeManager from './Manager';
 
 /** Full-page pwc_tars knowledge-base administration (知識庫管理). */
 export default function KnowledgeView() {
   const localize = useLocalize();
   const navigate = useNavigate();
-  const isTarsAdmin = useIsTarsAdmin();
+  const hasAccess = useHasTarsRouteAccess();
 
-  if (!isTarsAdmin) {
+  if (!hasAccess) {
     navigate('/c/new', { replace: true });
     return null;
   }
