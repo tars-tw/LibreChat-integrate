@@ -158,7 +158,7 @@ export default function DomainManager() {
           type="button"
           aria-label={localize('com_ui_tars_domain_prompts')}
           title={localize('com_ui_tars_domain_prompts')}
-          onClick={() => navigate('/prompts')}
+          onClick={() => navigate(`/prompts/domain/${domain.id}/new`)}
           className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
         >
           <Book className="icon-sm" />
