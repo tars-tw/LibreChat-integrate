@@ -45,6 +45,7 @@ npm run frontend                           # build 全部 packages + client
 | `VITE_LANGFLOW_URL` | `http://localhost:7860` | Langflow URL 單一來源(iframe + MCP url host + SSRF 白名單)。**Vite build-time,改了要重 build 前端** |
 | `LANGFLOW_API_KEY` | 你的 Langflow API key | `librechat.yaml` 以 `${LANGFLOW_API_KEY}` 帶入 MCP header |
 | `SCHEDULES_SINGLE_PROCESS` | `true` | 單機跑排程,避免多實例重複執行 |
+| `HTTP_REQUEST_TIMEOUT_MS` | `1800000`(30 分鐘) | Node 預設 300 秒,涵蓋整個請求含 body。長期記憶區上傳一支長音檔時,pwc_tars 是同步解析＋轉錄才回應,會撞到這個上限:瀏覽器看到請求斷掉,pwc_tars 卻已寫入 memory_document |
 
 以下在 `.env.example` **已預設可用**,本機 dev 不用動,但要知道它們的意義:
 
@@ -54,6 +55,7 @@ npm run frontend                           # build 全部 packages + client
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GOOGLE_KEY` | `user_provided` | 哨兵值,`.env` 不放真 key。實際 key 解析鏈:使用者聊天室自設 > pwc_tars sys_config > 提示設 key |
 | `JWT_SECRET` / `JWT_REFRESH_SECRET` / `CREDS_KEY` / `CREDS_IV` / `MEILI_MASTER_KEY` | 內建範例值 | ⚠️ 是公開 repo 人人可見的值,**對外/共享環境務必重新產生** |
 | `TARS_ADMIN_ROLE_IDS` | `1` | pwc_tars `role_id` 屬此集合者 → LibreChat ADMIN |
+| `TARS_MEMORY_UPLOAD_TIMEOUT_MS` | `1800000`(30 分鐘) | LibreChat 等 pwc_tars `upload_memory_data` 回應的上限(undici `headersTimeout`/`bodyTimeout`)。不設就吃 undici 的 300 秒預設。調高時 `HTTP_REQUEST_TIMEOUT_MS` 要一起調 |
 
 > Langflow 的 project id **不用設**:開機時後端從唯一的 Langflow 專案自動探測。Langflow 有多個專案時才需在 `.env` 設 `LANGFLOW_PROJECT_ID`。
 
@@ -223,4 +225,5 @@ npm run build
 
 | 日期 | 檔案 | 變更內容 | 相關 commit |
 |---|---|---|---|
+| 2026-09-04 | `.env` | 新增 `HTTP_REQUEST_TIMEOUT_MS=1800000`(必設,解掉長期記憶區音檔上傳的 5 分鐘天花板);可選的 `TARS_MEMORY_UPLOAD_TIMEOUT_MS` 覆寫外送端逾時,程式內建同樣是 30 分鐘,不設也可用。 | `feature/tars-memory-upload-timing`(待 commit) |
 | 2026-08-29 | `librechat.yaml` | `endpoints.agents.capabilities` 新增 `sql_agent`、`chart_agent`(TARS SQL agent 與產生圖表工具的 capability 閘門);vLLM `models.default` 佔位清單加入 `gemma-4-26B-A4B`。`.env` 無新必填值(僅新增可選的 `TARS_*_TIMEOUT_MS` 覆寫)。 | `1eacbe6e1`、`241a7e08d` |
