@@ -172,6 +172,7 @@ export default function LocalizedDateRangePicker({
                   max={futureDatesDisabled ? today : undefined}
                   value={pendingStartDate}
                   onChange={(event) => setPendingStartDate(event.target.value)}
+                  onClick={(event) => event.currentTarget.showPicker?.()}
                   className="h-9 min-w-0 rounded-md border border-border-medium bg-surface-primary px-2 text-sm text-text-primary outline-none focus:border-border-heavy"
                 />
               </label>
@@ -184,6 +185,7 @@ export default function LocalizedDateRangePicker({
                   max={endDateMax}
                   value={pendingEndDate}
                   onChange={(event) => setPendingEndDate(event.target.value)}
+                  onClick={(event) => event.currentTarget.showPicker?.()}
                   className="h-9 min-w-0 rounded-md border border-border-medium bg-surface-primary px-2 text-sm text-text-primary outline-none focus:border-border-heavy"
                 />
               </label>
