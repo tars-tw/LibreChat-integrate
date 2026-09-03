@@ -62,6 +62,7 @@ const PUBLIC_USER_RESPONSE_FIELDS = [
   'createdAt',
   'updatedAt',
   'tenantId',
+  'tarsAdminMenuKeys',
 ];
 
 const sanitizeUserForResponse = (user) => {

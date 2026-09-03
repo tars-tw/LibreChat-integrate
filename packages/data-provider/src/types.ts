@@ -326,6 +326,8 @@ export type TUser = {
   tarsRoleId?: number;
   /** pwc_tars accessible menu tree (union across the user's effective roles) */
   tarsMenuItems?: TTarsMenuItem[];
+  /** LibreChat admin menu keys granted by the user's pwc_tars role(s) (union); empty when none granted */
+  tarsAdminMenuKeys?: string[];
   createdAt: string;
   updatedAt: string;
 };

@@ -30,6 +30,7 @@ export interface TarsUser {
   roleId: number | null;
   groupIds: string | null;
   menuItems: TarsMenuItem[];
+  librechatMenuKeys: string[];
 }
 
 interface TarsLoginResponseUser {
@@ -47,6 +48,7 @@ interface TarsLoginResponse {
   token?: string;
   user?: TarsLoginResponseUser;
   menu_items?: TarsMenuItem[];
+  librechat_menu_keys?: string[];
   license_status?: string | null;
 }
 
@@ -57,6 +59,7 @@ const normalizeTarsUser = (
   user: TarsLoginResponseUser,
   menuItems: TarsMenuItem[],
   licenseStatus: string,
+  librechatMenuKeys: string[],
 ): TarsUser => ({
   id: user.id,
   username: user.username,
@@ -68,6 +71,7 @@ const normalizeTarsUser = (
   roleId: user.role_id ?? null,
   groupIds: user.user_group_id ?? null,
   menuItems,
+  librechatMenuKeys,
 });
 
 /**
@@ -166,7 +170,12 @@ export async function authenticateTars(
       return null;
     }
 
-    return normalizeTarsUser(data.user, data.menu_items ?? [], data.license_status ?? 'activate');
+    return normalizeTarsUser(
+      data.user,
+      data.menu_items ?? [],
+      data.license_status ?? 'activate',
+      data.librechat_menu_keys ?? [],
+    );
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       logger.error(`[authenticateTars] Request to ${url} timed out`);
