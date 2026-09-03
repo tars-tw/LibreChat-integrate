@@ -2,14 +2,19 @@ import { useMemo, useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button, Spinner, OGDialog, OGDialogTemplate, useToastContext } from '@librechat/client';
 import type { TTarsTokenUserQuota, TTarsTokenPrepareData } from 'librechat-data-provider';
+import type { TokenResetType } from './helpers';
 import {
   BADGE_ON,
+  RESET_TYPES,
   BADGE_NEUTRAL,
+  TOKEN_PROVIDERS,
+  RESET_LABEL_KEYS,
   capOf,
   QUOTA_STATUS_ON,
   QUOTA_STATUS_OFF,
-  TOKEN_PROVIDERS,
   formatLimit,
+  usesResetDay,
+  formatThreshold,
   isActiveQuota,
   quotaUsageShare,
 } from './helpers';
@@ -124,31 +129,37 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
 
       {!isLoading && quotas.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-border-light">
-          <table className="w-full min-w-[56rem] text-sm">
+          <table className="w-full min-w-[68rem] text-sm">
             <thead className="bg-surface-secondary text-left text-text-secondary">
               <tr>
-                <th className="w-[22%] px-3 py-2 font-medium">
+                <th className="w-[18%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_quota_col_user')}
                 </th>
-                <th className="w-[16%] px-3 py-2 font-medium">
+                <th className="w-[12%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_quota_col_domain')}
                 </th>
-                <th className="w-[10%] px-3 py-2 font-medium">
+                <th className="w-[8%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_quota_col_provider')}
                 </th>
-                <th className="w-[13%] px-3 py-2 text-right font-medium">
+                <th className="w-[10%] px-3 py-2 text-right font-medium">
                   {localize('com_ui_tars_quota_custom_limit')}
                 </th>
-                <th className="w-[15%] px-3 py-2 font-medium">
+                <th className="w-[13%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_quota_used')}
                 </th>
-                <th className="w-[13%] px-3 py-2 text-right font-medium">
+                <th className="w-[11%] px-3 py-2 font-medium">
+                  {localize('com_ui_tars_quota_col_reset')}
+                </th>
+                <th className="w-[7%] px-3 py-2 text-right font-medium">
+                  {localize('com_ui_tars_quota_warning_threshold')}
+                </th>
+                <th className="w-[10%] px-3 py-2 text-right font-medium">
                   {localize('com_ui_tars_quota_recent_col')}
                 </th>
-                <th className="w-[9%] px-3 py-2 font-medium">
+                <th className="w-[7%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_quota_col_status')}
                 </th>
-                <th className="w-[6%] px-3 py-2 text-right font-medium">
+                <th className="w-[4%] px-3 py-2 text-right font-medium">
                   {localize('com_ui_actions')}
                 </th>
               </tr>
@@ -186,6 +197,16 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                         />
                       </div>
                     )}
+                  </td>
+                  <td className="px-3 py-2 text-text-secondary">
+                    {RESET_TYPES.includes(quota.reset_type as TokenResetType)
+                      ? localize(RESET_LABEL_KEYS[quota.reset_type as TokenResetType])
+                      : (quota.reset_type ?? '—')}
+                    {usesResetDay(quota.reset_type) &&
+                      ` (${localize('com_ui_tars_quota_day', { 0: String(quota.reset_day ?? 1) })})`}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                    {formatThreshold(quota.warning_threshold)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
                     {recentUsage.has(String(quota.user_id ?? ''))
