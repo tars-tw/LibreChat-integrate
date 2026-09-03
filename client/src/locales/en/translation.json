@@ -2642,6 +2642,7 @@
   "com_ui_tars_kb_no_search_results": "No knowledge base matches that name",
   "com_ui_tars_kb_overlap": "Overlap",
   "com_ui_tars_kb_process_images": "Image recognition (VLM)",
+  "com_ui_tars_kb_prompts": "Prompt management",
   "com_ui_tars_kb_rename_prompt": "Enter a new filename",
   "com_ui_tars_kb_reprocess": "Reprocess",
   "com_ui_tars_kb_reprocess_confirm": "Re-chunk and re-embed this document?",
