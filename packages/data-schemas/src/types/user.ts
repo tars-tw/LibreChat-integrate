@@ -36,6 +36,7 @@ export interface IUser extends Document {
   tarsGroupIds?: string;
   tarsMenuKeys?: string[];
   tarsMenuItems?: TTarsMenuItem[];
+  tarsAdminMenuKeys?: string[];
   githubId?: string;
   discordId?: string;
   appleId?: string;

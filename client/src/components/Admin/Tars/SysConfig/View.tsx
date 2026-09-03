@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { useLocalize, useIsTarsAdmin } from '~/hooks';
+import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import SysConfigManager from './Manager';
 
 /** Full-page pwc_tars system parameter administration (系統參數設定). */
 export default function SysConfigView() {
   const localize = useLocalize();
   const navigate = useNavigate();
-  const isTarsAdmin = useIsTarsAdmin();
+  const hasAccess = useHasTarsRouteAccess();
 
-  if (!isTarsAdmin) {
+  if (!hasAccess) {
     navigate('/c/new', { replace: true });
     return null;
   }
