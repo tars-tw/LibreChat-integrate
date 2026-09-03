@@ -27,11 +27,33 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   variant?: keyof typeof INPUT_VARIANTS;
 };
 
+/** Types whose native picker otherwise only opens from the small calendar/clock icon. */
+const PICKER_TYPES = new Set(['date', 'datetime-local', 'month', 'time', 'week']);
+
 const Input: React.ForwardRefExoticComponent<InputProps & React.RefAttributes<HTMLInputElement>> =
   React.forwardRef<HTMLInputElement, InputProps>(
-    ({ className, colorTransition, variant = 'default', ...props }, ref) => {
+    ({ className, colorTransition, variant = 'default', onClick, type, ...props }, ref) => {
+      const handleClick = (event: React.MouseEvent<HTMLInputElement>) => {
+        onClick?.(event);
+        const target = event.currentTarget;
+        if (
+          typeof type === 'string' &&
+          PICKER_TYPES.has(type) &&
+          !target.disabled &&
+          !target.readOnly
+        ) {
+          try {
+            (target as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
+          } catch {
+            // Browsers without transient activation (e.g. a click that lost focus
+            // mid-handler) throw here; the native icon click still works as a fallback.
+          }
+        }
+      };
+
       return (
         <input
+          type={type}
           className={cn(
             fieldControl,
             'ring-offset-surface-primary',
@@ -40,6 +62,7 @@ const Input: React.ForwardRefExoticComponent<InputProps & React.RefAttributes<HT
             colorTransition && 'transition-colors',
             className ?? '',
           )}
+          onClick={handleClick}
           ref={ref}
           placeholder={variant === 'floating' ? ' ' : undefined}
           {...props}
