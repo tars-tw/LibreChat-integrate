@@ -255,6 +255,25 @@ export const router = createBrowserRouter(
               lazy: loadInlinePromptsView,
             },
             {
+              /** "new" is a literal segment (create-mode sentinel), not `:promptId` — otherwise it's looked up as a real id and fails. */
+              path: 'prompts/domain/:domainId/new',
+              lazy: loadInlinePromptsView,
+            },
+            {
+              /** A specialized brain's own prompts, opened from its admin card. */
+              path: 'prompts/domain/:domainId/:promptId',
+              lazy: loadInlinePromptsView,
+            },
+            {
+              path: 'prompts/knowledge-base/:knowledgeBaseId/new',
+              lazy: loadInlinePromptsView,
+            },
+            {
+              /** A knowledge base's own prompts, opened from its admin card. */
+              path: 'prompts/knowledge-base/:knowledgeBaseId/:promptId',
+              lazy: loadInlinePromptsView,
+            },
+            {
               path: 'skills',
               lazy: loadSkillsView,
             },
