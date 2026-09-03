@@ -7,8 +7,9 @@ const {
   deleteTarsPrompt,
   fetchTarsPromptsForChat,
   fetchTarsDomainKnowledgeBases,
+  fetchTarsKnowledgeBasePrompts,
 } = require('@librechat/api');
-const { requireJwtAuth } = require('~/server/middleware');
+const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
 const router = express.Router();
 router.use(requireJwtAuth);
@@ -33,6 +34,30 @@ router.get('/prompts', async (req, res) => {
   } catch (error) {
     logger.error('[GET /api/tars/prompts] Failed to fetch pwc_tars prompts', error);
     return res.status(500).json({ error: 'Failed to fetch pwc_tars prompts' });
+  }
+});
+
+/**
+ * @route GET /api/tars/prompts/knowledge-base/:id
+ * @desc A knowledge base's own prompts (`prompt_to_knowledge_base`), for the
+ *       admin knowledge-base manager's "提示詞管理" dialog. Admin-only, unlike
+ *       the conversation-scoped list above.
+ * @access Private (admin)
+ */
+router.get('/prompts/knowledge-base/:id', requireTarsAdmin, async (req, res) => {
+  if (!isTarsConfigured()) {
+    return res.json({ prompts: [] });
+  }
+
+  try {
+    const prompts = await fetchTarsKnowledgeBasePrompts(req.params.id);
+    return res.json({ prompts });
+  } catch (error) {
+    logger.error(
+      '[GET /api/tars/prompts/knowledge-base/:id] Failed to fetch pwc_tars KB prompts',
+      error,
+    );
+    return res.status(500).json({ error: 'Failed to fetch pwc_tars knowledge base prompts' });
   }
 });
 

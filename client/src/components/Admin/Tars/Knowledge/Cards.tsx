@@ -1,5 +1,5 @@
 import { Button } from '@librechat/client';
-import { Library, Pencil, Search, Trash2 } from 'lucide-react';
+import { Library, BookText, Pencil, Search, Trash2 } from 'lucide-react';
 import type { TTarsKnowledgeBase } from 'librechat-data-provider';
 import { accessSummaryKey, DEFAULT_MAX_RETRIEVE } from './helpers';
 import { useLocalize } from '~/hooks';
@@ -11,11 +11,13 @@ export default function KnowledgeCards({
   onOpen,
   onEdit,
   onDelete,
+  onManagePrompts,
 }: {
   knowledgeBases: TTarsKnowledgeBase[];
   onOpen: (kb: TTarsKnowledgeBase) => void;
   onEdit: (kb: TTarsKnowledgeBase) => void;
   onDelete: (kb: TTarsKnowledgeBase) => void;
+  onManagePrompts: (kb: TTarsKnowledgeBase) => void;
 }) {
   const localize = useLocalize();
 
@@ -57,6 +59,16 @@ export default function KnowledgeCards({
 
             {/* Inline actions, matching every other Tars admin list. */}
             <div className="flex shrink-0 items-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onManagePrompts(kb)}
+                aria-label={localize('com_ui_tars_kb_prompts')}
+                title={localize('com_ui_tars_kb_prompts')}
+                className="text-brand-primary"
+              >
+                <BookText className="size-4" aria-hidden />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
