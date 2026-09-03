@@ -34,7 +34,10 @@ export interface TarsTokenUserQuota {
   custom_limit: number | null;
   used_amount: number | null;
   total_used_amount: number | null;
+  reset_type: string | null;
+  reset_day: number | null;
   last_reset_at: string | null;
+  warning_threshold: number | null;
   status: string | null;
   created_at: string | null;
   created_by: string | null;
@@ -107,6 +110,9 @@ export interface TarsTokenQuotaInput {
   domain_id?: string | null;
   user_group_id?: string | null;
   custom_limit?: number | null;
+  reset_type?: string;
+  reset_day?: number;
+  warning_threshold?: number;
   status?: string;
 }
 
