@@ -125,6 +125,7 @@ export default function WebsiteTable({
                         title={localize(
                           bound ? 'com_ui_tars_web_chunks' : 'com_ui_tars_web_chunks_unavailable',
                         )}
+                        className="text-text-secondary"
                       >
                         <LayoutList className="size-4" aria-hidden />
                       </Button>
@@ -134,6 +135,7 @@ export default function WebsiteTable({
                         onClick={() => onDetails(website)}
                         aria-label={localize('com_ui_tars_db_details')}
                         title={localize('com_ui_tars_db_details')}
+                        className="text-text-secondary"
                       >
                         <Info className="size-4" aria-hidden />
                       </Button>
@@ -143,6 +145,7 @@ export default function WebsiteTable({
                         onClick={() => onEdit(website)}
                         aria-label={localize('com_ui_edit')}
                         title={localize('com_ui_edit')}
+                        className="text-text-secondary"
                       >
                         <Pencil className="size-4" aria-hidden />
                       </Button>

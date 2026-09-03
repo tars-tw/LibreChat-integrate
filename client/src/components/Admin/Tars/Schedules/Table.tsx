@@ -102,6 +102,7 @@ export default function ScheduleTable({
                       onClick={() => onSelect(schedule)}
                       aria-label={localize('com_ui_tars_sched_manage')}
                       title={localize('com_ui_tars_sched_manage')}
+                      className="text-text-secondary"
                     >
                       <Settings2 className="size-4" aria-hidden />
                     </Button>

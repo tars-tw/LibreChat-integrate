@@ -107,6 +107,7 @@ export default function FileSystemTable({
                         onClick={() => onDetails(fileSystem)}
                         aria-label={localize('com_ui_tars_db_details')}
                         title={localize('com_ui_tars_db_details')}
+                        className="text-text-secondary"
                       >
                         <Info className="size-4" aria-hidden />
                       </Button>
@@ -116,6 +117,7 @@ export default function FileSystemTable({
                         onClick={() => onEdit(fileSystem)}
                         aria-label={localize('com_ui_edit')}
                         title={localize('com_ui_edit')}
+                        className="text-text-secondary"
                       >
                         <Pencil className="size-4" aria-hidden />
                       </Button>
