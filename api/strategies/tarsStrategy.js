@@ -43,6 +43,7 @@ const tarsLogin = new PassportLocalStrategy(
         roleId,
         groupIds,
         menuItems,
+        librechatMenuKeys,
       } = tarsUser;
       if (status !== 'active') {
         logger.warn(`[tarsStrategy] Blocked non-active tars user [tarsId: ${tarsId}]`);
@@ -63,6 +64,7 @@ const tarsLogin = new PassportLocalStrategy(
         tarsGroupIds: groupIds,
         tarsMenuItems: menuItems,
         tarsMenuKeys: flattenTarsMenuKeys(menuItems),
+        tarsAdminMenuKeys: librechatMenuKeys,
       };
 
       const baseConfig = await getAppConfig({ baseOnly: true });
