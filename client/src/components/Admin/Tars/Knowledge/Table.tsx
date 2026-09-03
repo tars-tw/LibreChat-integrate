@@ -104,6 +104,7 @@ export default function KnowledgeTable({
                       onClick={() => onEdit(kb)}
                       aria-label={localize('com_ui_edit')}
                       title={localize('com_ui_edit')}
+                      className="text-text-secondary"
                     >
                       <Pencil className="size-4" aria-hidden />
                     </Button>
