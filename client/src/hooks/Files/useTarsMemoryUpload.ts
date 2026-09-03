@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useToastContext } from '@librechat/client';
 import { Constants } from 'librechat-data-provider';
 import { useSelectedTarsDomain } from '~/components/Chat/Menus/Tars/domain';
@@ -18,12 +18,18 @@ export interface TarsMemoryUploadOptions {
  * area on behalf of the 記憶資料管理 dialog. On a brand-new chat pwc_tars
  * creates the conversation first; the returned id is stashed on conversation
  * state and adopted server-side by the first send.
+ *
+ * `progress` covers only the transfer into LibreChat. Once it reaches 100 the
+ * request is still open: LibreChat re-posts the bytes to pwc_tars, which parses
+ * documents and transcribes audio inline before answering, which for a long
+ * recording is the larger half of the wait.
  */
 export default function useTarsMemoryUpload(onUploaded?: () => void) {
   const localize = useLocalize();
   const { showToast } = useToastContext();
   const { conversation, setConversation } = useChatContext();
   const { selectedId: domainId } = useSelectedTarsDomain();
+  const [progress, setProgress] = useState(0);
 
   const uploadMutation = useUploadTarsMemoryMutation({
     onSuccess: (result) => {
@@ -82,10 +88,11 @@ export default function useTarsMemoryUpload(onUploaded?: () => void) {
       if (options?.sttModelName) {
         formData.append('sttModelName', options.sttModelName);
       }
-      mutate(formData);
+      setProgress(0);
+      mutate({ formData, onProgress: setProgress });
     },
     [conversation, domainId, mutate, isLoading],
   );
 
-  return { uploadFiles, isUploading: isLoading };
+  return { uploadFiles, isUploading: isLoading, progress };
 }
