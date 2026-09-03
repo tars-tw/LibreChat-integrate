@@ -38,27 +38,22 @@ export default function Header({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate('/knowledge-bases')}
-          aria-label={localize('com_ui_back')}
-          title={localize('com_ui_back')}
-          className="mt-0.5 shrink-0"
-        >
-          <ChevronLeft className="size-5" aria-hidden />
-        </Button>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/knowledge-bases')}
+            aria-label={localize('com_ui_back')}
+            title={localize('com_ui_back')}
+            className="shrink-0"
+          >
+            <ChevronLeft className="size-5" aria-hidden />
+          </Button>
 
-        <div className="min-w-0 flex-1">
           <h1 className="truncate text-2xl font-semibold text-text-primary">
             {knowledgeBase?.name ?? '—'}
           </h1>
-          {knowledgeBase?.description != null && knowledgeBase.description !== '' && (
-            <p className="mt-1 break-words text-sm text-text-secondary">
-              {knowledgeBase.description}
-            </p>
-          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
@@ -77,6 +72,10 @@ export default function Header({
           </Button>
         </div>
       </div>
+
+      {knowledgeBase?.description != null && knowledgeBase.description !== '' && (
+        <p className="break-words pl-12 text-sm text-text-secondary">{knowledgeBase.description}</p>
+      )}
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1 pl-12 text-sm text-text-secondary">
         <span className="flex items-center gap-1.5">
