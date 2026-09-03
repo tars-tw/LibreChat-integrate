@@ -1,19 +1,9 @@
 import { useState, memo, useRef, useCallback } from 'react';
 import * as Menu from '@ariakit/react/menu';
-import { useNavigate } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
-import {
-  Archive,
-  CircleHelp,
-  Keyboard,
-  LifeBuoy,
-  LogOut,
-  Scale,
-  ShieldCheck,
-  Wrench,
-} from 'lucide-react';
+import { Archive, CircleHelp, Keyboard, LifeBuoy, LogOut, Scale, ShieldCheck } from 'lucide-react';
 import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/ArchivedChatsModal';
 import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
 import useSidebarToggle from '~/hooks/Nav/useSidebarToggle';
@@ -99,7 +89,6 @@ function HelpSubmenu({
 function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
   const localize = useLocalize();
   const { user, isAuthenticated, logout } = useAuthContext();
-  const navigate = useNavigate();
   const { data: startupConfig } = useGetStartupConfig();
   const balanceQuery = useGetUserBalance({
     enabled: !!isAuthenticated && startupConfig?.balance?.enabled,
@@ -184,18 +173,6 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
           {localize('com_nav_archived_chats')}
         </Menu.MenuItem>
         {isTarsAdmin && <AdminMenu onNavigate={collapseSidebarIfExpanded} />}
-        {isTarsAdmin && (
-          <Menu.MenuItem
-            onClick={() => {
-              collapseSidebarIfExpanded();
-              navigate('/mcp-settings');
-            }}
-            className="select-item text-sm"
-          >
-            <Wrench className="icon-md" aria-hidden="true" />
-            {localize('com_ui_tars_mcp_settings')}
-          </Menu.MenuItem>
-        )}
         <Menu.MenuItem
           onClick={() => {
             collapseSidebarIfExpanded();
