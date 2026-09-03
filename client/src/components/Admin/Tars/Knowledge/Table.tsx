@@ -1,5 +1,5 @@
-import { Pencil, Trash2 } from 'lucide-react';
 import { Button, Checkbox } from '@librechat/client';
+import { Pencil, BookText, Trash2 } from 'lucide-react';
 import type { TTarsKnowledgeBase } from 'librechat-data-provider';
 import { accessSummaryKey, DEFAULT_MAX_RETRIEVE } from './helpers';
 import Pagination, { usePagination } from './Pagination';
@@ -19,6 +19,7 @@ export default function KnowledgeTable({
   onOpen,
   onEdit,
   onDelete,
+  onManagePrompts,
 }: {
   knowledgeBases: TTarsKnowledgeBase[];
   selected: string[];
@@ -26,6 +27,7 @@ export default function KnowledgeTable({
   onOpen: (kb: TTarsKnowledgeBase) => void;
   onEdit: (kb: TTarsKnowledgeBase) => void;
   onDelete: (kb: TTarsKnowledgeBase) => void;
+  onManagePrompts: (kb: TTarsKnowledgeBase) => void;
 }) {
   const localize = useLocalize();
   const paged = usePagination(knowledgeBases);
@@ -98,6 +100,16 @@ export default function KnowledgeTable({
                 </td>
                 <td className="px-3 py-1.5">
                   <div className="flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => onManagePrompts(kb)}
+                      aria-label={localize('com_ui_tars_kb_prompts')}
+                      title={localize('com_ui_tars_kb_prompts')}
+                      className="text-brand-primary"
+                    >
+                      <BookText className="size-4" aria-hidden />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon-xs"
