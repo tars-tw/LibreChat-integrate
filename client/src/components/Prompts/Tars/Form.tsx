@@ -101,6 +101,8 @@ export default function TarsPromptForm({ promptId }: { promptId?: string }) {
   const isSaving = createPrompt.isLoading || updatePrompt.isLoading || isSubmitting;
   const submitLabel = isEdit ? localize('com_ui_update') : localize('com_ui_create_prompt');
 
+  const handleCancel = () => navigate(-1);
+
   const onSubmit = (data: TarsPromptFormValues) => {
     const payload: TTarsPromptInput = {
       name: data.name.trim(),
@@ -259,9 +261,13 @@ export default function TarsPromptForm({ promptId }: { promptId?: string }) {
               <Command initialValue={field.value} onValueChange={field.onChange} tabIndex={0} />
             )}
           />
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex items-center justify-between gap-2">
+            <Button type="button" variant="outline" onClick={handleCancel}>
+              {localize('com_ui_cancel')}
+            </Button>
             <Button
               aria-label={submitLabel}
+              variant="submit"
               className={cn('w-full sm:w-auto', (isSaving || !isValid) && 'opacity-50')}
               tabIndex={0}
               type="submit"
