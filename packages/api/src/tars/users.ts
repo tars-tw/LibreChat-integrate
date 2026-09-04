@@ -1,3 +1,5 @@
+import { PrincipalType } from 'librechat-data-provider';
+import type { TPrincipalSearchResult } from 'librechat-data-provider';
 import type { TarsRole } from './domains';
 import { tarsFetch, getTarsBaseUrl } from './client';
 
@@ -86,6 +88,56 @@ interface UsersResponse {
 export async function fetchTarsUsers(baseUrl?: string): Promise<TarsAccount[]> {
   const data = await tarsFetch<UsersResponse>('/api/user_settings/get_users', { baseUrl });
   return data?.users ?? [];
+}
+
+function matchesTarsSearchQuery(account: TarsAccount, needle: string): boolean {
+  const haystack = [account.username, account.display_name, account.email]
+    .filter((value): value is string => !!value)
+    .join(' ')
+    .toLowerCase();
+  return haystack.includes(needle);
+}
+
+function toTarsPrincipalSearchResult(account: TarsAccount): TPrincipalSearchResult {
+  return {
+    id: null,
+    type: PrincipalType.USER,
+    name: account.display_name || account.username,
+    email: account.email ?? undefined,
+    username: account.username,
+    avatar: account.avatar ?? undefined,
+    provider: 'tars',
+    source: 'tars',
+    idOnTheSource: account.id,
+  };
+}
+
+/**
+ * Searches active pwc_tars accounts by username/display name/email for the
+ * share dialog's people picker. pwc_tars has no server-side search endpoint,
+ * so this fetches the full account list and filters here.
+ */
+export async function searchTarsPrincipals(
+  query: string,
+  limit: number,
+  baseUrl?: string,
+): Promise<TPrincipalSearchResult[]> {
+  const needle = query.trim().toLowerCase();
+  if (!needle) {
+    return [];
+  }
+
+  const accounts = await fetchTarsUsers(baseUrl);
+  const matches: TPrincipalSearchResult[] = [];
+  for (const account of accounts) {
+    if (matches.length >= limit) {
+      break;
+    }
+    if (account.status === 'active' && matchesTarsSearchQuery(account, needle)) {
+      matches.push(toTarsPrincipalSearchResult(account));
+    }
+  }
+  return matches;
 }
 
 /** All pwc_tars roles (`GET /role_settings/get_roles`). */
