@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Save } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 import { Button, Input, Label, Spinner, useToastContext } from '@librechat/client';
 import type { TTarsTokenConfig } from 'librechat-data-provider';
 import { useTarsTokenDefaultsQuery, useUpdateTarsTokenDefaultMutation } from '~/data-provider';
 import LimitInput, { toLimitField, fromLimitField, isValidLimitField } from './LimitInput';
 import { RESET_TYPES, TOKEN_PROVIDERS, RESET_LABEL_KEYS, usesResetDay } from './helpers';
+import TokenQuotaInfo from './TokenQuotaInfo';
 import { useLocalize } from '~/hooks';
 
 const SELECT_CLASS =
@@ -163,6 +165,7 @@ function ProviderDefault({
 export default function Defaults() {
   const localize = useLocalize();
   const { data: defaults = [], isLoading } = useTarsTokenDefaultsQuery();
+  const [showInfo, setShowInfo] = useState(false);
 
   if (isLoading) {
     return (
@@ -174,9 +177,24 @@ export default function Defaults() {
 
   return (
     <div className="space-y-4">
-      <p className="rounded-xl border border-border-light bg-surface-secondary px-4 py-3 text-sm text-text-secondary">
-        {localize('com_ui_tars_quota_defaults_intro')}
-      </p>
+      <div className="flex items-center gap-3">
+        <p className="flex-1 rounded-xl border border-border-light bg-surface-secondary px-4 py-3 text-sm text-text-secondary">
+          {localize('com_ui_tars_quota_defaults_intro')}
+        </p>
+
+        <button
+          type="button"
+          aria-label={localize('com_ui_tars_quota_info_title')}
+          title={localize('com_ui_tars_quota_info_title')}
+          onClick={() => setShowInfo(true)}
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border-light bg-surface-primary text-text-secondary transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 dark:hover:border-orange-900/40 dark:hover:bg-orange-950/20 dark:hover:text-orange-400"
+        >
+          <HelpCircle className="size-5" aria-hidden />
+        </button>
+      </div>
+
+      {showInfo && <TokenQuotaInfo open={showInfo} onOpenChange={setShowInfo} />}
+
       {TOKEN_PROVIDERS.map((provider) => (
         <ProviderDefault
           key={provider}
