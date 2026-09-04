@@ -14,6 +14,7 @@ import {
   MOBILE_DRAWER_ID,
   MOBILE_DRAWER_WIDTH,
   MOBILE_DRAWER_TRANSITION,
+  PANEL_FORCE_CLOSE_VIEW_IDS,
 } from './constants';
 import { ChatContext, ChatFormProvider, ActivePanelProvider } from '~/Providers';
 import { MobileHeader, MobileBottomBar, MobileShortcutTargets } from './mobile';
@@ -60,7 +61,8 @@ function UnifiedSidebar() {
 
   const links = useUnifiedSidebarLinks();
   const viewId = routeViewId(location.pathname);
-  const panelExpanded = expanded && viewId !== 'insights';
+  const isForcedClosedView = viewId != null && PANEL_FORCE_CLOSE_VIEW_IDS.has(viewId);
+  const panelExpanded = expanded && !isForcedClosedView;
 
   /** The aside's max width is a viewport percentage, so the announced range has to track
    *  the viewport rather than a render-time snapshot of it. */
