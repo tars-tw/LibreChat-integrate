@@ -25,6 +25,7 @@ import {
   User,
   Users,
   UsersRound,
+  Workflow,
   Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -94,6 +95,12 @@ export const ADMIN_MENU: AdminMenuNode[] = [
     icon: Wrench,
     key: 'admin.mcp_settings',
     path: '/mcp-settings',
+  },
+  {
+    labelKey: 'com_ui_langflow',
+    icon: Workflow,
+    key: 'admin.langflow',
+    path: '/langflow',
   },
   {
     labelKey: 'com_ui_tars_nav_audit',

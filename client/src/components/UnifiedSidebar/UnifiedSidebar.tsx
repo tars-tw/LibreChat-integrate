@@ -5,15 +5,16 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import type { ChatFormValues } from '~/common';
 import {
-  COLLAPSED_WIDTH,
+  EASING,
+  routeViewId,
   EXPANDED_MIN,
   TRANSITION_MS,
-  EASING,
-  MOBILE_DRAWER_TRANSITION,
   DRAWER_Z_INDEX,
+  COLLAPSED_WIDTH,
   MOBILE_DRAWER_ID,
   MOBILE_DRAWER_WIDTH,
   DRAWER_UNPAINTED,
+  MOBILE_DRAWER_TRANSITION,
 } from './constants';
 import { ChatContext, ChatFormProvider, ActivePanelProvider } from '~/Providers';
 import { MobileHeader, MobileBottomBar, MobileShortcutTargets } from './mobile';
@@ -59,8 +60,8 @@ function UnifiedSidebar({ isSliding = false }: { isSliding?: boolean }) {
   const resizeHandlers = useRef<{ move: (e: MouseEvent) => void; up: () => void } | null>(null);
 
   const links = useUnifiedSidebarLinks();
-  const isInsightsRoute = location.pathname.startsWith('/insights');
-  const panelExpanded = expanded && !isInsightsRoute;
+  const viewId = routeViewId(location.pathname);
+  const panelExpanded = expanded && viewId !== 'insights';
 
   /** The aside's max width is a viewport percentage, so the announced range has to track
    *  the viewport rather than a render-time snapshot of it. */
@@ -94,11 +95,11 @@ function UnifiedSidebar({ isSliding = false }: { isSliding?: boolean }) {
   }, [navigate]);
 
   const handlePanelExpand = useCallback(() => {
-    if (isInsightsRoute) {
+    if (viewId != null) {
       handleLeaveInsights();
     }
     handleExpand();
-  }, [handleExpand, handleLeaveInsights, isInsightsRoute]);
+  }, [handleExpand, handleLeaveInsights, viewId]);
 
   const handleResizeStart = useCallback(() => {
     setIsResizing(true);
@@ -218,7 +219,7 @@ function UnifiedSidebar({ isSliding = false }: { isSliding?: boolean }) {
               expanded={expanded}
               onClose={handleCollapse}
               onLeaveInsights={handleLeaveInsights}
-              routeActiveId={isInsightsRoute ? 'insights' : undefined}
+              routeActiveId={viewId}
             />
             <nav
               id="chat-history-nav"
@@ -229,7 +230,7 @@ function UnifiedSidebar({ isSliding = false }: { isSliding?: boolean }) {
             <MobileShortcutTargets
               links={links}
               onLeaveInsights={handleLeaveInsights}
-              routeActiveId={isInsightsRoute ? 'insights' : undefined}
+              routeActiveId={viewId}
             />
             <MobileBottomBar links={links} onNewChat={handleCollapse} />
           </ActivePanelProvider>
