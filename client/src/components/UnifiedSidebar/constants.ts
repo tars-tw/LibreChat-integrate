@@ -67,3 +67,17 @@ export const MOBILE_DRAWER_ID = 'mobile-drawer';
  * waiting for the deferred Recoil commit that a large conversation stalls.
  */
 export const MOBILE_SCRIM_ID = 'mobile-drawer-scrim';
+
+/**
+ * Routes that render as the main view in place of a conversation. Opening a side panel while
+ * one of them is up would leave its page sitting behind the panel, so a panel click has to
+ * return to a new chat first. `insights` additionally claims the whole surface, which is why
+ * it — and only it — also forces the panel closed.
+ */
+export const ROUTE_VIEW_IDS = ['insights', 'langflow'] as const;
+
+export type RouteViewId = (typeof ROUTE_VIEW_IDS)[number];
+
+export function routeViewId(pathname: string): RouteViewId | undefined {
+  return ROUTE_VIEW_IDS.find((id) => pathname.startsWith(`/${id}`));
+}
