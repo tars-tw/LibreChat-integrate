@@ -8,8 +8,8 @@ import { useShortcutAriaKey, useShortcutHint } from '~/hooks/useKeyboardShortcut
 import { useActivePanel, resolveActivePanel, DEFAULT_PANEL } from '~/Providers';
 import AgentMarketplaceButton from '~/components/Nav/AgentMarketplaceButton';
 import { CLOSE_SIDEBAR_ID } from '~/components/Chat/Menus/OpenSidebar';
+import { routeViewId, PANEL_FORCE_CLOSE_VIEW_IDS } from './constants';
 import useNewChat from '~/hooks/Chat/useNewChat';
-import { routeViewId } from './constants';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 import store from '~/store';
@@ -143,6 +143,7 @@ function ExpandedPanel({
   const { active, setActive } = useActivePanel();
   const effectiveActive = resolveActivePanel(active, links);
   const viewId = routeViewId(location.pathname);
+  const isForcedClosedView = viewId != null && PANEL_FORCE_CLOSE_VIEW_IDS.has(viewId);
 
   const toggleLabel = expanded ? 'com_nav_close_sidebar' : 'com_nav_open_sidebar';
   const toggleClick = expanded ? onCollapse : onExpand;
@@ -178,11 +179,7 @@ function ExpandedPanel({
           <NavIconButton
             key={link.id}
             link={link}
-            isActive={
-              link.id === 'insights'
-                ? viewId === 'insights'
-                : viewId !== 'insights' && link.id === effectiveActive
-            }
+            isActive={isForcedClosedView ? link.id === viewId : link.id === effectiveActive}
             expanded={expanded ?? true}
             setActive={setActive}
             onExpand={onExpand}
