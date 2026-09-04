@@ -52,6 +52,15 @@ export interface PrincipalSearchDeps {
     type: EntraPrincipalSearchType,
     limit: number,
   ) => Promise<TPrincipalSearchResult[]>;
+  /** An external directory that owns the user principals (pwc_tars). While it
+   *  is enabled, users are searched there instead of the local database; groups
+   *  and roles stay local. */
+  userDirectory?: PrincipalUserDirectory;
+}
+
+export interface PrincipalUserDirectory {
+  enabled: () => boolean;
+  search: (query: string, limit: number) => Promise<TPrincipalSearchResult[]>;
 }
 
 const SEARCHABLE_PRINCIPAL_TYPES: readonly SearchablePrincipalType[] = [
@@ -269,23 +278,33 @@ export function createPrincipalSearch(deps: PrincipalSearchDeps): PrincipalSearc
 
       const searchLimit = Math.min(Math.max(1, parseInt(String(limit)) || 10), 50);
       const types = req.principalSearchTypes ?? [];
+      const directory = deps.userDirectory;
+      const directoryOwnsUsers =
+        directory != null && directory.enabled() && types.includes(PrincipalType.USER);
+      const localTypes = directoryOwnsUsers
+        ? types.filter((type) => type !== PrincipalType.USER)
+        : types;
 
-      const localResults = await deps.searchPrincipals(query, searchLimit, types);
+      const [localResults, directoryResults] = await Promise.all([
+        deps.searchPrincipals(query, searchLimit, localTypes),
+        directoryOwnsUsers ? directory.search(query, searchLimit) : Promise.resolve([]),
+      ]);
+      const knownResults = [...localResults, ...directoryResults];
       const entraResults = await findEntraPrincipals({
         req,
         query,
         types,
-        remaining: searchLimit - localResults.length,
-        localResults,
+        remaining: searchLimit - knownResults.length,
+        localResults: knownResults,
         deps,
       });
 
-      const scoredResults = [...localResults, ...entraResults].map((item) => ({
+      const scoredResults = [...knownResults, ...entraResults].map((item) => ({
         ...item,
         _searchScore: deps.calculateRelevanceScore(item, query),
       }));
 
-      const sources = { local: 0, entra: 0 };
+      const sources = { local: 0, entra: 0, tars: 0 };
       const results = deps
         .sortPrincipalsByRelevance(scoredResults)
         .slice(0, searchLimit)
