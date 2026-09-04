@@ -202,7 +202,7 @@ export default function ConfigModal({
               </select>
             </div>
 
-            <div className="flex items-end justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <Label htmlFor="tars-quota-active">{localize('com_ui_tars_quota_col_status')}</Label>
               <Switch
                 id="tars-quota-active"
