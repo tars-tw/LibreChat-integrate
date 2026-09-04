@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, HelpCircle } from 'lucide-react';
 import { Button, Spinner, OGDialog, OGDialogTemplate, useToastContext } from '@librechat/client';
 import type { TTarsTokenUserQuota, TTarsTokenPrepareData } from 'librechat-data-provider';
 import type { TokenResetType } from './helpers';
@@ -17,6 +17,7 @@ import {
   formatThreshold,
   isActiveQuota,
   quotaUsageShare,
+  providerBadgeClass,
 } from './helpers';
 import {
   useTarsTokenQuotasQuery,
@@ -24,6 +25,7 @@ import {
   useTarsTokenReportMembersQuery,
 } from '~/data-provider';
 import { formatTokens, recentReportRange } from './Report/helpers';
+import TokenQuotaInfo from './TokenQuotaInfo';
 import QuotaModal from './QuotaModal';
 import { useLocalize } from '~/hooks';
 
@@ -44,6 +46,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
   const [editing, setEditing] = useState<TTarsTokenUserQuota | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<TTarsTokenUserQuota | null>(null);
+  const [showInfo, setShowInfo] = useState(false);
 
   const filters = useMemo(
     () => ({
@@ -109,11 +112,23 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
           <option value={QUOTA_STATUS_OFF}>{localize('com_ui_tars_quota_suspended')}</option>
         </select>
 
-        <Button variant="submit" className="ml-auto" onClick={() => setCreating(true)}>
+        <button
+          type="button"
+          aria-label={localize('com_ui_tars_quota_info_title')}
+          title={localize('com_ui_tars_quota_info_title')}
+          onClick={() => setShowInfo(true)}
+          className="ml-auto flex size-10 items-center justify-center rounded-xl border border-border-light bg-surface-primary text-text-secondary transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 dark:hover:border-orange-900/40 dark:hover:bg-orange-950/20 dark:hover:text-orange-400"
+        >
+          <HelpCircle className="size-5" aria-hidden />
+        </button>
+
+        <Button variant="submit" onClick={() => setCreating(true)}>
           <Plus className="mr-2 size-4" aria-hidden />
           {localize('com_ui_tars_quota_user_add')}
         </Button>
       </div>
+
+      {showInfo && <TokenQuotaInfo open={showInfo} onOpenChange={setShowInfo} />}
 
       {isLoading && (
         <div className="flex h-40 items-center justify-center">
@@ -179,24 +194,40 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                     <span className="block truncate">{quota.domain_name ?? '—'}</span>
                   </td>
                   <td className="px-3 py-2">
-                    <span className={BADGE_NEUTRAL}>{quota.provider ?? 'system'}</span>
+                    <span className={providerBadgeClass(quota.provider)}>
+                      {quota.provider ?? 'system'}
+                    </span>
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
-                    {formatLimit(quota.custom_limit, localize('com_ui_tars_quota_unlimited'))}
+                    {capOf(quota.custom_limit) == null ? (
+                      <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                        {localize('com_ui_tars_quota_unlimited')}
+                      </span>
+                    ) : (
+                      formatLimit(quota.custom_limit, localize('com_ui_tars_quota_unlimited'))
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center justify-between gap-2 text-xs tabular-nums text-text-secondary">
                       <span>{(quota.used_amount ?? 0).toLocaleString()}</span>
                       {capOf(quota.custom_limit) != null && <span>{quotaUsageShare(quota)}%</span>}
                     </div>
-                    {capOf(quota.custom_limit) != null && (
-                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
+                      {capOf(quota.custom_limit) == null ? (
+                        <div
+                          className="h-full w-full rounded-full"
+                          style={{
+                            background:
+                              'linear-gradient(90deg, #FDE293 0%, #F4B4A6 35%, #AECBFA 65%, #A8DAB5 100%)',
+                          }}
+                        />
+                      ) : (
                         <div
                           className="h-full rounded-full bg-brand-primary"
                           style={{ width: `${quotaUsageShare(quota)}%` }}
                         />
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-text-secondary">
                     {RESET_TYPES.includes(quota.reset_type as TokenResetType)

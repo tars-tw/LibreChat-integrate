@@ -122,3 +122,14 @@ export const personIdentity = (
     .join(' · ');
   return { primary, secondary: secondary === '' ? null : secondary };
 };
+
+export const PROVIDER_BADGE_COLORS: Record<string, string> = {
+  openai: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  gemini: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  anthropic: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+};
+
+export const providerBadgeClass = (provider: string | null | undefined): string =>
+  `inline-flex items-center rounded-full px-2 py-0.5 text-xs ${
+    PROVIDER_BADGE_COLORS[provider ?? ''] ?? 'bg-surface-tertiary text-text-secondary'
+  }`;

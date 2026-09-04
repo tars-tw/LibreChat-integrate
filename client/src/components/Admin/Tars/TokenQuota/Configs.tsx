@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, HelpCircle } from 'lucide-react';
 import { Button, Spinner, OGDialog, OGDialogTemplate, useToastContext } from '@librechat/client';
 import type { TTarsTokenConfig, TTarsTokenPrepareData } from 'librechat-data-provider';
 import type { TokenResetType } from './helpers';
@@ -13,6 +13,8 @@ import {
   usesResetDay,
   formatThreshold,
   groupConfigsByGroup,
+  providerBadgeClass,
+  capOf,
 } from './helpers';
 import {
   useTarsTokenConfigsQuery,
@@ -20,6 +22,7 @@ import {
   useTarsTokenReportOverviewQuery,
 } from '~/data-provider';
 import { formatTokens, recentReportRange } from './Report/helpers';
+import TokenQuotaInfo from './TokenQuotaInfo';
 import ConfigModal from './ConfigModal';
 import { useLocalize } from '~/hooks';
 
@@ -40,6 +43,7 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
   const [editing, setEditing] = useState<TTarsTokenConfig | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<TTarsTokenConfig | null>(null);
+  const [showInfo, setShowInfo] = useState(false);
 
   const filters = useMemo(
     () => ({
@@ -50,7 +54,11 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
   );
 
   const { data: configs = [], isLoading } = useTarsTokenConfigsQuery(filters);
-  const grouped = useMemo(() => groupConfigsByGroup(configs), [configs]);
+  const groupConfigs = useMemo(
+    () => configs.filter((config) => config.domain_id != null),
+    [configs],
+  );
+  const grouped = useMemo(() => groupConfigsByGroup(groupConfigs), [groupConfigs]);
 
   /** Recent consumption next to the ceilings, so a rule can be judged in place. */
   const recentRange = useMemo(recentReportRange, []);
@@ -106,13 +114,25 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
           ))}
         </select>
 
-        <Button variant="submit" className="ml-auto" onClick={() => setCreating(true)}>
+        <button
+          type="button"
+          aria-label={localize('com_ui_tars_quota_info_title')}
+          title={localize('com_ui_tars_quota_info_title')}
+          onClick={() => setShowInfo(true)}
+          className="ml-auto flex size-10 items-center justify-center rounded-xl border border-border-light bg-surface-primary text-text-secondary transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 dark:hover:border-orange-900/40 dark:hover:bg-orange-950/20 dark:hover:text-orange-400"
+        >
+          <HelpCircle className="size-5" aria-hidden />
+        </button>
+
+        <Button variant="submit" onClick={() => setCreating(true)}>
           <Plus className="mr-2 size-4" aria-hidden />
           {localize('com_ui_tars_quota_config_add')}
         </Button>
       </div>
 
-      {isLoading && (
+      {showInfo && <TokenQuotaInfo open={showInfo} onOpenChange={setShowInfo} />}
+
+      {!isLoading && groupConfigs.length === 0 && (
         <div className="flex h-40 items-center justify-center">
           <Spinner />
         </div>
@@ -184,18 +204,32 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
                         </span>
                       </td>
                       <td className="px-3 py-2">
-                        <span className={BADGE_NEUTRAL}>{config.provider ?? 'system'}</span>
+                        <span className={providerBadgeClass(config.provider)}>
+                          {config.provider ?? 'system'}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
-                        {formatLimit(
-                          config.default_user_limit,
-                          localize('com_ui_tars_quota_unlimited'),
+                        {capOf(config.default_user_limit) == null ? (
+                          <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                            {localize('com_ui_tars_quota_unlimited')}
+                          </span>
+                        ) : (
+                          formatLimit(
+                            config.default_user_limit,
+                            localize('com_ui_tars_quota_unlimited'),
+                          )
                         )}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
-                        {formatLimit(
-                          config.system_total_limit,
-                          localize('com_ui_tars_quota_unlimited'),
+                        {capOf(config.system_total_limit) == null ? (
+                          <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                            {localize('com_ui_tars_quota_unlimited')}
+                          </span>
+                        ) : (
+                          formatLimit(
+                            config.system_total_limit,
+                            localize('com_ui_tars_quota_unlimited'),
+                          )
                         )}
                       </td>
                       <td className="px-3 py-2 text-text-secondary">
