@@ -13,6 +13,8 @@ const {
   maskAgentInsightsBit,
   sanitizeInsightsPermissionPrincipals,
   validateInsightsPermissionUpdates,
+  isTarsConfigured,
+  searchTarsPrincipals,
 } = require('@librechat/api');
 const {
   bulkUpdateResourcePermissions,
@@ -468,7 +470,8 @@ const getUserEffectivePermissions = async (req, res) => {
 
 /**
  * Search for users and groups to grant permissions
- * Supports hybrid local database + Entra ID search when configured
+ * User results come from pwc_tars when configured, otherwise the local database;
+ * also supports hybrid Entra ID search when configured
  * @route GET /api/permissions/search-principals
  */
 const searchPrincipals = async (req, res) => {
@@ -500,12 +503,23 @@ const searchPrincipals = async (req, res) => {
       typeFilters = validTypes.length > 0 ? validTypes : null;
     }
 
-    const localResults = await db.searchPrincipals(query, searchLimit, typeFilters);
-    let allPrincipals = [...localResults];
+    const useTars = isTarsConfigured();
+    const wantsUsers = !typeFilters || typeFilters.includes(PrincipalType.USER);
+    const localTypeFilters = useTars
+      ? (typeFilters || [PrincipalType.USER, PrincipalType.GROUP, PrincipalType.ROLE]).filter(
+          (t) => t !== PrincipalType.USER,
+        )
+      : typeFilters;
+
+    const [localResults, tarsResults] = await Promise.all([
+      db.searchPrincipals(query, searchLimit, localTypeFilters),
+      useTars && wantsUsers ? searchTarsPrincipals(query, searchLimit) : Promise.resolve([]),
+    ]);
+    let allPrincipals = [...localResults, ...tarsResults];
 
     const useEntraId = entraIdPrincipalFeatureEnabled(req.user);
 
-    if (useEntraId && localResults.length < searchLimit) {
+    if (useEntraId && allPrincipals.length < searchLimit) {
       try {
         let graphType = 'all';
         if (typeFilters && typeFilters.length === 1) {
@@ -529,14 +543,14 @@ const searchPrincipals = async (req, res) => {
             req.user.openidId,
             query,
             graphType,
-            searchLimit - localResults.length,
+            searchLimit - allPrincipals.length,
           );
 
           const localEmails = new Set(
-            localResults.map((p) => p.email?.toLowerCase()).filter(Boolean),
+            allPrincipals.map((p) => p.email?.toLowerCase()).filter(Boolean),
           );
           const localGroupSourceIds = new Set(
-            localResults.map((p) => p.idOnTheSource).filter(Boolean),
+            allPrincipals.map((p) => p.idOnTheSource).filter(Boolean),
           );
 
           for (const principal of graphResults) {
@@ -576,6 +590,7 @@ const searchPrincipals = async (req, res) => {
       sources: {
         local: finalResults.filter((r) => r.source === 'local').length,
         entra: finalResults.filter((r) => r.source === 'entra').length,
+        tars: finalResults.filter((r) => r.source === 'tars').length,
       },
     });
   } catch (error) {

@@ -16,12 +16,17 @@ jest.mock('librechat-data-provider', () => ({
   ...jest.requireActual('librechat-data-provider'),
 }));
 
+const mockIsTarsConfigured = jest.fn(() => false);
+const mockSearchTarsPrincipals = jest.fn();
+
 jest.mock('@librechat/api', () => {
   const actual = jest.requireActual('@librechat/api');
   return {
     ...actual,
     enrichRemoteAgentPrincipals: jest.fn(),
     backfillRemoteAgentPermissions: jest.fn(),
+    isTarsConfigured: (...args) => mockIsTarsConfigured(...args),
+    searchTarsPrincipals: (...args) => mockSearchTarsPrincipals(...args),
   };
 });
 
@@ -160,6 +165,56 @@ describe('PermissionsController', () => {
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
         error: 'Failed to search principals',
+      });
+    });
+
+    describe('when pwc_tars is configured', () => {
+      beforeEach(() => {
+        mockIsTarsConfigured.mockReturnValue(true);
+      });
+
+      it('routes user results through pwc_tars instead of the local database', async () => {
+        mockSearchTarsPrincipals.mockResolvedValue([
+          {
+            id: null,
+            type: PrincipalType.USER,
+            name: 'Tars Alice',
+            email: 'alice@example.com',
+            source: 'tars',
+            idOnTheSource: 'tars-user-1',
+          },
+        ]);
+
+        const req = createMockReq({
+          query: { q: 'alice', limit: '5' },
+        });
+        const res = createMockRes();
+
+        await searchPrincipals(req, res);
+
+        expect(db.searchPrincipals).toHaveBeenCalledWith('alice', 5, [
+          PrincipalType.GROUP,
+          PrincipalType.ROLE,
+        ]);
+        expect(mockSearchTarsPrincipals).toHaveBeenCalledWith('alice', 5);
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            count: 1,
+            sources: expect.objectContaining({ tars: 1 }),
+          }),
+        );
+      });
+
+      it('does not call pwc_tars when only group/role types are requested', async () => {
+        const req = createMockReq({
+          query: { q: 'alice', types: PrincipalType.GROUP },
+        });
+        const res = createMockRes();
+
+        await searchPrincipals(req, res);
+
+        expect(db.searchPrincipals).toHaveBeenCalledWith('alice', 20, [PrincipalType.GROUP]);
+        expect(mockSearchTarsPrincipals).not.toHaveBeenCalled();
       });
     });
   });
