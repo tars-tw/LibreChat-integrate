@@ -109,6 +109,8 @@ function renderPanel({
   onCollapse = jest.fn(),
   onExpand = jest.fn(),
   onNavigate,
+  onLeaveInsights = jest.fn(),
+  pathname = '/c/new',
   initialPanel = DEFAULT_PANEL,
   initializeState,
 }: {
@@ -117,6 +119,8 @@ function renderPanel({
   onCollapse?: jest.Mock;
   onExpand?: jest.Mock;
   onNavigate?: jest.Mock;
+  onLeaveInsights?: jest.Mock;
+  pathname?: string;
   initialPanel?: string;
   initializeState?: (snapshot: MutableSnapshot) => void;
 } = {}) {
@@ -125,7 +129,7 @@ function renderPanel({
   }
 
   const result = render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[pathname]}>
       <QueryClientProvider client={createQueryClient()}>
         <RecoilRoot initializeState={initializeState}>
           <ActivePanelProvider>
@@ -135,6 +139,7 @@ function renderPanel({
               onCollapse={onCollapse}
               onExpand={onExpand}
               onNavigate={onNavigate}
+              onLeaveInsights={onLeaveInsights}
             />
           </ActivePanelProvider>
         </RecoilRoot>
@@ -142,7 +147,7 @@ function renderPanel({
     </MemoryRouter>,
   );
 
-  return { ...result, onCollapse, onExpand };
+  return { ...result, onCollapse, onExpand, onLeaveInsights };
 }
 
 describe('ExpandedPanel', () => {
@@ -200,6 +205,20 @@ describe('ExpandedPanel', () => {
 
       expect(onClick).toHaveBeenCalledTimes(1);
       expect(onNavigate).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('leaving a route view', () => {
+    it('returns to the conversation when switching panels from a route view', () => {
+      const { onLeaveInsights } = renderPanel({ expanded: true, pathname: '/langflow' });
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_prompts' }));
+      expect(onLeaveInsights).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays put when switching panels from a conversation', () => {
+      const { onLeaveInsights } = renderPanel({ expanded: true, pathname: '/c/new' });
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_prompts' }));
+      expect(onLeaveInsights).not.toHaveBeenCalled();
     });
   });
 
