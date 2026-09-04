@@ -312,6 +312,90 @@ describe('PermissionService', () => {
     });
   });
 
+  describe('tars principal provisioning', () => {
+    beforeEach(async () => {
+      await User.deleteMany({ email: /tars-principal/i });
+    });
+
+    test('creates a shadow user for a pwc_tars account not seen locally before', async () => {
+      const principalId = await ensurePrincipalExists({
+        type: PrincipalType.USER,
+        name: 'Tars New User',
+        email: 'tars-principal-new@example.com',
+        source: 'tars',
+        idOnTheSource: 'tars-account-new',
+      });
+
+      const created = await User.findById(principalId).lean();
+      expect(created.provider).toBe('tars');
+      expect(created.tarsId).toBe('tars-account-new');
+      expect(created.emailVerified).toBe(false);
+    });
+
+    test('falls back to a placeholder email when the pwc_tars account has none', async () => {
+      const principalId = await ensurePrincipalExists({
+        type: PrincipalType.USER,
+        name: 'Tars No Email',
+        source: 'tars',
+        idOnTheSource: 'tars-account-no-email',
+      });
+
+      const created = await User.findById(principalId).lean();
+      expect(created.tarsId).toBe('tars-account-no-email');
+      expect(created.email).toBe('tars no email@tars.local');
+    });
+
+    test('reuses the existing user already linked to the pwc_tars account', async () => {
+      const existing = await User.create({
+        name: 'Tars Existing User',
+        email: 'tars-principal-existing@example.com',
+        provider: 'tars',
+        tarsId: 'tars-account-existing',
+      });
+
+      const principalId = await ensurePrincipalExists({
+        type: PrincipalType.USER,
+        name: 'Tars Existing User',
+        email: 'tars-principal-existing@example.com',
+        source: 'tars',
+        idOnTheSource: 'tars-account-existing',
+      });
+
+      expect(principalId).toBe(existing._id.toString());
+      expect(await User.countDocuments({ tarsId: 'tars-account-existing' })).toBe(1);
+    });
+
+    test('backfills tarsId onto a matching local user found by email', async () => {
+      const existing = await User.create({
+        name: 'Tars Backfill User',
+        email: 'tars-principal-backfill@example.com',
+      });
+
+      const principalId = await ensurePrincipalExists({
+        type: PrincipalType.USER,
+        name: 'Tars Backfill User',
+        email: 'tars-principal-backfill@example.com',
+        source: 'tars',
+        idOnTheSource: 'tars-account-backfill',
+      });
+
+      expect(principalId).toBe(existing._id.toString());
+      const updated = await User.findById(existing._id).lean();
+      expect(updated.tarsId).toBe('tars-account-backfill');
+      expect(updated.provider).toBe('tars');
+    });
+
+    test('rejects a tars principal without idOnTheSource', async () => {
+      await expect(
+        ensurePrincipalExists({
+          type: PrincipalType.USER,
+          name: 'No Source Id',
+          source: 'tars',
+        }),
+      ).rejects.toThrow('TARS user principals must have idOnTheSource');
+    });
+  });
+
   describe('checkPermission', () => {
     let otherResourceId;
 

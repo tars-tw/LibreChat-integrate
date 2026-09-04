@@ -321,14 +321,14 @@ const getAvailableRoles = async ({ resourceType }) => {
 
 /**
  * Ensures a principal exists in the database based on TPrincipal data
- * Creates user if it doesn't exist locally (for Entra ID users)
+ * Creates user if it doesn't exist locally (for Entra ID or pwc_tars users)
  * @param {Object} principal - TPrincipal object from frontend
  * @param {string} principal.type - PrincipalType.USER, PrincipalType.GROUP, or PrincipalType.PUBLIC
- * @param {string} [principal.id] - Local database ID (null for Entra ID principals not yet synced)
+ * @param {string} [principal.id] - Local database ID (null for Entra ID/pwc_tars principals not yet synced)
  * @param {string} principal.name - Display name
  * @param {string} [principal.email] - Email address
- * @param {string} [principal.source] - 'local' or 'entra'
- * @param {string} [principal.idOnTheSource] - Entra ID object ID for external principals
+ * @param {string} [principal.source] - 'local', 'entra', or 'tars'
+ * @param {string} [principal.idOnTheSource] - Entra ID object ID, or pwc_tars account ID, for external principals
  * @returns {Promise<string|null>} Returns the principalId for database operations, null for public
  */
 const ensurePrincipalExists = async function (principal) {
@@ -367,6 +367,40 @@ const ensurePrincipalExists = async function (principal) {
       emailVerified: false,
       provider: 'openid',
       idOnTheSource: principal.idOnTheSource,
+    };
+
+    const userId = await db.createUser(userData, true, true);
+    return userId.toString();
+  }
+
+  if (principal.type === PrincipalType.USER && principal.source === 'tars') {
+    if (!principal.idOnTheSource) {
+      throw new Error('TARS user principals must have idOnTheSource');
+    }
+
+    let existingUser = await db.findUser({ tarsId: principal.idOnTheSource });
+
+    if (!existingUser && principal.email) {
+      existingUser = await db.findUser({ email: principal.email });
+    }
+
+    if (existingUser) {
+      if (!existingUser.tarsId) {
+        await db.updateUser(existingUser._id, {
+          tarsId: principal.idOnTheSource,
+          provider: 'tars',
+        });
+      }
+      return existingUser._id.toString();
+    }
+
+    const fallbackEmail = `${principal.name || principal.idOnTheSource}@tars.local`;
+    const userData = {
+      name: principal.name,
+      email: (principal.email || fallbackEmail).toLowerCase(),
+      emailVerified: false,
+      provider: 'tars',
+      tarsId: principal.idOnTheSource,
     };
 
     const userId = await db.createUser(userData, true, true);

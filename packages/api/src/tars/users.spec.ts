@@ -14,6 +14,7 @@ import {
   bulkUpdateTarsUsers,
   bulkDeleteTarsUsers,
   fetchTarsAdWhitelist,
+  searchTarsPrincipals,
   fetchTarsUserPrepareData,
 } from './users';
 import type { TarsAccount } from './users';
@@ -59,6 +60,56 @@ describe('fetchTarsUsers', () => {
   it('defaults to [] when the response omits users', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, {}));
     await expect(fetchTarsUsers(BASE_URL)).resolves.toEqual([]);
+  });
+});
+
+describe('searchTarsPrincipals', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('filters by username/display name/email and maps to TPrincipalSearchResult', async () => {
+    const users = [account('u1', 'alice'), account('u2', 'bob')];
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { users }));
+
+    const results = await searchTarsPrincipals('alice', 10, BASE_URL);
+
+    expect(results).toEqual([
+      {
+        id: null,
+        type: 'user',
+        name: 'alice',
+        email: 'alice@example.com',
+        username: 'alice',
+        avatar: undefined,
+        provider: 'tars',
+        source: 'tars',
+        idOnTheSource: 'u1',
+      },
+    ]);
+  });
+
+  it('excludes inactive accounts', async () => {
+    const inactive = { ...account('u3', 'carol'), status: 'disabled' };
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { users: [inactive] }));
+
+    await expect(searchTarsPrincipals('carol', 10, BASE_URL)).resolves.toEqual([]);
+  });
+
+  it('caps the number of matches at limit', async () => {
+    const users = [account('u1', 'alice1'), account('u2', 'alice2'), account('u3', 'alice3')];
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { users }));
+
+    const results = await searchTarsPrincipals('alice', 2, BASE_URL);
+
+    expect(results).toHaveLength(2);
+  });
+
+  it('returns [] for a blank query without calling pwc_tars', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+
+    await expect(searchTarsPrincipals('   ', 10, BASE_URL)).resolves.toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
