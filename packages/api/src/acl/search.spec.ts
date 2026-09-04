@@ -246,6 +246,8 @@ describe('createPrincipalSearch', () => {
     authorization = 'Bearer token',
     localResults = [],
     entraResults = [],
+    directoryEnabled,
+    directoryResults = [],
   }: {
     query?: Query;
     types?: SearchablePrincipalType[];
@@ -253,7 +255,13 @@ describe('createPrincipalSearch', () => {
     authorization?: string;
     localResults?: TPrincipalSearchResult[];
     entraResults?: TPrincipalSearchResult[];
+    directoryEnabled?: boolean;
+    directoryResults?: TPrincipalSearchResult[];
   }) => {
+    const userDirectory = {
+      enabled: jest.fn(() => directoryEnabled === true),
+      search: jest.fn(async () => directoryResults),
+    };
     const deps = {
       searchPrincipals: jest.fn(async () => localResults),
       calculateRelevanceScore: jest.fn((item: TPrincipalSearchResult) => item.name.length),
@@ -262,6 +270,7 @@ describe('createPrincipalSearch', () => {
       ),
       entraIdPrincipalFeatureEnabled: jest.fn(() => entraEnabled),
       searchEntraIdPrincipals: jest.fn(async () => entraResults),
+      ...(directoryEnabled === undefined ? {} : { userDirectory }),
     };
     const req = {
       query,
@@ -399,7 +408,7 @@ describe('createPrincipalSearch', () => {
         principal({ name: 'Alice', email: 'alice@example.test' }),
       ],
       count: 3,
-      sources: { local: 2, entra: 1 },
+      sources: { local: 2, entra: 1, tars: 0 },
     });
   });
 
@@ -416,9 +425,47 @@ describe('createPrincipalSearch', () => {
     );
     expect(test.res.status).toHaveBeenCalledWith(200);
     expect(test.res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ results: [local], sources: { local: 1, entra: 0 } }),
+      expect.objectContaining({ results: [local], sources: { local: 1, entra: 0, tars: 0 } }),
     );
     warnSpy.mockRestore();
+  });
+
+  it('searches users in the external directory and the rest locally', async () => {
+    const test = setupSearch({
+      types: [USER, GROUP],
+      directoryEnabled: true,
+      localResults: [principal({ type: GROUP, name: 'Admins', idOnTheSource: 'group-1' })],
+      directoryResults: [
+        principal({ id: null, name: 'Alice Tars', email: 'alice@example.test', source: 'tars' }),
+      ],
+    });
+    await test.run();
+
+    expect(test.deps.searchPrincipals).toHaveBeenCalledWith('alice', 20, [GROUP]);
+    expect(test.deps.userDirectory?.search).toHaveBeenCalledWith('alice', 20);
+    expect(test.res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        types: [USER, GROUP],
+        count: 2,
+        sources: { local: 1, entra: 0, tars: 1 },
+      }),
+    );
+  });
+
+  it('leaves the external directory alone when users were not resolved', async () => {
+    const test = setupSearch({ types: [GROUP], directoryEnabled: true });
+    await test.run();
+
+    expect(test.deps.searchPrincipals).toHaveBeenCalledWith('alice', 20, [GROUP]);
+    expect(test.deps.userDirectory?.search).not.toHaveBeenCalled();
+  });
+
+  it('searches users locally while the external directory is disabled', async () => {
+    const test = setupSearch({ types: [USER], directoryEnabled: false });
+    await test.run();
+
+    expect(test.deps.searchPrincipals).toHaveBeenCalledWith('alice', 20, [USER]);
+    expect(test.deps.userDirectory?.search).not.toHaveBeenCalled();
   });
 
   it('does not expose internal error details on search failures', async () => {
