@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { MCPIcon, AttachmentIcon, OpenAIMinimalIcon } from '@librechat/client';
 import { Bot, NotebookPen, ScrollText, CalendarClock, ArrowRightToLine } from 'lucide-react';
 import {
@@ -15,7 +16,6 @@ import {
   useGetAgentsConfig,
   useHasAccess,
 } from '~/hooks';
-import MCPBuilderPanel from '~/components/SidePanel/MCPBuilder/MCPBuilderPanel';
 import AgentPanelSwitch from '~/components/SidePanel/Agents/AgentPanelSwitch';
 import PanelSwitch from '~/components/SidePanel/Builder/PanelSwitch';
 import { TarsMemoryPanel } from '~/components/SidePanel/TarsMemory';
@@ -40,6 +40,8 @@ export default function useSideNavLinks({
   endpointsConfig: TEndpointsConfig;
   includeHidePanel?: boolean;
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const hasAccessToPrompts = useHasAccess({
     permissionType: PermissionTypes.PROMPTS,
     permission: Permissions.USE,
@@ -170,7 +172,11 @@ export default function useSideNavLinks({
         label: '',
         icon: MCPIcon,
         id: 'mcp-builder',
-        Component: MCPBuilderPanel,
+        onClick: () => {
+          if (!location.pathname.startsWith('/mcp-settings')) {
+            navigate('/mcp-settings');
+          }
+        },
       });
     }
 
@@ -202,6 +208,8 @@ export default function useSideNavLinks({
     tarsMemoryEnabled,
     includeHidePanel,
     hidePanel,
+    navigate,
+    location.pathname,
   ]);
 
   return Links;
