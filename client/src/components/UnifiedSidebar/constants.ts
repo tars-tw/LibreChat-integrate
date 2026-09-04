@@ -71,13 +71,27 @@ export const MOBILE_SCRIM_ID = 'mobile-drawer-scrim';
 /**
  * Routes that render as the main view in place of a conversation. Opening a side panel while
  * one of them is up would leave its page sitting behind the panel, so a panel click has to
- * return to a new chat first. `insights` additionally claims the whole surface, which is why
- * it — and only it — also forces the panel closed.
+ * return to a new chat first. The view's `id` doubles as its rail link id where one exists
+ * (`insights`, `mcp-builder`); `path` is the URL prefix it claims, which is not always the
+ * same string (`mcp-builder`'s page lives at `/mcp-settings`).
  */
-export const ROUTE_VIEW_IDS = ['insights', 'langflow'] as const;
+export const ROUTE_VIEWS = [
+  { id: 'insights', path: '/insights' },
+  { id: 'langflow', path: '/langflow' },
+  { id: 'mcp-builder', path: '/mcp-settings' },
+] as const;
 
-export type RouteViewId = (typeof ROUTE_VIEW_IDS)[number];
+export type RouteViewId = (typeof ROUTE_VIEWS)[number]['id'];
 
 export function routeViewId(pathname: string): RouteViewId | undefined {
-  return ROUTE_VIEW_IDS.find((id) => pathname.startsWith(`/${id}`));
+  return ROUTE_VIEWS.find((view) => pathname.startsWith(view.path))?.id;
 }
+
+/**
+ * Route views that claim the *whole* surface (no conversation or side-panel content behind
+ * them), so the panel itself starts collapsed rather than merely losing its click target.
+ */
+export const PANEL_FORCE_CLOSE_VIEW_IDS: ReadonlySet<RouteViewId> = new Set([
+  'insights',
+  'mcp-builder',
+]);
