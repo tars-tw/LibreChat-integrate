@@ -9,6 +9,7 @@ import { useActivePanel, resolveActivePanel, DEFAULT_PANEL } from '~/Providers';
 import AgentMarketplaceButton from '~/components/Nav/AgentMarketplaceButton';
 import { CLOSE_SIDEBAR_ID } from '~/components/Chat/Menus/OpenSidebar';
 import useNewChat from '~/hooks/Chat/useNewChat';
+import { routeViewId } from './constants';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 import store from '~/store';
@@ -141,7 +142,7 @@ function ExpandedPanel({
   const location = useLocation();
   const { active, setActive } = useActivePanel();
   const effectiveActive = resolveActivePanel(active, links);
-  const isInsightsRoute = location.pathname.startsWith('/insights');
+  const viewId = routeViewId(location.pathname);
 
   const toggleLabel = expanded ? 'com_nav_close_sidebar' : 'com_nav_open_sidebar';
   const toggleClick = expanded ? onCollapse : onExpand;
@@ -179,15 +180,15 @@ function ExpandedPanel({
             link={link}
             isActive={
               link.id === 'insights'
-                ? isInsightsRoute
-                : !isInsightsRoute && link.id === effectiveActive
+                ? viewId === 'insights'
+                : viewId !== 'insights' && link.id === effectiveActive
             }
             expanded={expanded ?? true}
             setActive={setActive}
             onExpand={onExpand}
             onCollapse={onCollapse}
             onNavigate={onNavigate}
-            onLeaveInsights={isInsightsRoute ? onLeaveInsights : undefined}
+            onLeaveInsights={viewId != null ? onLeaveInsights : undefined}
           />
         ))}
       </div>
