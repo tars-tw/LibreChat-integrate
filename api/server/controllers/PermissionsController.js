@@ -14,6 +14,8 @@ const {
   maskAgentInsightsBit,
   sanitizeInsightsPermissionPrincipals,
   validateInsightsPermissionUpdates,
+  isTarsConfigured,
+  searchTarsPrincipals,
 } = require('@librechat/api');
 const {
   bulkUpdateResourcePermissions,
@@ -469,7 +471,8 @@ const getUserEffectivePermissions = async (req, res) => {
 
 /**
  * Search for users and groups to grant permissions
- * Supports hybrid local database + Entra ID search when configured
+ * User results come from pwc_tars when configured, otherwise the local database;
+ * also supports hybrid Entra ID search when configured
  * @route GET /api/permissions/search-principals
  */
 const searchPrincipals = createPrincipalSearch({
@@ -478,6 +481,7 @@ const searchPrincipals = createPrincipalSearch({
   sortPrincipalsByRelevance: db.sortPrincipalsByRelevance,
   entraIdPrincipalFeatureEnabled,
   searchEntraIdPrincipals,
+  userDirectory: { enabled: isTarsConfigured, search: searchTarsPrincipals },
 });
 
 /**
