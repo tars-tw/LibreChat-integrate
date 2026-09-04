@@ -387,6 +387,40 @@ const ensurePrincipalExists = async function (principal) {
     return userId.toString();
   }
 
+  if (principal.type === PrincipalType.USER && principal.source === 'tars') {
+    if (!principal.idOnTheSource) {
+      throw new Error('TARS user principals must have idOnTheSource');
+    }
+
+    let existingUser = await db.findUser({ tarsId: principal.idOnTheSource });
+
+    if (!existingUser && principal.email) {
+      existingUser = await db.findUser({ email: principal.email });
+    }
+
+    if (existingUser) {
+      if (!existingUser.tarsId) {
+        await db.updateUser(existingUser._id, {
+          tarsId: principal.idOnTheSource,
+          provider: 'tars',
+        });
+      }
+      return existingUser._id.toString();
+    }
+
+    const fallbackEmail = `${principal.name || principal.idOnTheSource}@tars.local`;
+    const userData = {
+      name: principal.name,
+      email: (principal.email || fallbackEmail).toLowerCase(),
+      emailVerified: false,
+      provider: 'tars',
+      tarsId: principal.idOnTheSource,
+    };
+
+    const userId = await db.createUser(userData, true, true);
+    return userId.toString();
+  }
+
   if (principal.type === PrincipalType.GROUP) {
     throw new Error('Group principals should be handled by group-specific methods');
   }
