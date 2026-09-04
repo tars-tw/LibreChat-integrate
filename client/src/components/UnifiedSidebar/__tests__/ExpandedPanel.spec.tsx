@@ -104,6 +104,8 @@ function renderPanel({
   onCollapse = jest.fn(),
   onExpand = jest.fn(),
   onNavigate,
+  onLeaveInsights = jest.fn(),
+  pathname = '/c/new',
   initialPanel = DEFAULT_PANEL,
   switchToHistory = true,
 }: {
@@ -112,13 +114,15 @@ function renderPanel({
   onCollapse?: jest.Mock;
   onExpand?: jest.Mock;
   onNavigate?: jest.Mock;
+  onLeaveInsights?: jest.Mock;
+  pathname?: string;
   initialPanel?: string;
   switchToHistory?: boolean;
 } = {}) {
   getDefaultStore().set(activePanelAtom, initialPanel);
 
   const result = render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[pathname]}>
       <QueryClientProvider client={createQueryClient()}>
         <RecoilRoot>
           <ActivePanelProvider>
@@ -129,6 +133,7 @@ function renderPanel({
               onExpand={onExpand}
               onNavigate={onNavigate}
               switchToHistory={switchToHistory}
+              onLeaveInsights={onLeaveInsights}
             />
           </ActivePanelProvider>
         </RecoilRoot>
@@ -136,7 +141,7 @@ function renderPanel({
     </MemoryRouter>,
   );
 
-  return { ...result, onCollapse, onExpand };
+  return { ...result, onCollapse, onExpand, onLeaveInsights };
 }
 
 describe('ExpandedPanel', () => {
@@ -222,6 +227,20 @@ describe('ExpandedPanel', () => {
       expect(screen.getByTestId('close-sidebar-button')).toHaveClass('hover:bg-surface-nav-hover');
       expect(screen.getByTestId('new-chat-button')).toHaveClass('hover:bg-surface-nav-hover');
       expect(screen.getByTestId('new-chat-button')).not.toHaveClass('hover:bg-surface-hover');
+    });
+  });
+
+  describe('leaving a route view', () => {
+    it('returns to the conversation when switching panels from a route view', () => {
+      const { onLeaveInsights } = renderPanel({ expanded: true, pathname: '/langflow' });
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_prompts' }));
+      expect(onLeaveInsights).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays put when switching panels from a conversation', () => {
+      const { onLeaveInsights } = renderPanel({ expanded: true, pathname: '/c/new' });
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_prompts' }));
+      expect(onLeaveInsights).not.toHaveBeenCalled();
     });
   });
 

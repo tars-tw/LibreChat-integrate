@@ -10,6 +10,7 @@ import { CLOSE_SIDEBAR_ID } from '~/components/Chat/Menus/OpenSidebar';
 import useDirection, { inlineSide } from '~/hooks/Nav/useDirection';
 import useNewChat from '~/hooks/Conversations/useNewChat';
 import { lazyWithRecovery } from '~/lib/assets/lazy';
+import { routeViewId } from './constants';
 import { useLocalize } from '~/hooks';
 
 const AccountSettings = lazyWithRecovery(() => import('~/components/Nav/AccountSettings'));
@@ -143,7 +144,7 @@ function ExpandedPanel({
   const location = useLocation();
   const { active, setActive } = useActivePanel();
   const effectiveActive = resolveActivePanel(active, links);
-  const isInsightsRoute = location.pathname.startsWith('/insights');
+  const viewId = routeViewId(location.pathname);
 
   const toggleLabel = expanded ? 'com_nav_close_sidebar' : 'com_nav_open_sidebar';
   const toggleClick = expanded ? onCollapse : onExpand;
@@ -181,15 +182,15 @@ function ExpandedPanel({
             link={link}
             isActive={
               link.id === 'insights'
-                ? isInsightsRoute
-                : !isInsightsRoute && link.id === effectiveActive
+                ? viewId === 'insights'
+                : viewId !== 'insights' && link.id === effectiveActive
             }
             expanded={expanded ?? true}
             setActive={setActive}
             onExpand={onExpand}
             onCollapse={onCollapse}
             onNavigate={onNavigate}
-            onLeaveInsights={isInsightsRoute ? onLeaveInsights : undefined}
+            onLeaveInsights={viewId != null ? onLeaveInsights : undefined}
           />
         ))}
       </div>
