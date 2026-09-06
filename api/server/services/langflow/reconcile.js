@@ -15,6 +15,7 @@ const db = require('~/models');
 const SERVER_NAME = 'langflow';
 const MCP_DELIMITER = '_mcp_';
 const AGENT_PREFIX = 'Langflow · ';
+const AGENT_ID_PREFIX = `agent_${SERVER_NAME}_`;
 /** Orchestration provider/model for the generated agents. Env-overridable so other deployments
  *  can route Langflow agents through a different endpoint/model than this instance's defaults. */
 const PROVIDER = process.env.LANGFLOW_AGENT_PROVIDER || EModelEndpoint.openAI;
@@ -124,26 +125,52 @@ async function fetchEnabledFlows({ origin, projectId, apiKey }) {
 /** Deterministic, stable agent id per flow so concurrent reconciles collide on the unique id index
  *  instead of creating duplicate agents. */
 function flowAgentId(actionName) {
-  return `agent_${SERVER_NAME}_${String(actionName).replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  return `${AGENT_ID_PREFIX}${String(actionName).replace(/[^a-zA-Z0-9_-]/g, '')}`;
 }
 
-function buildAgentData(flow, ownerId) {
-  const toolId = `${flow.action_name}${MCP_DELIMITER}${SERVER_NAME}`;
+/** The fields a flow owns. Kept apart from the rest of the agent so a reconcile can refresh them
+ *  on an existing agent without touching the orchestration settings an admin may have tuned
+ *  (provider/model), which are seeded once at creation. */
+function flowOwnedFields(flow) {
   return {
-    id: flowAgentId(flow.action_name),
     name: `${AGENT_PREFIX}${flow.name}`,
     description: flow.description || flow.action_description || '',
     instructions:
       `You are a thin wrapper around the Langflow "${flow.name}" flow. ` +
       `For every user message, call the ${flow.action_name} tool with the user's input ` +
       `and return its result verbatim. Do not answer from your own knowledge.`,
+    tools: [`${flow.action_name}${MCP_DELIMITER}${SERVER_NAME}`],
+    mcpServerNames: [SERVER_NAME],
+  };
+}
+
+function buildAgentData(flow, ownerId) {
+  return {
+    ...flowOwnedFields(flow),
+    id: flowAgentId(flow.action_name),
     provider: PROVIDER,
     model: MODEL,
-    tools: [toolId],
-    mcpServerNames: [SERVER_NAME],
     category: 'general',
     author: ownerId,
   };
+}
+
+/** Flow-owned fields whose stored value has drifted, or null when the agent is already in sync. */
+function driftedFields(agent, flow) {
+  const desired = flowOwnedFields(flow);
+  const changes = {};
+  for (const [key, value] of Object.entries(desired)) {
+    const current = agent[key];
+    const same = Array.isArray(value)
+      ? Array.isArray(current) &&
+        current.length === value.length &&
+        value.every((entry, i) => current[i] === entry)
+      : current === value;
+    if (!same) {
+      changes[key] = value;
+    }
+  }
+  return Object.keys(changes).length ? changes : null;
 }
 
 function isDuplicateKeyError(err) {
@@ -189,23 +216,60 @@ async function doReconcile() {
   }
   const ownerId = owner._id;
 
-  const existing = await db.getAgents({ author: ownerId, name: new RegExp(`^${AGENT_PREFIX}`) });
-  const existingNames = new Set(existing.map((a) => a.name));
+  /** Keyed by the agent id, which Langflow's `action_name` keeps stable across a flow rename —
+   *  unlike `flow.name`, which is only a display value. */
+  const desired = new Map(flows.map((flow) => [flowAgentId(flow.action_name), flow]));
+  const existing = await db.getAgents({ author: ownerId, id: new RegExp(`^${AGENT_ID_PREFIX}`) });
+
+  /** First agent seen per desired id; every other row is stale — either a flow that is gone or
+   *  MCP-disabled, or a duplicate left behind by an earlier create-only reconcile. */
+  const current = new Map();
+  const stale = [];
+  for (const agent of existing) {
+    if (!desired.has(agent.id) || current.has(agent.id)) {
+      stale.push(agent);
+      continue;
+    }
+    current.set(agent.id, agent);
+  }
 
   const created = [];
-  for (const flow of flows) {
-    const name = `${AGENT_PREFIX}${flow.name}`;
-    if (existingNames.has(name)) {
+  const renamed = [];
+  for (const [id, flow] of desired) {
+    const agent = current.get(id);
+    if (!agent) {
+      try {
+        await createSharedAgent(flow, ownerId);
+        created.push(`${AGENT_PREFIX}${flow.name}`);
+      } catch (err) {
+        if (!isDuplicateKeyError(err)) {
+          logger.error(
+            `[langflow/reconcile] Failed to create agent for "${flow.name}":`,
+            err?.message,
+          );
+        }
+      }
+      continue;
+    }
+    const changes = driftedFields(agent, flow);
+    if (!changes) {
       continue;
     }
     try {
-      await createSharedAgent(flow, ownerId);
-      created.push(name);
+      await db.updateAgent({ _id: agent._id }, changes, { skipVersioning: true });
+      renamed.push(`${agent.name} → ${AGENT_PREFIX}${flow.name}`);
     } catch (err) {
-      if (isDuplicateKeyError(err)) {
-        continue;
-      }
-      logger.error(`[langflow/reconcile] Failed to create agent "${name}":`, err?.message);
+      logger.error(`[langflow/reconcile] Failed to update agent "${agent.name}":`, err?.message);
+    }
+  }
+
+  const removed = [];
+  for (const agent of stale) {
+    try {
+      await db.deleteAgent({ _id: agent._id });
+      removed.push(agent.name);
+    } catch (err) {
+      logger.error(`[langflow/reconcile] Failed to remove agent "${agent.name}":`, err?.message);
     }
   }
 
@@ -214,12 +278,23 @@ async function doReconcile() {
       `[langflow/reconcile] Published ${created.length} shared agent(s): ${created.join(', ')}`,
     );
   }
+  if (renamed.length) {
+    logger.info(`[langflow/reconcile] Synced ${renamed.length} agent(s): ${renamed.join(', ')}`);
+  }
+  if (removed.length) {
+    logger.info(
+      `[langflow/reconcile] Removed ${removed.length} stale agent(s): ${removed.join(', ')}`,
+    );
+  }
 }
 
 /**
- * Reconcile Langflow flows into shared LibreChat agents. Debounced and single-flighted so it is
+ * Reconcile Langflow flows into shared LibreChat agents: create the missing ones, refresh the
+ * flow-owned fields of the rest (a renamed flow keeps its agent instead of growing a second one),
+ * and remove agents whose flow is gone or MCP-disabled. Debounced and single-flighted so it is
  * cheap to call on every agent-list fetch. Never throws — failures are logged and swallowed so the
- * agent list is never blocked.
+ * agent list is never blocked; a fetch that comes back empty is treated as "Langflow unreachable"
+ * and skips the whole pass, so a transient outage never prunes anything.
  */
 async function reconcileLangflowAgents() {
   if (Date.now() - lastRun < DEBOUNCE_MS) {
