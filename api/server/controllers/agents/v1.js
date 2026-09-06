@@ -1660,7 +1660,7 @@ const deleteAgentHandler = async (req, res) => {
  */
 const getListAgentsHandler = async (req, res) => {
   try {
-    await reconcileLangflowAgents();
+    await reconcileLangflowAgents(req);
     const userId = req.user.id;
     const { category, search, limit = 100, cursor, promoted } = req.query;
     let requiredPermission = req.query.requiredPermission;
