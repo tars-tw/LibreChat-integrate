@@ -9,15 +9,18 @@ const {
   AccessRoleIds,
   EModelEndpoint,
 } = require('librechat-data-provider');
+const { fetchFlowAgentModels, findModelEndpoint } = require('@librechat/api');
 const { grantPermission } = require('~/server/services/PermissionService');
+const { getModelsConfig } = require('~/server/controllers/ModelController');
 const db = require('~/models');
 
 const SERVER_NAME = 'langflow';
 const MCP_DELIMITER = '_mcp_';
 const AGENT_PREFIX = 'Langflow · ';
 const AGENT_ID_PREFIX = `agent_${SERVER_NAME}_`;
-/** Orchestration provider/model for the generated agents. Env-overridable so other deployments
- *  can route Langflow agents through a different endpoint/model than this instance's defaults. */
+/** Fallback orchestration provider/model, used only for a flow whose TARS node leaves the model
+ *  blank ("let pwc_tars pick"). Env-overridable so other deployments can route Langflow agents
+ *  through a different endpoint/model than this instance's defaults. */
 const PROVIDER = process.env.LANGFLOW_AGENT_PROVIDER || EModelEndpoint.openAI;
 const MODEL = process.env.LANGFLOW_AGENT_MODEL || 'gpt-5.4-mini';
 const DEBOUNCE_MS = 8000;
@@ -128,11 +131,12 @@ function flowAgentId(actionName) {
   return `${AGENT_ID_PREFIX}${String(actionName).replace(/[^a-zA-Z0-9_-]/g, '')}`;
 }
 
-/** The fields a flow owns. Kept apart from the rest of the agent so a reconcile can refresh them
- *  on an existing agent without touching the orchestration settings an admin may have tuned
- *  (provider/model), which are seeded once at creation. */
-function flowOwnedFields(flow) {
+/** The fields a flow owns. Kept apart from the rest of the agent so a reconcile refreshes only
+ *  what the flow actually dictates. `provider`/`model` join that set only when the flow's TARS node
+ *  names a model — otherwise they stay seeded-once at creation, so an admin's own choice sticks. */
+function flowOwnedFields(flow, orchestration) {
   return {
+    ...orchestration,
     name: `${AGENT_PREFIX}${flow.name}`,
     description: flow.description || flow.action_description || '',
     instructions:
@@ -144,20 +148,20 @@ function flowOwnedFields(flow) {
   };
 }
 
-function buildAgentData(flow, ownerId) {
+function buildAgentData(flow, ownerId, orchestration) {
   return {
-    ...flowOwnedFields(flow),
-    id: flowAgentId(flow.action_name),
     provider: PROVIDER,
     model: MODEL,
+    ...flowOwnedFields(flow, orchestration),
+    id: flowAgentId(flow.action_name),
     category: 'general',
     author: ownerId,
   };
 }
 
 /** Flow-owned fields whose stored value has drifted, or null when the agent is already in sync. */
-function driftedFields(agent, flow) {
-  const desired = flowOwnedFields(flow);
+function driftedFields(agent, flow, orchestration) {
+  const desired = flowOwnedFields(flow, orchestration);
   const changes = {};
   for (const [key, value] of Object.entries(desired)) {
     const current = agent[key];
@@ -177,8 +181,8 @@ function isDuplicateKeyError(err) {
   return err?.code === 11000 || /E11000/.test(err?.message || '');
 }
 
-async function createSharedAgent(flow, ownerId) {
-  const agent = await db.createAgent(buildAgentData(flow, ownerId));
+async function createSharedAgent(flow, ownerId, orchestration) {
+  const agent = await db.createAgent(buildAgentData(flow, ownerId, orchestration));
   await grantPermission({
     principalType: PrincipalType.PUBLIC,
     principalId: null,
@@ -198,7 +202,42 @@ async function resolveOwner() {
   return db.findUser({ role: SystemRoles.ADMIN }, '_id');
 }
 
-async function doReconcile() {
+/**
+ * Maps the model a flow's TARS node names onto a `{ provider, model }` this LibreChat can actually
+ * run, so the wrapper agent orchestrates on the same model the flow does its work on instead of a
+ * hardcoded one. Returns null for a flow that names nothing, or names a model no configured
+ * endpoint serves — both leave the agent's own orchestration settings alone.
+ *
+ * The model catalogue is loaded at most once per pass and only when some flow names a model, since
+ * it reaches out to the providers. It answers "which endpoint serves this model", which does not
+ * vary by user, so resolving it from whichever request triggered the pass is safe.
+ */
+function createOrchestrationResolver(req, nodeModels) {
+  let modelsConfig = null;
+  return async (flowId) => {
+    const model = nodeModels.get(flowId);
+    if (!model || !req) {
+      return null;
+    }
+    modelsConfig =
+      modelsConfig ??
+      (await getModelsConfig(req).catch((err) => {
+        logger.warn('[langflow/reconcile] Could not load the model catalogue:', err?.message);
+        return {};
+      }));
+    const provider = findModelEndpoint(model, modelsConfig);
+    if (!provider) {
+      logger.warn(
+        `[langflow/reconcile] Flow model "${model}" is not served by any configured endpoint; ` +
+          "leaving the agent's own model in place.",
+      );
+      return null;
+    }
+    return { provider, model };
+  };
+}
+
+async function doReconcile(req) {
   const config = resolveLangflowConfig();
   if (!config) {
     return;
@@ -208,6 +247,13 @@ async function doReconcile() {
   if (!flows.length) {
     return;
   }
+
+  const nodeModels = await fetchFlowAgentModels({
+    origin: config.origin,
+    apiKey: config.apiKey,
+    flowIds: flows.map((flow) => flow.id).filter(Boolean),
+  });
+  const resolveOrchestration = createOrchestrationResolver(req, nodeModels);
 
   const owner = await resolveOwner();
   if (!owner) {
@@ -234,12 +280,13 @@ async function doReconcile() {
   }
 
   const created = [];
-  const renamed = [];
+  const synced = [];
   for (const [id, flow] of desired) {
     const agent = current.get(id);
+    const orchestration = await resolveOrchestration(flow.id);
     if (!agent) {
       try {
-        await createSharedAgent(flow, ownerId);
+        await createSharedAgent(flow, ownerId, orchestration);
         created.push(`${AGENT_PREFIX}${flow.name}`);
       } catch (err) {
         if (!isDuplicateKeyError(err)) {
@@ -251,13 +298,13 @@ async function doReconcile() {
       }
       continue;
     }
-    const changes = driftedFields(agent, flow);
+    const changes = driftedFields(agent, flow, orchestration);
     if (!changes) {
       continue;
     }
     try {
       await db.updateAgent({ _id: agent._id }, changes, { skipVersioning: true });
-      renamed.push(`${agent.name} → ${AGENT_PREFIX}${flow.name}`);
+      synced.push(`${agent.name} (${Object.keys(changes).join(', ')})`);
     } catch (err) {
       logger.error(`[langflow/reconcile] Failed to update agent "${agent.name}":`, err?.message);
     }
@@ -278,8 +325,8 @@ async function doReconcile() {
       `[langflow/reconcile] Published ${created.length} shared agent(s): ${created.join(', ')}`,
     );
   }
-  if (renamed.length) {
-    logger.info(`[langflow/reconcile] Synced ${renamed.length} agent(s): ${renamed.join(', ')}`);
+  if (synced.length) {
+    logger.info(`[langflow/reconcile] Synced ${synced.length} agent(s): ${synced.join(', ')}`);
   }
   if (removed.length) {
     logger.info(
@@ -290,20 +337,25 @@ async function doReconcile() {
 
 /**
  * Reconcile Langflow flows into shared LibreChat agents: create the missing ones, refresh the
- * flow-owned fields of the rest (a renamed flow keeps its agent instead of growing a second one),
- * and remove agents whose flow is gone or MCP-disabled. Debounced and single-flighted so it is
- * cheap to call on every agent-list fetch. Never throws — failures are logged and swallowed so the
- * agent list is never blocked; a fetch that comes back empty is treated as "Langflow unreachable"
- * and skips the whole pass, so a transient outage never prunes anything.
+ * flow-owned fields of the rest (a renamed flow keeps its agent instead of growing a second one,
+ * and an agent orchestrates on whatever model its flow's TARS node names), and remove agents whose
+ * flow is gone or MCP-disabled. Debounced and single-flighted so it is cheap to call on every
+ * agent-list fetch. Never throws — failures are logged and swallowed so the agent list is never
+ * blocked; a fetch that comes back empty is treated as "Langflow unreachable" and skips the whole
+ * pass, so a transient outage never prunes anything.
+ *
+ * @param {ServerRequest} [req] - The request that triggered the pass, used to read this instance's
+ * model catalogue. Without it a flow's declared model cannot be mapped to an endpoint and every
+ * agent keeps its own orchestration settings.
  */
-async function reconcileLangflowAgents() {
+async function reconcileLangflowAgents(req) {
   if (Date.now() - lastRun < DEBOUNCE_MS) {
     return;
   }
   if (inFlight) {
     return inFlight;
   }
-  inFlight = doReconcile()
+  inFlight = doReconcile(req)
     .catch((err) => logger.error('[langflow/reconcile] reconcile failed:', err?.message))
     .finally(() => {
       lastRun = Date.now();
