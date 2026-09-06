@@ -11,10 +11,10 @@ import {
   applyModelAwareDefaults,
 } from 'librechat-data-provider';
 import type { TConversation, TSetOption } from 'librechat-data-provider';
+import { useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
 import ParametersFields from '~/components/SidePanel/Parameters/Fields';
 import ParametersModal from '~/components/SidePanel/Parameters/Modal';
 import { useChatContext, useLiveAnnouncer } from '~/Providers';
-import { useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 import { logger } from '~/utils';
 
