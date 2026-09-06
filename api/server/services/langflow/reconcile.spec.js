@@ -11,6 +11,14 @@ jest.mock('~/server/services/PermissionService', () => ({
   grantPermission: jest.fn(async () => undefined),
 }));
 
+/** The model catalogue this instance serves; only the endpoint→models shape matters here. */
+jest.mock('~/server/controllers/ModelController', () => ({
+  getModelsConfig: jest.fn(async () => ({
+    openAI: ['gpt-5.4-mini', 'gpt-5.5'],
+    google: ['gemini-3.6-flash'],
+  })),
+}));
+
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const { createModels } = require('@librechat/data-schemas');
@@ -22,11 +30,26 @@ const { reconcileLangflowAgents } = require('./reconcile');
 const OWNER_EMAIL = 'langflow-owner@example.com';
 
 /** Shape of one entry in Langflow's `GET /api/v1/mcp/project/:id` response. */
-const flow = (name, actionName) => ({
+const flow = (name, actionName, model) => ({
+  id: `flow-${actionName}`,
   name,
   action_name: actionName,
   description: `${name} description`,
   mcp_enabled: true,
+  /** Not part of the MCP listing — the test's stand-in for what the flow's TarsTool node holds,
+   *  which the reconcile reads from `GET /api/v1/flows/:id`. */
+  model,
+});
+
+const flowDefinition = (model) => ({
+  data: {
+    nodes: [
+      { data: { type: 'ChatInput', node: { template: {} } } },
+      {
+        data: { type: 'TarsTool', node: { template: { ctx__model_name: { value: model ?? '' } } } },
+      },
+    ],
+  },
 });
 
 describe('reconcileLangflowAgents', () => {
@@ -37,14 +60,23 @@ describe('reconcileLangflowAgents', () => {
    *  back, so the clock is advanced between them rather than the debounce being reached into. */
   let clock;
 
+  /** Serves both Langflow calls the reconcile makes: the MCP listing, and the per-flow definition
+   *  it reads the TARS node's model from. */
   const respondWith = (flows) => {
-    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ tools: flows }) }));
+    global.fetch = jest.fn(async (url) => {
+      const match = String(url).match(/\/api\/v1\/flows\/(.+)$/);
+      if (match) {
+        const source = flows.find((entry) => entry.id === match[1]);
+        return { ok: true, json: async () => flowDefinition(source?.model) };
+      }
+      return { ok: true, json: async () => ({ tools: flows }) };
+    });
   };
 
   const reconcile = async (flows) => {
     respondWith(flows);
     clock += 60_000;
-    await reconcileLangflowAgents();
+    await reconcileLangflowAgents({ user: { id: 'req-user' } });
   };
 
   const agentNames = async () =>
@@ -141,15 +173,57 @@ describe('reconcileLangflowAgents', () => {
       throw new Error('ECONNREFUSED');
     });
     clock += 60_000;
-    await reconcileLangflowAgents();
+    await reconcileLangflowAgents({ user: { id: 'req-user' } });
 
     expect(await agentNames()).toEqual(['agent_langflow_tars_rag|Langflow · TARS_tool']);
   });
 
+  it("orchestrates on the model the flow's TARS node names", async () => {
+    await reconcile([flow('TARS_tool', 'tars_rag', 'gemini-3.6-flash')]);
+    const [agent] = await db.getAgents({ id: 'agent_langflow_tars_rag' });
+    expect(agent.provider).toBe('google');
+    expect(agent.model).toBe('gemini-3.6-flash');
+  });
+
+  it('follows the node when its model changes', async () => {
+    await reconcile([flow('TARS_tool', 'tars_rag', 'gemini-3.6-flash')]);
+    await reconcile([flow('TARS_tool', 'tars_rag', 'gpt-5.5')]);
+    const [agent] = await db.getAgents({ id: 'agent_langflow_tars_rag' });
+    expect(agent.provider).toBe('openAI');
+    expect(agent.model).toBe('gpt-5.5');
+  });
+
+  it('falls back to the configured default when the node names no model', async () => {
+    await reconcile([flow('TARS_tool', 'tars_rag')]);
+    const [agent] = await db.getAgents({ id: 'agent_langflow_tars_rag' });
+    expect(agent.provider).toBe('openAI');
+    expect(agent.model).toBe('gpt-5.4-mini');
+  });
+
+  it('leaves a hand-tuned model alone while the node names none', async () => {
+    await reconcile([flow('TARS_tool', 'tars_rag')]);
+    await db.updateAgent(
+      { id: 'agent_langflow_tars_rag' },
+      { provider: 'google', model: 'gemini-3.6-flash' },
+      { skipVersioning: true },
+    );
+
+    await reconcile([flow('TARS_tool', 'tars_rag')]);
+
+    const [agent] = await db.getAgents({ id: 'agent_langflow_tars_rag' });
+    expect(agent.model).toBe('gemini-3.6-flash');
+  });
+
+  it('keeps the existing model when the node names one no endpoint serves', async () => {
+    await reconcile([flow('TARS_tool', 'tars_rag', 'some-unconfigured-model')]);
+    const [agent] = await db.getAgents({ id: 'agent_langflow_tars_rag' });
+    expect(agent.model).toBe('gpt-5.4-mini');
+  });
+
   it('is a no-op on a second identical pass', async () => {
-    await reconcile([flow('TARS_tool', 'tars_rag')]);
+    await reconcile([flow('TARS_tool', 'tars_rag', 'gemini-3.6-flash')]);
     const [first] = await db.getAgents({ id: 'agent_langflow_tars_rag' });
-    await reconcile([flow('TARS_tool', 'tars_rag')]);
+    await reconcile([flow('TARS_tool', 'tars_rag', 'gemini-3.6-flash')]);
     const [second] = await db.getAgents({ id: 'agent_langflow_tars_rag' });
     expect(second.updatedAt.getTime()).toBe(first.updatedAt.getTime());
   });
