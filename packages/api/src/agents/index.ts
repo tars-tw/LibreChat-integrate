@@ -32,6 +32,7 @@ export * from './lazyHistory';
 export * from './memory';
 export * from './management';
 export * from './reads';
+export * from './relevance';
 export * from './updates';
 export * from './mcpIdentity';
 export * from './orphans';

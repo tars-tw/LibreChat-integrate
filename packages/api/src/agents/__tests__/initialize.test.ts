@@ -3177,3 +3177,99 @@ describe('initializeAgent — run-scoped MCP tool definitions', () => {
     expect(result.accessibleMcpServerNames).toEqual(['db_only_server', rawServerName]);
   });
 });
+
+describe('initializeAgent — MCP tool cap by relevance', () => {
+  const mcpDefinition = (tool: string, description: string) => ({
+    name: `${tool}${Constants.mcp_delimiter}tars_jira`,
+    description,
+    parameters: { type: 'object', properties: {} },
+  });
+  const nativeDefinition = {
+    name: Tools.web_search,
+    description: 'Search the web',
+    parameters: { type: 'object', properties: {} },
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.MCP_MAX_TOOLS = '2';
+  });
+
+  afterEach(() => {
+    delete process.env.MCP_MAX_TOOLS;
+  });
+
+  it('keeps the MCP tools most relevant to the user message and every native tool', async () => {
+    const definitions = [
+      nativeDefinition,
+      mcpDefinition('list_projects', 'List every project'),
+      mcpDefinition('create_issue', 'Create an issue in a project'),
+      mcpDefinition('search_issues', 'Search issues by text'),
+      mcpDefinition('get_issue', 'Get one issue'),
+    ];
+    const toolRegistry = new Map(definitions.map((definition) => [definition.name, definition]));
+    const { agent, req, res, loadTools, db } = createMocks({
+      loadedToolDefinitions: definitions,
+    });
+    loadTools.mockResolvedValue({
+      tools: [],
+      toolContextMap: {},
+      dynamicToolContextMap: {},
+      userMCPAuthMap: undefined,
+      toolRegistry,
+      toolDefinitions: definitions,
+      hasDeferredTools: false,
+    });
+    req.body = { text: 'search the issues about login and create an issue' };
+    agent.tools = definitions.map((definition) => definition.name);
+
+    const result = await initializeAgent(
+      {
+        req,
+        res,
+        agent,
+        loadTools,
+        endpointOption: { endpoint: EModelEndpoint.agents },
+        allowedProviders: new Set([Providers.OPENAI]),
+        isInitialAgent: true,
+      },
+      db,
+    );
+
+    const boundNames = result.toolDefinitions?.map((definition) => definition.name);
+    expect(boundNames).toEqual([
+      Tools.web_search,
+      `create_issue${Constants.mcp_delimiter}tars_jira`,
+      `search_issues${Constants.mcp_delimiter}tars_jira`,
+    ]);
+    expect([...(result.toolRegistry?.keys() ?? [])]).toEqual(boundNames);
+  });
+
+  it('leaves the definitions alone when the MCP tools fit the cap', async () => {
+    const definitions = [
+      nativeDefinition,
+      mcpDefinition('list_projects', 'List every project'),
+      mcpDefinition('get_issue', 'Get one issue'),
+    ];
+    const { agent, req, res, loadTools, db } = createMocks({
+      loadedToolDefinitions: definitions,
+    });
+    req.body = { text: 'anything' };
+    agent.tools = definitions.map((definition) => definition.name);
+
+    const result = await initializeAgent(
+      {
+        req,
+        res,
+        agent,
+        loadTools,
+        endpointOption: { endpoint: EModelEndpoint.agents },
+        allowedProviders: new Set([Providers.OPENAI]),
+        isInitialAgent: true,
+      },
+      db,
+    );
+
+    expect(result.toolDefinitions).toBe(definitions);
+  });
+});
