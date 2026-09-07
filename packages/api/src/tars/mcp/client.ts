@@ -20,13 +20,6 @@ export const PROXIED_SERVER_TYPES: ReadonlySet<string> = new Set([
 const TOOLS_CACHE_TTL_MS = 30_000;
 const DEFAULT_EXECUTE_TIMEOUT_MS = 60_000;
 const MAX_PREFIX_LENGTH = 24;
-/**
- * Providers cap tools per request (OpenAI: 128 across ALL sources). The gateway
- * keeps headroom for LibreChat's other tools/servers; narrow the pwc_tars
- * domain whitelist (`mcp_tool_ids`) or the server's `tool_config` filters
- * rather than raising `TARS_MCP_MAX_TOOLS`.
- */
-const DEFAULT_MAX_TOOLS = 100;
 
 /** Uniform pwc_tars `/api/mcp` response envelope. */
 interface TarsMcpEnvelope<T> {
@@ -90,11 +83,6 @@ export function invalidateTarsMcpToolsCache(): void {
 function executeTimeoutMs(): number {
   const raw = Number(process.env.TARS_MCP_EXECUTE_TIMEOUT_MS);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_EXECUTE_TIMEOUT_MS;
-}
-
-function maxTools(): number {
-  const raw = Number(process.env.TARS_MCP_MAX_TOOLS);
-  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_MAX_TOOLS;
 }
 
 /** pwc_tars `/api/mcp` fetch that unwraps the `{success, message, data}` envelope. */
@@ -190,25 +178,6 @@ function toToolEntry(name: string, row: TarsAvailableToolRow): TarsMcpToolEntry 
   };
 }
 
-function enforceToolLimit(byName: Map<string, TarsMcpToolEntry>, scope: string): void {
-  const limit = maxTools();
-  if (byName.size <= limit) {
-    return;
-  }
-  logger.warn(
-    `[tars-mcp] pwc_tars exposes ${byName.size} tools for ${scope}; ` +
-      `truncating to ${limit}. Narrow the domain tool whitelist (mcp_tool_ids) or the ` +
-      `server's tool_config filters in pwc_tars instead of relying on truncation.`,
-  );
-  let index = 0;
-  for (const name of byName.keys()) {
-    index += 1;
-    if (index > limit) {
-      byName.delete(name);
-    }
-  }
-}
-
 function toScopedTools(byName: Map<string, TarsMcpToolEntry>): ScopedTools {
   return { entries: [...byName.values()], byName };
 }
@@ -251,10 +220,11 @@ async function loadTools(tarsUserId: string): Promise<ToolsCacheEntry> {
     }
   }
 
-  enforceToolLimit(aggregateByName, `user ${tarsUserId}`);
+  /** Every tool pwc_tars grants is listed; the per-turn cap lives in
+   *  `agents/relevance.ts`, where the user message is known and the least
+   *  relevant tools are the ones dropped. */
   const byServer = new Map<string, ScopedTools>();
   for (const [serverId, byName] of serverMaps) {
-    enforceToolLimit(byName, `user ${tarsUserId} server ${serverId}`);
     byServer.set(serverId, toScopedTools(byName));
   }
 
