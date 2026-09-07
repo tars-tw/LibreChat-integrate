@@ -104,14 +104,15 @@ import {
 import { extractAgentContent, extractSkillContent } from '../protection/adapters/submissions';
 import { createConfiguredContentInspector, inspectContent } from '../protection/runtime';
 import { assertAgentAttachmentLimits, isModelBoundAttachmentFile } from './attachments';
-import { resolveAttachedWorkspaceCommandTimeoutMax } from '~/code/command';
 import { primeTarsMemory, buildTarsMemoryContext } from '~/tars/memory/prime';
+import { resolveAttachedWorkspaceCommandTimeoutMax } from '~/code/command';
 import { assertModelBoundContent } from '../middleware/modelBoundContent';
 import { registerMemoryTools, memoryToolUsageGuard } from './memory';
 import { applyIntentLabels, sanitizeIntentLabels } from './intent';
 import { ContentFilterError } from '../middleware/contentFilter';
 import { createRequestAgentExecutionContext } from './runtime';
 import { filterFilesByEndpointRuntimeConfig } from '~/files';
+import { selectRelevantTools } from '~/agents/relevance';
 import { hasActiveFileFieldPolicy } from '~/protection';
 import { PARTIAL_RESOLVED_CONVERSATION } from './guard';
 import { applyBackgroundToolCalls } from './background';
@@ -1656,6 +1657,24 @@ export async function initializeAgent(
       `[allowedTools] loadTools returned no result with ${extraAllowedToolNames.length} skill-added extra(s); retrying without them.`,
     );
     loadToolsResult = await callLoadTools(baseToolNames);
+  }
+
+  /** Cap the MCP tools bound this turn by relevance to the user message
+   *  (pwc_tars `select_relevant_tools`), before anything reads the definitions
+   *  or the registry, so both stay consistent and the provider's per-request
+   *  tool limit is never hit by a large `tars_*` / langflow catalog. */
+  if (loadToolsResult?.toolDefinitions?.length) {
+    const { toolDefinitions: relevantDefinitions, toolRegistry: relevantRegistry } =
+      selectRelevantTools({
+        query: runtime.requestBody.text,
+        toolDefinitions: loadToolsResult.toolDefinitions,
+        toolRegistry: loadToolsResult.toolRegistry,
+      });
+    loadToolsResult = {
+      ...loadToolsResult,
+      toolDefinitions: relevantDefinitions,
+      toolRegistry: relevantRegistry,
+    };
   }
 
   const {

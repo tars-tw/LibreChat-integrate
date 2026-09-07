@@ -12,6 +12,8 @@ import type { Request } from 'express';
  */
 export type RequestBody = {
   messageId?: string;
+  /** The user message this turn answers (chat endpoints only; OpenAI-compatible routes carry `messages`). */
+  text?: string;
   fileTokenLimit?: number;
   conversationId?: string;
   parentMessageId?: string;
