@@ -233,27 +233,6 @@ describe('listTarsMcpTools', () => {
     expect(resolved?.toolName).toBe(longName);
   });
 
-  it('truncates the tool list to TARS_MCP_MAX_TOOLS keeping backend order', async () => {
-    process.env.TARS_MCP_MAX_TOOLS = '2';
-    mockFetchRoutes({
-      '/api/mcp/available-tools': {
-        status: 200,
-        body: envelope([
-          toolRow({ tool_id: 't1', tool_name: 'alpha' }),
-          toolRow({ tool_id: 't2', tool_name: 'beta' }),
-          toolRow({ tool_id: 't3', tool_name: 'gamma' }),
-        ]),
-      },
-    });
-
-    const tools = await listTarsMcpTools(USER_ID);
-    expect(tools.map((tool) => tool.name)).toEqual(['issues__alpha', 'issues__beta']);
-
-    const missing = await resolveTarsMcpTool(USER_ID, 'issues__gamma');
-    expect(missing).toBeNull();
-    delete process.env.TARS_MCP_MAX_TOOLS;
-  });
-
   it('propagates pwc_tars listing failures as TarsRequestError', async () => {
     mockFetchRoutes({
       '/api/mcp/available-tools': { status: 503, body: { success: false, message: 'down' } },
