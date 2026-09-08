@@ -97,12 +97,13 @@ export function GroupSelect({
 /** Enabled / disabled pill used in the table and the details dialog. */
 export function StatusBadge({ active }: { active: boolean }) {
   const localize = useLocalize();
+
   return (
     <span
       className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${
         active
           ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-          : 'bg-surface-tertiary text-text-secondary'
+          : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
       }`}
     >
       {active ? localize('com_ui_tars_users_enabled') : localize('com_ui_tars_users_disabled')}
