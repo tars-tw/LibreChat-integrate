@@ -410,40 +410,43 @@ export default function UserManager() {
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-end">
                         <button
                           type="button"
                           aria-label={localize('com_ui_tars_users_details')}
                           title={localize('com_ui_tars_users_details')}
                           onClick={() => setViewing(user)}
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                          className="rounded p-1.5 text-[#E9B01F] hover:text-[#E9B01F]"
                         >
                           <Info className="icon-sm" />
                         </button>
+
                         <button
                           type="button"
                           aria-label={localize('com_ui_edit')}
                           title={localize('com_ui_edit')}
                           onClick={() => setEditing(user)}
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                          className="rounded p-1.5 text-text-secondary hover:text-text-primary"
                         >
                           <Pencil className="icon-sm" />
                         </button>
+
                         <button
                           type="button"
                           aria-label={localize('com_ui_tars_users_reset_password')}
                           title={localize('com_ui_tars_users_reset_password')}
                           onClick={() => setResetting(user)}
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                          className="rounded p-1.5 text-[#0DC3E7] hover:text-[#0DC3E7]"
                         >
                           <KeyRound className="icon-sm" />
                         </button>
+
                         <button
                           type="button"
                           aria-label={localize('com_ui_delete')}
                           title={localize('com_ui_delete')}
                           onClick={() => setDeleting(user)}
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                          className="rounded p-1.5 text-red-500 hover:text-red-500"
                         >
                           <Trash2 className="icon-sm" />
                         </button>
