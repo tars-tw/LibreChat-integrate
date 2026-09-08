@@ -236,9 +236,10 @@ export default function GroupManager() {
                         onClick={() => setMembersId(group.id)}
                         aria-label={localize('com_ui_tars_groups_members')}
                         title={localize('com_ui_tars_groups_members')}
-                        className="inline-flex items-center gap-1 rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary hover:text-text-primary"
+                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-text-secondary hover:text-text-primary"
+                        style={{ backgroundColor: '#E8F0FE' }}
                       >
-                        <Users className="icon-xs" />
+                        <Users className="icon-sm" />
                         {memberCount(group)}
                       </button>
                     </td>
@@ -249,7 +250,7 @@ export default function GroupManager() {
                           aria-label={localize('com_ui_tars_users_details')}
                           title={localize('com_ui_tars_users_details')}
                           onClick={() => setViewingId(group.id)}
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                          className="rounded p-1.5 text-[#E9B01F] hover:bg-surface-tertiary hover:text-[#E9B01F]"
                         >
                           <Info className="icon-sm" />
                         </button>
@@ -267,7 +268,7 @@ export default function GroupManager() {
                           aria-label={localize('com_ui_delete')}
                           title={localize('com_ui_delete')}
                           onClick={() => setDeleting(group)}
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                          className="rounded p-1.5 text-red-500 hover:bg-surface-tertiary hover:text-red-500"
                         >
                           <Trash2 className="icon-sm" />
                         </button>

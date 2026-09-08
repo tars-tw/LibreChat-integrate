@@ -34,8 +34,8 @@ export default function WebsiteTable({
         <table className="w-full min-w-[64rem] border-collapse text-sm">
           <thead className="bg-surface-secondary">
             <tr className="text-left text-text-secondary">
-              <th className="w-[20%] px-3 py-2 font-medium">{localize('com_ui_tars_web_name')}</th>
-              <th className="w-[26%] px-3 py-2 font-medium">{localize('com_ui_tars_web_url')}</th>
+              <th className="w-[18%] px-3 py-2 font-medium">{localize('com_ui_tars_web_name')}</th>
+              <th className="w-[28%] px-3 py-2 font-medium">{localize('com_ui_tars_web_url')}</th>
               <th className="w-[18%] px-3 py-2 font-medium">
                 {localize('com_ui_tars_web_knowledge_base')}
               </th>
@@ -102,9 +102,11 @@ export default function WebsiteTable({
                   </td>
                   <td className="whitespace-nowrap px-3 py-1.5">
                     <span
-                      className={
-                        website.status === 0 ? 'text-text-tertiary' : 'text-text-secondary'
-                      }
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        website.status === 0
+                          ? 'bg-pwc-danger/10 text-pwc-danger'
+                          : 'bg-[#DEF2ED] text-[#0A4F53]'
+                      }`}
                     >
                       {localize(
                         website.status === 0
@@ -118,27 +120,28 @@ export default function WebsiteTable({
                       <Button
                         variant="ghost"
                         size="icon-xs"
-                        /** Chunks live under the knowledge base; an unbound row has none. */
                         disabled={!bound}
                         onClick={() => onChunks(website)}
                         aria-label={localize('com_ui_tars_web_chunks')}
                         title={localize(
                           bound ? 'com_ui_tars_web_chunks' : 'com_ui_tars_web_chunks_unavailable',
                         )}
-                        className="text-text-secondary"
+                        className="text-[#0DC3E7] hover:text-[#0DC3E7]"
                       >
                         <LayoutList className="size-4" aria-hidden />
                       </Button>
+
                       <Button
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => onDetails(website)}
                         aria-label={localize('com_ui_tars_db_details')}
                         title={localize('com_ui_tars_db_details')}
-                        className="text-text-secondary"
+                        className="text-[#E9B01F] hover:text-[#E9B01F]"
                       >
                         <Info className="size-4" aria-hidden />
                       </Button>
+
                       <Button
                         variant="ghost"
                         size="icon-xs"
@@ -149,13 +152,14 @@ export default function WebsiteTable({
                       >
                         <Pencil className="size-4" aria-hidden />
                       </Button>
+
                       <Button
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => onDelete(website)}
                         aria-label={localize('com_ui_delete')}
                         title={localize('com_ui_delete')}
-                        className="text-pwc-danger"
+                        className="text-pwc-danger hover:text-pwc-danger"
                       >
                         <Trash2 className="size-4" aria-hidden />
                       </Button>
