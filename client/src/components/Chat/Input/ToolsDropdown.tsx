@@ -2,8 +2,16 @@ import React, { useState, useMemo, useCallback } from 'react';
 import * as Ariakit from '@ariakit/react';
 import { TooltipAnchor, DropdownPopup, PinIcon, VectorIcon } from '@librechat/client';
 import {
+  AuthType,
+  Permissions,
+  ArtifactModes,
+  PermissionTypes,
+  defaultAgentCapabilities,
+} from 'librechat-data-provider';
+import {
   Brain,
   Globe,
+  Puzzle,
   Database,
   BarChart3,
   ScrollText,
@@ -11,13 +19,6 @@ import {
   Settings2,
   TerminalSquareIcon,
 } from 'lucide-react';
-import {
-  AuthType,
-  Permissions,
-  ArtifactModes,
-  PermissionTypes,
-  defaultAgentCapabilities,
-} from 'librechat-data-provider';
 import type { MenuItemProps } from '~/common';
 import {
   useLocalize,
@@ -108,6 +109,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     mcpServerManager,
     codeInterpreter,
     searchApiKeyForm,
+    tarsPlugins,
   } = context ?? {};
 
   const { setIsDialogOpen: setIsSearchDialogOpen, menuTriggerRef: searchMenuTriggerRef } =
@@ -345,6 +347,42 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
         </div>
       ),
     });
+  }
+
+  /** pwc_tars plugin tools the active brain offers — one row each, like the built-in agents. */
+  if (startupConfig?.tarsAuth === true && tarsPlugins != null) {
+    for (const pluginTool of tarsPlugins.tools) {
+      const pinned = tarsPlugins.isPinned(pluginTool.name);
+      dropdownItems.push({
+        onClick: () => tarsPlugins.toggle(pluginTool.name),
+        hideOnClick: false,
+        render: (props) => (
+          <div {...props} data-testid={`tools-menu-tars-plugin-${pluginTool.name}`}>
+            <div className="flex items-center gap-2" title={pluginTool.description}>
+              <Puzzle className="icon-md" aria-hidden="true" />
+              <span>{pluginTool.display_name}</span>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                tarsPlugins.setPinned(pluginTool.name, !pinned);
+              }}
+              className={cn(
+                'rounded p-1 transition-all duration-200',
+                'hover:bg-surface-secondary hover:shadow-sm',
+                !pinned && 'text-text-secondary hover:text-text-primary',
+              )}
+              aria-label={pinned ? localize('com_ui_unpin') : localize('com_ui_pin')}
+            >
+              <div className="h-4 w-4">
+                <PinIcon unpin={pinned} />
+              </div>
+            </button>
+          </div>
+        ),
+      });
+    }
   }
 
   if (canUseSkills && skillsEnabled) {

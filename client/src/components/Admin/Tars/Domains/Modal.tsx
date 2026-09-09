@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { Puzzle, RefreshCw } from 'lucide-react';
+import { parseTarsPluginFunctions } from 'librechat-data-provider';
 import {
   Input,
   Label,
@@ -12,21 +14,31 @@ import {
 import type {
   TTarsRole,
   TTarsDomain,
+  TTarsPluginTool,
   TTarsDomainInput,
   TTarsKnowledgeBase,
+  TTarsPluginFunctionState,
 } from 'librechat-data-provider';
+import {
+  useTarsPluginToolsQuery,
+  useCreateTarsDomainMutation,
+  useUpdateTarsDomainMutation,
+  useReloadTarsPluginToolsMutation,
+} from '~/data-provider';
 import {
   domainRoleIds,
   isValidHttpUrl,
   domainKnowledgeBaseIds,
   disabledDomainFunctions,
 } from './helpers';
-import { useCreateTarsDomainMutation, useUpdateTarsDomainMutation } from '~/data-provider';
 import { idsToCsv } from '../Users/helpers';
 import { useLocalize } from '~/hooks';
+import { cn } from '~/utils';
 
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 20;
+
+type PluginStates = Record<string, TTarsPluginFunctionState>;
 
 type FormState = {
   name: string;
@@ -37,7 +49,17 @@ type FormState = {
   kbIds: Set<string>;
   roleIds: Set<string>;
   promptInstruction: string;
+  /** Per-plugin switches, keyed by plugin name (pwc_tars `plugin:<name>`). */
+  pluginStates: PluginStates;
 };
+
+const toPluginStates = (domain: TTarsDomain | undefined): PluginStates =>
+  Object.fromEntries(
+    parseTarsPluginFunctions(domain?.domain_functions).map((entry) => [
+      entry.name,
+      { enabled: entry.enabled, default_value: entry.default_value },
+    ]),
+  );
 
 const toFormState = (domain: TTarsDomain | undefined, roles: TTarsRole[]): FormState => ({
   name: domain?.name ?? '',
@@ -48,7 +70,122 @@ const toFormState = (domain: TTarsDomain | undefined, roles: TTarsRole[]): FormS
   kbIds: new Set(domain ? domainKnowledgeBaseIds(domain) : []),
   roleIds: new Set(domain ? domainRoleIds(domain, roles) : []),
   promptInstruction: domain?.prompt_instruction ?? '',
+  pluginStates: toPluginStates(domain),
 });
+
+const OFF: TTarsPluginFunctionState = { enabled: false, default_value: false };
+
+/**
+ * The plugin-tool switches of the brain editor: one row per scanned plugin with
+ * the same two switches pwc_tars' editor shows (是否顯示 / 預設開啟). A plugin that
+ * failed pwc_tars' conformance check is listed but cannot be switched on.
+ */
+function PluginToolRows({
+  tools,
+  states,
+  isLoading,
+  isReloading,
+  pluginDirs,
+  onReload,
+  onChange,
+}: {
+  tools: TTarsPluginTool[];
+  states: PluginStates;
+  isLoading: boolean;
+  isReloading: boolean;
+  pluginDirs: string[];
+  onReload: () => void;
+  onChange: (name: string, patch: Partial<TTarsPluginFunctionState>) => void;
+}) {
+  const localize = useLocalize();
+
+  const renderPluginRows = () => {
+    if (tools.length === 0) {
+      return (
+        <p className="text-sm text-text-secondary">
+          {localize('com_ui_tars_plugin_none')}
+          {pluginDirs.length > 0 && (
+            <span className="block text-xs">
+              {localize('com_ui_tars_plugin_dirs')}: {pluginDirs.join(', ')}
+            </span>
+          )}
+        </p>
+      );
+    }
+    return (
+      <div className="rounded-lg border border-border-light">
+        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 border-b border-border-light px-3 py-2 text-xs text-text-secondary">
+          <span />
+          <span>{localize('com_ui_tars_plugin_visible')}</span>
+          <span>{localize('com_ui_tars_plugin_default_on')}</span>
+        </div>
+        {tools.map((tool) => {
+          const state = states[tool.name] ?? OFF;
+          const usable = tool.ok;
+          return (
+            <div
+              key={tool.name}
+              className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 px-3 py-2 text-sm"
+            >
+              <div className="flex min-w-0 items-center gap-2" title={tool.description}>
+                <Puzzle className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
+                <span className="truncate text-text-primary">{tool.display_name}</span>
+                {!usable && (
+                  <span className="text-xs text-text-warning" title={tool.problems.join('\n')}>
+                    {localize('com_ui_tars_plugin_invalid')}
+                  </span>
+                )}
+              </div>
+              <Switch
+                aria-label={`${tool.display_name} ${localize('com_ui_tars_plugin_visible')}`}
+                checked={usable && state.enabled}
+                disabled={!usable}
+                onCheckedChange={(checked) =>
+                  onChange(tool.name, {
+                    enabled: checked,
+                    default_value: checked ? state.default_value : false,
+                  })
+                }
+              />
+              <Switch
+                aria-label={`${tool.display_name} ${localize('com_ui_tars_plugin_default_on')}`}
+                checked={usable && state.enabled && state.default_value}
+                disabled={!usable || !state.enabled}
+                onCheckedChange={(checked) => onChange(tool.name, { default_value: checked })}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <Label>{localize('com_ui_tars_plugin_tools')}</Label>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onReload}
+          disabled={isReloading}
+          aria-label={localize('com_ui_tars_plugin_reload')}
+        >
+          <RefreshCw
+            className={cn('mr-1 h-4 w-4', isReloading && 'animate-spin')}
+            aria-hidden="true"
+          />
+          {localize('com_ui_tars_plugin_reload')}
+        </Button>
+      </div>
+      <p className="mb-2 text-xs text-text-secondary">
+        {localize('com_ui_tars_plugin_tools_hint')}
+      </p>
+      {isLoading ? <Spinner /> : renderPluginRows()}
+    </div>
+  );
+}
 
 function CheckboxList({
   items,
@@ -131,6 +268,21 @@ export default function DomainModal({
   });
   const isSaving = createMutation.isLoading || updateMutation.isLoading;
 
+  const pluginToolsQuery = useTarsPluginToolsQuery({ enabled: open });
+  const pluginTools = pluginToolsQuery.data?.plugin_tools;
+  const reloadPlugins = useReloadTarsPluginToolsMutation({
+    onError: () =>
+      showToast({ message: localize('com_ui_tars_plugin_reload_failed'), status: 'error' }),
+  });
+  const setPluginState = (name: string, patch: Partial<TTarsPluginFunctionState>) =>
+    setForm((prev) => ({
+      ...prev,
+      pluginStates: {
+        ...prev.pluginStates,
+        [name]: { ...(prev.pluginStates[name] ?? OFF), ...patch },
+      },
+    }));
+
   const toggleIn = (key: 'kbIds' | 'roleIds') => (id: string) =>
     setForm((prev) => {
       const next = new Set(prev[key]);
@@ -174,6 +326,9 @@ export default function DomainModal({
     };
     if (form.iframeEnabled) {
       payload.domain_functions = disabledDomainFunctions(domain?.domain_functions);
+    } else if (pluginTools != null) {
+      /** Merged server-side into the stored block, so pwc_tars' own feature keys survive. */
+      payload.plugin_functions = form.pluginStates;
     }
 
     if (isEdit) {
@@ -296,6 +451,16 @@ export default function DomainModal({
                     {localize('com_ui_tars_domain_prompt_hint')}
                   </p>
                 </div>
+
+                <PluginToolRows
+                  tools={pluginTools ?? []}
+                  states={form.pluginStates}
+                  isLoading={pluginToolsQuery.isLoading}
+                  isReloading={reloadPlugins.isLoading}
+                  pluginDirs={pluginToolsQuery.data?.plugin_dirs ?? []}
+                  onReload={() => reloadPlugins.mutate()}
+                  onChange={setPluginState}
+                />
               </>
             )}
           </div>
