@@ -7,7 +7,13 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
-import { deleteTarsDomain, fetchTarsDomainById, fetchTarsDomainsForUser } from './domains';
+import {
+  createTarsDomain,
+  deleteTarsDomain,
+  updateTarsDomain,
+  fetchTarsDomainById,
+  fetchTarsDomainsForUser,
+} from './domains';
 import type { TarsDomain } from './domains';
 
 const BASE_URL = 'http://tars.test';
@@ -114,5 +120,124 @@ describe('deleteTarsDomain', () => {
       `${BASE_URL}/api/domain_settings/delete_domain/7?operator_id=admin`,
       expect.objectContaining({ method: 'DELETE' }),
     );
+  });
+});
+
+describe('plugin_functions merge on create / update', () => {
+  const stored = JSON.stringify({
+    web_search: { enabled: true, default_value: true },
+    'plugin:old_tool': { kind: 'plugin', name: 'old_tool', enabled: true, default_value: true },
+  });
+  const listing = {
+    plugin_tools: [
+      { name: 'text_stats', display_name: 'Text Stats', description: 'Count words.', ok: true },
+      { name: 'broken', display_name: 'Broken', description: '', ok: false, problems: ['x'] },
+    ],
+    plugin_dirs: [],
+    errors: [],
+  };
+
+  const mockBackend = () => {
+    const bodies: Record<string, unknown[]> = { create: [], update: [] };
+    const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      if (url.endsWith('/api/domain_settings/plugin_tools')) {
+        return buildResponse(200, listing);
+      }
+      if (url.includes('/api/domain_settings/get_domains?id=7')) {
+        return buildResponse(200, {
+          sys_domains: [{ ...domain(7, 'Finance'), domain_functions: stored }],
+        });
+      }
+      if (url.endsWith('/api/domain_settings/create_domain')) {
+        bodies.create.push(body);
+        return buildResponse(200, {
+          domain: { ...domain(9, body.name), domain_functions: stored },
+        });
+      }
+      if (url.includes('/api/domain_settings/update_domain/')) {
+        bodies.update.push(body);
+        return buildResponse(200, {
+          domain: { ...domain(7, body.name), domain_functions: body.domain_functions },
+        });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+    return { fetchMock, bodies };
+  };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('update merges the switches into the stored block and drops stale plugin keys', async () => {
+    const { bodies } = mockBackend();
+    await updateTarsDomain(
+      'admin',
+      7,
+      {
+        name: 'Finance',
+        plugin_functions: {
+          text_stats: { enabled: true, default_value: false },
+          broken: { enabled: true, default_value: true },
+        },
+      },
+      BASE_URL,
+    );
+    const sent = bodies.update[0] as { domain_functions: string; plugin_functions?: unknown };
+    expect(sent.plugin_functions).toBeUndefined();
+    expect(JSON.parse(sent.domain_functions)).toEqual({
+      web_search: { enabled: true, default_value: true },
+      'plugin:text_stats': {
+        kind: 'plugin',
+        name: 'text_stats',
+        enabled: true,
+        default_value: false,
+        display_name: 'Text Stats',
+        description: 'Count words.',
+      },
+    });
+  });
+
+  it('update leaves an explicit domain_functions alone', async () => {
+    const { bodies, fetchMock } = mockBackend();
+    await updateTarsDomain(
+      'admin',
+      7,
+      {
+        name: 'Finance',
+        domain_functions: '{}',
+        plugin_functions: { text_stats: { enabled: true, default_value: true } },
+      },
+      BASE_URL,
+    );
+    expect((bodies.update[0] as { domain_functions: string }).domain_functions).toBe('{}');
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/plugin_tools'))).toBe(false);
+  });
+
+  it('create lets pwc_tars default the block, then merges the switches with a follow-up update', async () => {
+    const { bodies } = mockBackend();
+    const result = await createTarsDomain(
+      'admin',
+      {
+        name: 'New brain',
+        plugin_functions: { text_stats: { enabled: true, default_value: true } },
+      },
+      BASE_URL,
+    );
+    expect(bodies.create[0]).toEqual({ name: 'New brain', created_by: 'admin' });
+    expect(bodies.update).toHaveLength(1);
+    const merged = JSON.parse((bodies.update[0] as { domain_functions: string }).domain_functions);
+    expect(merged['plugin:text_stats'].enabled).toBe(true);
+    expect(merged.web_search).toEqual({ enabled: true, default_value: true });
+    expect(result.id).toBe(7);
+  });
+
+  it('create without switches is a single call', async () => {
+    const { bodies } = mockBackend();
+    await createTarsDomain('admin', { name: 'Plain' }, BASE_URL);
+    expect(bodies.create).toHaveLength(1);
+    expect(bodies.update).toHaveLength(0);
   });
 });
