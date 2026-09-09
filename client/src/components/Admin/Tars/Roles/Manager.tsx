@@ -284,7 +284,7 @@ export default function RoleManager() {
                             aria-label={localize('com_ui_tars_users_details')}
                             title={localize('com_ui_tars_users_details')}
                             onClick={() => setViewingId(String(role.id))}
-                            className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                            className="rounded p-1.5 text-pwc-info hover:bg-surface-tertiary hover:text-pwc-info"
                           >
                             <Info className="icon-sm" />
                           </button>
@@ -302,7 +302,7 @@ export default function RoleManager() {
                             aria-label={localize('com_ui_delete')}
                             title={localize('com_ui_delete')}
                             onClick={() => setDeleting(role)}
-                            className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                            className="rounded p-1.5 text-red-500 hover:bg-surface-tertiary hover:text-red-500"
                           >
                             <Trash2 className="icon-sm" />
                           </button>

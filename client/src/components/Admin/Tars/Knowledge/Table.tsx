@@ -55,7 +55,7 @@ export default function KnowledgeTable({
                 />
               </th>
               <th className="w-[18%] px-3 py-2 font-medium">{localize('com_ui_tars_kb_name')}</th>
-              <th className="w-[26%] px-3 py-2 font-medium">{localize('com_ui_description')}</th>
+              <th className="w-[24%] px-3 py-2 font-medium">{localize('com_ui_description')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_llm_model')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_max_retrieve')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_datasets')}</th>
@@ -106,7 +106,7 @@ export default function KnowledgeTable({
                       onClick={() => onManagePrompts(kb)}
                       aria-label={localize('com_ui_tars_kb_prompts')}
                       title={localize('com_ui_tars_kb_prompts')}
-                      className="text-brand-primary"
+                      className="text-pwc-info hover:bg-surface-tertiary hover:text-pwc-info"
                     >
                       <BookText className="size-4" aria-hidden />
                     </Button>
@@ -126,7 +126,7 @@ export default function KnowledgeTable({
                       onClick={() => onDelete(kb)}
                       aria-label={localize('com_ui_delete')}
                       title={localize('com_ui_delete')}
-                      className="text-pwc-danger"
+                      className="text-pwc-danger hover:text-pwc-danger"
                     >
                       <Trash2 className="size-4" aria-hidden />
                     </Button>

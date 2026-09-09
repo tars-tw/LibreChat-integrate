@@ -4,6 +4,7 @@ import type { TTarsDatasetDatabase } from 'librechat-data-provider';
 import Pagination, { usePagination } from '../Knowledge/Pagination';
 import KnowledgeBaseChips from '../Sources/KnowledgeBaseChips';
 import { databaseIcon, knowledgeBaseNames } from './helpers';
+import { StatusBadge } from '../Users/Fields';
 import { useLocalize } from '~/hooks';
 
 /** The application-database list, with the knowledge bases each is granted to. */
@@ -29,9 +30,9 @@ export default function DatabaseTable({
         <table className="w-full min-w-[64rem] border-collapse text-sm">
           <thead className="bg-surface-secondary">
             <tr className="text-left text-text-secondary">
-              <th className="w-[18%] px-3 py-2 font-medium">{localize('com_ui_tars_db_name')}</th>
+              <th className="w-[15%] px-3 py-2 font-medium">{localize('com_ui_tars_db_name')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_db_type')}</th>
-              <th className="px-3 py-2 font-medium">{localize('com_ui_tars_db_host')}</th>
+              <th className="w-[10%] px-3 py-2 font-medium">{localize('com_ui_tars_db_host')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_db_port')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_db_database')}</th>
               <th className="w-[22%] px-3 py-2 font-medium">
@@ -87,18 +88,8 @@ export default function DatabaseTable({
                   <td className="px-3 py-1.5">
                     <KnowledgeBaseChips names={names} />
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1.5">
-                    <span
-                      className={
-                        database.status === 0 ? 'text-text-tertiary' : 'text-text-secondary'
-                      }
-                    >
-                      {localize(
-                        database.status === 0
-                          ? 'com_ui_tars_db_status_disabled'
-                          : 'com_ui_tars_db_status_enabled',
-                      )}
-                    </span>
+                  <td className="px-3 py-1.5">
+                    <StatusBadge active={database.status !== 0} />
                   </td>
                   <td className="px-3 py-1.5">
                     <div className="flex justify-end">
@@ -108,7 +99,7 @@ export default function DatabaseTable({
                         onClick={() => onDetails(database)}
                         aria-label={localize('com_ui_tars_db_details')}
                         title={localize('com_ui_tars_db_details')}
-                        className="text-text-secondary"
+                        className="text-pwc-info hover:text-pwc-info"
                       >
                         <Info className="size-4" aria-hidden />
                       </Button>
@@ -128,7 +119,7 @@ export default function DatabaseTable({
                         onClick={() => onDelete(database)}
                         aria-label={localize('com_ui_delete')}
                         title={localize('com_ui_delete')}
-                        className="text-pwc-danger"
+                        className="text-pwc-danger hover:text-pwc-danger"
                       >
                         <Trash2 className="size-4" aria-hidden />
                       </Button>

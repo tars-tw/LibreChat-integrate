@@ -3,6 +3,7 @@ import { ExternalLink, Info, LayoutList, Pencil, Trash2 } from 'lucide-react';
 import type { TTarsWebsiteSource } from 'librechat-data-provider';
 import Pagination, { usePagination } from '../Knowledge/Pagination';
 import { formatCount } from '../Knowledge/Detail/helpers';
+import { StatusBadge } from '../Users/Fields';
 import { useLocalize } from '~/hooks';
 
 /**
@@ -34,8 +35,8 @@ export default function WebsiteTable({
         <table className="w-full min-w-[64rem] border-collapse text-sm">
           <thead className="bg-surface-secondary">
             <tr className="text-left text-text-secondary">
-              <th className="w-[20%] px-3 py-2 font-medium">{localize('com_ui_tars_web_name')}</th>
-              <th className="w-[26%] px-3 py-2 font-medium">{localize('com_ui_tars_web_url')}</th>
+              <th className="w-[18%] px-3 py-2 font-medium">{localize('com_ui_tars_web_name')}</th>
+              <th className="w-[28%] px-3 py-2 font-medium">{localize('com_ui_tars_web_url')}</th>
               <th className="w-[18%] px-3 py-2 font-medium">
                 {localize('com_ui_tars_web_knowledge_base')}
               </th>
@@ -100,45 +101,36 @@ export default function WebsiteTable({
                   <td className="px-3 py-1.5 text-right tabular-nums text-text-secondary">
                     {formatCount(website.tokens)}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1.5">
-                    <span
-                      className={
-                        website.status === 0 ? 'text-text-tertiary' : 'text-text-secondary'
-                      }
-                    >
-                      {localize(
-                        website.status === 0
-                          ? 'com_ui_tars_db_status_disabled'
-                          : 'com_ui_tars_db_status_enabled',
-                      )}
-                    </span>
+                  <td className="px-3 py-1.5">
+                    <StatusBadge active={website.status !== 0} />
                   </td>
                   <td className="px-3 py-1.5">
                     <div className="flex justify-end">
                       <Button
                         variant="ghost"
                         size="icon-xs"
-                        /** Chunks live under the knowledge base; an unbound row has none. */
                         disabled={!bound}
                         onClick={() => onChunks(website)}
                         aria-label={localize('com_ui_tars_web_chunks')}
                         title={localize(
                           bound ? 'com_ui_tars_web_chunks' : 'com_ui_tars_web_chunks_unavailable',
                         )}
-                        className="text-text-secondary"
+                        className="rounded p-1.5 text-[rgb(var(--pwc-info-cyan))] hover:text-[rgb(var(--pwc-info-cyan))]"
                       >
                         <LayoutList className="size-4" aria-hidden />
                       </Button>
+
                       <Button
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => onDetails(website)}
                         aria-label={localize('com_ui_tars_db_details')}
                         title={localize('com_ui_tars_db_details')}
-                        className="text-text-secondary"
+                        className="text-pwc-info hover:text-pwc-info"
                       >
                         <Info className="size-4" aria-hidden />
                       </Button>
+
                       <Button
                         variant="ghost"
                         size="icon-xs"
@@ -149,13 +141,14 @@ export default function WebsiteTable({
                       >
                         <Pencil className="size-4" aria-hidden />
                       </Button>
+
                       <Button
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => onDelete(website)}
                         aria-label={localize('com_ui_delete')}
                         title={localize('com_ui_delete')}
-                        className="text-pwc-danger"
+                        className="text-pwc-danger hover:text-pwc-danger"
                       >
                         <Trash2 className="size-4" aria-hidden />
                       </Button>

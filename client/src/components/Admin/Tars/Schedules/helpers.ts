@@ -18,7 +18,7 @@ const STATUS_META: Record<string, StatusMeta> = {
   success: {
     labelKey: 'com_ui_tars_sched_status_success',
     icon: CircleCheck,
-    className: 'bg-pwc-success/15 text-pwc-success',
+    className: 'bg-green-50 text-green-800',
   },
   running: {
     labelKey: 'com_ui_tars_sched_status_running',
@@ -42,7 +42,7 @@ export const statusMeta = (status: string | null | undefined): StatusMeta =>
   STATUS_META[status ?? ''] ?? {
     labelKey: 'com_ui_tars_sched_status_idle',
     icon: CircleHelp,
-    className: 'bg-surface-tertiary text-text-secondary',
+    className: 'bg-amber-50 text-amber-700',
   };
 
 export const isRunning = (schedule: TTarsSchedule): boolean => schedule.last_status === 'running';

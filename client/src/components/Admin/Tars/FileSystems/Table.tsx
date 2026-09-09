@@ -4,6 +4,7 @@ import type { TTarsFileSystemSource } from 'librechat-data-provider';
 import Pagination, { usePagination } from '../Knowledge/Pagination';
 import KnowledgeBaseChips from '../Sources/KnowledgeBaseChips';
 import { knowledgeBaseNames, protocolIcon } from './helpers';
+import { StatusBadge } from '../Users/Fields';
 import { useLocalize } from '~/hooks';
 
 /** The document-group list, with the knowledge bases each is granted to. */
@@ -33,7 +34,7 @@ export default function FileSystemTable({
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_protocol')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_host')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_port')}</th>
-              <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_path')}</th>
+              <th className="w-[15%] px-3 py-2 font-medium">{localize('com_ui_tars_fs_path')}</th>
               <th className="w-[22%] px-3 py-2 font-medium">
                 {localize('com_ui_tars_db_allowed_kbs')}
               </th>
@@ -86,18 +87,8 @@ export default function FileSystemTable({
                   <td className="px-3 py-1.5">
                     <KnowledgeBaseChips names={names} />
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1.5">
-                    <span
-                      className={
-                        fileSystem.status === 0 ? 'text-text-tertiary' : 'text-text-secondary'
-                      }
-                    >
-                      {localize(
-                        fileSystem.status === 0
-                          ? 'com_ui_tars_db_status_disabled'
-                          : 'com_ui_tars_db_status_enabled',
-                      )}
-                    </span>
+                  <td className="px-3 py-1.5">
+                    <StatusBadge active={fileSystem.status !== 0} />
                   </td>
                   <td className="px-3 py-1.5">
                     <div className="flex justify-end">
@@ -107,7 +98,7 @@ export default function FileSystemTable({
                         onClick={() => onDetails(fileSystem)}
                         aria-label={localize('com_ui_tars_db_details')}
                         title={localize('com_ui_tars_db_details')}
-                        className="text-text-secondary"
+                        className="text-pwc-info hover:text-pwc-info"
                       >
                         <Info className="size-4" aria-hidden />
                       </Button>
@@ -127,7 +118,7 @@ export default function FileSystemTable({
                         onClick={() => onDelete(fileSystem)}
                         aria-label={localize('com_ui_delete')}
                         title={localize('com_ui_delete')}
-                        className="text-pwc-danger"
+                        className="text-pwc-danger hover:text-pwc-danger"
                       >
                         <Trash2 className="size-4" aria-hidden />
                       </Button>

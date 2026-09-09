@@ -22,6 +22,7 @@ import {
   ChevronUp,
   ChevronDown,
   LayoutGrid,
+  LifeBuoy,
 } from 'lucide-react';
 import type { TTarsDomain } from 'librechat-data-provider';
 import { useDeleteTarsDomainMutation, useTarsDomainPrepareDataQuery } from '~/data-provider';
@@ -159,11 +160,12 @@ export default function DomainManager() {
           aria-label={localize('com_ui_tars_domain_prompts')}
           title={localize('com_ui_tars_domain_prompts')}
           onClick={() => navigate(`/prompts/domain/${domain.id}/new`)}
-          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+          className="rounded p-1.5 text-pwc-info hover:bg-surface-tertiary"
         >
           <Book className="icon-sm" />
         </button>
       )}
+
       <button
         type="button"
         aria-label={localize('com_ui_edit')}
@@ -173,12 +175,13 @@ export default function DomainManager() {
       >
         <Pencil className="icon-sm" />
       </button>
+
       <button
         type="button"
         aria-label={localize('com_ui_delete')}
         title={localize('com_ui_delete')}
         onClick={() => setDeleting(domain)}
-        className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+        className="rounded p-1.5 text-red-500 hover:bg-surface-tertiary hover:text-red-600"
       >
         <Trash2 className="icon-sm" />
       </button>
@@ -280,14 +283,23 @@ export default function DomainManager() {
           {rows.map((domain) => (
             <div
               key={domain.id}
-              className="flex flex-col gap-2 rounded-xl border border-border-light p-4"
+              className="flex flex-col gap-2 rounded-xl border border-border-light bg-[rgb(var(--pwc-surface))] p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    {isIframeDomain(domain) && (
-                      <Globe className="icon-sm text-text-secondary" aria-hidden="true" />
+                    {isIframeDomain(domain) ? (
+                      <Globe
+                        className="icon-sm -translate-y-0.5 text-pwc-orange-500"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <LifeBuoy
+                        className="icon-sm -translate-y-0.5 text-pwc-orange-500"
+                        aria-hidden="true"
+                      />
                     )}
+
                     <span className="truncate font-medium text-text-primary" title={domain.name}>
                       {domain.name}
                     </span>
@@ -338,14 +350,7 @@ export default function DomainManager() {
                     key={domain.id}
                     className="border-t border-border-light hover:bg-surface-hover"
                   >
-                    <td className="px-3 py-2 text-text-primary">
-                      <div className="flex items-center gap-2">
-                        {isIframeDomain(domain) && (
-                          <Globe className="icon-xs text-text-secondary" aria-hidden="true" />
-                        )}
-                        {domain.name}
-                      </div>
-                    </td>
+                    <td className="px-3 py-2 text-text-primary">{domain.name}</td>
                     <td className="px-3 py-2 text-text-secondary">{domain.description || '—'}</td>
                     <td className="px-3 py-2 text-text-secondary">
                       {isIframeDomain(domain) ? (
