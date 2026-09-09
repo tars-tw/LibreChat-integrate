@@ -70,6 +70,7 @@ export function useSelectedTarsDomain() {
     domainId,
     defaultDomainId,
     selectedId,
+    selectedDomain,
     selectedName,
     selectedDescription,
     selectedAgentId,
