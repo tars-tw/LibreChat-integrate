@@ -55,6 +55,20 @@ jest.mock('~/data-provider', () => ({
   useGetFiles: () => ({ data: mockCachedFiles }),
 }));
 
+/* The pwc_tars switches read the signed-in user and the chat's brain, which the app
+   provides from `AuthContextProvider` and `ChatContext` above the composer. No user and
+   no brain keep them idle; both are held outside the factories so they stay stable. */
+const mockAuthContext = { user: undefined, isAuthenticated: false };
+jest.mock('~/hooks/AuthContext', () => ({
+  ...jest.requireActual('~/hooks/AuthContext'),
+  useAuthContext: () => mockAuthContext,
+}));
+const mockSelectedDomain = { selectedId: '', selectedDomain: undefined, domains: [] };
+jest.mock('~/components/Chat/Menus/Tars/domain', () => ({
+  ...jest.requireActual('~/components/Chat/Menus/Tars/domain'),
+  useSelectedTarsDomain: () => mockSelectedDomain,
+}));
+
 type DraftScope = { index?: number; isSubmitting?: boolean; draftId?: string };
 
 function renderProvider(initialId = 'convo-badge-row', restoreDraft = false, initiallyOff = false) {

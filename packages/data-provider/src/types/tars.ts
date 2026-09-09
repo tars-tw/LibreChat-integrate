@@ -1,4 +1,4 @@
-import type { TTarsDatabaseType, TTarsFileProtocol } from '../tars';
+import type { TTarsDatabaseType, TTarsFileProtocol, TTarsPluginFunctionState } from '../tars';
 
 /**
  * A pwc_tars specialized brain ("專用腦") as surfaced to the LibreChat client.
@@ -79,6 +79,29 @@ export type TTarsDomainPrepareData = {
   roles: TTarsRole[];
 };
 
+/**
+ * A pwc_tars plugin tool (`tars_tool_sdk`) found in the plugin folders, as
+ * `GET /api/domain_settings/plugin_tools` reports it. `ok: false` entries failed
+ * the conformance check and carry the reasons in `problems`.
+ */
+export type TTarsPluginTool = {
+  name: string;
+  function_key: string;
+  display_name: string;
+  description: string;
+  version: string;
+  requires: string[];
+  source: string;
+  ok: boolean;
+  problems: string[];
+};
+
+export type TTarsPluginToolsResponse = {
+  plugin_tools: TTarsPluginTool[];
+  plugin_dirs: string[];
+  errors: string[];
+};
+
 /** Create/update payload for a specialized brain. */
 export type TTarsDomainInput = {
   name: string;
@@ -86,6 +109,12 @@ export type TTarsDomainInput = {
   role_ids?: string;
   knowledge_base_ids?: string;
   domain_functions?: string;
+  /**
+   * Plugin switches keyed by plugin name. Merged server-side into the stored
+   * `domain_functions` block so the built-in feature keys pwc_tars manages are
+   * preserved; ignored when `domain_functions` is sent explicitly.
+   */
+  plugin_functions?: Record<string, TTarsPluginFunctionState>;
   prompt_instruction?: string;
   iframe_url?: string;
   status?: number | boolean;
