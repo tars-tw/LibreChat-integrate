@@ -1,6 +1,8 @@
 import { logger } from '@librechat/data-schemas';
 import {
   Tools,
+  tarsPluginNamesOf,
+  tarsPluginToolName,
   Constants,
   isAgentsEndpoint,
   isEphemeralAgentId,
@@ -121,6 +123,7 @@ export async function loadAddedAgent(
       web_search?: boolean;
       sql_agent?: boolean;
       chart_agent?: boolean;
+      tars_plugins?: string[];
       artifacts?: unknown;
       memory?: boolean;
     };
@@ -142,6 +145,7 @@ export async function loadAddedAgent(
         web_search?: boolean;
         sql_agent?: boolean;
         chart_agent?: boolean;
+        tars_plugins?: string[];
         artifacts?: unknown;
         memory?: boolean;
         ask_user_question?: boolean;
@@ -239,6 +243,11 @@ export async function loadAddedAgent(
   }
   if (ephemeralAgent?.chart_agent === true) {
     tools.push(Tools.chart_agent);
+  }
+  /** pwc_tars plugin tools the user switched on; the brain's allowlist is
+   *  enforced downstream in the capability filter (`resolveTarsPluginToolNames`). */
+  for (const pluginName of tarsPluginNamesOf(ephemeralAgent?.tars_plugins)) {
+    tools.push(tarsPluginToolName(pluginName));
   }
   if (ephemeralAgent?.memory === true || modelSpec?.memory === true) {
     tools.push(Tools.memory);

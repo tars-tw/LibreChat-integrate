@@ -5,6 +5,8 @@ const {
   createTarsDomain,
   updateTarsDomain,
   deleteTarsDomain,
+  fetchTarsPluginTools,
+  reloadTarsPluginTools,
   fetchTarsDomainsForUser,
   fetchTarsDomainPrepareData,
 } = require('@librechat/api');
@@ -44,6 +46,38 @@ router.get('/domains/admin/prepare-data', requireTarsAdmin, async (req, res) => 
   } catch (error) {
     logger.error('[GET /api/tars/domains/admin/prepare-data] Failed', error);
     return res.status(500).json({ error: 'Failed to fetch pwc_tars domain data' });
+  }
+});
+
+/**
+ * @route GET /api/tars/domains/admin/plugin-tools
+ * @desc The pwc_tars plugin tools (tars_tool_sdk) found in the plugin folders,
+ *       with each one's conformance result, for the brain editor's switches.
+ * @access Admin (pwc_tars)
+ */
+router.get('/domains/admin/plugin-tools', requireTarsAdmin, async (req, res) => {
+  try {
+    const listing = await fetchTarsPluginTools();
+    return res.json(listing);
+  } catch (error) {
+    logger.error('[GET /api/tars/domains/admin/plugin-tools] Failed', error);
+    return res.status(500).json({ error: 'Failed to fetch pwc_tars plugin tools' });
+  }
+});
+
+/**
+ * @route POST /api/tars/domains/admin/plugin-tools/reload
+ * @desc Re-scan the plugin folders so a newly dropped file shows up without a
+ *       pwc_tars restart. Loading a plugin executes its module code, hence admin.
+ * @access Admin (pwc_tars)
+ */
+router.post('/domains/admin/plugin-tools/reload', requireTarsAdmin, async (req, res) => {
+  try {
+    const listing = await reloadTarsPluginTools(req.user.tarsId);
+    return res.json(listing);
+  } catch (error) {
+    logger.error('[POST /api/tars/domains/admin/plugin-tools/reload] Failed', error);
+    return res.status(500).json({ error: 'Failed to reload pwc_tars plugin tools' });
   }
 });
 
