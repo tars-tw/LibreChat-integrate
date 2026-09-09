@@ -1,6 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Input,
+  Button,
+  Spinner,
+  Dropdown,
+  OGDialog,
+  OGDialogTemplate,
+  useToastContext,
+} from '@librechat/client';
+import {
   Plus,
   Info,
   Star,
@@ -10,27 +19,29 @@ import {
   Download,
   ChevronUp,
   ChevronDown,
+  User,
+  UsersRound,
 } from 'lucide-react';
-import {
-  Input,
-  Button,
-  Spinner,
-  Dropdown,
-  OGDialog,
-  OGDialogTemplate,
-  useToastContext,
-} from '@librechat/client';
 import type { TTarsRoleDetail } from 'librechat-data-provider';
+import {
+  EMPTY_USAGE,
+  isRoleEnabled,
+  roleMenuKeys,
+  roleDomainIds,
+  buildRoleUsage,
+  usersForRole,
+  groupsForRole,
+} from './helpers';
 import {
   useTarsUsersQuery,
   useTarsRolesQuery,
   useTarsUserGroupsQuery,
   useDeleteTarsRoleMutation,
 } from '~/data-provider';
-import { EMPTY_USAGE, isRoleEnabled, roleMenuKeys, roleDomainIds, buildRoleUsage } from './helpers';
 import { toNameMap, toCsvBlob, downloadBlob, formatDateTime } from '../Users/helpers';
 import { adminMenuLeafKeys } from '~/components/Nav/Tars/AdminMenu';
 import { StatusBadge, NameList } from '../Users/Fields';
+import RoleUsageModal from './UsageModal';
 import RoleDetailsModal from './Details';
 import { useLocalize } from '~/hooks';
 import RoleModal from './Modal';
@@ -68,6 +79,11 @@ export default function RoleManager() {
   const domains = useMemo(() => data?.domains ?? [], [data?.domains]);
   const domainNames = useMemo(() => toNameMap(domains), [domains]);
   const menuTotal = useMemo(() => adminMenuLeafKeys().length, []);
+
+  const [usageView, setUsageView] = useState<{
+    role: TTarsRoleDetail;
+    type: 'users' | 'groups';
+  } | null>(null);
 
   const usage = useMemo(
     () => buildRoleUsage(users, groupData?.groups ?? []),
@@ -271,11 +287,31 @@ export default function RoleManager() {
                           />
                         )}
                       </td>
-                      <td className="px-3 py-2 text-text-secondary">
-                        {localize('com_ui_tars_roles_usage_summary', {
-                          users: counts.users,
-                          groups: counts.groups,
-                        })}
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setUsageView({ role, type: 'users' })}
+                            disabled={counts.users === 0}
+                            aria-label={localize('com_ui_tars_roles_usage_users')}
+                            title={localize('com_ui_tars_roles_usage_users')}
+                            className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))] hover:text-text-primary disabled:cursor-default disabled:opacity-40 disabled:hover:text-[rgb(var(--gray-600))]"
+                          >
+                            <User className="icon-sm" />
+                            {counts.users}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUsageView({ role, type: 'groups' })}
+                            disabled={counts.groups === 0}
+                            aria-label={localize('com_ui_tars_roles_usage_groups')}
+                            title={localize('com_ui_tars_roles_usage_groups')}
+                            className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))] hover:text-text-primary disabled:cursor-default disabled:opacity-40 disabled:hover:text-[rgb(var(--gray-600))]"
+                          >
+                            <UsersRound className="icon-sm" />
+                            {counts.groups}
+                          </button>
+                        </div>
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex justify-end gap-1">
@@ -369,6 +405,20 @@ export default function RoleManager() {
               setEditing(null);
             }
           }}
+        />
+      )}
+
+      {usageView != null && (
+        <RoleUsageModal
+          title={`${usageView.role.name} — ${localize(
+            usageView.type === 'users'
+              ? 'com_ui_tars_roles_usage_users'
+              : 'com_ui_tars_roles_usage_groups',
+          )}`}
+          type={usageView.type}
+          users={usersForRole(String(usageView.role.id), users)}
+          groups={groupsForRole(String(usageView.role.id), groupData?.groups ?? [])}
+          onOpenChange={(open) => !open && setUsageView(null)}
         />
       )}
 

@@ -97,11 +97,11 @@ export default function Header({
           API datasets have no tab of their own, so without this count a
           knowledge base that has them would look as though it had none.
         */}
-        {stats.api_count > 0 && (
+        {/* {stats.api_count > 0 && (
           <span>
             {localize('com_ui_tars_kb_stat_apis')}: {formatCount(stats.api_count)}
           </span>
-        )}
+        )} */}
       </div>
 
       {showInfo && (
