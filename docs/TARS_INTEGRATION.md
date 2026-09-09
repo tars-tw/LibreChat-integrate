@@ -56,6 +56,7 @@ npm run frontend                           # build 全部 packages + client
 | `JWT_SECRET` / `JWT_REFRESH_SECRET` / `CREDS_KEY` / `CREDS_IV` / `MEILI_MASTER_KEY` | 內建範例值 | ⚠️ 是公開 repo 人人可見的值,**對外/共享環境務必重新產生** |
 | `TARS_ADMIN_ROLE_IDS` | `1` | pwc_tars `role_id` 屬此集合者 → LibreChat ADMIN |
 | `TARS_MEMORY_UPLOAD_TIMEOUT_MS` | `1800000`(30 分鐘) | LibreChat 等 pwc_tars `upload_memory_data` 回應的上限(undici `headersTimeout`/`bodyTimeout`)。不設就吃 undici 的 300 秒預設。調高時 `HTTP_REQUEST_TIMEOUT_MS` 要一起調 |
+| `TARS_PLUGIN_TOOL_TIMEOUT_MS` | `240000`(4 分鐘) | 聊天室呼叫 pwc_tars 外掛工具(`tars_tool_sdk`,`POST /api/langflow-service/tools/<name>`)的上限。外掛本身由 pwc_tars `backend/.env` 的 `TARS_TOOL_PLUGINS_DIR` 載入,LibreChat 這邊不用設定;在專用腦管理的「外掛工具」區塊決定每個腦要顯示哪些 |
 
 > Langflow 的 project id **不用設**:開機時後端從唯一的 Langflow 專案自動探測。Langflow 有多個專案時才需在 `.env` 設 `LANGFLOW_PROJECT_ID`。
 
