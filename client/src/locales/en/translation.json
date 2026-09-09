@@ -3829,5 +3829,7 @@
   "com_ui_tars_quota_info_fields_reset_title": "Reset Cycle",
   "com_ui_tars_quota_info_fields_reset_desc": "The cycle for accumulating quota usage, either daily or monthly. Accumulated usage is cleared at 00:00 on the reset day.",
   "com_ui_tars_quota_info_fields_warning_title": "Warning Threshold",
-  "com_ui_tars_quota_info_fields_warning_desc": "The usage percentage at which the system sends a warning notification (e.g. 80%)."
+  "com_ui_tars_quota_info_fields_warning_desc": "The usage percentage at which the system sends a warning notification (e.g. 80%).",
+  "com_ui_tars_roles_usage_users_empty": "No users are using this role",
+  "com_ui_tars_roles_usage_groups_empty": "No groups are using this role'"
 }
