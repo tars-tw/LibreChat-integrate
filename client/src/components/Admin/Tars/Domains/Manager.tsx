@@ -283,7 +283,7 @@ export default function DomainManager() {
           {rows.map((domain) => (
             <div
               key={domain.id}
-              className="flex flex-col gap-2 rounded-xl border border-border-light bg-[rgb(var(--pwc-surface))] p-4"
+              className="flex flex-col gap-2 rounded-xl border border-border-light p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">

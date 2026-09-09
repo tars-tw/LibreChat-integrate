@@ -4,7 +4,7 @@ import { useLocalize } from '~/hooks';
 
 /** Proxied pwc_tars system logo; unauthenticated so the login page can use it. */
 const TARS_LOGO_SRC = '/api/tars/settings/logo';
-const FALLBACK_SRC = 'assets/logo.svg';
+const FALLBACK_SRC = 'assets/tars/tars_ai_logo.png';
 
 /**
  * The login page wordmark. Administrators upload a logo on the pwc_tars system
