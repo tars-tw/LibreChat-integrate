@@ -236,7 +236,7 @@ export default function GroupManager() {
                         onClick={() => setMembersId(group.id)}
                         aria-label={localize('com_ui_tars_groups_members')}
                         title={localize('com_ui_tars_groups_members')}
-                        className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-xs text-text-secondary hover:text-text-primary"
+                        className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))] hover:text-text-primary"
                       >
                         <Users className="icon-sm" />
                         {memberCount(group)}
