@@ -26,7 +26,7 @@ export default function KnowledgeCards({
       {knowledgeBases.map((kb) => (
         <div
           key={kb.id}
-          className="flex flex-col gap-3 rounded-xl border border-border-light bg-[rgb(var(--pwc-surface))] p-4 transition-colors hover:border-border-heavy"
+          className="flex flex-col gap-3 rounded-xl border border-border-light p-4 transition-colors hover:border-border-heavy"
         >
           <div className="flex items-start justify-between gap-2">
             {/*
