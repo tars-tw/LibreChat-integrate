@@ -236,8 +236,7 @@ export default function GroupManager() {
                         onClick={() => setMembersId(group.id)}
                         aria-label={localize('com_ui_tars_groups_members')}
                         title={localize('com_ui_tars_groups_members')}
-                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-text-secondary hover:text-text-primary"
-                        style={{ backgroundColor: '#E8F0FE' }}
+                        className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-xs text-text-secondary hover:text-text-primary"
                       >
                         <Users className="icon-sm" />
                         {memberCount(group)}
@@ -250,7 +249,7 @@ export default function GroupManager() {
                           aria-label={localize('com_ui_tars_users_details')}
                           title={localize('com_ui_tars_users_details')}
                           onClick={() => setViewingId(group.id)}
-                          className="rounded p-1.5 text-[#E9B01F] hover:bg-surface-tertiary hover:text-[#E9B01F]"
+                          className="rounded p-1.5 text-pwc-info hover:bg-surface-tertiary hover:text-pwc-info"
                         >
                           <Info className="icon-sm" />
                         </button>

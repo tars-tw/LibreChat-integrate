@@ -284,7 +284,7 @@ export default function RoleManager() {
                             aria-label={localize('com_ui_tars_users_details')}
                             title={localize('com_ui_tars_users_details')}
                             onClick={() => setViewingId(String(role.id))}
-                            className="rounded p-1.5 text-[#E9B01F] hover:bg-surface-tertiary hover:text-[#E9B01F]"
+                            className="rounded p-1.5 text-pwc-info hover:bg-surface-tertiary hover:text-pwc-info"
                           >
                             <Info className="icon-sm" />
                           </button>

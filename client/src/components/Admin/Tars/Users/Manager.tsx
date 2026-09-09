@@ -416,7 +416,7 @@ export default function UserManager() {
                           aria-label={localize('com_ui_tars_users_details')}
                           title={localize('com_ui_tars_users_details')}
                           onClick={() => setViewing(user)}
-                          className="rounded p-1.5 text-[#E9B01F] hover:text-[#E9B01F]"
+                          className="rounded p-1.5 text-pwc-info hover:text-pwc-info"
                         >
                           <Info className="icon-sm" />
                         </button>
@@ -436,7 +436,7 @@ export default function UserManager() {
                           aria-label={localize('com_ui_tars_users_reset_password')}
                           title={localize('com_ui_tars_users_reset_password')}
                           onClick={() => setResetting(user)}
-                          className="rounded p-1.5 text-[#0DC3E7] hover:text-[#0DC3E7]"
+                          className="rounded p-1.5 text-[rgb(var(--pwc-info-cyan))] hover:text-[rgb(var(--pwc-info-cyan))]"
                         >
                           <KeyRound className="icon-sm" />
                         </button>
