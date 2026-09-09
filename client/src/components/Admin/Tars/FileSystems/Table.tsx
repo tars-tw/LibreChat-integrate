@@ -4,6 +4,7 @@ import type { TTarsFileSystemSource } from 'librechat-data-provider';
 import Pagination, { usePagination } from '../Knowledge/Pagination';
 import KnowledgeBaseChips from '../Sources/KnowledgeBaseChips';
 import { knowledgeBaseNames, protocolIcon } from './helpers';
+import { StatusBadge } from '../Users/Fields';
 import { useLocalize } from '~/hooks';
 
 /** The document-group list, with the knowledge bases each is granted to. */
@@ -86,20 +87,8 @@ export default function FileSystemTable({
                   <td className="px-3 py-1.5">
                     <KnowledgeBaseChips names={names} />
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1.5">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        fileSystem.status === 0
-                          ? 'bg-pwc-danger/10 text-pwc-danger'
-                          : 'bg-[#DEF2ED] text-[#0A4F53]'
-                      }`}
-                    >
-                      {localize(
-                        fileSystem.status === 0
-                          ? 'com_ui_tars_db_status_disabled'
-                          : 'com_ui_tars_db_status_enabled',
-                      )}
-                    </span>
+                  <td className="px-3 py-1.5">
+                    <StatusBadge active={fileSystem.status !== 0} />
                   </td>
                   <td className="px-3 py-1.5">
                     <div className="flex justify-end">
@@ -109,7 +98,7 @@ export default function FileSystemTable({
                         onClick={() => onDetails(fileSystem)}
                         aria-label={localize('com_ui_tars_db_details')}
                         title={localize('com_ui_tars_db_details')}
-                        className="text-[#E9B01F] hover:text-[#E9B01F]"
+                        className="text-pwc-info hover:text-pwc-info"
                       >
                         <Info className="size-4" aria-hidden />
                       </Button>

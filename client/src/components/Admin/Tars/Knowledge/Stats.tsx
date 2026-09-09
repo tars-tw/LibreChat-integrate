@@ -21,7 +21,7 @@ export default function DatasetStats({
       {DATASET_STATS.map(({ key, icon: Icon, labelKey }) => {
         const count = datasetCount(knowledgeBase, key);
         const label = localize(labelKey);
-        const iconTone = count > 0 ? 'text-[#FD5108]' : 'text-text-tertiary';
+        const iconTone = count > 0 ? 'text-pwc-orange-500' : 'text-text-tertiary';
 
         return (
           <span key={key} className="flex items-center gap-1 text-text-primary" title={label}>
