@@ -18,6 +18,7 @@ const {
   buildWebSearchContext,
   buildTarsSqlContext,
   isTarsConfigured,
+  resolveTarsPluginToolNames,
   buildImageToolContext,
   buildToolClassification,
   getMissingCustomUserVars,
@@ -79,6 +80,7 @@ const {
   openapiToFunction,
   AgentCapabilities,
   isEphemeralAgentId,
+  isTarsPluginToolName,
   validateActionDomain,
   actionDomainSeparator,
   defaultAgentCapabilities,
@@ -760,8 +762,29 @@ const isBuiltInTool = (toolName) =>
   Boolean(
     manifestToolMap[toolName] ||
       toolkits.some((t) => t.pluginKey === toolName) ||
-      nativeTools.has(toolName),
+      nativeTools.has(toolName) ||
+      isTarsPluginToolName(toolName),
   );
+
+/**
+ * pwc_tars plugin tools the request may equip: the active 專用腦 must offer the
+ * plugin and pwc_tars must have it loaded. Resolving also primes the manifest
+ * cache the definition registry reads, so the definition-only path can
+ * advertise them without another round trip.
+ * @param {ServerRequest} req
+ * @param {string[]} tools
+ * @returns {Promise<Set<string>>}
+ */
+const resolveAllowedTarsPluginTools = async (req, tools) => {
+  const pluginTools = tools.filter(isTarsPluginToolName);
+  if (pluginTools.length === 0 || !isTarsConfigured()) {
+    return new Set();
+  }
+  return resolveTarsPluginToolNames(pluginTools, {
+    tarsUserId: req.user?.tarsId,
+    domainId: req.body?.domain_id,
+  });
+};
 
 /**
  * Loads only tool definitions without creating tool instances.
@@ -841,6 +864,7 @@ async function loadToolDefinitionsWrapper({
   const hasMCPTools = agent.tools?.some((tool) => tool?.includes(Constants.mcp_delimiter));
   const mcpPermissionContext = createMCPPermissionContext(req);
   const canUseMCP = hasMCPTools ? await mcpPermissionContext.canUseServers(req.user) : true;
+  const allowedTarsPluginTools = await resolveAllowedTarsPluginTools(req, agent.tools);
 
   const filteredTools = agent.tools?.filter((tool) => {
     if (tool === Tools.file_search) {
@@ -857,6 +881,10 @@ async function loadToolDefinitionsWrapper({
     }
     if (tool === Tools.chart_agent) {
       return checkCapability(AgentCapabilities.chart_agent);
+    }
+    if (isTarsPluginToolName(tool)) {
+      /** Switched on per brain by a pwc_tars admin; the brain is the gate. */
+      return allowedTarsPluginTools.has(tool);
     }
     if (tool === Tools.data_query || tool === Tools.table_task) {
       /** Auto-equipped by the memory prime, never user-selected; the only gate is TARS itself. */
@@ -1640,6 +1668,7 @@ async function loadAgentTools({
   const mcpPermissionContext = createMCPPermissionContext(req);
   const canUseMCP = hasMCPTools ? await mcpPermissionContext.canUseServers(req.user) : true;
   const canUseTool = await resolveAgentToolPermissions(req, agent.tools, enabledCapabilities);
+  const allowedTarsPluginTools = await resolveAllowedTarsPluginTools(req, agent.tools);
 
   let includesWebSearch = false;
   const _agentTools = agent.tools?.filter((tool) => {
@@ -1654,6 +1683,9 @@ async function loadAgentTools({
       return checkCapability(AgentCapabilities.sql_agent);
     } else if (tool === Tools.chart_agent) {
       return checkCapability(AgentCapabilities.chart_agent);
+    } else if (isTarsPluginToolName(tool)) {
+      /** Switched on per brain by a pwc_tars admin; the brain is the gate. */
+      return allowedTarsPluginTools.has(tool);
     } else if (tool === Tools.data_query || tool === Tools.table_task) {
       /** Auto-equipped by the memory prime, never user-selected; the only gate is TARS itself. */
       return isTarsConfigured();

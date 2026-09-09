@@ -22,6 +22,7 @@ const {
   createAskUserQuestionTool,
   createTarsSqlTool,
   createTarsChartTool,
+  createTarsPluginTool,
   createTarsDataTool,
   createTarsTableTaskTool,
   getTarsMemorySnapshot,
@@ -39,6 +40,7 @@ const {
   EToolResources,
   PermissionTypes,
   AgentCapabilities,
+  isTarsPluginToolName,
 } = require('librechat-data-provider');
 const {
   availableTools,
@@ -495,6 +497,20 @@ const loadTools = async ({
           model: agent?.model,
           librechatUserId: user,
         });
+      continue;
+    } else if (isTarsPluginToolName(tool)) {
+      const pluginTool = await createTarsPluginTool({
+        toolName: tool,
+        tarsUserId: options.req?.user?.tarsId,
+        domainId: options.req?.body?.domain_id,
+        model: agent?.model,
+        librechatUserId: user,
+        question: options.req?.body?.text,
+      });
+      if (!pluginTool) {
+        continue;
+      }
+      requestedTools[tool] = async () => pluginTool;
       continue;
     } else if (tool === Tools.data_query) {
       requestedTools[tool] = async () =>

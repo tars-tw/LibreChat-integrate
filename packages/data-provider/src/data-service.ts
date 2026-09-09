@@ -733,6 +733,14 @@ export const deleteTarsDomain = (id: string | number): Promise<{ success: boolea
   return request.delete(endpoints.tarsDomain(id));
 };
 
+export const getTarsPluginTools = (): Promise<t.TTarsPluginToolsResponse> => {
+  return request.get(endpoints.tarsPluginTools());
+};
+
+export const reloadTarsPluginTools = (): Promise<t.TTarsPluginToolsResponse> => {
+  return request.post(endpoints.tarsPluginToolsReload(), {});
+};
+
 export const getTarsDatabases = (): Promise<t.TTarsDatabasesResponse> => {
   return request.get(endpoints.tarsDatabases());
 };
