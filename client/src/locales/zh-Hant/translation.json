@@ -3847,5 +3847,7 @@
   "com_insights_invalid_date_range": "請選擇晚於開始日期的結束日期，且日期範圍不得超過 {{days}} 天。",
   "com_insights_sparkline_accessibility": "{{label}} 隨時間變化",
   "com_nav_mobile_drawer_strip": "在行動裝置上於側邊欄旁顯示聊天",
-  "com_nav_mobile_drawer_strip_info": "側邊欄不會延伸到螢幕邊緣，因此仍會顯示一小段對話內容。點擊該區域即可關閉側邊欄。"
+  "com_nav_mobile_drawer_strip_info": "側邊欄不會延伸到螢幕邊緣，因此仍會顯示一小段對話內容。點擊該區域即可關閉側邊欄。",
+  "com_ui_tars_roles_usage_users_empty": "沒有使用者使用此角色",
+  "com_ui_tars_roles_usage_groups_empty": "沒有群組使用此角色"
 }
