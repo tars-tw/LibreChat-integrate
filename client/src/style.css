@@ -80,6 +80,7 @@
   --pwc-orange-800: 143 45 3;
   --pwc-orange-900: 107 33 2;
   --pwc-primary: var(--pwc-orange-500);
+  --pwc-surface: 253 253 253;
   /* Canonical brand accent — every primary action / active control points here.
      Stored as bare R G B channels so rgb(var(--x) / <alpha-value>) consumers and
      Tailwind alpha modifiers (bg-brand-primary/20) resolve; the --*-hsl channel
@@ -93,6 +94,7 @@
   --pwc-warning: var(--pwc-orange-400);
   --pwc-success: 255 159 0;
   --pwc-info: 233 176 31;
+  --pwc-info-cyan: 13 195 231;
   --pwc-danger: 220 38 38;
   --pwc-secondary: 161 168 179;
   --pwc-dark: 55 71 79;
