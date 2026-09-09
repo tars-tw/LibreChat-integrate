@@ -26,7 +26,7 @@ export default function KnowledgeCards({
       {knowledgeBases.map((kb) => (
         <div
           key={kb.id}
-          className="flex flex-col gap-3 rounded-xl border border-border-light bg-[#FDFDFD] p-4 transition-colors hover:border-border-heavy"
+          className="flex flex-col gap-3 rounded-xl border border-border-light bg-[rgb(var(--pwc-surface))] p-4 transition-colors hover:border-border-heavy"
         >
           <div className="flex items-start justify-between gap-2">
             {/*
@@ -65,7 +65,7 @@ export default function KnowledgeCards({
                 onClick={() => onManagePrompts(kb)}
                 aria-label={localize('com_ui_tars_kb_prompts')}
                 title={localize('com_ui_tars_kb_prompts')}
-                className="text-[#FFC107] hover:text-[#FFC107]"
+                className="text-pwc-info hover:bg-surface-tertiary hover:text-pwc-info"
               >
                 <BookText className="size-4" aria-hidden />
               </Button>

@@ -3,6 +3,7 @@ import { ExternalLink, Info, LayoutList, Pencil, Trash2 } from 'lucide-react';
 import type { TTarsWebsiteSource } from 'librechat-data-provider';
 import Pagination, { usePagination } from '../Knowledge/Pagination';
 import { formatCount } from '../Knowledge/Detail/helpers';
+import { StatusBadge } from '../Users/Fields';
 import { useLocalize } from '~/hooks';
 
 /**
@@ -100,20 +101,8 @@ export default function WebsiteTable({
                   <td className="px-3 py-1.5 text-right tabular-nums text-text-secondary">
                     {formatCount(website.tokens)}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1.5">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        website.status === 0
-                          ? 'bg-pwc-danger/10 text-pwc-danger'
-                          : 'bg-[#DEF2ED] text-[#0A4F53]'
-                      }`}
-                    >
-                      {localize(
-                        website.status === 0
-                          ? 'com_ui_tars_db_status_disabled'
-                          : 'com_ui_tars_db_status_enabled',
-                      )}
-                    </span>
+                  <td className="px-3 py-1.5">
+                    <StatusBadge active={website.status !== 0} />
                   </td>
                   <td className="px-3 py-1.5">
                     <div className="flex justify-end">
@@ -126,7 +115,7 @@ export default function WebsiteTable({
                         title={localize(
                           bound ? 'com_ui_tars_web_chunks' : 'com_ui_tars_web_chunks_unavailable',
                         )}
-                        className="text-[#0DC3E7] hover:text-[#0DC3E7]"
+                        className="rounded p-1.5 text-[rgb(var(--pwc-info-cyan))] hover:text-[rgb(var(--pwc-info-cyan))]"
                       >
                         <LayoutList className="size-4" aria-hidden />
                       </Button>
@@ -137,7 +126,7 @@ export default function WebsiteTable({
                         onClick={() => onDetails(website)}
                         aria-label={localize('com_ui_tars_db_details')}
                         title={localize('com_ui_tars_db_details')}
-                        className="text-[#E9B01F] hover:text-[#E9B01F]"
+                        className="text-pwc-info hover:text-pwc-info"
                       >
                         <Info className="size-4" aria-hidden />
                       </Button>
