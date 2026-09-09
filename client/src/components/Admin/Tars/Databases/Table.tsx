@@ -4,6 +4,7 @@ import type { TTarsDatasetDatabase } from 'librechat-data-provider';
 import Pagination, { usePagination } from '../Knowledge/Pagination';
 import KnowledgeBaseChips from '../Sources/KnowledgeBaseChips';
 import { databaseIcon, knowledgeBaseNames } from './helpers';
+import { StatusBadge } from '../Users/Fields';
 import { useLocalize } from '~/hooks';
 
 /** The application-database list, with the knowledge bases each is granted to. */
@@ -87,20 +88,8 @@ export default function DatabaseTable({
                   <td className="px-3 py-1.5">
                     <KnowledgeBaseChips names={names} />
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1.5">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                        database.status === 0
-                          ? 'bg-[#FDECEC] text-[#B42318]'
-                          : 'bg-[#DEF2ED] text-[#0A4F53]'
-                      }`}
-                    >
-                      {localize(
-                        database.status === 0
-                          ? 'com_ui_tars_db_status_disabled'
-                          : 'com_ui_tars_db_status_enabled',
-                      )}
-                    </span>
+                  <td className="px-3 py-1.5">
+                    <StatusBadge active={database.status !== 0} />
                   </td>
                   <td className="px-3 py-1.5">
                     <div className="flex justify-end">
@@ -110,7 +99,7 @@ export default function DatabaseTable({
                         onClick={() => onDetails(database)}
                         aria-label={localize('com_ui_tars_db_details')}
                         title={localize('com_ui_tars_db_details')}
-                        className="text-[#E9B01F] hover:text-[#E9B01F]"
+                        className="text-pwc-info hover:text-pwc-info"
                       >
                         <Info className="size-4" aria-hidden />
                       </Button>

@@ -160,7 +160,7 @@ export default function DomainManager() {
           aria-label={localize('com_ui_tars_domain_prompts')}
           title={localize('com_ui_tars_domain_prompts')}
           onClick={() => navigate(`/prompts/domain/${domain.id}/new`)}
-          className="rounded p-1.5 text-[#E9A915] hover:bg-surface-tertiary"
+          className="rounded p-1.5 text-pwc-info hover:bg-surface-tertiary"
         >
           <Book className="icon-sm" />
         </button>
@@ -283,19 +283,19 @@ export default function DomainManager() {
           {rows.map((domain) => (
             <div
               key={domain.id}
-              className="flex flex-col gap-2 rounded-xl border border-border-light bg-[#FDFDFD] p-4"
+              className="flex flex-col gap-2 rounded-xl border border-border-light bg-[rgb(var(--pwc-surface))] p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     {isIframeDomain(domain) ? (
                       <Globe
-                        className="icon-sm -translate-y-0.5 text-[#FD5108]"
+                        className="icon-sm -translate-y-0.5 text-pwc-orange-500"
                         aria-hidden="true"
                       />
                     ) : (
                       <LifeBuoy
-                        className="icon-sm -translate-y-0.5 text-[#FD5108]"
+                        className="icon-sm -translate-y-0.5 text-pwc-orange-500"
                         aria-hidden="true"
                       />
                     )}
