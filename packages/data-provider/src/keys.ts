@@ -33,6 +33,7 @@ export enum QueryKeys {
   agent = 'agent',
   tarsDomains = 'tarsDomains',
   tarsDomainPrepareData = 'tarsDomainPrepareData',
+  tarsPluginTools = 'tarsPluginTools',
   tarsKnowledgeBases = 'tarsKnowledgeBases',
   tarsKnowledgeBaseDocuments = 'tarsKnowledgeBaseDocuments',
   tarsKnowledgeBaseModelBindings = 'tarsKnowledgeBaseModelBindings',

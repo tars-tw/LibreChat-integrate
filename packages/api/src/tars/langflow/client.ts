@@ -34,10 +34,6 @@ export interface LangflowCapabilityData {
   sql?: string;
 }
 
-interface LangflowEnvelope {
-  data?: LangflowCapabilityData;
-}
-
 export interface LangflowRequestOptions {
   timeoutMs: number;
   /** The account the gateway resolves models and quota for. */
@@ -85,18 +81,26 @@ export async function resolveLangflowModelName(
   return match;
 }
 
+interface LangflowServiceEnvelope<T> {
+  data?: T;
+}
+
+export interface LangflowServiceFetchOptions extends LangflowRequestOptions {
+  method?: 'GET' | 'POST';
+  body?: Record<string, unknown>;
+}
+
 /**
- * Runs one `/api/langflow-service/*` capability call and unwraps its
- * `{success, status, data}` envelope. pwc_tars owns the nested agent loop;
- * callers only shape the body and relay `data` back into the chat turn. The
- * loop's own LLM is requested through LibreChat's gateway — pwc_tars still has
- * the final say via its `FLAG_USE_LIBRECHAT_LLM` sys_config switch.
+ * One authenticated `/api/langflow-service/*` request, unwrapped from its
+ * `{success, status, data}` envelope. The gateway headers always ride along:
+ * pwc_tars carries no models of its own, so whatever the call makes it run
+ * comes back through LibreChat's gateway — pwc_tars still has the final say via
+ * its `FLAG_USE_LIBRECHAT_LLM` sys_config switch.
  */
-export async function runLangflowCapability(
+export async function langflowServiceFetch<T>(
   path: string,
-  body: Record<string, unknown>,
-  options: LangflowRequestOptions,
-): Promise<LangflowCapabilityData> {
+  options: LangflowServiceFetchOptions,
+): Promise<T | undefined> {
   const key = await resolveLangflowServiceKey();
   if (!key) {
     throw new Error(
@@ -112,13 +116,27 @@ export async function runLangflowCapability(
     headers[GATEWAY_USER_HEADER] = options.librechatUserId;
   }
 
-  const envelope = await tarsFetch<LangflowEnvelope>(path, {
-    method: 'POST',
+  const envelope = await tarsFetch<LangflowServiceEnvelope<T>>(path, {
+    method: options.method ?? 'POST',
     timeoutMs: options.timeoutMs,
     headers,
-    body,
+    body: options.body,
   });
-  return envelope?.data ?? {};
+  return envelope?.data;
+}
+
+/**
+ * Runs one `/api/langflow-service/*` capability call. pwc_tars owns the nested
+ * agent loop; callers only shape the body and relay `data` back into the chat
+ * turn.
+ */
+export async function runLangflowCapability(
+  path: string,
+  body: Record<string, unknown>,
+  options: LangflowRequestOptions,
+): Promise<LangflowCapabilityData> {
+  const data = await langflowServiceFetch<LangflowCapabilityData>(path, { ...options, body });
+  return data ?? {};
 }
 
 /** Positive-number env parse with a fallback, for per-capability timeouts. */
