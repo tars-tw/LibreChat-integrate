@@ -4106,6 +4106,10 @@ export enum LocalStorageKeys {
   LAST_WEB_SEARCH_TOGGLE_ = 'LAST_WEB_SEARCH_TOGGLE_',
   LAST_SQL_AGENT_TOGGLE_ = 'LAST_SQL_AGENT_TOGGLE_',
   LAST_CHART_AGENT_TOGGLE_ = 'LAST_CHART_AGENT_TOGGLE_',
+  /** Last selected pwc_tars plugin tools per conversation ID */
+  LAST_TARS_PLUGINS_ = 'LAST_TARS_PLUGINS_',
+  /** Pinned pwc_tars plugin tools (shared across conversations) */
+  PIN_TARS_PLUGINS_ = 'PIN_TARS_PLUGINS_',
   /** Last checked toggle for File Search per conversation ID */
   LAST_FILE_SEARCH_TOGGLE_ = 'LAST_FILE_SEARCH_TOGGLE_',
   /** Last checked toggle for Artifacts per conversation ID */

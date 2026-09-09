@@ -10,6 +10,7 @@ export * from './langflow';
 export * from './mcp';
 export * from './memory';
 export * from './mirror';
+export * from './plugins';
 export * from './models';
 export * from './prompts';
 export * from './reports';

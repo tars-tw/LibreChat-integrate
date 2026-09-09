@@ -8,6 +8,7 @@ import {
   useGetAgentsConfig,
   useToolToggle,
 } from '~/hooks';
+import useTarsPluginTools from '~/hooks/Tars/useTarsPluginTools';
 import useTarsMcpTools from '~/hooks/MCP/useTarsMcpTools';
 import { getTimestampedValue } from '~/utils/timestamps';
 import { useGetStartupConfig } from '~/data-provider';
@@ -28,6 +29,7 @@ interface BadgeRowContextType {
   searchApiKeyForm: ReturnType<typeof useSearchApiKeyForm>;
   mcpServerManager: ReturnType<typeof useMCPServerManager>;
   tarsMcpTools: ReturnType<typeof useTarsMcpTools>;
+  tarsPlugins: ReturnType<typeof useTarsPluginTools>;
 }
 
 const BadgeRowContext = createContext<BadgeRowContextType | undefined>(undefined);
@@ -322,6 +324,8 @@ export default function BadgeRowProvider({
     observeToolAuthorization,
   });
   const tarsMcpTools = useTarsMcpTools({ conversationId, storageContextKey });
+  /** pwc_tars plugin tools (tars_tool_sdk) the active brain offers. */
+  const tarsPlugins = useTarsPluginTools({ conversationId, storageContextKey });
 
   const value: BadgeRowContextType = {
     skills,
@@ -336,6 +340,7 @@ export default function BadgeRowProvider({
     searchApiKeyForm,
     mcpServerManager,
     tarsMcpTools,
+    tarsPlugins,
     sqlAgent,
     chartAgent,
   };

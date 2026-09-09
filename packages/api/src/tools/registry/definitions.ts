@@ -4,6 +4,7 @@ import { AskUserQuestionToolDefinition } from '~/agents/hitl/askUserQuestionTool
 import { TarsChartToolDefinition } from '~/tars/langflow/chart';
 import { TarsTableToolDefinition } from '~/tars/langflow/table';
 import { TarsDataToolDefinition } from '~/tars/langflow/data';
+import { getTarsPluginDefinition } from '~/tars/plugins/tool';
 import { TarsSqlToolDefinition } from '~/tars/sql/tool';
 import { geminiToolkit } from '~/tools/toolkits/gemini';
 import { oaiToolkit } from '~/tools/toolkits/oai';
@@ -484,8 +485,15 @@ const agentToolDefinitions: Record<string, ToolRegistryDefinition> = {
   },
 };
 
+/**
+ * pwc_tars plugin tools are discovered at runtime, so they are resolved from the
+ * primed manifest cache rather than this static map (`primeTarsPluginManifests`
+ * runs before the definition-only load path asks for them).
+ */
 export function getToolDefinition(toolName: string): ToolRegistryDefinition | undefined {
-  return toolDefinitions[toolName] ?? agentToolDefinitions[toolName];
+  return (
+    toolDefinitions[toolName] ?? agentToolDefinitions[toolName] ?? getTarsPluginDefinition(toolName)
+  );
 }
 
 export function getAllToolDefinitions(): ToolRegistryDefinition[] {

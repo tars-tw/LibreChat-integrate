@@ -124,6 +124,8 @@ export type TEphemeralAgent = {
   sql_agent?: boolean;
   /** pwc_tars chart agent (產生圖表). */
   chart_agent?: boolean;
+  /** pwc_tars plugin tools (`tars_tool_sdk`) switched on for this chat, by plugin name. */
+  tars_plugins?: string[];
   file_search?: boolean;
   execute_code?: boolean;
   artifacts?: string;

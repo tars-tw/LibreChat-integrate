@@ -17,6 +17,7 @@ import { BadgeRowProvider } from '~/Providers';
 import ToolsDropdown from './ToolsDropdown';
 import { useChatBadges } from '~/hooks';
 import ToolDialogs from './ToolDialogs';
+import TarsPlugins from './TarsPlugins';
 import FileSearch from './FileSearch';
 import ChartAgent from './ChartAgent';
 import Artifacts from './Artifacts';
@@ -378,6 +379,7 @@ function BadgeRow({
             <WebSearch />
             <SqlAgent />
             <ChartAgent />
+            <TarsPlugins />
             <CodeInterpreter />
             <FileSearch />
             <Skills />
