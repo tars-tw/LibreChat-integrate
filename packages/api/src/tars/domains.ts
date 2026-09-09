@@ -1,4 +1,7 @@
+import { mergeTarsPluginFunctions } from 'librechat-data-provider';
+import type { TTarsPluginFunctionState } from 'librechat-data-provider';
 import type { TarsKnowledgeBase } from './knowledge';
+import { fetchTarsPluginTools } from './plugins/client';
 import { tarsFetch } from './client';
 
 /**
@@ -81,9 +84,41 @@ export interface TarsDomainInput {
   role_ids?: string;
   knowledge_base_ids?: string;
   domain_functions?: string;
+  /**
+   * Plugin-tool switches by plugin name, merged into the stored
+   * `domain_functions` block here so the built-in feature keys pwc_tars manages
+   * survive; ignored when `domain_functions` is sent explicitly.
+   */
+  plugin_functions?: Record<string, TTarsPluginFunctionState>;
   prompt_instruction?: string;
   iframe_url?: string;
   status?: number | boolean;
+}
+
+/** One brain by id, unscoped (`GET /api/domain_settings/get_domains?id=`) — admin use only. */
+export async function fetchTarsDomain(
+  domainId: number | string,
+  baseUrl?: string,
+): Promise<TarsDomain | null> {
+  const data = await tarsFetch<DomainsByUserResponse>('/api/domain_settings/get_domains', {
+    query: { id: String(domainId) },
+    baseUrl,
+  });
+  return data?.sys_domains?.[0] ?? null;
+}
+
+/**
+ * The `domain_functions` block to store: the existing block with every plugin
+ * entry rewritten from the current scan (`GET /plugin_tools`), so only
+ * conformant plugins are written and removed ones drop out.
+ */
+async function mergedPluginFunctions(
+  existing: string | null | undefined,
+  states: Record<string, TTarsPluginFunctionState>,
+  baseUrl?: string,
+): Promise<string> {
+  const listing = await fetchTarsPluginTools(baseUrl);
+  return mergeTarsPluginFunctions(existing, listing.plugin_tools, states);
 }
 
 /**
@@ -102,17 +137,39 @@ export async function fetchTarsDomainPrepareData(baseUrl?: string): Promise<Tars
   };
 }
 
+/**
+ * Creates a brain. `domain_functions` is left to pwc_tars' defaults on create;
+ * when plugin switches are given they are merged into the created block with a
+ * follow-up update, so the defaults are never guessed on this side.
+ */
 export async function createTarsDomain(
   tarsId: string,
   input: TarsDomainInput,
   baseUrl?: string,
 ): Promise<TarsDomain> {
+  const { plugin_functions: pluginFunctions, ...body } = input;
   const data = await tarsFetch<{ domain: TarsDomain }>('/api/domain_settings/create_domain', {
     method: 'POST',
-    body: { ...input, created_by: tarsId },
+    body: { ...body, created_by: tarsId },
     baseUrl,
   });
-  return data.domain;
+  const created = data.domain;
+  if (!pluginFunctions || body.domain_functions !== undefined) {
+    return created;
+  }
+  return updateTarsDomain(
+    tarsId,
+    created.id,
+    {
+      ...body,
+      domain_functions: await mergedPluginFunctions(
+        created.domain_functions,
+        pluginFunctions,
+        baseUrl,
+      ),
+    },
+    baseUrl,
+  );
 }
 
 export async function updateTarsDomain(
@@ -121,9 +178,18 @@ export async function updateTarsDomain(
   input: TarsDomainInput,
   baseUrl?: string,
 ): Promise<TarsDomain> {
+  const { plugin_functions: pluginFunctions, ...body } = input;
+  if (pluginFunctions && body.domain_functions === undefined) {
+    const existing = await fetchTarsDomain(domainId, baseUrl);
+    body.domain_functions = await mergedPluginFunctions(
+      existing?.domain_functions,
+      pluginFunctions,
+      baseUrl,
+    );
+  }
   const data = await tarsFetch<{ domain: TarsDomain }>(
     `/api/domain_settings/update_domain/${encodeURIComponent(String(domainId))}`,
-    { method: 'PUT', body: { ...input, updated_by: tarsId }, baseUrl },
+    { method: 'PUT', body: { ...body, updated_by: tarsId }, baseUrl },
   );
   return data.domain;
 }

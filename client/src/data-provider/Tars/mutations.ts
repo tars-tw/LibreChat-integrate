@@ -7,6 +7,7 @@ import type {
   TTarsMemoryUploadResult,
   TTarsDocument,
   TTarsDomainInput,
+  TTarsPluginToolsResponse,
   TTarsPromptInput,
   TTarsKnowledgeBase,
   TTarsSysConfigUpdate,
@@ -65,9 +66,16 @@ type KnowledgeResponse = { knowledgeBase: TTarsKnowledgeBase };
 type PromptResponse = { prompt: TTarsPrompt };
 type McpServerResponse = { server: TTarsMcpServer };
 
+/**
+ * The chat reads brains through `useTarsDomainsQuery` with `refetchOnMount: false`,
+ * and its observer is unmounted while the admin page is open — a plain
+ * invalidation would leave that inactive query stale until a full reload, so the
+ * chat would keep offering plugins the admin just switched off. `refetchType:
+ * 'all'` refetches inactive queries too.
+ */
 const invalidateDomains = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsDomainPrepareData]);
-  queryClient.invalidateQueries([QueryKeys.tarsDomains]);
+  queryClient.invalidateQueries([QueryKeys.tarsDomains], { refetchType: 'all' });
 };
 
 export const useCreateTarsDomainMutation = (
@@ -112,6 +120,20 @@ export const useDeleteTarsDomainMutation = (
     ...options,
     onSuccess: (...args) => {
       invalidateDomains(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+/** Admin: re-scan the plugin folders; the listing query is replaced with the fresh scan. */
+export const useReloadTarsPluginToolsMutation = (
+  options?: UseMutationOptions<TTarsPluginToolsResponse, unknown, void>,
+): UseMutationResult<TTarsPluginToolsResponse, unknown, void> => {
+  const queryClient = useQueryClient();
+  return useMutation(() => dataService.reloadTarsPluginTools(), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.setQueryData([QueryKeys.tarsPluginTools], args[0]);
       options?.onSuccess?.(...args);
     },
   });

@@ -32,6 +32,7 @@ import type {
   TTarsPromptsResponse,
   TTarsDocumentsResponse,
   TTarsDomainPrepareData,
+  TTarsPluginToolsResponse,
   TTarsSysConfigsResponse,
   TTarsUsersResponse,
   TTarsUserPrepareData,
@@ -105,6 +106,20 @@ export const useTarsDomainsQuery = (
       ...adminQueryOptions,
       ...config,
     },
+  );
+};
+
+/**
+ * Admin: the pwc_tars plugin tools (tars_tool_sdk) found in the plugin folders,
+ * for the brain editor's per-plugin switches.
+ */
+export const useTarsPluginToolsQuery = (
+  config?: UseQueryOptions<TTarsPluginToolsResponse>,
+): QueryObserverResult<TTarsPluginToolsResponse> => {
+  return useQuery<TTarsPluginToolsResponse>(
+    [QueryKeys.tarsPluginTools],
+    () => dataService.getTarsPluginTools(),
+    { ...adminQueryOptions, ...config },
   );
 };
 

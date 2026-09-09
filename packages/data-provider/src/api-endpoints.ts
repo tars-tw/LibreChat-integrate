@@ -341,6 +341,8 @@ export const agentQueuedTurn = (queuedTurnId: string) =>
 export const tarsDomains = () => `${BASE_URL}/api/tars/domains`;
 export const tarsDomain = (id: string | number) => `${BASE_URL}/api/tars/domains/${id}`;
 export const tarsDomainPrepareData = () => `${BASE_URL}/api/tars/domains/admin/prepare-data`;
+export const tarsPluginTools = () => `${BASE_URL}/api/tars/domains/admin/plugin-tools`;
+export const tarsPluginToolsReload = () => `${BASE_URL}/api/tars/domains/admin/plugin-tools/reload`;
 export const tarsKnowledgeBases = () => `${BASE_URL}/api/tars/knowledge-bases`;
 export const tarsKnowledgeBase = (id: string) => `${BASE_URL}/api/tars/knowledge-bases/${id}`;
 export const tarsKnowledgeBaseModels = () => `${BASE_URL}/api/tars/knowledge-bases/models`;
