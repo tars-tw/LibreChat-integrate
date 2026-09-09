@@ -1,4 +1,4 @@
-import { Code, Database, FileText, Globe, Server } from 'lucide-react';
+import { Database, FileText, Globe, Server } from 'lucide-react';
 import type {
   TTarsKnowledgeBase,
   TTarsKnowledgeBaseGroup,
@@ -22,7 +22,7 @@ export interface DatasetStat {
 export const DATASET_STATS: DatasetStat[] = [
   { key: 'documents', icon: FileText, labelKey: 'com_ui_tars_kb_stat_documents' },
   { key: 'websites', icon: Globe, labelKey: 'com_ui_tars_kb_stat_websites' },
-  { key: 'apis', icon: Code, labelKey: 'com_ui_tars_kb_stat_apis' },
+  // { key: 'apis', icon: Code, labelKey: 'com_ui_tars_kb_stat_apis' },
   { key: 'fileSystems', icon: Server, labelKey: 'com_ui_tars_kb_stat_file_systems' },
   { key: 'database', icon: Database, labelKey: 'com_ui_tars_kb_stat_database' },
 ];
@@ -37,8 +37,8 @@ export const datasetCount = (kb: TTarsKnowledgeBase, key: DatasetStat['key']): n
       return kb.document_count ?? 0;
     case 'websites':
       return kb.website_count ?? 0;
-    case 'apis':
-      return kb.api_count ?? 0;
+    // case 'apis':
+    //   return kb.api_count ?? 0;
     case 'fileSystems':
       return kb.fs_count ?? 0;
     default:

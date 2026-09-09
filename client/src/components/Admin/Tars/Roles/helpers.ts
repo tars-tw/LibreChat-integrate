@@ -55,3 +55,16 @@ export const buildRoleUsage = (
 };
 
 export const EMPTY_USAGE: RoleUsage = { users: 0, groups: 0 };
+
+/** The accounts whose own role_id matches this role. */
+export const usersForRole = (roleId: string, users: TTarsUser[]): TTarsUser[] =>
+  users.filter((user) => user.role_id != null && String(user.role_id) === roleId);
+
+/** The groups that grant this role, mirroring how buildRoleUsage counts them. */
+export const groupsForRole = (
+  roleId: string,
+  groups: TTarsUserGroupWithMembers[],
+): TTarsUserGroupWithMembers[] =>
+  groups.filter((group) =>
+    csvToIds(group.role_id == null ? '' : String(group.role_id)).includes(roleId),
+  );

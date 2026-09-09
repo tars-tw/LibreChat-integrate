@@ -160,6 +160,7 @@ export default function Filters({
             value={filters.start}
             max={filters.end === '' ? undefined : filters.end}
             onChange={(event) => set('start', event.target.value)}
+            className="[&::-webkit-calendar-picker-indicator]:ml-3.5"
           />
         </div>
         <div className="space-y-1.5">

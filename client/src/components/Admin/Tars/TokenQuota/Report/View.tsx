@@ -141,6 +141,7 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
               value={range.start}
               max={range.end === '' ? undefined : range.end}
               onChange={(event) => setRange((prev) => ({ ...prev, start: event.target.value }))}
+              className="[&::-webkit-calendar-picker-indicator]:ml-3.5"
             />
           </div>
 
