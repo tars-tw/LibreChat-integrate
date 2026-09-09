@@ -393,8 +393,8 @@ function FavoritesList({
           </>
         ) : (
           <>
-            {/* Agent Marketplace button */}
-            {showAgentMarketplace && (
+            {/* Agent Marketplace button - temporarily hidden */}
+            {false && showAgentMarketplace && (
               <div
                 ref={marketplaceRef}
                 role="button"
