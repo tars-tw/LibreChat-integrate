@@ -965,7 +965,7 @@ export type TTarsRoleInput = {
   description?: string;
   domainIds?: string;
   librechatMenuKeys?: string;
-  isEnabled?: boolean | number;
+  isEnabled?: boolean;
   isDefaultRole?: boolean;
 };
 
