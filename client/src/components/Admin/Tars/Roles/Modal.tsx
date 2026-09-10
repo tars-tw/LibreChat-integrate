@@ -102,7 +102,7 @@ export default function RoleModal({
       description: form.description.trim(),
       domainIds: idsToCsv([...form.domainIds]) ?? '',
       librechatMenuKeys: idsToCsv([...form.menuKeys]) ?? '',
-      isEnabled: form.enabled ? 1 : 0,
+      isEnabled: form.enabled,
       isDefaultRole: form.isDefault,
     };
     if (isEdit) {
