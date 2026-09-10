@@ -89,9 +89,26 @@ describe('role mutations', () => {
       description: 'Full access',
       domain_ids: '1,2',
       librechat_menu_keys: 'admin.users',
-      is_enabled: true,
+      is_enabled: 1,
       is_default_role: true,
       created_by: 'admin',
+    });
+  });
+
+  it('converts isEnabled: false to is_enabled: 0', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { role }));
+
+    await createTarsRole(
+      'admin',
+      {
+        name: 'Admin',
+        isEnabled: false,
+      },
+      BASE_URL,
+    );
+
+    expect(parseBody(fetchMock, 0)).toMatchObject({
+      is_enabled: 0,
     });
   });
 
