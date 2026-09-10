@@ -64,7 +64,7 @@ const toRoleBody = (input: TarsRoleInput): Record<string, unknown> => ({
   description: input.description ?? '',
   domain_ids: input.domainIds ?? '',
   librechat_menu_keys: input.librechatMenuKeys ?? '',
-  is_enabled: input.isEnabled ?? true,
+  is_enabled: (input.isEnabled ?? true) ? 1 : 0,
   is_default_role: input.isDefaultRole ?? false,
 });
 
