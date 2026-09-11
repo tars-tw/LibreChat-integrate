@@ -1,41 +1,115 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Folder, Search, User } from 'lucide-react';
+import { ChevronDown, ChevronRight, Folder, Search, User, Users } from 'lucide-react';
 import { Input, Button, Spinner, OGDialog, OGDialogTemplate } from '@librechat/client';
 import type { TTarsSsoConfig, TTarsLdapTreeNode } from 'librechat-data-provider';
 import { useLocalize } from '~/hooks';
 
-/** pwc_tars marks leaf people with a `user`-ish type; everything else is a container. */
-const isUserNode = (node: TTarsLdapTreeNode): boolean =>
-  (node.type ?? '').toLowerCase().includes('user') || !node.children?.length;
+type LdapNodeKind = 'user' | 'group' | 'ou';
 
-const matches = (node: TTarsLdapTreeNode, query: string): boolean => {
+/**
+ * pwc_tars always tags a node's kind at `data.type`. The children-length guess
+ * only covers the (unexpected) case where that field is missing.
+ */
+const getNodeKind = (node: TTarsLdapTreeNode): LdapNodeKind => {
+  const type = (node.data?.type ?? '').toLowerCase();
+  if (type === 'user' || type === 'group' || type === 'ou') {
+    return type;
+  }
+  return node.children?.length ? 'ou' : 'user';
+};
+
+export const matchesLdapTreeSearch = (node: TTarsLdapTreeNode, query: string): boolean => {
   if (!query) {
     return true;
   }
   if (node.label.toLowerCase().includes(query) || node.key.toLowerCase().includes(query)) {
     return true;
   }
-  return (node.children ?? []).some((child) => matches(child, query));
+  return (node.children ?? []).some((child) => matchesLdapTreeSearch(child, query));
 };
 
-function TreeNode({
+const KIND_ICON: Record<LdapNodeKind, typeof User> = {
+  user: User,
+  group: Users,
+  ou: Folder,
+};
+
+function NodeLabel({
+  node,
+  kind,
+  selectable,
+  selected,
+  onToggle,
+}: {
+  node: TTarsLdapTreeNode;
+  kind: LdapNodeKind;
+  selectable: boolean;
+  selected?: Set<string>;
+  onToggle?: (username: string) => void;
+}) {
+  const localize = useLocalize();
+  const memberCount = kind === 'group' ? node.data?.member_count : null;
+  const label = (
+    <>
+      {node.label}
+      {memberCount != null && (
+        <span className="ml-1 text-xs font-normal text-text-secondary">
+          ({localize('com_ui_tars_sso_tree_group_members', { count: memberCount })})
+        </span>
+      )}
+    </>
+  );
+
+  const Icon = KIND_ICON[kind];
+
+  if (kind === 'user' && selectable) {
+    return (
+      <label className="flex cursor-pointer items-center gap-2 text-text-primary">
+        <input
+          type="checkbox"
+          className="h-4 w-4"
+          checked={selected?.has(node.label) ?? false}
+          onChange={() => onToggle?.(node.label)}
+        />
+        <Icon className="icon-xs text-text-secondary" aria-hidden="true" />
+        <span>{label}</span>
+      </label>
+    );
+  }
+
+  return (
+    <span className="flex items-center gap-2 text-text-primary">
+      <Icon className="icon-xs text-text-secondary" aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
+/**
+ * One row of the directory tree. Shared by the whitelist picker (checkboxes on
+ * user rows) and the read-only AD import preview (`selectable={false}`, no
+ * `selected`/`onToggle` needed) so both stay a single recursive renderer.
+ */
+export function LdapTreeNode({
   node,
   depth,
   query,
+  selectable = true,
   selected,
   onToggle,
 }: {
   node: TTarsLdapTreeNode;
   depth: number;
   query: string;
-  selected: Set<string>;
-  onToggle: (username: string) => void;
+  selectable?: boolean;
+  selected?: Set<string>;
+  onToggle?: (username: string) => void;
 }) {
   const [open, setOpen] = useState(depth < 1);
   const children = node.children ?? [];
-  const isUser = isUserNode(node);
+  const kind = getNodeKind(node);
 
-  if (!matches(node, query)) {
+  if (!matchesLdapTreeSearch(node, query)) {
     return null;
   }
 
@@ -55,31 +129,22 @@ function TreeNode({
         ) : (
           <span className="w-4" />
         )}
-        {isUser ? (
-          <label className="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={selected.has(node.label)}
-              onChange={() => onToggle(node.label)}
-            />
-            <User className="icon-xs text-text-secondary" aria-hidden="true" />
-            <span className="text-text-primary">{node.label}</span>
-          </label>
-        ) : (
-          <span className="flex items-center gap-2 text-text-primary">
-            <Folder className="icon-xs text-text-secondary" aria-hidden="true" />
-            {node.label}
-          </span>
-        )}
+        <NodeLabel
+          node={node}
+          kind={kind}
+          selectable={selectable}
+          selected={selected}
+          onToggle={onToggle}
+        />
       </div>
       {open &&
         children.map((child) => (
-          <TreeNode
+          <LdapTreeNode
             key={child.key}
             node={child}
             depth={depth + 1}
             query={query}
+            selectable={selectable}
             selected={selected}
             onToggle={onToggle}
           />
@@ -157,7 +222,7 @@ export default function LdapTreeModal({
               )}
               {!isLoading &&
                 nodes.map((node) => (
-                  <TreeNode
+                  <LdapTreeNode
                     key={node.key}
                     node={node}
                     depth={0}

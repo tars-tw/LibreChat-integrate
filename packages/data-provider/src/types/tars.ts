@@ -1022,16 +1022,34 @@ export type TTarsLdapConfigInput = {
   status?: number;
 };
 
-/** A node of the pwc_tars LDAP directory tree. */
+/**
+ * A node of the pwc_tars LDAP directory tree. pwc_tars nests the node kind
+ * under `data.type` ('user' | 'group' | 'ou') rather than on the node itself.
+ */
 export type TTarsLdapTreeNode = {
   key: string;
   label: string;
-  type?: string | null;
+  data?: {
+    type?: string | null;
+    member_count?: number | null;
+  } | null;
   children?: TTarsLdapTreeNode[];
+};
+
+/** Counts pwc_tars computes alongside the tree, so an import preview can be reviewed before running. */
+export type TTarsLdapTreeSummary = {
+  total_users: number;
+  total_groups: number;
+  total_ous: number;
+  ungrouped_users: number;
+  group_member_error_count: number;
+  primary_group_augmented_count: number;
+  query_seconds: number;
 };
 
 export type TTarsLdapTreeResponse = {
   nodes: TTarsLdapTreeNode[];
+  summary?: TTarsLdapTreeSummary;
 };
 
 /** A whitelist entry resolved against the directory. */

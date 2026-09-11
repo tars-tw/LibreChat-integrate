@@ -20,11 +20,13 @@ import {
 import type { TTarsSsoConfig } from 'librechat-data-provider';
 import {
   useTarsSsoConfigsQuery,
+  useTarsLdapTreeMutation,
   useImportTarsAdDataMutation,
   useDeleteTarsAdDataMutation,
   useDeleteTarsSsoConfigMutation,
 } from '~/data-provider';
 import { isSsoConfigEnabled, whitelistToUsernames } from '../helpers';
+import ImportPreviewModal from './ImportPreview';
 import SyncScheduleModal from './Schedule';
 import WhitelistPanel from './Whitelist';
 import { useLocalize } from '~/hooks';
@@ -60,6 +62,7 @@ export default function SsoCard() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [importEnableUsers, setImportEnableUsers] = useState(true);
   const [importing, setImporting] = useState<TTarsSsoConfig | null>(null);
+  const [previewingImport, setPreviewingImport] = useState<TTarsSsoConfig | null>(null);
 
   const onError = (error: unknown) =>
     showToast({
@@ -74,6 +77,8 @@ export default function SsoCard() {
     },
     onError,
   });
+
+  const importTreeMutation = useTarsLdapTreeMutation({ onError });
 
   const importMutation = useImportTarsAdDataMutation({
     onSuccess: (result) => {
@@ -162,7 +167,7 @@ export default function SsoCard() {
                     aria-label={localize('com_ui_tars_sso_schedule')}
                     title={localize('com_ui_tars_sso_schedule')}
                     onClick={() => setScheduling(config)}
-                    className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                    className="rounded p-1.5 text-[rgb(var(--pwc-info-cyan))] hover:bg-surface-tertiary"
                   >
                     <CalendarClock className="icon-sm" />
                   </button>
@@ -171,10 +176,10 @@ export default function SsoCard() {
                     aria-label={localize('com_ui_tars_sso_import')}
                     title={localize('com_ui_tars_sso_import')}
                     onClick={() => {
-                      setImportEnableUsers(true);
-                      setImporting(config);
+                      setPreviewingImport(config);
+                      importTreeMutation.mutate({ config_id: config.id });
                     }}
-                    className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                    className="rounded p-1.5 text-brand-primary hover:bg-surface-tertiary"
                   >
                     <DownloadCloud className="icon-sm" />
                   </button>
@@ -183,7 +188,7 @@ export default function SsoCard() {
                     aria-label={localize('com_ui_tars_sso_unlink')}
                     title={localize('com_ui_tars_sso_unlink')}
                     onClick={() => setUnlinking(config)}
-                    className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                    className="rounded p-1.5 text-pwc-info hover:bg-surface-tertiary"
                   >
                     <Unlink className="icon-sm" />
                   </button>
@@ -201,7 +206,7 @@ export default function SsoCard() {
                     aria-label={localize('com_ui_delete')}
                     title={localize('com_ui_delete')}
                     onClick={() => setDeleting(config)}
-                    className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                    className="rounded p-1.5 text-red-500 hover:bg-surface-tertiary"
                   >
                     <Trash2 className="icon-sm" />
                   </button>
@@ -291,6 +296,21 @@ export default function SsoCard() {
             }
           />
         </OGDialog>
+      )}
+
+      {previewingImport != null && (
+        <ImportPreviewModal
+          config={previewingImport}
+          nodes={importTreeMutation.data?.nodes ?? []}
+          summary={importTreeMutation.data?.summary}
+          isLoading={importTreeMutation.isLoading}
+          onNext={() => {
+            setImportEnableUsers(true);
+            setImporting(previewingImport);
+            setPreviewingImport(null);
+          }}
+          onOpenChange={(open) => !open && setPreviewingImport(null)}
+        />
       )}
 
       {importing != null && (
