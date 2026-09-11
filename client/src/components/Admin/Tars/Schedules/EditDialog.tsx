@@ -34,7 +34,7 @@ export default function ScheduleEditDialog({
 
   const updateMutation = useUpdateTarsScheduleMutation({
     onSuccess: () => {
-      showToast({ message: localize('com_ui_tars_kb_saved'), status: 'success' });
+      showToast({ message: localize('com_ui_tars_sched_updated'), status: 'success' });
       onClose();
       onSaved();
     },

@@ -157,19 +157,38 @@ describe('directory operations', () => {
     );
   });
 
-  /** The tree arrives either bare or wrapped in a `tree` key. */
-  it('accepts both tree response shapes', async () => {
+  /** The tree arrives bare, or wrapped in a `tree` or pwc_tars's actual `tree_data` key. */
+  it('accepts every tree response shape', async () => {
     const nodes = [{ key: 'ou=people', label: 'people' }];
 
     jest
       .spyOn(global, 'fetch')
       .mockResolvedValue(buildResponse(200, { success: true, data: nodes }));
-    await expect(fetchTarsLdapTree({ config_id: 'cfg-1' }, BASE_URL)).resolves.toEqual(nodes);
+    await expect(fetchTarsLdapTree({ config_id: 'cfg-1' }, BASE_URL)).resolves.toEqual({ nodes });
 
     jest
       .spyOn(global, 'fetch')
       .mockResolvedValue(buildResponse(200, { success: true, data: { tree: nodes } }));
-    await expect(fetchTarsLdapTree({ config_id: 'cfg-1' }, BASE_URL)).resolves.toEqual(nodes);
+    await expect(fetchTarsLdapTree({ config_id: 'cfg-1' }, BASE_URL)).resolves.toEqual({ nodes });
+
+    const summary = {
+      total_users: 3,
+      total_groups: 1,
+      total_ous: 2,
+      ungrouped_users: 0,
+      group_member_error_count: 0,
+      primary_group_augmented_count: 1,
+      query_seconds: 0.5,
+    };
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        buildResponse(200, { success: true, data: { tree_data: nodes, summary } }),
+      );
+    await expect(fetchTarsLdapTree({ config_id: 'cfg-1' }, BASE_URL)).resolves.toEqual({
+      nodes,
+      summary,
+    });
   });
 
   it('forwards the enable-users flag on an AD import', async () => {
