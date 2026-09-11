@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Input, Button, Spinner, useToastContext } from '@librechat/client';
-import { Download, ListTree, RefreshCw, Search, Trash2, UserX } from 'lucide-react';
+import { Download, ListTree, Search, Trash2, UserX } from 'lucide-react';
+import { Input, Button, Dropdown, Spinner, useToastContext } from '@librechat/client';
 import type { TTarsSsoConfig, TTarsWhitelistUser } from 'librechat-data-provider';
 import {
   useTarsLdapTreeMutation,
@@ -14,6 +14,10 @@ import LdapTreeModal from './Tree';
 
 const errorMessage = (error: unknown): string | undefined =>
   (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+
+/** Mirrors the 人員管理 page size list, so paging behaves the same across admin tables. */
+const PAGE_SIZES = [10, 25, 50, 100];
+const PAGE_SIZE_OPTIONS = PAGE_SIZES.map(String);
 
 /**
  * Whitelist members of one LDAP configuration. pwc_tars stores the list as a
@@ -31,6 +35,8 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
   const [search, setSearch] = useState('');
   const [details, setDetails] = useState<TTarsWhitelistUser[]>([]);
   const [treeOpen, setTreeOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
 
   const onError = (error: unknown) =>
     showToast({
@@ -78,6 +84,13 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
     );
   }, [details, usernames, search]);
 
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  const pagedRows = useMemo(
+    () => rows.slice(currentPage * pageSize, currentPage * pageSize + pageSize),
+    [rows, currentPage, pageSize],
+  );
+
   const saveList = (next: string[]) =>
     updateMutation.mutate({
       id: config.id,
@@ -109,7 +122,10 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
           <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
             placeholder={localize('com_ui_tars_sso_whitelist_search')}
             className="pl-9"
           />
@@ -126,23 +142,6 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
             )}
             {localize('com_ui_tars_sso_tree')}
           </Button>
-          <Button
-            variant="outline"
-            onClick={() =>
-              loadDetails({
-                whitelist_users: usernamesToWhitelist(usernames),
-                ...connectionPayload(config),
-              })
-            }
-            disabled={usernames.length === 0 || detailMutation.isLoading}
-          >
-            {detailMutation.isLoading ? (
-              <Spinner className="icon-sm mr-1" />
-            ) : (
-              <RefreshCw className="icon-sm mr-1" />
-            )}
-            {localize('com_ui_tars_sso_whitelist_resolve')}
-          </Button>
           <Button variant="outline" onClick={handleExport} disabled={rows.length === 0}>
             <Download className="icon-sm mr-1" />
             {localize('com_ui_tars_users_export_csv')}
@@ -156,41 +155,87 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
           <p className="text-sm">{localize('com_ui_tars_sso_whitelist_empty')}</p>
         </div>
       ) : (
-        <div className="max-h-64 overflow-y-auto rounded-lg border border-border-light">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-surface-secondary text-left text-text-secondary">
-              <tr>
-                <th className="px-3 py-2 font-medium">{localize('com_ui_tars_users_username')}</th>
-                <th className="px-3 py-2 font-medium">
-                  {localize('com_ui_tars_sso_whitelist_ou')}
-                </th>
-                <th className="px-3 py-2 text-right font-medium">{localize('com_ui_actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((user) => (
-                <tr key={user.username} className="border-t border-border-light">
-                  <td className="px-3 py-2 text-text-primary">{user.username}</td>
-                  <td className="px-3 py-2 text-text-secondary">{user.ou || '—'}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        aria-label={localize('com_ui_tars_sso_whitelist_remove')}
-                        title={localize('com_ui_tars_sso_whitelist_remove')}
-                        disabled={updateMutation.isLoading}
-                        onClick={() => saveList(usernames.filter((name) => name !== user.username))}
-                        className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
-                      >
-                        <Trash2 className="icon-sm" />
-                      </button>
-                    </div>
-                  </td>
+        <>
+          <div className="overflow-x-auto rounded-lg border border-border-light">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-secondary text-left text-text-secondary">
+                <tr>
+                  <th className="px-3 py-2 font-medium">
+                    {localize('com_ui_tars_users_username')}
+                  </th>
+                  <th className="px-3 py-2 font-medium">
+                    {localize('com_ui_tars_sso_whitelist_ou')}
+                  </th>
+                  <th className="px-3 py-2 text-right font-medium">{localize('com_ui_actions')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {pagedRows.map((user) => (
+                  <tr key={user.username} className="border-t border-border-light">
+                    <td className="px-3 py-2 text-text-primary">{user.username}</td>
+                    <td className="px-3 py-2 text-text-secondary">{user.ou || '—'}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          aria-label={localize('com_ui_tars_sso_whitelist_remove')}
+                          title={localize('com_ui_tars_sso_whitelist_remove')}
+                          disabled={updateMutation.isLoading}
+                          onClick={() =>
+                            saveList(usernames.filter((name) => name !== user.username))
+                          }
+                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                        >
+                          <Trash2 className="icon-sm" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
+            <div className="flex items-center gap-2">
+              <span id={`tars-whitelist-page-size-label-${config.id}`}>
+                {localize('com_ui_tars_users_rows_per_page')}
+              </span>
+              <Dropdown
+                value={String(pageSize)}
+                onChange={(value) => {
+                  setPageSize(Number(value));
+                  setPage(0);
+                }}
+                options={PAGE_SIZE_OPTIONS}
+                aria-labelledby={`tars-whitelist-page-size-label-${config.id}`}
+                sizeClasses="min-w-[5rem]"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span>
+                {localize('com_ui_tars_users_page_of', {
+                  current: currentPage + 1,
+                  total: pageCount,
+                })}
+              </span>
+              <Button
+                variant="outline"
+                disabled={currentPage === 0}
+                onClick={() => setPage(currentPage - 1)}
+              >
+                {localize('com_ui_tars_users_prev_page')}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={currentPage >= pageCount - 1}
+                onClick={() => setPage(currentPage + 1)}
+              >
+                {localize('com_ui_tars_users_next_page')}
+              </Button>
+            </div>
+          </div>
+        </>
       )}
 
       {treeOpen && (
