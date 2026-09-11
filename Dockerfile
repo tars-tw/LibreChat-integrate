@@ -54,6 +54,12 @@ RUN \
 
 COPY --chown=node:node . .
 
+# Baked into the Vite build for the Langflow iframe (client/src/components/Langflow/LangflowView.tsx
+# falls back to http://localhost:7860 when this is unset). .dockerignore excludes .* (including
+# .env), so without exporting it here the build never sees VITE_LANGFLOW_URL from --build-arg.
+ARG VITE_LANGFLOW_URL=
+ENV VITE_LANGFLOW_URL=${VITE_LANGFLOW_URL}
+
 RUN \
     # React client build with configurable memory
     NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}" npm run frontend; \
