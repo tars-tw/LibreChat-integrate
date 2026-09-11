@@ -218,8 +218,8 @@ router.post('/settings/sso/test', requireTarsAdmin, async (req, res) => {
  */
 router.post('/settings/sso/tree', requireTarsAdmin, async (req, res) => {
   try {
-    const nodes = await fetchTarsLdapTree(req.body ?? {});
-    return res.json({ nodes });
+    const { nodes, summary } = await fetchTarsLdapTree(req.body ?? {});
+    return res.json({ nodes, summary });
   } catch (error) {
     logger.error('[POST /api/tars/settings/sso/tree] Failed', error);
     return relayTarsError(res, error, 'Failed to read the LDAP directory');
