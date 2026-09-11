@@ -69,9 +69,9 @@ function toErrorMessage(error: unknown): string {
 
 /**
  * The pwc_tars chart capability as one native LibreChat tool. pwc_tars renders
- * the PNG under its unauthenticated `/static` tree and reports its URL; the
- * answer usually embeds it already, so the image link is only appended when the
- * agent forgot to.
+ * the PNG under its `/static` tree and reports its URL, which arrives already
+ * pointed at LibreChat's relay; the answer usually embeds it, so the image link
+ * is only appended when the agent forgot to.
  */
 export function createTarsChartTool(options: TarsChartToolOptions): DynamicStructuredTool {
   return tool(

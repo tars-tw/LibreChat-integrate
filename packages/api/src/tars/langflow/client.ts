@@ -1,6 +1,7 @@
 import { logger } from '@librechat/data-schemas';
 import { getTarsModelProfileNames } from '~/tars/models';
 import { getTarsSysConfigValue } from '~/tars/sysconfig';
+import { rewriteTarsAssetLinks } from '~/tars/assets';
 import { tarsFetch } from '~/tars/client';
 
 /** pwc_tars sys_config key holding the shared secret for `/api/langflow-service/*`. */
@@ -128,7 +129,7 @@ export async function langflowServiceFetch<T>(
 /**
  * Runs one `/api/langflow-service/*` capability call. pwc_tars owns the nested
  * agent loop; callers only shape the body and relay `data` back into the chat
- * turn.
+ * turn. Generated charts and files come back linked through LibreChat's relay.
  */
 export async function runLangflowCapability(
   path: string,
@@ -136,7 +137,15 @@ export async function runLangflowCapability(
   options: LangflowRequestOptions,
 ): Promise<LangflowCapabilityData> {
   const data = await langflowServiceFetch<LangflowCapabilityData>(path, { ...options, body });
-  return data ?? {};
+  if (!data) {
+    return {};
+  }
+  return {
+    ...data,
+    answer: data.answer && rewriteTarsAssetLinks(data.answer),
+    chart_url: data.chart_url && rewriteTarsAssetLinks(data.chart_url),
+    file_url: data.file_url && rewriteTarsAssetLinks(data.file_url),
+  };
 }
 
 /** Positive-number env parse with a fallback, for per-capability timeouts. */
