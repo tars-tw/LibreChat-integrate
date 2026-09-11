@@ -139,26 +139,51 @@ export async function testTarsLdapConnection(
   return unwrap(response, {}).message ?? 'LDAP connection successful';
 }
 
-/** A node of the pwc_tars LDAP directory tree. */
+/**
+ * A node of the pwc_tars LDAP directory tree. pwc_tars nests the node kind
+ * under `data.type` ('user' | 'group' | 'ou') rather than on the node itself.
+ */
 export interface TarsLdapTreeNode {
   key: string;
   label: string;
-  type?: string | null;
+  data?: {
+    type?: string | null;
+    member_count?: number | null;
+  } | null;
   children?: TarsLdapTreeNode[];
+}
+
+/** Counts pwc_tars computes alongside the tree, so an import preview can be reviewed before running. */
+export interface TarsLdapTreeSummary {
+  total_users: number;
+  total_groups: number;
+  total_ous: number;
+  ungrouped_users: number;
+  group_member_error_count: number;
+  primary_group_augmented_count: number;
+  query_seconds: number;
+}
+
+export interface TarsLdapTreeResult {
+  nodes: TarsLdapTreeNode[];
+  summary?: TarsLdapTreeSummary;
 }
 
 export async function fetchTarsLdapTree(
   payload: { config_id?: string } & TarsLdapConfigInput,
   baseUrl?: string,
-): Promise<TarsLdapTreeNode[]> {
+): Promise<TarsLdapTreeResult> {
   const response = await tarsFetch<
-    TarsSsoEnvelope<TarsLdapTreeNode[] | { tree?: TarsLdapTreeNode[] }>
+    TarsSsoEnvelope<
+      | TarsLdapTreeNode[]
+      | { tree_data?: TarsLdapTreeNode[]; tree?: TarsLdapTreeNode[]; summary?: TarsLdapTreeSummary }
+    >
   >('/api/settings/get_ldap_tree', { method: 'POST', body: payload, baseUrl, timeoutMs: 60000 });
   const data = response?.data;
   if (Array.isArray(data)) {
-    return data;
+    return { nodes: data };
   }
-  return data?.tree ?? [];
+  return { nodes: data?.tree_data ?? data?.tree ?? [], summary: data?.summary };
 }
 
 /** A whitelist entry resolved against the directory. */

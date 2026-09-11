@@ -51,7 +51,7 @@ import type {
   TTarsSystemSettings,
   TTarsLdapConfigInput,
   TTarsWhitelistUser,
-  TTarsLdapTreeNode,
+  TTarsLdapTreeResponse,
   TTarsSyncScheduleInput,
   TTarsTokenConfig,
   TTarsTokenUserQuota,
@@ -1266,12 +1266,12 @@ export const useTestTarsSsoConnectionMutation = (
 
 export const useTarsLdapTreeMutation = (
   options?: UseMutationOptions<
-    { nodes: TTarsLdapTreeNode[] },
+    TTarsLdapTreeResponse,
     unknown,
     { config_id?: string } & TTarsLdapConfigInput
   >,
 ): UseMutationResult<
-  { nodes: TTarsLdapTreeNode[] },
+  TTarsLdapTreeResponse,
   unknown,
   { config_id?: string } & TTarsLdapConfigInput
 > => {
