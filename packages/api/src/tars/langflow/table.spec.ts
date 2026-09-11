@@ -10,11 +10,14 @@ jest.mock('@librechat/data-schemas', () => ({
 import type { TarsMemoryDocument } from '~/tars/memory/client';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
+import { rewriteTarsAssetLinks } from '~/tars/assets';
 import { createTarsTableTaskTool } from './table';
 
 const BASE_URL = 'http://tars.test';
 const USER_ID = 'tars-user-1';
 const FILE_URL = 'http://tars.test/static/generate_output/kb_1/table_task_ab.xlsx';
+process.env.JWT_SECRET = 'table-test-secret';
+const RELAYED_FILE_URL = rewriteTarsAssetLinks(FILE_URL);
 
 const documents: TarsMemoryDocument[] = [
   {
@@ -106,7 +109,7 @@ describe('createTarsTableTaskTool', () => {
     });
 
     await expect(tableTool.invoke({ task: '逐列比對規格' })).resolves.toBe(
-      `| 列 | 結果 |\n\n[下載完整結果 (xlsx)](${FILE_URL})`,
+      `| 列 | 結果 |\n\n[下載完整結果 (xlsx)](${RELAYED_FILE_URL})`,
     );
     expect(tableBodyOf(fetchMock)).toEqual({
       query: '逐列比對規格',
@@ -116,7 +119,7 @@ describe('createTarsTableTaskTool', () => {
     });
   });
 
-  it('keeps the answer untouched when the download link is already embedded', async () => {
+  it('relays the embedded download link without appending a second one', async () => {
     const answer = `| 列 |\n[下載完整結果 (xlsx)](${FILE_URL})`;
     mockBackend({ status: 200, body: { success: true, data: { answer, file_url: FILE_URL } } });
     const tableTool = createTarsTableTaskTool({
@@ -124,7 +127,9 @@ describe('createTarsTableTaskTool', () => {
       domainId: 100,
       documents,
     });
-    await expect(tableTool.invoke({ task: 't' })).resolves.toBe(answer);
+    await expect(tableTool.invoke({ task: 't' })).resolves.toBe(
+      `| 列 |\n[下載完整結果 (xlsx)](${RELAYED_FILE_URL})`,
+    );
   });
 
   it('refuses without an active brain', async () => {

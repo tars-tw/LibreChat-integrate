@@ -9,10 +9,13 @@ jest.mock('@librechat/data-schemas', () => ({
 
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
+import { rewriteTarsAssetLinks } from '~/tars/assets';
 import { createTarsChartTool } from './chart';
 
 const BASE_URL = 'http://tars.test';
 const CHART_URL = 'http://tars.test/static/quickchart/default/chart_1_abc.png';
+process.env.JWT_SECRET = 'chart-test-secret';
+const RELAYED_CHART_URL = rewriteTarsAssetLinks(CHART_URL);
 
 const buildResponse = (status: number, body: unknown): Response =>
   ({
@@ -57,7 +60,7 @@ describe('createTarsChartTool', () => {
     const chartTool = createTarsChartTool({ model: 'gpt-5.4-mini' });
 
     await expect(chartTool.invoke({ request: '畫柱狀圖：1月120、2月95' })).resolves.toBe(
-      `已完成\n\n![chart](${CHART_URL})`,
+      `已完成\n\n![chart](${RELAYED_CHART_URL})`,
     );
     const call = fetchMock.mock.calls.find(([url]) =>
       String(url).includes('/api/langflow-service/chart'),
@@ -68,14 +71,18 @@ describe('createTarsChartTool', () => {
     });
   });
 
-  it('keeps the answer untouched when the image is already embedded', async () => {
-    const answer = `這是圖表：![chart](${CHART_URL})`;
+  it('relays the embedded image without appending a second one', async () => {
     mockBackend({
       status: 200,
-      body: { success: true, data: { answer, chart_url: CHART_URL } },
+      body: {
+        success: true,
+        data: { answer: `這是圖表：![chart](${CHART_URL})`, chart_url: CHART_URL },
+      },
     });
     const chartTool = createTarsChartTool({});
-    await expect(chartTool.invoke({ request: 'q' })).resolves.toBe(answer);
+    await expect(chartTool.invoke({ request: 'q' })).resolves.toBe(
+      `這是圖表：![chart](${RELAYED_CHART_URL})`,
+    );
   });
 
   it('returns the bare answer when pwc_tars produced no chart', async () => {
