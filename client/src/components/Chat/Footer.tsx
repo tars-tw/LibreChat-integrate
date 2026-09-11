@@ -131,7 +131,7 @@ function Footer({
       <div
         className={cn(
           className ??
-          /* The disclaimer is the least important text on the landing page and
+            /* The disclaimer is the least important text on the landing page and
              sat in `text-primary`, the same weight as the greeting above it.
              `text-muted` is the quietest text token that still clears AA for
              12px copy on `bg-presentation` — 5.11:1 on white, 7.93:1 on the dark
