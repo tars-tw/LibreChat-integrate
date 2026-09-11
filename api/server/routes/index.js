@@ -42,12 +42,14 @@ const mcp = require('./mcp');
 const rum = require('./rum');
 const insights = require('./insights');
 const tars = require('./tars');
+const tarsAssets = require('./tars/assets');
 
 module.exports = {
   insights,
   rum,
   mcp,
   tars,
+  tarsAssets,
   auth,
   adminAuth,
   adminConfig,
