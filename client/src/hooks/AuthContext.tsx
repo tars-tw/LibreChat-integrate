@@ -99,6 +99,7 @@ const AuthContextProvider = ({
   const logoutRedirectRef = useRef<string | undefined>(undefined);
   const [token, setToken] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [tarsLicenseStatus, setTarsLicenseStatus] = useState<string | undefined>(undefined);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(authConfig?.test === true);
   const setQueriesEnabled = useSetRecoilState<boolean>(store.queriesEnabled);
@@ -173,6 +174,9 @@ const AuthContextProvider = ({
   const doSetError = useTimeout({ callback: setErrorAfterTimeout });
 
   const { mutate: loginMutate } = useLoginUserMutation({
+    onMutate: () => {
+      setTarsLicenseStatus(undefined);
+    },
     onSuccess: (data: t.TLoginResponse) => {
       const { user, token, twoFAPending, twoFASetupRequired, tempToken } = data;
       /**
@@ -204,6 +208,7 @@ const AuthContextProvider = ({
     onError: (error: TResError | unknown) => {
       clearTwoFactorSetupToken();
       doSetError(getLoginErrorText(error as TResError));
+      setTarsLicenseStatus((error as TResError).response?.data?.licenseStatus);
       // Preserve a valid redirect_to across login failures so the deep link survives retries.
       // Cannot use buildLoginRedirectUrl() here: it reads the current pathname (already /login)
       // and would return plain /login, dropping the redirect_to destination.
@@ -474,6 +479,8 @@ const AuthContextProvider = ({
       logout,
       completeAuthentication,
       setError,
+      tarsLicenseStatus,
+      setTarsLicenseStatus,
       roles: {
         [SystemRoles.USER]: userRole,
         [SystemRoles.ADMIN]: adminRole,
@@ -486,6 +493,7 @@ const AuthContextProvider = ({
     [
       user,
       error,
+      tarsLicenseStatus,
       isAuthenticated,
       isAuthReady,
       token,
