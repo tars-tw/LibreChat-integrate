@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react';
-import { RefreshCcw, RotateCw, Unlink } from 'lucide-react';
 import { Button, useToastContext } from '@librechat/client';
-import type { TTarsDatasetFileSystemLink, TTarsDocument } from 'librechat-data-provider';
+import { Eye, RefreshCcw, RotateCw, Unlink } from 'lucide-react';
+import type {
+  TTarsDatasetFileSystemLink,
+  TTarsDatasetLimits,
+  TTarsDocument,
+} from 'librechat-data-provider';
 import {
   useRefreshTarsFileSystemMutation,
   useReprocessTarsFileSystemMutation,
@@ -9,10 +13,12 @@ import {
 } from '~/data-provider';
 import { DOC_STATUS, enabledStatusMeta, fileSystemLabel, matchesName } from './helpers';
 import FileSystemImportDialog from './FileSystemImportDialog';
+import GroupDocumentsDialog from './GroupDocumentsDialog';
 import Pagination, { usePagination } from '../Pagination';
 import { formatDateTime } from '../../Users/helpers';
 import ConfirmDialog from './ConfirmDialog';
 import StatusBadge from './StatusBadge';
+import SyncDialog from './SyncDialog';
 import { useLocalize } from '~/hooks';
 import Toolbar from './Toolbar';
 
@@ -26,16 +32,20 @@ export default function FileSystemsTab({
   knowledgeBaseId,
   links,
   documents,
+  limits,
   locale,
   onRefresh,
   isRefreshing,
+  onViewChunks,
 }: {
   knowledgeBaseId: string;
   links: TTarsDatasetFileSystemLink[];
   documents: TTarsDocument[];
+  limits: TTarsDatasetLimits;
   locale: string;
   onRefresh: () => void;
   isRefreshing: boolean;
+  onViewChunks: (document: TTarsDocument) => void;
 }) {
   const localize = useLocalize();
   const { showToast } = useToastContext();
@@ -43,6 +53,11 @@ export default function FileSystemsTab({
   const [search, setSearch] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [unlinking, setUnlinking] = useState<TTarsDatasetFileSystemLink | null>(null);
+  const [syncing, setSyncing] = useState<TTarsDatasetFileSystemLink | null>(null);
+  const [reprocessingGroup, setReprocessingGroup] = useState<TTarsDatasetFileSystemLink | null>(
+    null,
+  );
+  const [viewing, setViewing] = useState<TTarsDatasetFileSystemLink | null>(null);
 
   const visible = useMemo(
     () => links.filter((link) => matchesName(fileSystemLabel(link), search)),
@@ -79,14 +94,18 @@ export default function FileSystemsTab({
     showToast({ message: localize('com_ui_tars_admin_error'), status: 'error' });
 
   const refreshMutation = useRefreshTarsFileSystemMutation(knowledgeBaseId, {
-    onSuccess: () =>
-      showToast({ message: localize('com_ui_tars_kb_ds_sync_started'), status: 'success' }),
+    onSuccess: () => {
+      showToast({ message: localize('com_ui_tars_kb_ds_sync_started'), status: 'success' });
+      setSyncing(null);
+    },
     onError,
   });
 
   const reprocessMutation = useReprocessTarsFileSystemMutation(knowledgeBaseId, {
-    onSuccess: () =>
-      showToast({ message: localize('com_ui_tars_kb_reprocess_started'), status: 'success' }),
+    onSuccess: () => {
+      showToast({ message: localize('com_ui_tars_kb_reprocess_started'), status: 'success' });
+      setReprocessingGroup(null);
+    },
     onError,
   });
 
@@ -168,10 +187,17 @@ export default function FileSystemsTab({
                         <Button
                           variant="ghost"
                           size="icon-xs"
+                          onClick={() => setViewing(link)}
+                          aria-label={localize('com_ui_tars_kb_ds_view')}
+                          title={localize('com_ui_tars_kb_ds_view')}
+                        >
+                          <Eye className="size-4" aria-hidden />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
                           disabled={isBusy}
-                          onClick={() =>
-                            refreshMutation.mutate({ fileSystemId: link.dataset_file_system_id })
-                          }
+                          onClick={() => setSyncing(link)}
                           aria-label={localize('com_ui_tars_kb_ds_sync')}
                           title={localize('com_ui_tars_kb_ds_sync')}
                         >
@@ -181,7 +207,7 @@ export default function FileSystemsTab({
                           variant="ghost"
                           size="icon-xs"
                           disabled={isBusy}
-                          onClick={() => reprocessMutation.mutate(link.dataset_file_system_id)}
+                          onClick={() => setReprocessingGroup(link)}
                           aria-label={localize('com_ui_tars_kb_ds_reprocess_group')}
                           title={localize('com_ui_tars_kb_ds_reprocess_group')}
                         >
@@ -227,6 +253,50 @@ export default function FileSystemsTab({
           isBusy={unlinkMutation.isLoading}
           onConfirm={() => unlinkMutation.mutate(unlinking.dataset_file_system_id)}
           onClose={() => setUnlinking(null)}
+        />
+      )}
+
+      {syncing != null && (
+        <SyncDialog
+          link={syncing}
+          limits={limits}
+          isBusy={refreshMutation.isLoading}
+          onConfirm={({ chunkSize, overlap }) =>
+            refreshMutation.mutate({
+              fileSystemId: syncing.dataset_file_system_id,
+              chunkSize,
+              overlap,
+            })
+          }
+          onClose={() => setSyncing(null)}
+        />
+      )}
+
+      {reprocessingGroup != null && (
+        <ConfirmDialog
+          title={localize('com_ui_tars_kb_ds_reprocess_group')}
+          message={localize('com_ui_tars_kb_ds_reprocess_group_confirm', {
+            0: fileSystemLabel(reprocessingGroup),
+          })}
+          confirmLabel={localize('com_ui_tars_kb_ds_reprocess_group')}
+          isBusy={reprocessMutation.isLoading}
+          onConfirm={() => reprocessMutation.mutate(reprocessingGroup.dataset_file_system_id)}
+          onClose={() => setReprocessingGroup(null)}
+        />
+      )}
+
+      {viewing != null && (
+        <GroupDocumentsDialog
+          knowledgeBaseId={knowledgeBaseId}
+          link={viewing}
+          documents={documents}
+          locale={locale}
+          isGroupBusy={isBusy}
+          onSync={() => setSyncing(viewing)}
+          onReprocessGroup={() => setReprocessingGroup(viewing)}
+          onUnlink={() => setUnlinking(viewing)}
+          onViewChunks={onViewChunks}
+          onClose={() => setViewing(null)}
         />
       )}
     </div>

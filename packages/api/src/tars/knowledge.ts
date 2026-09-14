@@ -153,6 +153,24 @@ export interface TarsDocumentReprocessInput {
   overlap?: number;
 }
 
+export interface TarsRetryStuckDocumentsInput {
+  knowledgeBaseId: string;
+  /** Scans only this document instead of every stuck document in the knowledge base. */
+  documentId?: string;
+}
+
+export interface TarsStuckDocumentResult {
+  document_id: string;
+  filename: string;
+  status: 'processing' | 'already_processing' | 'failed';
+  error?: string;
+}
+
+export interface TarsRetryStuckDocumentsResult {
+  message: string;
+  results: TarsStuckDocumentResult[];
+}
+
 interface KnowledgeBasesResponse {
   knowledge_bases?: TarsKnowledgeBase[];
 }
@@ -514,6 +532,32 @@ export async function reprocessTarsKnowledgeBaseDocument(
       document_id: input.documentId,
       chunk_size: input.chunkSize ?? 1000,
       overlap: input.overlap ?? 200,
+    },
+    baseUrl,
+  });
+}
+
+/**
+ * Resubmits documents stuck at `status=1` (processing) for which no background
+ * task is actually still running — orphaned by a worker that died mid-run
+ * (deploy restart, crash) rather than genuinely in progress. A normal reprocess
+ * or batch reprocess already skips these safely, but leaves them stuck forever
+ * since nothing else revisits a `status=1` row
+ * (`POST /api/knowledge_detail/retry_stuck_documents`).
+ */
+export async function retryTarsStuckDocuments(
+  tarsId: string,
+  input: TarsRetryStuckDocumentsInput,
+  baseUrl?: string,
+): Promise<TarsRetryStuckDocumentsResult> {
+  return tarsFetch<TarsRetryStuckDocumentsResult>('/api/knowledge_detail/retry_stuck_documents', {
+    method: 'POST',
+    body: {
+      user_id: tarsId,
+      knowledge_base_id: input.knowledgeBaseId,
+      ...(input.documentId != null && input.documentId !== ''
+        ? { document_id: input.documentId }
+        : {}),
     },
     baseUrl,
   });

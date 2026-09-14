@@ -1,10 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Layers, Pencil, RefreshCw, Trash2 } from 'lucide-react';
-import { Button, Checkbox, useToastContext } from '@librechat/client';
+import { Checkbox, useToastContext } from '@librechat/client';
 import type { TTarsDocument, TTarsDatasetLimits } from 'librechat-data-provider';
-import { useDeleteTarsDocumentMutation, useReprocessTarsDocumentMutation } from '~/data-provider';
+import {
+  useDeleteTarsDocumentMutation,
+  useReprocessTarsDocumentMutation,
+  useRetryTarsStuckDocumentMutation,
+  useRetryTarsStuckDocumentsMutation,
+} from '~/data-provider';
 import { docStatusMeta, formatCount, matchesName } from './helpers';
+import DocumentDetailsDialog from './DocumentDetailsDialog';
 import Pagination, { usePagination } from '../Pagination';
+import DocumentRowActions from './DocumentRowActions';
 import { formatDateTime } from '../../Users/helpers';
 import ConfirmDialog from './ConfirmDialog';
 import RenameDialog from './RenameDialog';
@@ -42,6 +48,7 @@ export default function DocumentsTab({
   const [renaming, setRenaming] = useState<TTarsDocument | null>(null);
   const [deleting, setDeleting] = useState<TTarsDocument | null>(null);
   const [reprocessing, setReprocessing] = useState<TTarsDocument | null>(null);
+  const [details, setDetails] = useState<TTarsDocument | null>(null);
 
   const visible = useMemo(
     () => documents.filter((doc) => matchesName(doc.filename, search)),
@@ -68,6 +75,24 @@ export default function DocumentsTab({
     onError: () => showToast({ message: localize('com_ui_tars_admin_error'), status: 'error' }),
   });
 
+  const retryStuckMutation = useRetryTarsStuckDocumentsMutation(knowledgeBaseId, {
+    onSuccess: (data) =>
+      showToast({
+        message: data.message || localize('com_ui_tars_kb_retry_stuck_success'),
+        status: 'success',
+      }),
+    onError: () => showToast({ message: localize('com_ui_tars_admin_error'), status: 'error' }),
+  });
+
+  const retryStuckOneMutation = useRetryTarsStuckDocumentMutation(knowledgeBaseId, {
+    onSuccess: (data) =>
+      showToast({
+        message: data.message || localize('com_ui_tars_kb_retry_stuck_success'),
+        status: 'success',
+      }),
+    onError: () => showToast({ message: localize('com_ui_tars_admin_error'), status: 'error' }),
+  });
+
   const toggle = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]));
 
@@ -85,6 +110,8 @@ export default function DocumentsTab({
           onBatchDelete(selected);
           setSelected([]);
         }}
+        onRetryStuck={() => retryStuckMutation.mutate()}
+        isRetryingStuck={retryStuckMutation.isLoading}
         addLabel={localize('com_ui_tars_kb_upload_documents')}
         onAdd={() => setShowUpload(true)}
       />
@@ -149,45 +176,16 @@ export default function DocumentsTab({
                     {formatDateTime(doc.created_at, locale)}
                   </td>
                   <td className="px-3 py-1.5">
-                    <div className="flex justify-end">
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => onViewChunks(doc)}
-                        aria-label={localize('com_ui_tars_kb_view_chunks')}
-                        title={localize('com_ui_tars_kb_view_chunks')}
-                      >
-                        <Layers className="size-4" aria-hidden />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setRenaming(doc)}
-                        aria-label={localize('com_ui_rename')}
-                        title={localize('com_ui_rename')}
-                      >
-                        <Pencil className="size-4" aria-hidden />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setReprocessing(doc)}
-                        aria-label={localize('com_ui_tars_kb_reprocess')}
-                        title={localize('com_ui_tars_kb_reprocess')}
-                      >
-                        <RefreshCw className="size-4" aria-hidden />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setDeleting(doc)}
-                        aria-label={localize('com_ui_delete')}
-                        title={localize('com_ui_delete')}
-                        className="text-pwc-danger"
-                      >
-                        <Trash2 className="size-4" aria-hidden />
-                      </Button>
-                    </div>
+                    <DocumentRowActions
+                      doc={doc}
+                      isRetryingStuck={retryStuckOneMutation.isLoading}
+                      onDetails={() => setDetails(doc)}
+                      onViewChunks={() => onViewChunks(doc)}
+                      onRename={() => setRenaming(doc)}
+                      onReprocess={() => setReprocessing(doc)}
+                      onRetryStuck={() => retryStuckOneMutation.mutate(doc.id)}
+                      onDelete={() => setDeleting(doc)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -244,6 +242,14 @@ export default function DocumentsTab({
             })
           }
           onClose={() => setReprocessing(null)}
+        />
+      )}
+
+      {details != null && (
+        <DocumentDetailsDialog
+          document={details}
+          locale={locale}
+          onClose={() => setDetails(null)}
         />
       )}
     </div>
