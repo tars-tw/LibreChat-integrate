@@ -887,6 +887,11 @@ export const getTarsSystemSettings = (): Promise<t.TTarsSystemSettings> => {
   return request.get(endpoints.tarsSystemSettings());
 };
 
+/** Public: read before authentication so the login page can prompt for a licence file. */
+export const getTarsLicenseStatus = (): Promise<t.TTarsSystemSettings> => {
+  return request.get(endpoints.tarsLicenseStatus());
+};
+
 export const uploadTarsSystemLogo = (data: FormData): Promise<{ success: boolean }> => {
   return request.postMultiPart(endpoints.tarsSystemLogo(), data);
 };

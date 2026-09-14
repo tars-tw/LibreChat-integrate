@@ -62,6 +62,44 @@ router.get('/settings/logo', async (req, res) => {
   }
 });
 
+/**
+ * @route GET /api/tars/settings/license-status
+ * @desc pwc_tars licence status and validity window, so the login page can prompt
+ *       for a licence file before anyone is authenticated.
+ * @access Public
+ */
+router.get('/settings/license-status', async (req, res) => {
+  try {
+    const settings = await fetchTarsSystemSettings();
+    return res.json(settings);
+  } catch (error) {
+    logger.error('[GET /api/tars/settings/license-status] Failed', error);
+    return res.status(503).json({ error: 'Failed to fetch pwc_tars licence status' });
+  }
+});
+
+/**
+ * @route POST /api/tars/settings/license
+ * @desc Upload a `.key` licence file; pwc_tars decrypts and applies it. Mirrors
+ *       pwc_tars's own `/api/settings/import_license`, which has no auth
+ *       requirement, so a user without a valid session can clear a login block
+ *       caused by a missing/expired licence.
+ * @access Public
+ */
+router.post('/settings/license', upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'A file is required' });
+  }
+
+  try {
+    const license = await importTarsLicense(toUploadFile(req.file));
+    return res.json(license);
+  } catch (error) {
+    logger.error('[POST /api/tars/settings/license] Failed', error);
+    return res.status(400).json({ error: error?.message ?? 'Failed to import pwc_tars licence' });
+  }
+});
+
 router.use(requireJwtAuth);
 
 /**
@@ -114,25 +152,6 @@ router.delete('/settings/logo', requireTarsAdmin, async (req, res) => {
   } catch (error) {
     logger.error('[DELETE /api/tars/settings/logo] Failed', error);
     return relayTarsError(res, error, 'Failed to remove pwc_tars system logo');
-  }
-});
-
-/**
- * @route POST /api/tars/settings/license
- * @desc Upload a `.key` licence file; pwc_tars decrypts and applies it.
- * @access Admin (pwc_tars)
- */
-router.post('/settings/license', requireTarsAdmin, upload.single('file'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'A file is required' });
-  }
-
-  try {
-    const license = await importTarsLicense(toUploadFile(req.file));
-    return res.json(license);
-  } catch (error) {
-    logger.error('[POST /api/tars/settings/license] Failed', error);
-    return res.status(400).json({ error: error?.message ?? 'Failed to import pwc_tars licence' });
   }
 });
 

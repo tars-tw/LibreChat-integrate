@@ -440,6 +440,7 @@ export const tarsSysConfigs = () => `${BASE_URL}/api/tars/sys-configs`;
 export const tarsSystemSettings = () => `${BASE_URL}/api/tars/settings`;
 export const tarsSystemLogo = () => `${BASE_URL}/api/tars/settings/logo`;
 export const tarsSystemLicense = () => `${BASE_URL}/api/tars/settings/license`;
+export const tarsLicenseStatus = () => `${BASE_URL}/api/tars/settings/license-status`;
 export const tarsSsoConfigs = () => `${BASE_URL}/api/tars/settings/sso`;
 export const tarsSsoConfig = (id: string) =>
   `${BASE_URL}/api/tars/settings/sso/${encodeURIComponent(id)}`;

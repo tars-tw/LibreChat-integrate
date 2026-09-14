@@ -3,6 +3,7 @@ const { logger } = require('@librechat/data-schemas');
 const { SystemRoles, ErrorTypes } = require('librechat-data-provider');
 const {
   isEnabled,
+  TarsLicenseError,
   authenticateTars,
   getBalanceConfig,
   isTarsAdminRole,
@@ -53,7 +54,10 @@ const tarsLogin = new PassportLocalStrategy(
         logger.warn(
           `[tarsStrategy] Blocked login - pwc_tars license not active [tarsId: ${tarsId}]`,
         );
-        return done(null, false, { message: 'pwc_tars license is not active' });
+        return done(null, false, {
+          message: 'pwc_tars license is not active',
+          licenseStatus,
+        });
       }
 
       const mail = email || `${tarsUser.username}@tars.local`;
@@ -121,6 +125,15 @@ const tarsLogin = new PassportLocalStrategy(
       user = await updateUser(user._id, user);
       done(null, user);
     } catch (err) {
+      if (err instanceof TarsLicenseError) {
+        logger.warn(
+          `[tarsStrategy] Blocked login - pwc_tars license not active [${err.errorCode}]`,
+        );
+        return done(null, false, {
+          message: 'pwc_tars license is not active',
+          licenseStatus: err.licenseStatus,
+        });
+      }
       logger.error('[tarsStrategy]', err);
       done(err);
     }
