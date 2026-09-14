@@ -6,7 +6,6 @@ import { ThemeContext, SecretInput, Spinner, Button, Input, isDark } from '@libr
 import type { TLoginUser, TStartupConfig } from 'librechat-data-provider';
 import type { TAuthContext } from '~/common';
 import { useResendVerificationEmail } from '~/data-provider';
-import TarsForgotPasswordModal from './TarsForgotPasswordModal';
 import { validateEmail } from '~/utils';
 import { useLocalize } from '~/hooks';
 
@@ -29,7 +28,6 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
   } = useForm<TLoginUser>();
   const [showResendLink, setShowResendLink] = useState<boolean>(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [forgotOpen, setForgotOpen] = useState<boolean>(false);
 
   const useUsernameLogin = startupConfig?.ldap?.username || startupConfig?.tarsAuth;
   const isTars = startupConfig?.tarsAuth === true;
@@ -264,19 +262,7 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
             {isSubmitting ? <Spinner /> : buttonLabel}
           </Button>
         </div>
-        {isTars && (
-          <div className="mt-3 text-right">
-            <button
-              type="button"
-              onClick={() => setForgotOpen(true)}
-              className="text-sm font-medium text-pwc-orange hover:underline"
-            >
-              {localize('com_auth_password_forgot')}
-            </button>
-          </div>
-        )}
       </form>
-      {isTars && <TarsForgotPasswordModal open={forgotOpen} onOpenChange={setForgotOpen} />}
     </>
   );
 };
