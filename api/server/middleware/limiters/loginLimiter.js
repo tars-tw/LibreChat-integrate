@@ -36,6 +36,7 @@ const limiterOptions = {
   store: limiterCache('login_limiter'),
 };
 
-const loginLimiter = rateLimit(limiterOptions);
+/** `LOGIN_MAX=0` disables login rate limiting entirely. */
+const loginLimiter = Number(max) === 0 ? (_req, _res, next) => next() : rateLimit(limiterOptions);
 
 module.exports = loginLimiter;
