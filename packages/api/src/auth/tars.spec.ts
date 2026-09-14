@@ -10,6 +10,7 @@ jest.mock('@librechat/data-schemas', () => ({
 import {
   authenticateTars,
   isTarsAdminRole,
+  TarsLicenseError,
   notifyTarsLogout,
   getTarsSsoStatus,
   hasTarsMenuAccess,
@@ -114,6 +115,35 @@ describe('authenticateTars', () => {
   it('returns null on 401', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(401, { message: 'bad' }));
     await expect(authenticateTars('jdoe', 'wrong', false, BASE_URL)).resolves.toBeNull();
+  });
+
+  it('throws TarsLicenseError on a 401 that means "no valid licence", not bad credentials', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(401, {
+        message: '授權資訊不存在',
+        license_status: 'deactivate',
+        error_code: 'LICENSE_NOT_FOUND',
+      }),
+    );
+
+    await expect(authenticateTars('jdoe', 'correct-pw', false, BASE_URL)).rejects.toMatchObject({
+      name: 'TarsLicenseError',
+      licenseStatus: 'deactivate',
+      errorCode: 'LICENSE_NOT_FOUND',
+    });
+  });
+
+  it('throws TarsLicenseError when the stored licence key fails to decrypt', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(401, {
+        message: '授權資訊驗證失敗',
+        error_code: 'LICENSE_VALIDATION_FAILED',
+      }),
+    );
+
+    await expect(authenticateTars('jdoe', 'correct-pw', false, BASE_URL)).rejects.toBeInstanceOf(
+      TarsLicenseError,
+    );
   });
 
   it('returns null on 403', async () => {

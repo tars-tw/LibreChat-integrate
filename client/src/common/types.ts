@@ -491,7 +491,7 @@ export type ToolDialogProps = {
 };
 
 export type TResError = {
-  response: { data: { message: string; code?: string } };
+  response: { data: { message: string; code?: string; licenseStatus?: string } };
   message: string;
 };
 
@@ -505,6 +505,12 @@ export type TAuthContext = {
   logout: (redirect?: string) => void;
   setError: React.Dispatch<React.SetStateAction<string | undefined>>;
   roles?: Record<string, t.TRole | null | undefined>;
+  /** Set from a failed login's `licenseStatus` when pwc_tars rejected it for having no valid
+   *  licence (missing/expired), rather than for bad credentials — see `tarsStrategy.js`. Drives
+   *  the login page's licence-upload prompt for the real-time case a page-load status check can
+   *  miss (pwc_tars only re-validates the licence file at login, not on every settings read). */
+  tarsLicenseStatus: string | undefined;
+  setTarsLicenseStatus: React.Dispatch<React.SetStateAction<string | undefined>>;
 };
 
 export type TUserContext = {

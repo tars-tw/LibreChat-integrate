@@ -3533,6 +3533,7 @@
   "com_ui_tars_settings_logo_updated": "System logo updated.",
   "com_ui_tars_settings_logo_removed": "System logo removed.",
   "com_ui_tars_settings_logo_too_large": "The logo must be 2 MB or smaller.",
+  "com_ui_tars_login_license_required": "The system licence is missing or expired. Upload a licence file to continue signing in.",
   "com_ui_tars_settings_license": "Licence",
   "com_ui_tars_settings_license_hint": "Upload the licence file issued for this deployment.",
   "com_ui_tars_settings_license_upload": "Upload licence",
