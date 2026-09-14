@@ -15,6 +15,7 @@ const {
   renameTarsKnowledgeBaseDocument,
   deleteTarsKnowledgeBaseDocument,
   reprocessTarsKnowledgeBaseDocument,
+  retryTarsStuckDocuments,
   fetchTarsDocumentChunks,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
@@ -302,6 +303,44 @@ router.post('/knowledge-bases/:id/documents/:docId/reprocess', async (req, res) 
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/documents/:docId/reprocess] Failed', error);
     return res.status(500).json({ error: 'Failed to reprocess pwc_tars document' });
+  }
+});
+
+/**
+ * @route POST /api/tars/knowledge-bases/:id/documents/retry-stuck
+ * @desc Resubmit every document stuck at status=1 with no background task
+ *   actually still running for it (a worker that died mid-run, not one still
+ *   working), across the whole knowledge base.
+ * @access Admin (pwc_tars)
+ */
+router.post('/knowledge-bases/:id/documents/retry-stuck', async (req, res) => {
+  try {
+    const result = await retryTarsStuckDocuments(req.user.tarsId, {
+      knowledgeBaseId: req.params.id,
+    });
+    return res.json(result);
+  } catch (error) {
+    logger.error('[POST /api/tars/knowledge-bases/:id/documents/retry-stuck] Failed', error);
+    return res.status(500).json({ error: 'Failed to retry stuck pwc_tars documents' });
+  }
+});
+
+/**
+ * @route POST /api/tars/knowledge-bases/:id/documents/:docId/retry-stuck
+ * @desc Resubmit a single document only if it is stuck at status=1 with no
+ *   background task actually still running for it.
+ * @access Admin (pwc_tars)
+ */
+router.post('/knowledge-bases/:id/documents/:docId/retry-stuck', async (req, res) => {
+  try {
+    const result = await retryTarsStuckDocuments(req.user.tarsId, {
+      knowledgeBaseId: req.params.id,
+      documentId: req.params.docId,
+    });
+    return res.json(result);
+  } catch (error) {
+    logger.error('[POST /api/tars/knowledge-bases/:id/documents/:docId/retry-stuck] Failed', error);
+    return res.status(500).json({ error: 'Failed to retry stuck pwc_tars document' });
   }
 });
 
