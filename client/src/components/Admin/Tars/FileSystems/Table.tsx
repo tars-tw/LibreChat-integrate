@@ -34,7 +34,6 @@ export default function FileSystemTable({
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_protocol')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_host')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_port')}</th>
-              <th className="w-[15%] px-3 py-2 font-medium">{localize('com_ui_tars_fs_path')}</th>
               <th className="w-[22%] px-3 py-2 font-medium">
                 {localize('com_ui_tars_db_allowed_kbs')}
               </th>
@@ -78,11 +77,6 @@ export default function FileSystemTable({
                   </td>
                   <td className="px-3 py-1.5 tabular-nums text-text-secondary">
                     {fileSystem.port ?? '—'}
-                  </td>
-                  <td className="max-w-0 px-3 py-1.5 text-text-secondary">
-                    <span className="block truncate" title={fileSystem.path ?? undefined}>
-                      {fileSystem.path ?? '—'}
-                    </span>
                   </td>
                   <td className="px-3 py-1.5">
                     <KnowledgeBaseChips names={names} />
