@@ -1,5 +1,5 @@
 import { Button, Input, Spinner } from '@librechat/client';
-import { Plus, RotateCw, Search, Trash2 } from 'lucide-react';
+import { Plus, RotateCw, Search, Trash2, Wrench } from 'lucide-react';
 import { useLocalize } from '~/hooks';
 
 /**
@@ -13,6 +13,8 @@ export default function Toolbar({
   isRefreshing,
   selectedCount,
   onBatchDelete,
+  onRetryStuck,
+  isRetryingStuck,
   addLabel,
   onAdd,
   addDisabled,
@@ -24,6 +26,9 @@ export default function Toolbar({
   /** Omit `onBatchDelete` on tabs pwc_tars cannot batch-delete. */
   selectedCount?: number;
   onBatchDelete?: () => void;
+  /** Documents only: resubmit every document orphaned at status=1 in this knowledge base. */
+  onRetryStuck?: () => void;
+  isRetryingStuck?: boolean;
   addLabel?: string;
   onAdd?: () => void;
   addDisabled?: boolean;
@@ -68,6 +73,24 @@ export default function Toolbar({
           <span className="rounded-full bg-surface-primary/20 px-1.5 text-xs tabular-nums">
             {selectedCount}
           </span>
+        </Button>
+      )}
+
+      {onRetryStuck != null && (
+        <Button
+          variant="ghost"
+          onClick={onRetryStuck}
+          disabled={isRetryingStuck}
+          aria-label={localize('com_ui_tars_kb_retry_stuck')}
+          title={localize('com_ui_tars_kb_retry_stuck')}
+          className="gap-1.5"
+        >
+          {isRetryingStuck ? (
+            <Spinner className="size-4" />
+          ) : (
+            <Wrench className="size-4" aria-hidden />
+          )}
+          {localize('com_ui_tars_kb_retry_stuck')}
         </Button>
       )}
 

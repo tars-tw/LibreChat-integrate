@@ -151,9 +151,15 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
             knowledgeBaseId={knowledgeBaseId}
             links={data?.file_systems ?? []}
             documents={data?.documents ?? []}
+            limits={
+              data?.limits ?? { max_upload_counts: 5, max_chunk_size: 30000, max_overlap: 300 }
+            }
             locale={locale}
             onRefresh={refresh}
             isRefreshing={isRefreshing}
+            onViewChunks={(document: TTarsDocument) =>
+              setChunkSource({ kind: 'document', document })
+            }
           />
         </TabsContent>
 

@@ -413,6 +413,10 @@ export const tarsKnowledgeBaseDocumentRename = (id: string, docId: string) =>
   `${tarsKnowledgeBaseDocument(id, docId)}/rename`;
 export const tarsKnowledgeBaseDocumentReprocess = (id: string, docId: string) =>
   `${tarsKnowledgeBaseDocument(id, docId)}/reprocess`;
+export const tarsKnowledgeBaseDocumentsRetryStuck = (id: string) =>
+  `${tarsKnowledgeBaseDocuments(id)}/retry-stuck`;
+export const tarsKnowledgeBaseDocumentRetryStuck = (id: string, docId: string) =>
+  `${tarsKnowledgeBaseDocument(id, docId)}/retry-stuck`;
 export const tarsDocumentChunks = (docId: string) =>
   `${BASE_URL}/api/tars/documents/${encodeURIComponent(docId)}/chunks`;
 export const tarsPrompts = (domainId?: string | number) =>
