@@ -412,6 +412,8 @@ export const tarsKnowledgeBaseDocumentRetryStuck = (id: string, docId: string) =
   `${tarsKnowledgeBaseDocument(id, docId)}/retry-stuck`;
 export const tarsDocumentChunks = (docId: string) =>
   `${BASE_URL}/api/tars/documents/${encodeURIComponent(docId)}/chunks`;
+export const tarsDocumentChunk = (docId: string, chunkId: string) =>
+  `${tarsDocumentChunks(docId)}/${encodeURIComponent(chunkId)}`;
 export const tarsPrompts = (domainId?: string | number) =>
   domainId != null && domainId !== ''
     ? `${BASE_URL}/api/tars/prompts?domain_id=${encodeURIComponent(String(domainId))}`
