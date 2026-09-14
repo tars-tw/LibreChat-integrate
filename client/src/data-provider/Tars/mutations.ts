@@ -6,6 +6,7 @@ import type {
   TTarsPrompt,
   TTarsMemoryUploadResult,
   TTarsDocument,
+  TTarsChunk,
   TTarsDomainInput,
   TTarsPluginToolsResponse,
   TTarsPromptInput,
@@ -644,6 +645,46 @@ export const useRetryTarsStuckDocumentMutation = (
       },
     },
   );
+};
+
+export const useUpdateTarsChunkMutation = (
+  docId: string,
+  options?: UseMutationOptions<
+    { chunk: TTarsChunk },
+    unknown,
+    { chunkId: string; data: { content: string } }
+  >,
+): UseMutationResult<
+  { chunk: TTarsChunk },
+  unknown,
+  { chunkId: string; data: { content: string } }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ chunkId, data }: { chunkId: string; data: { content: string } }) =>
+      dataService.updateTarsChunk(docId, chunkId, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsDocumentChunks, docId]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsChunkMutation = (
+  docId: string,
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((chunkId: string) => dataService.deleteTarsChunk(docId, chunkId), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsDocumentChunks, docId]);
+      options?.onSuccess?.(...args);
+    },
+  });
 };
 
 const invalidatePrompts = (queryClient: ReturnType<typeof useQueryClient>) => {

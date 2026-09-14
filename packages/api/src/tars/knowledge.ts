@@ -577,3 +577,30 @@ export async function fetchTarsDocumentChunks(
   });
   return data?.chunks ?? [];
 }
+
+interface UpdateChunkResponse {
+  chunk: TarsChunk;
+}
+
+/** Edits one chunk's content (`POST /api/knowledge_detail/update_chunk`). */
+export async function updateTarsChunk(
+  tarsId: string,
+  chunkId: string,
+  content: string,
+  baseUrl?: string,
+): Promise<TarsChunk> {
+  const data = await tarsFetch<UpdateChunkResponse>('/api/knowledge_detail/update_chunk', {
+    method: 'POST',
+    body: { chunk_id: chunkId, content, updated_by: tarsId },
+    baseUrl,
+  });
+  return data.chunk;
+}
+
+/** Removes one chunk (`DELETE /api/knowledge_detail/delete_chunk/:chunkId`). */
+export async function deleteTarsChunk(chunkId: string, baseUrl?: string): Promise<void> {
+  await tarsFetch(`/api/knowledge_detail/delete_chunk/${encodeURIComponent(chunkId)}`, {
+    method: 'DELETE',
+    baseUrl,
+  });
+}

@@ -24,6 +24,25 @@ export default function FileSystemDetails({
     </div>
   );
 
+  const listRow = (labelKey: TranslationKeys, values: string[]) => (
+    <div className="grid grid-cols-3 gap-3 py-1.5">
+      <dt className="text-text-secondary">{localize(labelKey)}</dt>
+      <dd className="col-span-2 text-text-primary">
+        {values.length === 0 ? (
+          '—'
+        ) : (
+          <ul className="space-y-0.5">
+            {values.map((value) => (
+              <li key={value} className="break-words">
+                {value}
+              </li>
+            ))}
+          </ul>
+        )}
+      </dd>
+    </div>
+  );
+
   return (
     <OGDialog open={true} onOpenChange={(open) => !open && onClose()}>
       <OGDialogTemplate
@@ -39,10 +58,7 @@ export default function FileSystemDetails({
               row('com_ui_tars_fs_server_name', fileSystem.host_name ?? '')}
             {row('com_ui_tars_fs_port', String(fileSystem.port ?? ''))}
             {row('com_ui_tars_fs_path', fileSystem.path ?? '')}
-            {row(
-              'com_ui_tars_db_allowed_kbs',
-              names.length === 0 ? localize('com_ui_tars_db_allowed_kbs_none') : names.join(', '),
-            )}
+            {listRow('com_ui_tars_db_allowed_kbs', names)}
             {row(
               'com_ui_tars_users_status',
               localize(
