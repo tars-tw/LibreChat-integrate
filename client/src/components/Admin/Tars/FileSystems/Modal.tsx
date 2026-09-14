@@ -47,6 +47,13 @@ const FILE_PREVIEW_LIMIT = 200;
  * not empty.
  */
 const ROOT_FOLDER = '__root__';
+/**
+ * pwc_tars stores a leading slash on some protocols' paths (SFTP, NFS) and not
+ * others (SMB), while a path built from a discovered folder never carries
+ * one — stripping both leading and trailing slashes is what lets the two be
+ * compared at all.
+ */
+const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '');
 
 /**
  * Create or edit a document group.
@@ -206,25 +213,45 @@ export default function FileSystemModal({
   );
   /** Which option (if any) matches the folder currently on the form, so the picker reflects it. */
   const selectedFolderValue = useMemo(() => {
-    const current = form.path.trim().replace(/\/+$/, '') || '/';
+    const current = trimSlashes(form.path.trim());
     const match = folderOptions.find((option) => {
       const relativeDir = option.value === ROOT_FOLDER ? '' : option.value;
-      return buildFullFolderPath(testedRootPath, relativeDir).replace(/\/+$/, '') === current;
+      return trimSlashes(buildFullFolderPath(testedRootPath, relativeDir)) === current;
     });
     return match?.value;
   }, [folderOptions, testedRootPath, form.path]);
+
+  /**
+   * Relative to `testedRootPath`, same as `rows[].directory` — so picking a
+   * folder above scopes the preview below it to that folder instead of
+   * leaving it showing everything the test walked.
+   */
+  const selectedRelativeDir =
+    selectedFolderValue == null || selectedFolderValue === ROOT_FOLDER ? '' : selectedFolderValue;
+
+  const scoped = useMemo(
+    () =>
+      selectedRelativeDir === ''
+        ? rows
+        : rows.filter(
+            (row) =>
+              row.directory === selectedRelativeDir ||
+              row.directory.startsWith(`${selectedRelativeDir}/`),
+          ),
+    [rows, selectedRelativeDir],
+  );
 
   const needle = fileFilter.trim().toLowerCase();
   const matched = useMemo(
     () =>
       needle === ''
-        ? rows
-        : rows.filter(
+        ? scoped
+        : scoped.filter(
             (row) =>
               row.name.toLowerCase().includes(needle) ||
               row.directory.toLowerCase().includes(needle),
           ),
-    [rows, needle],
+    [scoped, needle],
   );
 
   return (
