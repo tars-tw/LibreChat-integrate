@@ -10,6 +10,14 @@ jest.mock('@librechat/data-schemas', () => ({
 
 jest.mock('@librechat/api', () => ({
   authenticateTars: jest.fn(),
+  TarsLicenseError: class TarsLicenseError extends Error {
+    constructor(message, licenseStatus, errorCode) {
+      super(message);
+      this.name = 'TarsLicenseError';
+      this.licenseStatus = licenseStatus;
+      this.errorCode = errorCode;
+    }
+  },
   isEnabled: jest.fn((value) => value === true || value === 'true'),
   isEmailDomainAllowed: jest.fn(() => true),
   getBalanceConfig: jest.fn(() => ({ enabled: false })),
@@ -42,7 +50,7 @@ jest.mock('passport-local', () => ({
 process.env.TARS_AUTH_URL = 'http://localhost:5000';
 
 const { ErrorTypes } = require('librechat-data-provider');
-const { authenticateTars, isEmailDomainAllowed } = require('@librechat/api');
+const { authenticateTars, isEmailDomainAllowed, TarsLicenseError } = require('@librechat/api');
 const { findUser, createUser, updateUser } = require('~/models');
 
 // Load once so the verify callback is captured against our persistent mocks
@@ -191,6 +199,21 @@ describe('tarsStrategy', () => {
 
     expect(user).toBe(false);
     expect(info.message).toBe('pwc_tars license is not active');
+    expect(info.licenseStatus).toBe('deactivate');
+    expect(createUser).not.toHaveBeenCalled();
+  });
+
+  it('blocks login with a licence-specific message when pwc_tars has no valid licence at all (correct credentials, missing/undecryptable license.key)', async () => {
+    authenticateTars.mockRejectedValue(
+      new TarsLicenseError('授權資訊不存在', 'deactivate', 'LICENSE_NOT_FOUND'),
+    );
+
+    const { user, info } = await callVerify('jdoe', 'secret');
+
+    expect(user).toBe(false);
+    expect(info.message).toBe('pwc_tars license is not active');
+    expect(info.licenseStatus).toBe('deactivate');
+    expect(info.message).not.toBe(ErrorTypes.AUTH_FAILED);
     expect(createUser).not.toHaveBeenCalled();
   });
 
