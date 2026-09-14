@@ -2908,6 +2908,7 @@
   "com_ui_tars_roles_usage_summary": "{{users}} 位使用者 · {{groups}} 個群組",
   "com_ui_tars_roles_usage_users": "使用者數",
   "com_ui_tars_domain_empty": "查無專用腦。",
+  "com_ui_tars_login_license_required": "系統授權已到期或尚未啟用，請上傳授權檔案以繼續登入。",
   "com_ui_tars_settings_license": "授權",
   "com_ui_tars_settings_license_active": "已啟用",
   "com_ui_tars_settings_license_end": "到期日期",

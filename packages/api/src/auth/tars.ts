@@ -124,6 +124,36 @@ export function hasTarsMenuAccess(menuKeys: string[] | undefined, key: string): 
   return !!menuKeys && menuKeys.includes(key);
 }
 
+/** pwc_tars's own codes for "no usable licence at all" — answered with the same 401 as bad credentials. */
+const LICENSE_ERROR_CODES = new Set(['LICENSE_NOT_FOUND', 'LICENSE_VALIDATION_FAILED']);
+
+interface TarsLoginErrorResponse {
+  message?: string;
+  license_status?: string;
+  error_code?: string;
+}
+
+/**
+ * Thrown by {@link authenticateTars} when pwc_tars's 401 means "there is no
+ * valid licence to check credentials against" (missing/undecryptable
+ * `license.key`), not "these credentials are wrong". pwc_tars answers both
+ * cases with a 401, so `tarsStrategy` needs this distinguished to send the
+ * user to the licence upload flow instead of a generic auth-failed message —
+ * the same signal `licenseStatus` on a successful {@link TarsUser} carries for
+ * an *expired* (but present) licence.
+ */
+export class TarsLicenseError extends Error {
+  public readonly licenseStatus: string;
+  public readonly errorCode: string;
+
+  constructor(message: string, licenseStatus: string, errorCode: string) {
+    super(message);
+    this.name = 'TarsLicenseError';
+    this.licenseStatus = licenseStatus;
+    this.errorCode = errorCode;
+  }
+}
+
 /**
  * Verifies credentials against the pwc_tars Flask backend (`POST /api/auth/login`).
  * pwc_tars is the source of truth for authentication; LibreChat issues its own
@@ -132,6 +162,8 @@ export function hasTarsMenuAccess(menuKeys: string[] | undefined, key: string): 
  * @returns the normalized tars user on success, or `null` when the backend
  *          rejects the credentials (401/403) or returns an unexpected payload.
  *          Connection/timeout failures throw so the strategy can surface a 5xx.
+ * @throws {TarsLicenseError} when the 401 is pwc_tars reporting no valid
+ *         licence rather than rejecting the credentials themselves.
  */
 export async function authenticateTars(
   username: string,
@@ -156,6 +188,14 @@ export async function authenticateTars(
     });
 
     if (response.status === 401 || response.status === 403) {
+      const errorBody = (await response.json().catch(() => null)) as TarsLoginErrorResponse | null;
+      if (errorBody?.error_code != null && LICENSE_ERROR_CODES.has(errorBody.error_code)) {
+        throw new TarsLicenseError(
+          errorBody.message ?? 'pwc_tars license is not active',
+          errorBody.license_status ?? 'deactivate',
+          errorBody.error_code,
+        );
+      }
       return null;
     }
 
