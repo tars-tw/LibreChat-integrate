@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useRecoilValue } from 'recoil';
-import { BarChart3, MessagesSquare, Workflow } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getConfigDefaults } from 'librechat-data-provider';
+import { BarChart3, MessagesSquare, Workflow } from 'lucide-react';
 import { useUserKeyQuery } from 'librechat-data-provider/react-query';
 import type { TEndpointsConfig } from 'librechat-data-provider';
 import type { NavLink } from '~/common';
