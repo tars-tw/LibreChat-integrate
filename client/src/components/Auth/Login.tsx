@@ -8,6 +8,7 @@ import { getLoginError, persistRedirectToSession } from '~/utils';
 import { ErrorMessage } from '~/components/Auth/ErrorMessage';
 import SocialButton from '~/components/Auth/SocialButton';
 import { useAuthContext } from '~/hooks/AuthContext';
+import TarsLicenseUpload from './TarsLicenseUpload';
 import { useLocalize } from '~/hooks';
 import LoginForm from './LoginForm';
 
@@ -25,7 +26,7 @@ const oauthErrorKeys: Record<string, TranslationKeys> = {
 function Login() {
   const localize = useLocalize();
   const { showToast } = useToastContext();
-  const { error, setError, login } = useAuthContext();
+  const { error, setError, login, tarsLicenseStatus, setTarsLicenseStatus } = useAuthContext();
   const { startupConfig } = useOutletContext<TLoginLayoutContext>();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -113,15 +114,30 @@ function Login() {
 
   return (
     <>
-      {error != null && <ErrorMessage>{localize(getLoginError(error))}</ErrorMessage>}
-      {startupConfig?.emailLoginEnabled === true && (
-        <LoginForm
-          onSubmit={login}
-          startupConfig={startupConfig}
-          error={error}
-          setError={setError}
-        />
+      {error != null && tarsLicenseStatus == null && (
+        <ErrorMessage>{localize(getLoginError(error))}</ErrorMessage>
       )}
+      {startupConfig?.emailLoginEnabled === true &&
+        (startupConfig.tarsAuth === true ? (
+          <TarsLicenseUpload
+            forcedLicenseStatus={tarsLicenseStatus}
+            onUploaded={() => setTarsLicenseStatus(undefined)}
+          >
+            <LoginForm
+              onSubmit={login}
+              startupConfig={startupConfig}
+              error={error}
+              setError={setError}
+            />
+          </TarsLicenseUpload>
+        ) : (
+          <LoginForm
+            onSubmit={login}
+            startupConfig={startupConfig}
+            error={error}
+            setError={setError}
+          />
+        ))}
       {startupConfig?.tarsAuth !== true && startupConfig?.registrationEnabled === true && (
         <p className="my-4 text-center text-sm font-light text-text-secondary">
           {' '}
