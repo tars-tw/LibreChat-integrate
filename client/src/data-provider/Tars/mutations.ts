@@ -12,6 +12,7 @@ import type {
   TTarsKnowledgeBase,
   TTarsSysConfigUpdate,
   TTarsDocumentReprocess,
+  TTarsRetryStuckDocumentsResult,
   TTarsKnowledgeBaseInput,
   TTarsKnowledgeBaseUpdate,
   TTarsKnowledgeBaseModelUpdate,
@@ -591,6 +592,48 @@ export const useReprocessTarsDocumentMutation = (
   return useMutation(
     ({ docId, data }: { docId: string; data: TTarsDocumentReprocess }) =>
       dataService.reprocessTarsKnowledgeBaseDocument(knowledgeBaseId, docId, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+        /** The detail page reads documents from the combined dataset list. */
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets, knowledgeBaseId]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+/**
+ * Resubmits every document in the knowledge base stuck at status=1 with no
+ * background task actually still running for it (a worker that died mid-run,
+ * not one still working) — the recovery path for rows a normal reprocess
+ * already leaves alone.
+ */
+export const useRetryTarsStuckDocumentsMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<TTarsRetryStuckDocumentsResult, unknown, void>,
+): UseMutationResult<TTarsRetryStuckDocumentsResult, unknown, void> => {
+  const queryClient = useQueryClient();
+  return useMutation(() => dataService.retryTarsStuckDocuments(knowledgeBaseId), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+      /** The detail page reads documents from the combined dataset list. */
+      queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets, knowledgeBaseId]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+/** Same recovery path as {@link useRetryTarsStuckDocumentsMutation}, scoped to one document. */
+export const useRetryTarsStuckDocumentMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<TTarsRetryStuckDocumentsResult, unknown, string>,
+): UseMutationResult<TTarsRetryStuckDocumentsResult, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    (docId: string) => dataService.retryTarsStuckDocument(knowledgeBaseId, docId),
     {
       ...options,
       onSuccess: (...args) => {
