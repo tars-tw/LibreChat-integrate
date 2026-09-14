@@ -1,13 +1,12 @@
 import { useLocalize } from '~/hooks';
 
-/** How many knowledge-base names fit in a cell before the rest become "+N". */
-const CHIP_LIMIT = 2;
-
 /**
  * The knowledge bases a data source is granted to, as a table cell.
  *
  * A connection is only useful once it is granted to a base, and that grant was
- * previously invisible until the row was opened.
+ * previously invisible until the row was opened. Every name renders — wrapping
+ * onto more lines rather than collapsing into a "+N" that hides which bases a
+ * source is actually granted to.
  */
 export default function KnowledgeBaseChips({ names }: { names: string[] }) {
   const localize = useLocalize();
@@ -18,20 +17,17 @@ export default function KnowledgeBaseChips({ names }: { names: string[] }) {
     );
   }
 
-  const shown = names.slice(0, CHIP_LIMIT);
-  const overflow = names.length - shown.length;
-
   return (
-    <span className="flex flex-wrap items-center gap-1" title={names.join(', ')}>
-      {shown.map((name) => (
+    <span className="flex flex-wrap items-center gap-1">
+      {names.map((name) => (
         <span
           key={name}
-          className="max-w-[10rem] truncate rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary"
+          className="max-w-[16rem] truncate rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary"
+          title={name}
         >
           {name}
         </span>
       ))}
-      {overflow > 0 && <span className="text-xs text-text-tertiary">+{overflow}</span>}
     </span>
   );
 }
