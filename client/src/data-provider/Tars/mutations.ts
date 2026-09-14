@@ -6,12 +6,14 @@ import type {
   TTarsPrompt,
   TTarsMemoryUploadResult,
   TTarsDocument,
+  TTarsChunk,
   TTarsDomainInput,
   TTarsPluginToolsResponse,
   TTarsPromptInput,
   TTarsKnowledgeBase,
   TTarsSysConfigUpdate,
   TTarsDocumentReprocess,
+  TTarsRetryStuckDocumentsResult,
   TTarsKnowledgeBaseInput,
   TTarsKnowledgeBaseUpdate,
   TTarsKnowledgeBaseModelUpdate,
@@ -601,6 +603,88 @@ export const useReprocessTarsDocumentMutation = (
       },
     },
   );
+};
+
+/**
+ * Resubmits every document in the knowledge base stuck at status=1 with no
+ * background task actually still running for it (a worker that died mid-run,
+ * not one still working) — the recovery path for rows a normal reprocess
+ * already leaves alone.
+ */
+export const useRetryTarsStuckDocumentsMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<TTarsRetryStuckDocumentsResult, unknown, void>,
+): UseMutationResult<TTarsRetryStuckDocumentsResult, unknown, void> => {
+  const queryClient = useQueryClient();
+  return useMutation(() => dataService.retryTarsStuckDocuments(knowledgeBaseId), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+      /** The detail page reads documents from the combined dataset list. */
+      queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets, knowledgeBaseId]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+/** Same recovery path as {@link useRetryTarsStuckDocumentsMutation}, scoped to one document. */
+export const useRetryTarsStuckDocumentMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<TTarsRetryStuckDocumentsResult, unknown, string>,
+): UseMutationResult<TTarsRetryStuckDocumentsResult, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    (docId: string) => dataService.retryTarsStuckDocument(knowledgeBaseId, docId),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId]);
+        /** The detail page reads documents from the combined dataset list. */
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets, knowledgeBaseId]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useUpdateTarsChunkMutation = (
+  docId: string,
+  options?: UseMutationOptions<
+    { chunk: TTarsChunk },
+    unknown,
+    { chunkId: string; data: { content: string } }
+  >,
+): UseMutationResult<
+  { chunk: TTarsChunk },
+  unknown,
+  { chunkId: string; data: { content: string } }
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ chunkId, data }: { chunkId: string; data: { content: string } }) =>
+      dataService.updateTarsChunk(docId, chunkId, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsDocumentChunks, docId]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useDeleteTarsChunkMutation = (
+  docId: string,
+  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+): UseMutationResult<{ success: boolean }, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((chunkId: string) => dataService.deleteTarsChunk(docId, chunkId), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsDocumentChunks, docId]);
+      options?.onSuccess?.(...args);
+    },
+  });
 };
 
 const invalidatePrompts = (queryClient: ReturnType<typeof useQueryClient>) => {

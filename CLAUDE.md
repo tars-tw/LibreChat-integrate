@@ -54,6 +54,16 @@ One tool, `sql_agent({ question, knowledge_base_id? })` → `POST /api/langflow-
 
 The pwc_tars service key is read from the `KEY_LANGFLOW_API_KEY` sys_config row — pwc_tars validates the whole `/api/langflow-service` blueprint against that single row, so there is no LibreChat-side override. The nested loop's own LLM **always** goes back through LibreChat's gateway (`X-Use-Librechat-Gateway: true` plus `X-Librechat-User-Id`, so the quota lands on the acting user) — pwc_tars hosts the tools but carries no models of its own; its `FLAG_USE_LIBRECHAT_LLM` sys_config switch is the only remaining gate. Other env: `TARS_SQL_AGENT_TIMEOUT_MS`. Key files: `packages/api/src/tars/sql/{client,tool}.ts`, construction in `api/app/clients/tools/util/handleTools.js`, capability gate in `api/server/services/ToolService.js`, equipping in `packages/api/src/agents/{load,added}.ts`, UI in `client/src/components/Chat/Input/{SqlAgent,ToolsDropdown}.tsx` + `BadgeRowContext`. **No pwc_tars-side change is required** — `/api/langflow-service/sql` already exists for Langflow. Not yet wired into the saved-agent builder catalog (`client/src/components/SidePanel/Agents/Tools/items/`), so saved agents can run the tool but cannot pick it in that UI.
 
+### TARS SQL Agent (LibreChat → pwc_tars, a native LibreChat tool)
+
+pwc_tars's SQL agent is a **first-class LibreChat tool**, not an MCP server: `Tools.sql_agent` / `AgentCapabilities.sql_agent` / `PermissionTypes.SQL_AGENT` / `ephemeralAgent.sql_agent`, gated by `interface.sqlAgent` and constructed in `handleTools.js` beside `web_search` and `execute_code`. It shows in the chat tools menu as 「資料庫查詢」 (`Database` icon) with its own composer badge and pin, exactly like web search. Available whenever `TARS_AUTH_URL` is set.
+
+One tool, `sql_agent({ question, knowledge_base_id? })` → `POST /api/langflow-service/sql`. Its reachable databases are resolved **per request** and written into the tool's own description, which removes the usual list-then-query round trip: a brain binding one database needs no `knowledge_base_id` at all, and a brain binding several advertises them by name. Scoping mirrors pwc_tars's own chat path (`message/routes.py` resolves a database from the domain's `knowledge_base_ids`, not from everything the user can see): the candidate set is `has_sql_database` on `GET /api/knowledge_base/prepare_data` intersected with the active 專用腦's knowledge bases, and the same set authorizes the call. pwc_tars owns the whole text-to-SQL loop (schema prompt from the KB↔database binding's `llm_table_info`, read-only guard, row formatting); LibreChat only bounds which knowledge base may be asked (fail-closed for unlinked accounts) and relays the answer, so the markdown table plus the SQL used flows back into the normal agent loop and composes with every other tool.
+
+`sql_agent` costs **two** LLM calls: the chat model decides to call the tool, then pwc_tars's nested loop writes and runs the SQL. The nested loop runs on the **same model the chat turn is on** — being a native tool, `handleTools.js` reads `agent.model` and `req.body.domain_id` straight off the request, so no side channel is needed. The model is matched against pwc_tars `model_profile` names — the same whitelist `ModelSelectorContext` filters the picker by, so the picker can only produce a match — and unmatched models (saved agents and assistants bypass that filter; it also fails open while pwc_tars is down) fall back to pwc_tars's default sys_model rather than letting pwc_tars 400 the call. `TARS_SQL_AGENT_MODEL` pins one model regardless. Every call logs `[tars-sql] kb=… requested=… used=… tokens=… via=…` at debug level, where `used` is what pwc_tars reports it actually ran.
+
+The pwc_tars service key is the `KEY_LANGFLOW_API_KEY` sys_config row (override: `TARS_SQL_SERVICE_KEY`). Other env: `TARS_SQL_AGENT_USE_GATEWAY` (route the SQL agent's own LLM back through LibreChat's gateway), `TARS_SQL_AGENT_TIMEOUT_MS`. Key files: `packages/api/src/tars/sql/{client,tool}.ts`, construction in `api/app/clients/tools/util/handleTools.js`, capability gate in `api/server/services/ToolService.js`, equipping in `packages/api/src/agents/{load,added}.ts`, UI in `client/src/components/Chat/Input/{SqlAgent,ToolsDropdown}.tsx` + `BadgeRowContext`. **No pwc_tars-side change is required** — `/api/langflow-service/sql` already exists for Langflow. Not yet wired into the saved-agent builder catalog (`client/src/components/SidePanel/Agents/Tools/items/`), so saved agents can run the tool but cannot pick it in that UI.
+
 ---
 
 ### TARS Long-term Memory + langflow tools (chart / data / table-task)
@@ -427,6 +437,9 @@ Recommended dev setup: two terminals — `npm run backend:dev` (terminal A) and 
   `npm run static-checks -- --against origin/dev` reproduces what CI sees for a pull request, and
   `npm run static-checks:full` adds the slow gates (TypeScript, config migration tests, unused i18n
   keys, unused npm packages).
+### Live LLM / chat testing
+
+- When exercising real chat / LLM flows (manual or end-to-end, e.g. verifying the pwc_tars conversation mirror), **only use the `gpt-5.4-mini` model**. Do not send live requests with any other model.
 
 ### Live LLM / chat testing
 

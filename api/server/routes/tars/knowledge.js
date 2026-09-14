@@ -15,7 +15,10 @@ const {
   renameTarsKnowledgeBaseDocument,
   deleteTarsKnowledgeBaseDocument,
   reprocessTarsKnowledgeBaseDocument,
+  retryTarsStuckDocuments,
   fetchTarsDocumentChunks,
+  updateTarsChunk,
+  deleteTarsChunk,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
@@ -306,6 +309,44 @@ router.post('/knowledge-bases/:id/documents/:docId/reprocess', async (req, res) 
 });
 
 /**
+ * @route POST /api/tars/knowledge-bases/:id/documents/retry-stuck
+ * @desc Resubmit every document stuck at status=1 with no background task
+ *   actually still running for it (a worker that died mid-run, not one still
+ *   working), across the whole knowledge base.
+ * @access Admin (pwc_tars)
+ */
+router.post('/knowledge-bases/:id/documents/retry-stuck', async (req, res) => {
+  try {
+    const result = await retryTarsStuckDocuments(req.user.tarsId, {
+      knowledgeBaseId: req.params.id,
+    });
+    return res.json(result);
+  } catch (error) {
+    logger.error('[POST /api/tars/knowledge-bases/:id/documents/retry-stuck] Failed', error);
+    return res.status(500).json({ error: 'Failed to retry stuck pwc_tars documents' });
+  }
+});
+
+/**
+ * @route POST /api/tars/knowledge-bases/:id/documents/:docId/retry-stuck
+ * @desc Resubmit a single document only if it is stuck at status=1 with no
+ *   background task actually still running for it.
+ * @access Admin (pwc_tars)
+ */
+router.post('/knowledge-bases/:id/documents/:docId/retry-stuck', async (req, res) => {
+  try {
+    const result = await retryTarsStuckDocuments(req.user.tarsId, {
+      knowledgeBaseId: req.params.id,
+      documentId: req.params.docId,
+    });
+    return res.json(result);
+  } catch (error) {
+    logger.error('[POST /api/tars/knowledge-bases/:id/documents/:docId/retry-stuck] Failed', error);
+    return res.status(500).json({ error: 'Failed to retry stuck pwc_tars document' });
+  }
+});
+
+/**
  * @route GET /api/tars/documents/:docId/chunks
  * @desc List chunks of a document.
  * @access Admin (pwc_tars)
@@ -317,6 +358,40 @@ router.get('/documents/:docId/chunks', async (req, res) => {
   } catch (error) {
     logger.error('[GET /api/tars/documents/:docId/chunks] Failed', error);
     return res.status(500).json({ error: 'Failed to fetch pwc_tars chunks' });
+  }
+});
+
+/**
+ * @route PUT /api/tars/documents/:docId/chunks/:chunkId
+ * @desc Edit one chunk's content.
+ * @access Admin (pwc_tars)
+ */
+router.put('/documents/:docId/chunks/:chunkId', async (req, res) => {
+  const { content } = req.body ?? {};
+  if (!content) {
+    return res.status(400).json({ error: 'content is required' });
+  }
+  try {
+    const chunk = await updateTarsChunk(req.user.tarsId, req.params.chunkId, content);
+    return res.json({ chunk });
+  } catch (error) {
+    logger.error('[PUT /api/tars/documents/:docId/chunks/:chunkId] Failed', error);
+    return res.status(500).json({ error: 'Failed to update pwc_tars chunk' });
+  }
+});
+
+/**
+ * @route DELETE /api/tars/documents/:docId/chunks/:chunkId
+ * @desc Remove one chunk.
+ * @access Admin (pwc_tars)
+ */
+router.delete('/documents/:docId/chunks/:chunkId', async (req, res) => {
+  try {
+    await deleteTarsChunk(req.params.chunkId);
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error('[DELETE /api/tars/documents/:docId/chunks/:chunkId] Failed', error);
+    return res.status(500).json({ error: 'Failed to delete pwc_tars chunk' });
   }
 });
 

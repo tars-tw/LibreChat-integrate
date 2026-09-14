@@ -3,6 +3,7 @@ import { TARS_FILE_PROTOCOLS } from 'librechat-data-provider';
 import { CheckCircle2, PlugZap, Search, XCircle } from 'lucide-react';
 import {
   Button,
+  Dropdown,
   Input,
   Label,
   OGDialog,
@@ -15,7 +16,9 @@ import type { FileSystemForm } from './helpers';
 import {
   NAME_MAX,
   NAME_MIN,
+  buildFullFolderPath,
   defaultPort,
+  discoverFolders,
   errorMessage,
   emptyFileSystemForm,
   needsCredentials,
@@ -38,6 +41,19 @@ import Picker from '../Audit/Picker';
 
 /** How many walked files the preview lists before it asks for a filter. */
 const FILE_PREVIEW_LIMIT = 200;
+/**
+ * `Dropdown` treats an option value of `''` as "nothing selected" and skips
+ * rendering its label, so "the tested folder itself" needs a value that is
+ * not empty.
+ */
+const ROOT_FOLDER = '__root__';
+/**
+ * pwc_tars stores a leading slash on some protocols' paths (SFTP, NFS) and not
+ * others (SMB), while a path built from a discovered folder never carries
+ * one — stripping both leading and trailing slashes is what lets the two be
+ * compared at all.
+ */
+const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '');
 
 /**
  * Create or edit a document group.
@@ -65,6 +81,8 @@ export default function FileSystemModal({
     fileSystem != null ? toFileSystemForm(fileSystem) : emptyFileSystemForm,
   );
   const [fileFilter, setFileFilter] = useState('');
+  /** The path a test connection actually walked, so folders it found can be shown relative to it. */
+  const [testedRootPath, setTestedRootPath] = useState('');
 
   const kbOptions = useMemo(() => knowledgeBasePickerOptions(knowledgeBases), [knowledgeBases]);
 
@@ -92,11 +110,25 @@ export default function FileSystemModal({
     setForm((prev) => ({ ...prev, [key]: value }));
 
   /**
+   * Any change to how pwc_tars would connect invalidates a previous test: the
+   * folders it found belonged to the old host/credentials, not the new ones.
+   */
+  const resetConnectionTest = () => {
+    testMutation.reset();
+    setTestedRootPath('');
+  };
+
+  const setConnectionField = <K extends keyof FileSystemForm>(key: K, value: FileSystemForm[K]) => {
+    resetConnectionTest();
+    set(key, value);
+  };
+
+  /**
    * Switching protocol re-applies that protocol's default port and drops the
    * fields it does not use, as pwc_tars' own form does.
    */
   const selectProtocol = (protocol: TTarsFileProtocol) => {
-    testMutation.reset();
+    resetConnectionTest();
     setForm((prev) => ({
       ...prev,
       protocol,
@@ -127,7 +159,22 @@ export default function FileSystemModal({
     allowedKmIds: form.allowedKmIds,
   });
 
-  const test = () => testMutation.mutate({ ...inputPayload(), fileSystemId: fileSystem?.id });
+  /**
+   * The first test of a session always starts at the share's root — an edit
+   * form does not reuse the folder already saved on it, since the point of
+   * testing again is to browse for a different one. Once a test succeeds,
+   * testing again walks from whatever folder is currently picked, so picking
+   * a folder and testing again drills one level further into the tree.
+   */
+  const test = () => {
+    const rootPath = testMutation.isSuccess ? form.path.trim() || '/' : '/';
+    setTestedRootPath(rootPath);
+    testMutation.mutate({ ...inputPayload(), path: rootPath, fileSystemId: fileSystem?.id });
+  };
+
+  /** Picking a folder does not itself invalidate the test — it is what lets testing again drill deeper into it. */
+  const selectFolder = (value: string) =>
+    set('path', buildFullFolderPath(testedRootPath, value === ROOT_FOLDER ? '' : value));
 
   const submit = () => {
     if (!canSave) {
@@ -140,18 +187,71 @@ export default function FileSystemModal({
     createMutation.mutate(inputPayload());
   };
 
-  const rows = useMemo(() => toFileRows(testMutation.data?.files ?? []), [testMutation.data]);
+  const rows = useMemo(
+    () => toFileRows(testMutation.data?.files ?? [], testedRootPath),
+    [testMutation.data, testedRootPath],
+  );
+
+  const discoveredFolders = useMemo(
+    () => discoverFolders(testMutation.data?.files ?? [], testedRootPath),
+    [testMutation.data, testedRootPath],
+  );
+  const folderOptions = useMemo(
+    () => [
+      {
+        value: ROOT_FOLDER,
+        label: localize('com_ui_tars_fs_folder_use_current', {
+          0: testedRootPath === '' ? '/' : testedRootPath,
+        }),
+      },
+      ...discoveredFolders.map((relativeDir) => ({
+        value: relativeDir,
+        label: buildFullFolderPath(testedRootPath, relativeDir),
+      })),
+    ],
+    [discoveredFolders, testedRootPath, localize],
+  );
+  /** Which option (if any) matches the folder currently on the form, so the picker reflects it. */
+  const selectedFolderValue = useMemo(() => {
+    const current = trimSlashes(form.path.trim());
+    const match = folderOptions.find((option) => {
+      const relativeDir = option.value === ROOT_FOLDER ? '' : option.value;
+      return trimSlashes(buildFullFolderPath(testedRootPath, relativeDir)) === current;
+    });
+    return match?.value;
+  }, [folderOptions, testedRootPath, form.path]);
+
+  /**
+   * Relative to `testedRootPath`, same as `rows[].directory` — so picking a
+   * folder above scopes the preview below it to that folder instead of
+   * leaving it showing everything the test walked.
+   */
+  const selectedRelativeDir =
+    selectedFolderValue == null || selectedFolderValue === ROOT_FOLDER ? '' : selectedFolderValue;
+
+  const scoped = useMemo(
+    () =>
+      selectedRelativeDir === ''
+        ? rows
+        : rows.filter(
+            (row) =>
+              row.directory === selectedRelativeDir ||
+              row.directory.startsWith(`${selectedRelativeDir}/`),
+          ),
+    [rows, selectedRelativeDir],
+  );
+
   const needle = fileFilter.trim().toLowerCase();
   const matched = useMemo(
     () =>
       needle === ''
-        ? rows
-        : rows.filter(
+        ? scoped
+        : scoped.filter(
             (row) =>
               row.name.toLowerCase().includes(needle) ||
               row.directory.toLowerCase().includes(needle),
           ),
-    [rows, needle],
+    [scoped, needle],
   );
 
   return (
@@ -241,7 +341,7 @@ export default function FileSystemModal({
                   <Input
                     id="tars-fs-host"
                     value={form.host}
-                    onChange={(event) => set('host', event.target.value)}
+                    onChange={(event) => setConnectionField('host', event.target.value)}
                     placeholder="192.168.1.100"
                   />
                 </div>
@@ -253,7 +353,7 @@ export default function FileSystemModal({
                     <Input
                       id="tars-fs-hostname"
                       value={form.hostName}
-                      onChange={(event) => set('hostName', event.target.value)}
+                      onChange={(event) => setConnectionField('hostName', event.target.value)}
                       placeholder="FILESRV"
                     />
                   </div>
@@ -267,7 +367,7 @@ export default function FileSystemModal({
                     id="tars-fs-port"
                     inputMode="numeric"
                     value={form.port}
-                    onChange={(event) => set('port', event.target.value)}
+                    onChange={(event) => setConnectionField('port', event.target.value)}
                     placeholder={defaultPort(form.protocol)}
                   />
                   {form.port !== '' && portInvalid(form.port) && (
@@ -276,19 +376,6 @@ export default function FileSystemModal({
                     </p>
                   )}
                 </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="tars-fs-path">{localize('com_ui_tars_fs_path')}</Label>
-                <Input
-                  id="tars-fs-path"
-                  value={form.path}
-                  onChange={(event) => set('path', event.target.value)}
-                  placeholder={smb ? 'public/reports' : '/public'}
-                />
-                <p className="text-xs text-text-secondary">
-                  {localize(smb ? 'com_ui_tars_fs_path_smb_hint' : 'com_ui_tars_fs_path_hint')}
-                </p>
               </div>
 
               {withCredentials && (
@@ -302,7 +389,7 @@ export default function FileSystemModal({
                       id="tars-fs-account"
                       autoComplete="off"
                       value={form.account}
-                      onChange={(event) => set('account', event.target.value)}
+                      onChange={(event) => setConnectionField('account', event.target.value)}
                       placeholder={isEdit ? localize('com_ui_tars_db_account_keep') : undefined}
                     />
                     {isEdit && (
@@ -321,7 +408,7 @@ export default function FileSystemModal({
                       type="password"
                       autoComplete="new-password"
                       value={form.password}
-                      onChange={(event) => set('password', event.target.value)}
+                      onChange={(event) => setConnectionField('password', event.target.value)}
                       placeholder={isEdit ? localize('com_ui_tars_db_password_keep') : undefined}
                     />
                     {isEdit && (
@@ -365,6 +452,29 @@ export default function FileSystemModal({
                     </span>
                   )}
                 </div>
+
+                {testMutation.isSuccess && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tars-fs-folder">
+                      {localize('com_ui_tars_fs_select_folder')}
+                    </Label>
+                    <Dropdown
+                      value={selectedFolderValue}
+                      onChange={selectFolder}
+                      options={folderOptions}
+                      variant="field"
+                      className="w-full"
+                      sizeClasses="max-h-64 overflow-y-auto"
+                      ariaLabel={localize('com_ui_tars_fs_select_folder')}
+                      searchable={folderOptions.length > 8}
+                      searchPlaceholder={localize('com_ui_tars_audit_search_placeholder')}
+                      searchEmptyText={localize('com_ui_no_results_found')}
+                    />
+                    <p className="text-xs text-text-secondary">
+                      {localize('com_ui_tars_fs_select_folder_hint')}
+                    </p>
+                  </div>
+                )}
 
                 {testMutation.isSuccess && rows.length > 0 && (
                   <div className="space-y-2">

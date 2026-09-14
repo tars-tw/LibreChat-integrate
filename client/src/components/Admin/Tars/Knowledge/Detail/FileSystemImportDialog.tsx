@@ -18,10 +18,16 @@ import {
   useTarsFileSystemFilesQuery,
   useTarsFileSystemSourcesQuery,
 } from '~/data-provider';
+import { discoverFolders } from '../../FileSystems/helpers';
 import { useLocalize } from '~/hooks';
 
 const DEFAULT_CHUNK = 300;
 const DEFAULT_OVERLAP = 50;
+/**
+ * `Dropdown` treats an option value of `''` as "nothing selected" and skips
+ * rendering its label, so "every folder" needs a value that is not empty.
+ */
+const ALL_FOLDERS = '__all__';
 
 /**
  * Imports a document group from a file server.
@@ -51,6 +57,7 @@ export default function FileSystemImportDialog({
   const [overlap, setOverlap] = useState(DEFAULT_OVERLAP);
   const [selected, setSelected] = useState<string[]>([]);
   const [filter, setFilter] = useState('');
+  const [selectedFolder, setSelectedFolder] = useState(ALL_FOLDERS);
   /** Only set once asked, so opening the dialog does not walk a remote tree. */
   const [browseId, setBrowseId] = useState<string | null>(null);
 
@@ -68,11 +75,29 @@ export default function FileSystemImportDialog({
     }
   }, [available, sourceId]);
 
+  /** Every folder found in the walked tree, so files can be scoped to one without retyping its path. */
+  const folders = useMemo(() => discoverFolders(filesQuery.data ?? []), [filesQuery.data]);
+  const folderOptions = useMemo(
+    () => [
+      { value: ALL_FOLDERS, label: localize('com_ui_tars_kb_ds_all_folders') },
+      ...folders.map((folder) => ({ value: folder, label: folder })),
+    ],
+    [folders, localize],
+  );
+
   const visibleFiles = useMemo(() => {
     const needle = filter.trim().toLowerCase();
     const files = filesQuery.data ?? [];
-    return needle === '' ? files : files.filter((file) => file.toLowerCase().includes(needle));
-  }, [filesQuery.data, filter]);
+    const scoped =
+      selectedFolder === ALL_FOLDERS
+        ? files
+        : files.filter((file) => {
+            const cut = file.lastIndexOf('/');
+            const directory = cut === -1 ? '' : file.slice(0, cut);
+            return directory === selectedFolder || directory.startsWith(`${selectedFolder}/`);
+          });
+    return needle === '' ? scoped : scoped.filter((file) => file.toLowerCase().includes(needle));
+  }, [filesQuery.data, filter, selectedFolder]);
 
   const importMutation = useImportTarsFileSystemMutation(knowledgeBaseId, {
     onSuccess: () => {
@@ -140,6 +165,7 @@ export default function FileSystemImportDialog({
                 setSourceId(value);
                 setBrowseId(null);
                 setSelected([]);
+                setSelectedFolder(ALL_FOLDERS);
               }}
               options={available.map((source) => ({
                 value: source.id,
@@ -265,6 +291,25 @@ export default function FileSystemImportDialog({
 
     return (
       <>
+        {folders.length > 0 && (
+          <div className="space-y-1.5">
+            <Label id="tars-fs-folder-filter-label">
+              {localize('com_ui_tars_kb_ds_filter_folder')}
+            </Label>
+            <Dropdown
+              value={selectedFolder}
+              onChange={setSelectedFolder}
+              options={folderOptions}
+              aria-labelledby="tars-fs-folder-filter-label"
+              searchable={folderOptions.length > 8}
+              searchPlaceholder={localize('com_ui_tars_audit_search_placeholder')}
+              searchEmptyText={localize('com_ui_no_results_found')}
+              sizeClasses="w-full"
+              className="w-full"
+            />
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <Search

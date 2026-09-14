@@ -404,8 +404,14 @@ export const tarsKnowledgeBaseDocumentRename = (id: string, docId: string) =>
   `${tarsKnowledgeBaseDocument(id, docId)}/rename`;
 export const tarsKnowledgeBaseDocumentReprocess = (id: string, docId: string) =>
   `${tarsKnowledgeBaseDocument(id, docId)}/reprocess`;
+export const tarsKnowledgeBaseDocumentsRetryStuck = (id: string) =>
+  `${tarsKnowledgeBaseDocuments(id)}/retry-stuck`;
+export const tarsKnowledgeBaseDocumentRetryStuck = (id: string, docId: string) =>
+  `${tarsKnowledgeBaseDocument(id, docId)}/retry-stuck`;
 export const tarsDocumentChunks = (docId: string) =>
   `${BASE_URL}/api/tars/documents/${encodeURIComponent(docId)}/chunks`;
+export const tarsDocumentChunk = (docId: string, chunkId: string) =>
+  `${tarsDocumentChunks(docId)}/${encodeURIComponent(chunkId)}`;
 export const tarsPrompts = (domainId?: string | number) =>
   domainId != null && domainId !== ''
     ? `${BASE_URL}/api/tars/prompts?domain_id=${encodeURIComponent(String(domainId))}`
@@ -427,6 +433,7 @@ export const tarsSysConfigs = () => `${BASE_URL}/api/tars/sys-configs`;
 export const tarsSystemSettings = () => `${BASE_URL}/api/tars/settings`;
 export const tarsSystemLogo = () => `${BASE_URL}/api/tars/settings/logo`;
 export const tarsSystemLicense = () => `${BASE_URL}/api/tars/settings/license`;
+export const tarsLicenseStatus = () => `${BASE_URL}/api/tars/settings/license-status`;
 export const tarsSsoConfigs = () => `${BASE_URL}/api/tars/settings/sso`;
 export const tarsSsoConfig = (id: string) =>
   `${BASE_URL}/api/tars/settings/sso/${encodeURIComponent(id)}`;

@@ -875,6 +875,11 @@ export const getTarsSystemSettings = (): Promise<t.TTarsSystemSettings> => {
   return request.get(endpoints.tarsSystemSettings());
 };
 
+/** Public: read before authentication so the login page can prompt for a licence file. */
+export const getTarsLicenseStatus = (): Promise<t.TTarsSystemSettings> => {
+  return request.get(endpoints.tarsLicenseStatus());
+};
+
 export const uploadTarsSystemLogo = (data: FormData): Promise<{ success: boolean }> => {
   return request.postMultiPart(endpoints.tarsSystemLogo(), data);
 };
@@ -1553,8 +1558,31 @@ export const reprocessTarsKnowledgeBaseDocument = (
   return request.post(endpoints.tarsKnowledgeBaseDocumentReprocess(id, docId), data);
 };
 
+export const retryTarsStuckDocuments = (id: string): Promise<t.TTarsRetryStuckDocumentsResult> => {
+  return request.post(endpoints.tarsKnowledgeBaseDocumentsRetryStuck(id));
+};
+
+export const retryTarsStuckDocument = (
+  id: string,
+  docId: string,
+): Promise<t.TTarsRetryStuckDocumentsResult> => {
+  return request.post(endpoints.tarsKnowledgeBaseDocumentRetryStuck(id, docId));
+};
+
 export const getTarsDocumentChunks = (docId: string): Promise<t.TTarsChunksResponse> => {
   return request.get(endpoints.tarsDocumentChunks(docId));
+};
+
+export const updateTarsChunk = (
+  docId: string,
+  chunkId: string,
+  data: { content: string },
+): Promise<{ chunk: t.TTarsChunk }> => {
+  return request.put(endpoints.tarsDocumentChunk(docId, chunkId), data);
+};
+
+export const deleteTarsChunk = (docId: string, chunkId: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsDocumentChunk(docId, chunkId));
 };
 
 export const getTarsPrompts = (domainId?: string | number): Promise<t.TTarsPromptsResponse> => {

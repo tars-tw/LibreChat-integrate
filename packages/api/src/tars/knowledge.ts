@@ -153,6 +153,24 @@ export interface TarsDocumentReprocessInput {
   overlap?: number;
 }
 
+export interface TarsRetryStuckDocumentsInput {
+  knowledgeBaseId: string;
+  /** Scans only this document instead of every stuck document in the knowledge base. */
+  documentId?: string;
+}
+
+export interface TarsStuckDocumentResult {
+  document_id: string;
+  filename: string;
+  status: 'processing' | 'already_processing' | 'failed';
+  error?: string;
+}
+
+export interface TarsRetryStuckDocumentsResult {
+  message: string;
+  results: TarsStuckDocumentResult[];
+}
+
 interface KnowledgeBasesResponse {
   knowledge_bases?: TarsKnowledgeBase[];
 }
@@ -519,6 +537,32 @@ export async function reprocessTarsKnowledgeBaseDocument(
   });
 }
 
+/**
+ * Resubmits documents stuck at `status=1` (processing) for which no background
+ * task is actually still running — orphaned by a worker that died mid-run
+ * (deploy restart, crash) rather than genuinely in progress. A normal reprocess
+ * or batch reprocess already skips these safely, but leaves them stuck forever
+ * since nothing else revisits a `status=1` row
+ * (`POST /api/knowledge_detail/retry_stuck_documents`).
+ */
+export async function retryTarsStuckDocuments(
+  tarsId: string,
+  input: TarsRetryStuckDocumentsInput,
+  baseUrl?: string,
+): Promise<TarsRetryStuckDocumentsResult> {
+  return tarsFetch<TarsRetryStuckDocumentsResult>('/api/knowledge_detail/retry_stuck_documents', {
+    method: 'POST',
+    body: {
+      user_id: tarsId,
+      knowledge_base_id: input.knowledgeBaseId,
+      ...(input.documentId != null && input.documentId !== ''
+        ? { document_id: input.documentId }
+        : {}),
+    },
+    baseUrl,
+  });
+}
+
 /** Chunks of a document (`GET /api/knowledge_detail/get_chunks`). */
 export async function fetchTarsDocumentChunks(
   documentId: string,
@@ -532,4 +576,31 @@ export async function fetchTarsDocumentChunks(
     baseUrl,
   });
   return data?.chunks ?? [];
+}
+
+interface UpdateChunkResponse {
+  chunk: TarsChunk;
+}
+
+/** Edits one chunk's content (`POST /api/knowledge_detail/update_chunk`). */
+export async function updateTarsChunk(
+  tarsId: string,
+  chunkId: string,
+  content: string,
+  baseUrl?: string,
+): Promise<TarsChunk> {
+  const data = await tarsFetch<UpdateChunkResponse>('/api/knowledge_detail/update_chunk', {
+    method: 'POST',
+    body: { chunk_id: chunkId, content, updated_by: tarsId },
+    baseUrl,
+  });
+  return data.chunk;
+}
+
+/** Removes one chunk (`DELETE /api/knowledge_detail/delete_chunk/:chunkId`). */
+export async function deleteTarsChunk(chunkId: string, baseUrl?: string): Promise<void> {
+  await tarsFetch(`/api/knowledge_detail/delete_chunk/${encodeURIComponent(chunkId)}`, {
+    method: 'DELETE',
+    baseUrl,
+  });
 }
