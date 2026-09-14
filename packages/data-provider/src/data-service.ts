@@ -1573,6 +1573,18 @@ export const getTarsDocumentChunks = (docId: string): Promise<t.TTarsChunksRespo
   return request.get(endpoints.tarsDocumentChunks(docId));
 };
 
+export const updateTarsChunk = (
+  docId: string,
+  chunkId: string,
+  data: { content: string },
+): Promise<{ chunk: t.TTarsChunk }> => {
+  return request.put(endpoints.tarsDocumentChunk(docId, chunkId), data);
+};
+
+export const deleteTarsChunk = (docId: string, chunkId: string): Promise<{ success: boolean }> => {
+  return request.delete(endpoints.tarsDocumentChunk(docId, chunkId));
+};
+
 export const getTarsPrompts = (domainId?: string | number): Promise<t.TTarsPromptsResponse> => {
   return request.get(endpoints.tarsPrompts(domainId));
 };
