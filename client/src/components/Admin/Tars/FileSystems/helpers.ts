@@ -120,15 +120,72 @@ export interface FileRow {
 }
 
 /**
+ * SFTP reports paths with the tested path itself as a prefix; every other
+ * protocol already answers relative to it. Stripping it here (when there is
+ * one) lets both the row list and the folder picker treat every protocol the
+ * same, relative to whatever path was actually tested.
+ */
+const stripTestedRoot = (file: string, testedRootPath: string): string => {
+  const normalised = file.replace(/\\/g, '/');
+  const normalisedRoot =
+    testedRootPath !== '' && testedRootPath !== '/' ? testedRootPath.replace(/\/+$/, '') : '';
+  if (normalisedRoot === '') {
+    return normalised;
+  }
+  if (normalised === normalisedRoot) {
+    return '';
+  }
+  return normalised.startsWith(`${normalisedRoot}/`)
+    ? normalised.slice(normalisedRoot.length + 1)
+    : normalised;
+};
+
+/**
  * Splits the paths pwc_tars walked into a name and its folder, so a deep tree
  * is readable without a horizontal scrollbar. Files at the root show no folder.
+ * A directory pwc_tars reported as its own entry (trailing `/`) is dropped
+ * rather than shown as a nameless file.
  */
-export const toFileRows = (files: string[]): FileRow[] =>
-  files.map((file) => {
-    const normalised = file.replace(/\\/g, '/');
-    const cut = normalised.lastIndexOf('/');
-    return {
-      name: cut === -1 ? normalised : normalised.slice(cut + 1),
-      directory: cut === -1 ? '' : normalised.slice(0, cut),
-    };
+export const toFileRows = (files: string[], testedRootPath = ''): FileRow[] =>
+  files
+    .filter((file) => !file.endsWith('/'))
+    .map((file) => stripTestedRoot(file, testedRootPath))
+    .map((relative) => {
+      const cut = relative.lastIndexOf('/');
+      return {
+        name: cut === -1 ? relative : relative.slice(cut + 1),
+        directory: cut === -1 ? '' : relative.slice(0, cut),
+      };
+    });
+
+/** Appends a folder discovered relative to `root` back onto it, e.g. `public` + `reports` → `public/reports`. */
+export const buildFullFolderPath = (root: string, relativeDir: string): string => {
+  const normalisedRoot = root !== '' && root !== '/' ? root.replace(/\/+$/, '') : '';
+  if (relativeDir === '') {
+    return normalisedRoot === '' ? '/' : normalisedRoot;
+  }
+  return normalisedRoot === '' ? relativeDir : `${normalisedRoot}/${relativeDir}`;
+};
+
+/**
+ * Every folder along the way to any file pwc_tars reported, one path segment
+ * at a time and relative to the tested root — this is what lets the shared
+ * folder be picked from a list instead of typed by hand.
+ */
+export const discoverFolders = (files: string[], testedRootPath = ''): string[] => {
+  const folders = new Set<string>();
+  toFileRows(files, testedRootPath).forEach(({ directory }) => {
+    if (directory === '') {
+      return;
+    }
+    let acc = '';
+    directory.split('/').forEach((segment) => {
+      if (segment === '') {
+        return;
+      }
+      acc = acc === '' ? segment : `${acc}/${segment}`;
+      folders.add(acc);
+    });
   });
+  return Array.from(folders).sort((a, b) => a.localeCompare(b));
+};
