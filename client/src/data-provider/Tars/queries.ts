@@ -627,6 +627,28 @@ export const useTarsSystemSettingsQuery = (
   );
 };
 
+/**
+ * Public: pwc_tars licence status and validity window, read on the login page
+ * before authentication so a missing/expired licence can be surfaced there.
+ */
+export const useTarsLicenseStatusQuery = (
+  config?: UseQueryOptions<TTarsSystemSettings>,
+): QueryObserverResult<TTarsSystemSettings> => {
+  return useQuery<TTarsSystemSettings>(
+    [QueryKeys.tarsLicenseStatus],
+    () => dataService.getTarsLicenseStatus(),
+    {
+      retry: false,
+      /** Unlike `adminQueryOptions`, this must refetch on every mount: the login page can be
+       *  reached repeatedly within one SPA session (e.g. redirected back after a token expires)
+       *  without a full reload, and a stale cached 'activate' would hide a licence that has
+       *  since lapsed or been removed. */
+      refetchOnMount: 'always',
+      ...config,
+    },
+  );
+};
+
 /** Admin: every stored LDAP configuration. */
 export const useTarsSsoConfigsQuery = (
   config?: UseQueryOptions<TTarsSsoConfigsResponse, unknown, TTarsSsoConfig[]>,
