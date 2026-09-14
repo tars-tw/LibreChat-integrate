@@ -1553,6 +1553,17 @@ export const reprocessTarsKnowledgeBaseDocument = (
   return request.post(endpoints.tarsKnowledgeBaseDocumentReprocess(id, docId), data);
 };
 
+export const retryTarsStuckDocuments = (id: string): Promise<t.TTarsRetryStuckDocumentsResult> => {
+  return request.post(endpoints.tarsKnowledgeBaseDocumentsRetryStuck(id));
+};
+
+export const retryTarsStuckDocument = (
+  id: string,
+  docId: string,
+): Promise<t.TTarsRetryStuckDocumentsResult> => {
+  return request.post(endpoints.tarsKnowledgeBaseDocumentRetryStuck(id, docId));
+};
+
 export const getTarsDocumentChunks = (docId: string): Promise<t.TTarsChunksResponse> => {
   return request.get(endpoints.tarsDocumentChunks(docId));
 };

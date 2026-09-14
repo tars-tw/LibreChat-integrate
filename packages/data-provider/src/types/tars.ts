@@ -539,6 +539,19 @@ export type TTarsDocumentReprocess = {
   overlap?: number;
 };
 
+/** One document `retry_stuck_documents` looked at, and what it did with it. */
+export type TTarsStuckDocumentResult = {
+  document_id: string;
+  filename: string;
+  status: 'processing' | 'already_processing' | 'failed';
+  error?: string;
+};
+
+export type TTarsRetryStuckDocumentsResult = {
+  message: string;
+  results: TTarsStuckDocumentResult[];
+};
+
 /** Which pwc_tars table a "我的提示" lives in — its visibility tier. */
 export type TTarsPromptScope = 'personal' | 'domain' | 'knowledge_base';
 
