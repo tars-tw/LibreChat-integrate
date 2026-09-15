@@ -104,6 +104,10 @@ function createLangfuseIcon(className: string): ReactNode {
   });
 }
 
+/** pwc_tars owns the account lifecycle and chat retention, so upstream's
+ *  accessibility section and both danger zones are absent here and carry no
+ *  `registry` entries — a section without entries would still surface them
+ *  through the settings search, which scans the whole registry. */
 export const TABS: TabMeta[] = [
   {
     id: SettingsTabValues.GENERAL,
@@ -113,7 +117,6 @@ export const TABS: TabMeta[] = [
       { id: 'appearance', labelKey: 'com_ui_settings_section_appearance' },
       { id: 'layout', labelKey: 'com_ui_settings_section_layout' },
       { id: 'notifications', labelKey: 'com_ui_settings_section_notifications' },
-      // { id: 'accessibility', labelKey: 'com_ui_settings_section_accessibility' },
       { id: 'admin', labelKey: 'com_ui_settings_section_admin' },
     ],
   },
@@ -160,7 +163,6 @@ export const TABS: TabMeta[] = [
       { id: 'codeExecution', labelKey: 'com_ui_settings_section_code_execution' },
       { id: 'data', labelKey: 'com_ui_settings_section_data' },
       { id: 'apiKeys', labelKey: 'com_ui_settings_section_api_keys' },
-      // { id: 'danger', labelKey: 'com_ui_settings_section_danger_zone', danger: true },
     ],
   },
   {
@@ -172,7 +174,6 @@ export const TABS: TabMeta[] = [
       { id: 'security', labelKey: 'com_ui_settings_section_security' },
       { id: 'connections', labelKey: 'com_ui_settings_section_connections' },
       { id: 'billing', labelKey: 'com_ui_settings_section_billing' },
-      // { id: 'danger', labelKey: 'com_ui_settings_section_danger_zone', danger: true },
     ],
   },
   {
