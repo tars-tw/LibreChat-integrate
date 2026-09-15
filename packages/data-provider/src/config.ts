@@ -2069,6 +2069,8 @@ export const interfaceSchema = z
     sqlAgent: z.boolean().optional(),
     /** pwc_tars chart agent (產生圖表) — grants `CHART_AGENT.USE`. */
     chartAgent: z.boolean().optional(),
+    /** Langflow workflow entry in the sidebar rail; the `/langflow` route stays reachable. */
+    langflow: z.boolean().optional(),
     contextUsage: z.boolean().optional(),
     contextCost: z.boolean().optional(),
     feedback: z.boolean().optional(),
@@ -2178,6 +2180,7 @@ export const interfaceSchema = z
     webSearch: true,
     sqlAgent: true,
     chartAgent: true,
+    langflow: false,
     contextUsage: true,
     contextCost: false,
     feedback: true,
