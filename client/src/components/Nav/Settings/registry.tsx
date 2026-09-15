@@ -30,15 +30,12 @@ import FontSizeSelector from '../SettingsTabs/Chat/FontSizeSelector';
 import ChatTitleInTab from '../SettingsTabs/General/ChatTitleInTab';
 import AdvancedPrompts from '../SettingsTabs/Chat/AdvancedPrompts';
 import DuringRunAction from '../SettingsTabs/Chat/DuringRunAction';
-import DeleteAccount from '../SettingsTabs/Account/DeleteAccount';
 import StatefulWorkspaceDefault from './StatefulWorkspaceDefault';
 import { ForkSettings } from '../SettingsTabs/Chat/ForkSettings';
 import ChatDirection from '../SettingsTabs/Chat/ChatDirection';
-import { DeleteCache } from '../SettingsTabs/Data/DeleteCache';
 import { ManageFiles } from '../SettingsTabs/Data/ManageFiles';
 import { smoothStreamingAtom } from '~/store/smoothStreaming';
 import { RevokeKeys } from '../SettingsTabs/Data/RevokeKeys';
-import { ClearChats } from '../SettingsTabs/Data/ClearChats';
 import { TokenCredits, AutoRefill } from './BillingControls';
 import AdminPanel from '../SettingsTabs/General/AdminPanel';
 import SharedLinks from '../SettingsTabs/Data/SharedLinks';
@@ -168,18 +165,6 @@ export const registry: SettingEntry[] = [
     labelKey: 'com_nav_chat_title_in_tab',
     keywords: ['tab', 'title', 'browser', 'window'],
     Component: ChatTitleInTab,
-  },
-  // General · Accessibility
-  {
-    id: 'keepScreenAwake',
-    tab: GENERAL,
-    section: 'accessibility',
-    labelKey: 'com_nav_keep_screen_awake',
-    Component: toggleControl({
-      stateAtom: store.keepScreenAwake,
-      localizationKey: 'com_nav_keep_screen_awake',
-      switchId: 'keepScreenAwake',
-    }),
   },
   // General · Admin
   {
@@ -685,21 +670,6 @@ export const registry: SettingEntry[] = [
     show: (ctx) => ctx.langfuseConnectionAccess,
     Component: LangfuseConnection,
   },
-  // Data controls · Danger zone
-  {
-    id: 'deleteCache',
-    tab: DATA,
-    section: 'danger',
-    labelKey: 'com_ui_settings_label_delete_cache',
-    Component: DeleteCache,
-  },
-  {
-    id: 'clearChats',
-    tab: DATA,
-    section: 'danger',
-    labelKey: 'com_ui_settings_label_clear_chats',
-    Component: ClearChats,
-  },
 
   // Account · Profile
   {
@@ -742,15 +712,6 @@ export const registry: SettingEntry[] = [
     labelKey: 'com_ui_settings_label_auto_refill',
     show: (ctx) => ctx.balanceEnabled,
     Component: AutoRefill,
-  },
-  // Account · Danger zone
-  {
-    id: 'deleteAccount',
-    tab: ACCOUNT,
-    section: 'danger',
-    labelKey: 'com_ui_settings_label_delete_account',
-    show: (ctx) => ctx.allowAccountDeletion,
-    Component: DeleteAccount,
   },
 
   // About
