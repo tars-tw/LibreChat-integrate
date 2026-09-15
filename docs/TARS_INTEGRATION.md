@@ -93,6 +93,7 @@ cache: true
 interface:
   marketplace:
     use: false
+  langflow: false
 
 endpoints:
   agents:
@@ -230,6 +231,7 @@ npm run build
 
 | 日期 | 檔案 | 變更內容 | 相關 commit |
 |---|---|---|---|
+| 2026-09-15 | `librechat.yaml` | 新增 `interface.langflow: false`,控制側欄的 Langflow(Workflow)入口,設 `true` 才顯示;程式預設即為 `false`,不設也是隱藏。`/langflow` 頁面、管理選單與 MCP 設定頁的入口不受影響。Agent 市場改回只靠既有的 `interface.marketplace.use: false` 關閉(需明確寫在 yaml,才會覆蓋 MongoDB 角色權限)。`.env` 無新增值。 | `fix/sidebar-menu-yaml-gate`(待 commit) |
 | 2026-09-10 | `librechat.yaml` | 新增 `interface.marketplace.use: false`,關閉聊天左側的 Agent 市場入口。`.env` 無新增值。 | `feature/tars-ui-improvements`(待 commit) |
 | 2026-09-04 | `.env` | 新增 `HTTP_REQUEST_TIMEOUT_MS=1800000`(必設,解掉長期記憶區音檔上傳的 5 分鐘天花板);可選的 `TARS_MEMORY_UPLOAD_TIMEOUT_MS` 覆寫外送端逾時,程式內建同樣是 30 分鐘,不設也可用。 | `feature/tars-memory-upload-timing`(待 commit) |
 | 2026-08-29 | `librechat.yaml` | `endpoints.agents.capabilities` 新增 `sql_agent`、`chart_agent`(TARS SQL agent 與產生圖表工具的 capability 閘門);vLLM `models.default` 佔位清單加入 `gemma-4-26B-A4B`。`.env` 無新必填值(僅新增可選的 `TARS_*_TIMEOUT_MS` 覆寫)。 | `1eacbe6e1`、`241a7e08d` |
