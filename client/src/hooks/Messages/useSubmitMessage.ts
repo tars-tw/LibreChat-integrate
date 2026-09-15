@@ -83,7 +83,10 @@ export default function useSubmitMessage() {
 
   const submitPrompt = useCallback(
     (text: string) => {
-      if (autoSendPrompts && submitMessage({ text: replaceSpecialVars({ text, user }) }) !== false) {
+      if (
+        autoSendPrompts &&
+        submitMessage({ text: replaceSpecialVars({ text, user }) }) !== false
+      ) {
         return;
       }
       /** A refused auto-send still belongs to the user. Stage it exactly like

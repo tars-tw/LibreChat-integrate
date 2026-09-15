@@ -130,14 +130,15 @@ describe('mobile drawer header', () => {
     expect(toggle.querySelector('[data-testid="sidebar-icon"]')).not.toBeNull();
   });
 
-  it('omits the Agent Marketplace entry from the drawer', () => {
-    /* Hidden from the sidebar per product decision; `/agents` and the
-     * model-selector marketplace entry are unaffected. */
+  it('keeps an Agent Marketplace entry reachable from the drawer', () => {
+    /* The drawer is the only sidebar surface on small screens, so losing this
+     * entry here leaves marketplace users with no sidebar route to `/agents`. */
     render(<Header links={links} expanded={true} onClose={jest.fn()} />, {
       wrapper: MemoryRouter,
     });
 
-    expect(screen.queryByTestId('nav-agents-marketplace-button')).not.toBeInTheDocument();
+    const marketplace = screen.getByTestId('nav-agents-marketplace-button');
+    expect(marketplace).toHaveAttribute('href', '/agents');
   });
 
   it('omits the marketplace entry without marketplace access', () => {
