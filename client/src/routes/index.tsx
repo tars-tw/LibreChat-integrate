@@ -89,6 +89,11 @@ const loadIssuesView = () =>
     Component: m.IssuesView,
   }));
 
+const loadAboutView = () =>
+  import('~/components/Admin/Tars/About').then((m) => ({
+    Component: m.AboutView,
+  }));
+
 const loadDatabasesView = () =>
   import('~/components/Admin/Tars/Databases').then((m) => ({
     Component: m.DatabaseView,
@@ -273,7 +278,10 @@ export const router = createBrowserRouter(
               path: 'admin/issues',
               lazy: loadIssuesView,
             },
-            placeholderRoute('admin/about', 'com_ui_tars_nav_about'),
+            {
+              path: 'admin/about',
+              lazy: loadAboutView,
+            },
             {
               path: 'audit/messages',
               lazy: loadAuditMessagesView,
@@ -286,6 +294,7 @@ export const router = createBrowserRouter(
               path: 'audit/tokens',
               lazy: loadTokenQuotaView,
             },
+            placeholderRoute('admin/models', 'com_ui_tars_nav_model_management'),
             placeholderRoute('audit/governance', 'com_ui_tars_nav_audit_governance'),
             {
               path: '/',
