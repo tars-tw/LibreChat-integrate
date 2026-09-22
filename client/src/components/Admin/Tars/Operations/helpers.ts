@@ -21,12 +21,19 @@ import type { TranslationKeys } from '~/hooks';
 /**
  * How one action verb is presented.
  *
- * The original page gave each of the nine verbs its own hard-coded colour. Only
- * three of those distinctions carry meaning the theme can express, so the icon
- * does the identifying and the tone is reserved for what an auditor reacts to:
- * a destructive action, a change, or a routine read.
+ * Each action has its own tone to provide clear visual distinction while
+ * following the TARS color theme.
  */
-export type ActionTone = 'danger' | 'brand' | 'neutral';
+export type ActionTone =
+  | 'create'
+  | 'update'
+  | 'danger'
+  | 'read'
+  | 'export'
+  | 'download'
+  | 'login'
+  | 'logout'
+  | 'neutral';
 
 export interface ActionConfig {
   labelKey: TranslationKeys;
@@ -40,13 +47,13 @@ const ACTIONS: Record<string, ActionConfig> = {
   CREATE: {
     labelKey: 'com_ui_tars_ops_action_create',
     icon: Plus,
-    tone: 'brand',
+    tone: 'create',
     summaryKey: 'create',
   },
   UPDATE: {
     labelKey: 'com_ui_tars_ops_action_update',
     icon: Pencil,
-    tone: 'brand',
+    tone: 'update',
     summaryKey: 'update',
   },
   DELETE: {
@@ -55,29 +62,34 @@ const ACTIONS: Record<string, ActionConfig> = {
     tone: 'danger',
     summaryKey: 'delete',
   },
-  READ: { labelKey: 'com_ui_tars_ops_action_read', icon: Eye, tone: 'neutral', summaryKey: 'read' },
+  READ: {
+    labelKey: 'com_ui_tars_ops_action_read',
+    icon: Eye,
+    tone: 'read',
+    summaryKey: 'read',
+  },
   EXPORT: {
     labelKey: 'com_ui_tars_ops_action_export',
     icon: FileUp,
-    tone: 'neutral',
+    tone: 'export',
     summaryKey: 'export',
   },
   DOWNLOAD: {
     labelKey: 'com_ui_tars_ops_action_download',
     icon: Download,
-    tone: 'neutral',
+    tone: 'download',
     summaryKey: 'download',
   },
   LOGIN: {
     labelKey: 'com_ui_tars_ops_action_login',
     icon: LogIn,
-    tone: 'neutral',
+    tone: 'login',
     summaryKey: 'login',
   },
   LOGOUT: {
     labelKey: 'com_ui_tars_ops_action_logout',
     icon: LogOut,
-    tone: 'neutral',
+    tone: 'logout',
     summaryKey: 'logout',
   },
   OTHER: {
@@ -111,13 +123,34 @@ export const FALLBACK_ACTION: Pick<ActionConfig, 'icon' | 'tone'> = {
 };
 
 export const toneClasses = (tone: ActionTone): string => {
-  if (tone === 'danger') {
-    return 'bg-pwc-danger/10 text-pwc-danger';
+  switch (tone) {
+    case 'create':
+      return 'bg-[rgb(var(--pwc-action-create-bg))] text-[rgb(var(--pwc-action-create-text))]';
+
+    case 'update':
+      return 'bg-[rgb(var(--pwc-action-update-bg))] text-[rgb(var(--pwc-action-update-text))]';
+
+    case 'danger':
+      return 'bg-red-50 text-red-700';
+
+    case 'read':
+      return 'bg-[rgb(var(--pwc-action-read-bg))] text-[rgb(var(--pwc-action-read-text))]';
+
+    case 'export':
+      return 'bg-[rgb(var(--pwc-action-export-bg))] text-[rgb(var(--pwc-action-export-text))]';
+
+    case 'download':
+      return 'bg-[rgb(var(--pwc-action-download-bg))] text-[rgb(var(--pwc-action-download-text))]';
+
+    case 'login':
+      return 'bg-surface-tertiary text-text-secondary';
+
+    case 'logout':
+      return 'bg-[rgb(var(--pwc-action-logout-bg))] text-[rgb(var(--pwc-action-logout-text))]';
+
+    default:
+      return 'bg-surface-tertiary text-text-secondary';
   }
-  if (tone === 'brand') {
-    return 'bg-brand-primary/10 text-brand-primary';
-  }
-  return 'bg-surface-tertiary text-text-secondary';
 };
 
 export const statusTone = (status: string | null | undefined): string => {

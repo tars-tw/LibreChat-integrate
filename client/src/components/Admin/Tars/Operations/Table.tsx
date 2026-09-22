@@ -166,7 +166,7 @@ export default function OperationsTable({
                       aria-label={localize('com_ui_tars_ops_view_detail')}
                       title={localize('com_ui_tars_ops_view_detail')}
                     >
-                      <Info className="size-4" aria-hidden />
+                      <Info className="size-4 text-pwc-info" aria-hidden />
                     </Button>
                   </td>
                 </tr>

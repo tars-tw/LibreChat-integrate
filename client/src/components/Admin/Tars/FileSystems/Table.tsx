@@ -34,7 +34,7 @@ export default function FileSystemTable({
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_protocol')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_host')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_port')}</th>
-              <th className="w-[22%] px-3 py-2 font-medium">
+              <th className="w-[35%] px-3 py-2 font-medium">
                 {localize('com_ui_tars_db_allowed_kbs')}
               </th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_users_status')}</th>
