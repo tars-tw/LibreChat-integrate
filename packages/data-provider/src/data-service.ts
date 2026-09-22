@@ -1246,6 +1246,10 @@ export const createTarsTicketComment = (
   return request.post(endpoints.tarsTicketComments(id), { body });
 };
 
+export const getTarsReleaseNotes = (): Promise<t.TTarsReleaseNotesResponse> => {
+  return request.get(endpoints.tarsReleaseNotes());
+};
+
 export const getTarsRoles = (): Promise<t.TTarsRolePrepareData> => {
   return request.get(endpoints.tarsRoles());
 };

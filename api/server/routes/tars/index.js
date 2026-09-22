@@ -1,5 +1,6 @@
 const express = require('express');
 const audit = require('./audit');
+const about = require('./about');
 const databases = require('./databases');
 const filesystems = require('./filesystems');
 const websites = require('./websites');
@@ -30,6 +31,7 @@ router.use('/', mcp);
  *  would otherwise intercept it. */
 router.use('/', settings);
 router.use('/', audit);
+router.use('/', about);
 router.use('/', databases);
 router.use('/', filesystems);
 router.use('/', websites);
