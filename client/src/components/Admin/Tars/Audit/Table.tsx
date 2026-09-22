@@ -81,7 +81,7 @@ export default function AuditTable({
           aria-label={localize('com_ui_tars_audit_view_response')}
           title={localize('com_ui_tars_audit_view_response')}
         >
-          <Eye className="size-4" aria-hidden />
+          <Eye className="size-4 text-pwc-info" aria-hidden />
         </Button>
       );
     }
@@ -98,7 +98,7 @@ export default function AuditTable({
     if (column.kind === 'deleted') {
       return row.is_deleted ? (
         <Check
-          className="size-4 text-pwc-danger"
+          className="mt-1.5 size-4 text-pwc-danger"
           aria-label={localize('com_ui_tars_audit_col_deleted')}
         />
       ) : null;
@@ -142,7 +142,7 @@ export default function AuditTable({
           aria-label={localize('com_ui_tars_audit_columns')}
           title={localize('com_ui_tars_audit_columns')}
         >
-          <SlidersHorizontal className="size-4" aria-hidden />
+          <SlidersHorizontal className="size-4 text-text-primary dark:text-white" aria-hidden />
         </Button>
         <Button
           type="button"
@@ -153,7 +153,7 @@ export default function AuditTable({
           aria-label={localize('com_ui_tars_audit_export')}
           title={localize('com_ui_tars_audit_export')}
         >
-          <Download className="size-4" aria-hidden />
+          <Download className="size-4 text-text-primary dark:text-white" aria-hidden />
         </Button>
       </div>
 

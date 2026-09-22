@@ -271,7 +271,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                         onClick={() => setDeleting(quota)}
                         className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
                       >
-                        <Trash2 className="icon-sm" />
+                        <Trash2 className="icon-sm text-pwc-danger" />
                       </button>
                     </div>
                   </td>
