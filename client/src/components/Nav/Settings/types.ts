@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { MessageSquare, Info } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { SettingsTabValues } from 'librechat-data-provider';
 import { GearIcon, DataIcon, UserIcon, SpeechIcon } from '@librechat/client';
 import type { ComponentType, ReactNode } from 'react';
@@ -11,8 +11,7 @@ export type SettingsTab =
   | SettingsTabValues.SPEECH
   | SettingsTabValues.LANGFUSE
   | SettingsTabValues.DATA
-  | SettingsTabValues.ACCOUNT
-  | SettingsTabValues.ABOUT;
+  | SettingsTabValues.ACCOUNT;
 
 export type SectionId =
   | 'appearance'
@@ -36,8 +35,7 @@ export type SectionId =
   | 'profile'
   | 'security'
   | 'connections'
-  | 'billing'
-  | 'about';
+  | 'billing';
 
 export interface SettingsContextValue {
   balanceEnabled: boolean;
@@ -56,7 +54,6 @@ export interface SettingsContextValue {
   isTwoFactorPolicyProvider: boolean;
   twoFactorEnabled: boolean;
   allowAccountDeletion: boolean;
-  aboutEnabled: boolean;
   mascotAllowed: boolean;
   engineTTS: string;
   langfuseConnectionAccess: boolean;
@@ -175,12 +172,5 @@ export const TABS: TabMeta[] = [
       { id: 'connections', labelKey: 'com_ui_settings_section_connections' },
       { id: 'billing', labelKey: 'com_ui_settings_section_billing' },
     ],
-  },
-  {
-    id: SettingsTabValues.ABOUT,
-    labelKey: 'com_nav_setting_about',
-    icon: createElement(Info, { className: 'icon-sm', 'aria-hidden': true }),
-    sections: [{ id: 'about', labelKey: 'com_nav_setting_about' }],
-    show: (ctx) => ctx.aboutEnabled,
   },
 ];
