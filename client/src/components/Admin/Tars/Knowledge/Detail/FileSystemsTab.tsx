@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Button, useToastContext } from '@librechat/client';
-import { Eye, RefreshCcw, RotateCw, Unlink } from 'lucide-react';
+import { Eye, RefreshCcw, RotateCcw, RotateCw, Unlink } from 'lucide-react';
 import type {
   TTarsDatasetFileSystemLink,
   TTarsDatasetLimits,
   TTarsDocument,
 } from 'librechat-data-provider';
 import {
+  useRebuildTarsFileSystemMutation,
   useRefreshTarsFileSystemMutation,
   useReprocessTarsFileSystemMutation,
   useUnlinkTarsFileSystemMutation,
@@ -57,6 +58,7 @@ export default function FileSystemsTab({
   const [reprocessingGroup, setReprocessingGroup] = useState<TTarsDatasetFileSystemLink | null>(
     null,
   );
+  const [rebuilding, setRebuilding] = useState<TTarsDatasetFileSystemLink | null>(null);
   const [viewing, setViewing] = useState<TTarsDatasetFileSystemLink | null>(null);
 
   const visible = useMemo(
@@ -117,7 +119,16 @@ export default function FileSystemsTab({
     onError,
   });
 
-  const isBusy = refreshMutation.isLoading || reprocessMutation.isLoading;
+  const rebuildMutation = useRebuildTarsFileSystemMutation(knowledgeBaseId, {
+    onSuccess: () => {
+      showToast({ message: localize('com_ui_tars_kb_ds_rebuild_started'), status: 'success' });
+      setRebuilding(null);
+    },
+    onError,
+  });
+
+  const isBusy =
+    refreshMutation.isLoading || reprocessMutation.isLoading || rebuildMutation.isLoading;
 
   return (
     <div className="space-y-3">
@@ -216,6 +227,17 @@ export default function FileSystemsTab({
                         <Button
                           variant="ghost"
                           size="icon-xs"
+                          disabled={isBusy}
+                          onClick={() => setRebuilding(link)}
+                          aria-label={localize('com_ui_tars_kb_ds_rebuild')}
+                          title={localize('com_ui_tars_kb_ds_rebuild')}
+                          className="text-pwc-danger"
+                        >
+                          <RotateCcw className="size-4" aria-hidden />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
                           onClick={() => setUnlinking(link)}
                           aria-label={localize('com_ui_tars_kb_ds_unlink')}
                           title={localize('com_ui_tars_kb_ds_unlink')}
@@ -285,6 +307,23 @@ export default function FileSystemsTab({
         />
       )}
 
+      {rebuilding != null && (
+        <ConfirmDialog
+          title={localize('com_ui_tars_kb_ds_rebuild')}
+          message={localize('com_ui_tars_kb_ds_rebuild_confirm', {
+            0: fileSystemLabel(rebuilding),
+          })}
+          note={localize('com_ui_tars_kb_ds_rebuild_note')}
+          confirmLabel={localize('com_ui_tars_kb_ds_rebuild')}
+          destructive
+          isBusy={rebuildMutation.isLoading}
+          onConfirm={() =>
+            rebuildMutation.mutate({ fileSystemId: rebuilding.dataset_file_system_id })
+          }
+          onClose={() => setRebuilding(null)}
+        />
+      )}
+
       {viewing != null && (
         <GroupDocumentsDialog
           knowledgeBaseId={knowledgeBaseId}
@@ -294,6 +333,7 @@ export default function FileSystemsTab({
           isGroupBusy={isBusy}
           onSync={() => setSyncing(viewing)}
           onReprocessGroup={() => setReprocessingGroup(viewing)}
+          onRebuild={() => setRebuilding(viewing)}
           onUnlink={() => setUnlinking(viewing)}
           onViewChunks={onViewChunks}
           onClose={() => setViewing(null)}
