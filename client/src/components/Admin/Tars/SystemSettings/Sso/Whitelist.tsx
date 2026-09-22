@@ -50,8 +50,16 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
   });
   const treeMutation = useTarsLdapTreeMutation({ onError });
   const updateMutation = useUpdateTarsSsoConfigMutation({
-    onSuccess: () =>
-      showToast({ message: localize('com_ui_tars_sso_whitelist_saved'), status: 'success' }),
+    // pwc_tars's own whitelist toast reports the resulting user count, not a
+    // generic "saved" — read it back off what was actually just written
+    // rather than threading it through every `saveList` call site.
+    onSuccess: (_result, variables) => {
+      const count = whitelistToUsernames(variables.data.ldap_whitelist_users).length;
+      showToast({
+        message: localize('com_ui_tars_sso_whitelist_saved', { count }),
+        status: 'success',
+      });
+    },
     onError,
   });
 
@@ -112,7 +120,14 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
 
   const handleBrowse = () => {
     setTreeOpen(true);
-    treeMutation.mutate({ config_id: config.id });
+    // Every user must show up under the OU they actually sit in — not just
+    // those reachable through a group — so checking an OU covers everyone
+    // under it. The AD import preview tree keeps the group-only grouping.
+    treeMutation.mutate({
+      config_id: config.id,
+      include_ou_users: true,
+      no_ou_label: localize('com_ui_tars_sso_tree_no_ou_label'),
+    });
   };
 
   return (
