@@ -79,6 +79,8 @@ import type {
   TTarsTokenReportMembersResponse,
   TTarsTokenReportUserQuery,
   TTarsTokenReportUserResponse,
+  TTarsReleaseNote,
+  TTarsReleaseNotesResponse,
 } from 'librechat-data-provider';
 import type { UseQueryOptions, QueryObserverResult } from '@tanstack/react-query';
 
@@ -726,6 +728,21 @@ export const useTarsTicketOptionsQuery = (
     [QueryKeys.tarsTicketOptions],
     () => dataService.getTarsTicketOptions(),
     { ...adminQueryOptions, ...config },
+  );
+};
+
+/** Admin: published release notes for the About page. */
+export const useTarsReleaseNotesQuery = (
+  config?: UseQueryOptions<TTarsReleaseNotesResponse, unknown, TTarsReleaseNote[]>,
+): QueryObserverResult<TTarsReleaseNote[]> => {
+  return useQuery<TTarsReleaseNotesResponse, unknown, TTarsReleaseNote[]>(
+    [QueryKeys.tarsReleaseNotes],
+    () => dataService.getTarsReleaseNotes(),
+    {
+      select: (data) => data.releaseNotes ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
   );
 };
 
