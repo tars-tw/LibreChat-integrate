@@ -1714,3 +1714,15 @@ export type TTarsSttModels = {
   models: string[];
   message?: string;
 };
+
+export type TTarsReleaseNote = {
+  id: string;
+  version: string;
+  title: string;
+  content: string;
+  created_at: string;
+};
+
+export type TTarsReleaseNotesResponse = {
+  releaseNotes: TTarsReleaseNote[];
+};
