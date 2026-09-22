@@ -99,6 +99,18 @@
   --pwc-secondary: 161 168 179;
   --pwc-dark: 55 71 79;
   --pwc-border: 234 234 234;
+  --pwc-action-create-bg: 222 242 237;
+  --pwc-action-create-text: 10 79 83;
+  --pwc-action-update-bg: 255 244 238;
+  --pwc-action-update-text: var(--pwc-orange-500);
+  --pwc-action-read-bg: 232 240 254;
+  --pwc-action-read-text: 37 99 235;
+  --pwc-action-export-bg: 255 248 229;
+  --pwc-action-export-text: 154 107 0;
+  --pwc-action-download-bg: var(--pwc-action-read-bg);
+  --pwc-action-download-text: 13 195 231;
+  --pwc-action-logout-bg: 243 232 255;
+  --pwc-action-logout-text: 126 34 206;
   --pwc-gradient: linear-gradient(
     -135deg,
     rgb(var(--pwc-orange-400)) 0%,
