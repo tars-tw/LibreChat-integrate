@@ -2768,3 +2768,26 @@ html[data-input-modality='keyboard']
 ::view-transition-group(chat-form) {
   z-index: 2;
 }
+
+@keyframes logo-shrink-fade {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+.animate-logo-blink {
+  animation: logo-shrink-fade 0.8s ease-out forwards;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-logo-blink {
+    animation: none;
+  }
+}
