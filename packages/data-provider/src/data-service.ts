@@ -1454,6 +1454,14 @@ export const refreshTarsFileSystemDataset = (
   return request.post(endpoints.tarsKnowledgeBaseFileSystemRefresh(id, fsId), data);
 };
 
+export const rebuildTarsFileSystemDataset = (
+  id: string,
+  fsId: string,
+  data: { chunkSize?: number; overlap?: number },
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsKnowledgeBaseFileSystemRebuild(id, fsId), data);
+};
+
 export const reprocessTarsFileSystemDataset = (
   id: string,
   fsId: string,

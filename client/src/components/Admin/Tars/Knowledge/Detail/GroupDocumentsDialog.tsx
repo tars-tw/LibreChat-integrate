@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { RefreshCcw, RotateCw, Search, Unlink } from 'lucide-react';
+import { RefreshCcw, RotateCcw, RotateCw, Search, Unlink } from 'lucide-react';
 import { Button, Input, OGDialog, OGDialogTemplate, useToastContext } from '@librechat/client';
 import type { TTarsDatasetFileSystemLink, TTarsDocument } from 'librechat-data-provider';
 import {
@@ -44,6 +44,7 @@ export default function GroupDocumentsDialog({
   isGroupBusy,
   onSync,
   onReprocessGroup,
+  onRebuild,
   onUnlink,
   onViewChunks,
   onClose,
@@ -55,6 +56,7 @@ export default function GroupDocumentsDialog({
   isGroupBusy: boolean;
   onSync: () => void;
   onReprocessGroup: () => void;
+  onRebuild: () => void;
   onUnlink: () => void;
   onViewChunks: (document: TTarsDocument) => void;
   onClose: () => void;
@@ -204,6 +206,16 @@ export default function GroupDocumentsDialog({
                   >
                     <RotateCw className="size-4" aria-hidden />
                     {localize('com_ui_tars_kb_ds_reprocess_group')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isGroupBusy}
+                    onClick={onRebuild}
+                    className="gap-1.5 text-pwc-danger hover:text-pwc-danger"
+                  >
+                    <RotateCcw className="size-4" aria-hidden />
+                    {localize('com_ui_tars_kb_ds_rebuild')}
                   </Button>
                   <Button
                     variant="outline"
