@@ -3,7 +3,6 @@ import { ExternalLink, Info, LayoutList, Pencil, Trash2 } from 'lucide-react';
 import type { TTarsWebsiteSource } from 'librechat-data-provider';
 import Pagination, { usePagination } from '../Knowledge/Pagination';
 import { formatCount } from '../Knowledge/Detail/helpers';
-import { StatusBadge } from '../Users/Fields';
 import { useLocalize } from '~/hooks';
 
 /**
@@ -46,7 +45,6 @@ export default function WebsiteTable({
               <th className="px-3 py-2 text-right font-medium">
                 {localize('com_ui_tars_web_tokens')}
               </th>
-              <th className="px-3 py-2 font-medium">{localize('com_ui_tars_users_status')}</th>
               <th className="px-3 py-2 text-right font-medium">{localize('com_ui_actions')}</th>
             </tr>
           </thead>
@@ -100,9 +98,6 @@ export default function WebsiteTable({
                   </td>
                   <td className="px-3 py-1.5 text-right tabular-nums text-text-secondary">
                     {formatCount(website.tokens)}
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <StatusBadge active={website.status !== 0} />
                   </td>
                   <td className="px-3 py-1.5">
                     <div className="flex justify-end">
