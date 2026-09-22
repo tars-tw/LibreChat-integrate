@@ -75,6 +75,15 @@ export interface TarsLdapConfigInput {
   ldap_whitelist_users?: string;
   ldap_enable_whitelist?: boolean;
   status?: number;
+  /**
+   * Whitelist tree only: also nest every user under the OU it actually sits
+   * in (not just OUs reached via a group), so checking an OU covers everyone
+   * under it. The AD import preview tree omits this and keeps pwc_tars's
+   * group-membership-only grouping.
+   */
+  include_ou_users?: boolean;
+  /** Label for the synthetic node holding users pwc_tars couldn't place under any OU. */
+  no_ou_label?: string;
 }
 
 /**
@@ -149,6 +158,8 @@ export interface TarsLdapTreeNode {
   data?: {
     type?: string | null;
     member_count?: number | null;
+    /** User nodes only. The actual login account — `label` is `"account - displayName"`. */
+    sAMAccountName?: string | null;
   } | null;
   children?: TarsLdapTreeNode[];
 }

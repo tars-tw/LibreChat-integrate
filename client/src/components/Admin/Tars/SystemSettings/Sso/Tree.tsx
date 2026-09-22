@@ -34,18 +34,35 @@ const KIND_ICON: Record<LdapNodeKind, typeof User> = {
   ou: Folder,
 };
 
+/**
+ * Every user account (by sAMAccountName) under this node, including the node
+ * itself when it is a user. Powers both the leaf checkbox and the
+ * check-all/indeterminate state on group and OU checkboxes — pwc_tars lets an
+ * admin whitelist an entire OU or group in one click rather than every member
+ * individually.
+ */
+const collectUserAccounts = (node: TTarsLdapTreeNode): string[] => {
+  if (getNodeKind(node) === 'user') {
+    const account = node.data?.sAMAccountName;
+    return account ? [account] : [];
+  }
+  return (node.children ?? []).flatMap(collectUserAccounts);
+};
+
 function NodeLabel({
   node,
   kind,
   selectable,
   selected,
   onToggle,
+  accounts,
 }: {
   node: TTarsLdapTreeNode;
   kind: LdapNodeKind;
   selectable: boolean;
   selected?: Set<string>;
-  onToggle?: (username: string) => void;
+  onToggle?: (accounts: string[], checked: boolean) => void;
+  accounts: string[];
 }) {
   const localize = useLocalize();
   const memberCount = kind === 'group' ? node.data?.member_count : null;
@@ -62,14 +79,25 @@ function NodeLabel({
 
   const Icon = KIND_ICON[kind];
 
-  if (kind === 'user' && selectable) {
+  // Only the whitelist picker is selectable, and only accounts with a real
+  // sAMAccountName can be whitelisted — an OU/group with none (unresolved
+  // members, or nothing under it) gets no checkbox to toggle.
+  if (selectable && accounts.length > 0) {
+    const checkedCount = selected ? accounts.filter((account) => selected.has(account)).length : 0;
+    const allChecked = checkedCount === accounts.length;
+    const someChecked = checkedCount > 0 && !allChecked;
     return (
       <label className="flex cursor-pointer items-center gap-2 text-text-primary">
         <input
           type="checkbox"
           className="h-4 w-4"
-          checked={selected?.has(node.label) ?? false}
-          onChange={() => onToggle?.(node.label)}
+          checked={allChecked}
+          ref={(el) => {
+            if (el) {
+              el.indeterminate = someChecked;
+            }
+          }}
+          onChange={() => onToggle?.(accounts, !allChecked)}
         />
         <Icon className="icon-xs text-text-secondary" aria-hidden="true" />
         <span>{label}</span>
@@ -103,11 +131,12 @@ export function LdapTreeNode({
   query: string;
   selectable?: boolean;
   selected?: Set<string>;
-  onToggle?: (username: string) => void;
+  onToggle?: (accounts: string[], checked: boolean) => void;
 }) {
   const [open, setOpen] = useState(depth < 1);
   const children = node.children ?? [];
   const kind = getNodeKind(node);
+  const accounts = useMemo(() => collectUserAccounts(node), [node]);
 
   if (!matchesLdapTreeSearch(node, query)) {
     return null;
@@ -135,6 +164,7 @@ export function LdapTreeNode({
           selectable={selectable}
           selected={selected}
           onToggle={onToggle}
+          accounts={accounts}
         />
       </div>
       {open &&
@@ -178,14 +208,20 @@ export default function LdapTreeModal({
 
   const query = useMemo(() => search.trim().toLowerCase(), [search]);
 
-  const toggle = (username: string) =>
+  // A group/OU checkbox toggles every account under it at once; a leaf user
+  // checkbox calls this with its own single-account list. `selected` is keyed
+  // by username rather than node key, so the same account showing up under
+  // several OUs/groups (see `include_ou_users`) always stays in sync.
+  const toggle = (accounts: string[], checked: boolean) =>
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(username)) {
-        next.delete(username);
-      } else {
-        next.add(username);
-      }
+      accounts.forEach((account) => {
+        if (checked) {
+          next.add(account);
+        } else {
+          next.delete(account);
+        }
+      });
       return next;
     });
 
@@ -197,6 +233,9 @@ export default function LdapTreeModal({
         className="w-11/12 md:max-w-2xl"
         main={
           <div className="space-y-3">
+            <p className="text-xs text-text-destructive">
+              {localize('com_ui_tars_sso_tree_excluded_hint')}
+            </p>
             <div className="relative">
               <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
               <Input
