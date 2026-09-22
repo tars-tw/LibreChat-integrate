@@ -460,6 +460,32 @@ export const useRefreshTarsFileSystemMutation = (
     options,
   );
 
+export const useRebuildTarsFileSystemMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { fileSystemId: string; chunkSize?: number; overlap?: number }
+  >,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    ({
+      fileSystemId,
+      chunkSize,
+      overlap,
+    }: {
+      fileSystemId: string;
+      chunkSize?: number;
+      overlap?: number;
+    }) =>
+      dataService.rebuildTarsFileSystemDataset(knowledgeBaseId, fileSystemId, {
+        chunkSize,
+        overlap,
+      }),
+    options,
+  );
+
 export const useReprocessTarsFileSystemMutation = (
   knowledgeBaseId: string,
   options?: UseMutationOptions<{ success: boolean }, unknown, string>,
