@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 export const BlinkAnimation = ({
   active,
   children,
@@ -5,7 +7,22 @@ export const BlinkAnimation = ({
   active: boolean;
   children: React.ReactNode;
 }) => {
-  if (!active) {
+  const [showAnimation, setShowAnimation] = useState(active);
+
+  useEffect(() => {
+    if (active) {
+      setShowAnimation(true);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setShowAnimation(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [active]);
+
+  if (!showAnimation) {
     return <>{children}</>;
   }
 
