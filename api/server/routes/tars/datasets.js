@@ -16,6 +16,7 @@ const {
   fetchTarsFileSystemFiles,
   importTarsFileSystemDataset,
   refreshTarsFileSystemDataset,
+  rebuildTarsFileSystemDataset,
   reprocessTarsFileSystemDataset,
   unlinkTarsFileSystemDataset,
   batchDeleteTarsDatasets,
@@ -297,6 +298,27 @@ router.post('/knowledge-bases/:id/file-systems/:fsId/refresh', async (req, res) 
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/file-systems/:fsId/refresh] Failed', error);
     return relay(res, error, 'Failed to refresh pwc_tars document group');
+  }
+});
+
+/**
+ * @route POST /api/tars/knowledge-bases/:id/file-systems/:fsId/rebuild
+ * @desc Delete every existing document in the group and re-import everything
+ *       from the source file server. Destructive; pwc_tars rejects it with
+ *       409 while a document in the group is still processing.
+ * @access Admin (pwc_tars)
+ */
+router.post('/knowledge-bases/:id/file-systems/:fsId/rebuild', async (req, res) => {
+  const { chunkSize, overlap } = req.body ?? {};
+  try {
+    await rebuildTarsFileSystemDataset(req.user.tarsId, req.params.id, req.params.fsId, {
+      chunkSize: chunkSize != null ? Number(chunkSize) : undefined,
+      overlap: overlap != null ? Number(overlap) : undefined,
+    });
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error('[POST /api/tars/knowledge-bases/:id/file-systems/:fsId/rebuild] Failed', error);
+    return relay(res, error, 'Failed to rebuild pwc_tars document group');
   }
 });
 

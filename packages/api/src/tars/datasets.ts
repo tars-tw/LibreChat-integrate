@@ -569,6 +569,36 @@ export async function refreshTarsFileSystemDataset(
   });
 }
 
+/**
+ * Deletes every existing document in a group (records, chunks and vectors)
+ * and re-downloads and re-imports everything from the source file server
+ * (`POST /api/knowledge_detail/rebuild_file_server_files`). Destructive and
+ * irreversible — pwc_tars rejects it with 409 while any document in the
+ * group is still actively processing. Per-file chunk/overlap settings are
+ * preserved by source path on the pwc_tars side; the values here only apply
+ * to files the source server has never held before.
+ */
+export async function rebuildTarsFileSystemDataset(
+  tarsId: string,
+  knowledgeBaseId: string,
+  fileSystemId: string,
+  chunk: { chunkSize?: number; overlap?: number } = {},
+  baseUrl?: string,
+): Promise<void> {
+  await tarsFetch('/api/knowledge_detail/rebuild_file_server_files', {
+    method: 'POST',
+    timeoutMs: INGEST_TIMEOUT_MS,
+    baseUrl,
+    body: {
+      user_id: tarsId,
+      knowledge_base_id: knowledgeBaseId,
+      dataset_file_system_id: fileSystemId,
+      new_file_chunk_size: chunk.chunkSize ?? 1000,
+      new_file_overlap_size: chunk.overlap ?? 100,
+    },
+  });
+}
+
 /** Reprocesses every unfinished document in a group (`reupload_batch_file`). */
 export async function reprocessTarsFileSystemDataset(
   tarsId: string,

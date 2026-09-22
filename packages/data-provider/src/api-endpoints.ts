@@ -396,6 +396,8 @@ export const tarsKnowledgeBaseFileSystemFiles = (id: string, fsId: string) =>
   `${tarsKnowledgeBaseFileSystem(id, fsId)}/files`;
 export const tarsKnowledgeBaseFileSystemRefresh = (id: string, fsId: string) =>
   `${tarsKnowledgeBaseFileSystem(id, fsId)}/refresh`;
+export const tarsKnowledgeBaseFileSystemRebuild = (id: string, fsId: string) =>
+  `${tarsKnowledgeBaseFileSystem(id, fsId)}/rebuild`;
 export const tarsKnowledgeBaseFileSystemReprocess = (id: string, fsId: string) =>
   `${tarsKnowledgeBaseFileSystem(id, fsId)}/reprocess`;
 export const tarsKnowledgeBaseDocuments = (id: string) =>
