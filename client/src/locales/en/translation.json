@@ -4190,5 +4190,15 @@
   "com_ui_tars_quota_info_fields_warning_title": "Warning Threshold",
   "com_ui_tars_quota_info_fields_warning_desc": "The usage percentage at which the system sends a warning notification (e.g. 80%).",
   "com_ui_tars_roles_usage_users_empty": "No users are using this role",
-  "com_ui_tars_roles_usage_groups_empty": "No groups are using this role"
+  "com_ui_tars_roles_usage_groups_empty": "No groups are using this role",
+  "com_ui_tars_about_release_notes": "Release Notes",
+  "com_ui_tars_about_sbom": "Software Bill of Materials (SBOM)",
+  "com_ui_tars_about_no_notes": "No release notes available.",
+  "com_ui_tars_about_search_placeholder": "Search versions...",
+  "com_ui_tars_about_no_matching_notes": "No matching versions found.",
+  "com_ui_tars_about_latest": "Latest",
+  "com_ui_tars_about_per_page": "{{0}} per page",
+  "com_ui_tars_about_select_version": "Select a version to view its details.",
+  "com_ui_tars_nav_ai_design": "AI Design",
+  "com_ui_tars_nav_model_management": "Model Management"
 }

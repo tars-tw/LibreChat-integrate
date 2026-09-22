@@ -3878,5 +3878,15 @@
   "com_nav_mobile_drawer_strip": "在行動裝置上於側邊欄旁顯示聊天",
   "com_nav_mobile_drawer_strip_info": "側邊欄不會延伸到螢幕邊緣，因此仍會顯示一小段對話內容。點擊該區域即可關閉側邊欄。",
   "com_ui_tars_roles_usage_users_empty": "沒有使用者使用此角色",
-  "com_ui_tars_roles_usage_groups_empty": "沒有群組使用此角色"
+  "com_ui_tars_roles_usage_groups_empty": "沒有群組使用此角色",
+  "com_ui_tars_about_release_notes": "版本更新紀錄",
+  "com_ui_tars_about_sbom": "軟體物料清單 (SBOM)",
+  "com_ui_tars_about_no_notes": "目前沒有版本更新紀錄",
+  "com_ui_tars_about_search_placeholder": "搜尋版本...",
+  "com_ui_tars_about_no_matching_notes": "找不到符合的版本",
+  "com_ui_tars_about_latest": "最新",
+  "com_ui_tars_about_per_page": "{{0}} 筆/頁",
+  "com_ui_tars_about_select_version": "請選擇左側版本以查看內容",
+  "com_ui_tars_nav_ai_design": "AI 設計",
+  "com_ui_tars_nav_model_management": "模型管理"
 }
