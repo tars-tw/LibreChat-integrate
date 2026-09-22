@@ -1,5 +1,7 @@
+import { Fragment } from 'react';
 import * as Menu from '@ariakit/react/menu';
 import { useNavigate } from 'react-router-dom';
+import { DropdownMenuSeparator } from '@librechat/client';
 import {
   Boxes,
   BrainCircuit,
@@ -27,6 +29,8 @@ import {
   UsersRound,
   Workflow,
   Wrench,
+  Sparkles,
+  Bot,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TranslationKeys } from '~/hooks';
@@ -91,16 +95,28 @@ export const ADMIN_MENU: AdminMenuNode[] = [
     ],
   },
   {
-    labelKey: 'com_ui_tars_mcp_settings',
-    icon: Wrench,
-    key: 'admin.mcp_settings',
-    path: '/mcp-settings',
-  },
-  {
-    labelKey: 'com_ui_langflow',
-    icon: Workflow,
-    key: 'admin.langflow',
-    path: '/langflow',
+    labelKey: 'com_ui_tars_nav_ai_design',
+    icon: Sparkles,
+    children: [
+      {
+        labelKey: 'com_ui_tars_nav_model_management',
+        icon: Bot,
+        key: 'admin.model_management',
+        path: '/admin/models',
+      },
+      {
+        labelKey: 'com_ui_tars_mcp_settings',
+        icon: Wrench,
+        key: 'admin.mcp_settings',
+        path: '/mcp-settings',
+      },
+      {
+        labelKey: 'com_ui_langflow',
+        icon: Workflow,
+        key: 'admin.langflow',
+        path: '/langflow',
+      },
+    ],
   },
   {
     labelKey: 'com_ui_tars_nav_audit',
@@ -328,7 +344,10 @@ export default function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       {visibleMenu.map((node) => (
-        <AdminMenuItem key={node.labelKey} node={node} onNavigate={onNavigate} />
+        <Fragment key={node.labelKey}>
+          <AdminMenuItem node={node} onNavigate={onNavigate} />
+          {node.labelKey === 'com_ui_tars_nav_audit' && <DropdownMenuSeparator />}
+        </Fragment>
       ))}
     </>
   );

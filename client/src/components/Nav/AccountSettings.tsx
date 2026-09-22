@@ -172,6 +172,7 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
           <Archive className="icon-md" aria-hidden="true" />
           {localize('com_nav_archived_chats')}
         </Menu.MenuItem>
+        <DropdownMenuSeparator />
         {hasTarsMenuAccess && <AdminMenu onNavigate={collapseSidebarIfExpanded} />}
         <Menu.MenuItem
           onClick={() => {
