@@ -77,8 +77,6 @@ api/tsconfig.json
 .flooignore
 
 #config file
-librechat.yaml
-librechat.yml
 
 # Environment
 .env*
