@@ -725,3 +725,43 @@ describe('initializeCustom – native Anthropic provider', () => {
     expect(options.provider).toBeUndefined();
   });
 });
+
+describe('initializeCustom – pwc_tars sys_config apiKey reference', () => {
+  const { invalidateTarsSysConfigCache } = jest.requireActual('~/tars/sysconfig');
+
+  const sysConfig = (value: string) =>
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [{ key: 'KEY_OPEN_AI_API', value, status: 'active' }],
+    } as Response);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.TARS_AUTH_URL = 'http://tars.test';
+    invalidateTarsSysConfigCache();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    delete process.env.TARS_AUTH_URL;
+  });
+
+  it('calls the endpoint with the current sys_config key', async () => {
+    sysConfig('azure-secret');
+    await initializeCustom(createParams({ apiKey: '${tars:KEY_OPEN_AI_API}' }));
+    expect(mockGetOpenAIConfig).toHaveBeenCalledWith(
+      'azure-secret',
+      expect.any(Object),
+      'test-custom',
+    );
+  });
+
+  it('rejects as a missing key when sys_config has no usable value', async () => {
+    sysConfig('DEFAULT');
+    await expect(
+      initializeCustom(createParams({ apiKey: '${tars:KEY_OPEN_AI_API}' })),
+    ).rejects.toThrow('Missing API Key for test-custom.');
+    expect(mockGetOpenAIConfig).not.toHaveBeenCalled();
+  });
+});
