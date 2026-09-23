@@ -1,5 +1,5 @@
 import { logger } from '@librechat/data-schemas';
-import { EModelEndpoint } from 'librechat-data-provider';
+import { EModelEndpoint, extractEnvVariable } from 'librechat-data-provider';
 import { isUserProvided, checkUserKeyExpiry } from '~/utils';
 import { tarsFetch, isTarsConfigured } from './client';
 
@@ -167,4 +167,22 @@ export async function resolveTarsProviderKey(
     return envValue;
   }
   return (await getTarsProviderApiKey(provider)) ?? envValue;
+}
+
+/** A `librechat.yaml` value of the form `${tars:KEY}`: read from pwc_tars sys_config, not env. */
+const SYSCONFIG_REF_PATTERN = /^\$\{tars:([^}]+)\}$/;
+
+/**
+ * Resolves a config value that may name a pwc_tars sys_config key, e.g. a
+ * custom endpoint's `apiKey: '${tars:KEY_OPEN_AI_API}'`, so a key an admin
+ * rotates in pwc_tars needs no LibreChat change. Any other value goes through
+ * env resolution unchanged. A reference with no active value is returned as
+ * written, which the caller's unresolved-placeholder check then rejects.
+ */
+export async function resolveTarsConfigValue(value: string): Promise<string> {
+  const key = SYSCONFIG_REF_PATTERN.exec(value.trim())?.[1];
+  if (!key) {
+    return extractEnvVariable(value);
+  }
+  return (await getTarsSysConfigValue(key)) ?? value;
 }
