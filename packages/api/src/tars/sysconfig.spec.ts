@@ -13,6 +13,7 @@ import {
   updateTarsSysConfig,
   getTarsProviderApiKey,
   resolveTarsProviderKey,
+  resolveTarsConfigValue,
   isExpiredKeyCoveredByTars,
   invalidateTarsSysConfigCache,
 } from './sysconfig';
@@ -266,5 +267,33 @@ describe('isExpiredKeyCoveredByTars', () => {
     await expect(isExpiredKeyCoveredByTars('2020-01-01', EModelEndpoint.openAI)).rejects.toThrow(
       'expired_user_key',
     );
+  });
+});
+
+describe('resolveTarsConfigValue', () => {
+  it('reads a ${tars:KEY} reference from sys_config', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, [row('KEY_OPEN_AI_API', 'azure-secret')]));
+    await expect(resolveTarsConfigValue('${tars:KEY_OPEN_AI_API}')).resolves.toBe('azure-secret');
+  });
+
+  it('returns the reference as written when sys_config has no usable value', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, [row('KEY_OPEN_AI_API', 'DEFAULT')]));
+    await expect(resolveTarsConfigValue('${tars:KEY_OPEN_AI_API}')).resolves.toBe(
+      '${tars:KEY_OPEN_AI_API}',
+    );
+  });
+
+  it('resolves env references and literals without consulting pwc_tars', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+    process.env.TEST_TARS_REF_KEY = 'from-env';
+    await expect(resolveTarsConfigValue('${TEST_TARS_REF_KEY}')).resolves.toBe('from-env');
+    await expect(resolveTarsConfigValue('sk-literal')).resolves.toBe('sk-literal');
+    await expect(resolveTarsConfigValue('user_provided')).resolves.toBe('user_provided');
+    expect(fetchMock).not.toHaveBeenCalled();
+    delete process.env.TEST_TARS_REF_KEY;
   });
 });

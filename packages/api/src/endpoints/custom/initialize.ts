@@ -23,6 +23,7 @@ import { withSupportedEffort } from '~/endpoints/reasoning';
 import { getOpenAIConfig } from '~/endpoints/openai/config';
 import { getScopedTokenConfigKey } from '~/endpoints/keys';
 import { resolveCustomEndpointParameters } from './config';
+import { resolveTarsConfigValue } from '~/tars/sysconfig';
 import { getCustomEndpointConfig } from '~/app/config';
 import { resolveEndpointRuntime } from '~/types';
 import { fetchModels } from '~/endpoints/models';
@@ -201,7 +202,7 @@ export async function initializeCustom(
     throw new Error(`Config not found for the ${endpoint} custom endpoint.`);
   }
 
-  const CUSTOM_API_KEY = extractEnvVariable(configuredEndpoint.apiKey ?? '');
+  const CUSTOM_API_KEY = await resolveTarsConfigValue(configuredEndpoint.apiKey ?? '');
   let CUSTOM_BASE_URL = extractEnvVariable(configuredEndpoint.baseURL ?? '');
 
   /** A pwc_tars local endpoint routes per-model: the requested model's vLLM
