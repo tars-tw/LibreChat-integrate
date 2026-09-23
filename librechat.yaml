@@ -3,10 +3,8 @@
 version: 1.3.13
 cache: true
 
-# The local Langflow host is auto-exempted from the MCP SSRF block — its host:port is derived
-# from VITE_LANGFLOW_URL in code (api/server/services/initializeMCPs.js), so no host is hardcoded
-# here. Add other services to mcpSettings.allowedAddresses if you need to exempt them too.
-
+# Explicit interface permissions are written into every role document on boot; a value that
+# is only defaulted here never overrides what MongoDB already holds for the role.
 interface:
   marketplace:
     use: false
@@ -30,6 +28,10 @@ interface:
   # schedules:
   #   use: true
   #   create: true
+
+# The local Langflow host is auto-exempted from the MCP SSRF block — its host:port is derived
+# from VITE_LANGFLOW_URL in code (api/server/services/initializeMCPs.js), so no host is hardcoded
+# here. Add other services to mcpSettings.allowedAddresses if you need to exempt them too.
 
 endpoints:
   # Conversation titles for every endpoint (overrides any per-endpoint titlePrompt).
@@ -104,16 +106,30 @@ endpoints:
       # tars://local above).
       apiKey: '${tars:VLLM_API_KEY}'
       baseURL: 'tars://local'
+    # The customer's Azure OpenAI deployment(s), configured statically. The
+    # model id MUST be the Azure deployment name (= pwc_tars model_profile.name),
+    # because pwc_tars routes gateway calls here as `Azure/<deployment>` — keep
+    # `name: 'Azure'` as is (case-sensitive) and this list in step with the
+    # model_profile rows whose endpoint is this Azure resource.
+    #   - dropParams temperature: gpt56-luna-dev only accepts its default
+    #     (model_profile supports_temperature=false); a custom value is a 400.
+    #   - tokenConfig: the deployment name matches no built-in model, so without
+    #     it the context window falls back to 32k. prompt/completion are
+    #     per-1M-token rates for balance accounting (0 = not charged).
+    # apiKey `${tars:KEY}` is read from pwc_tars sys_config at request time
+    # (30s cache), so a key rotated in pwc_tars needs no LibreChat change.
+    # KEY_OPEN_AI_API is the key pwc_tars itself sends to Azure.
+    - name: 'Azure'
+      apiKey: '${tars:KEY_OPEN_AI_API}'
+      baseURL: 'https://aoai-dev-ca-pcc-cssai-jpe-001.openai.azure.com/openai/v1'
       models:
-        default: ['gemma-4-31B', 'gemma-4-26B-A4B']
+        default: ['gpt56-luna-dev']
+      dropParams: ['temperature']
+      tokenConfig:
+        gpt56-luna-dev: { prompt: 0, completion: 0, context: 400000 }
       titleConvo: true
       titleModel: 'current_model'
-      modelDisplayLabel: 'vLLM'
-      # LibreChat turns stream usage off for custom endpoints, so vLLM would report no
-      # token counts and every model call between tool calls would go uncounted. vLLM
-      # supports `stream_options.include_usage`, which this re-enables.
-      addParams:
-        streamUsage: true
+      modelDisplayLabel: 'Azure OpenAI'
 
 # Web search runs on Tavily alone (search + page extract, no reranker), so no other
 # provider's key is ever consulted and users get no key/provider dialog. The key is
