@@ -26,7 +26,7 @@
 ```bash
 nvm use
 cp .env.example .env                       # 再依 §1.3 填值
-# 建立 librechat.yaml(§1.5 全文照貼;被 .gitignore,新機器要自建)
+# librechat.yaml 已納入版控(ci/26C4.CI),clone 後即有,不用自建
 # 建立 docker-compose.override.yml(§1.4 全文照貼;被 .gitignore,新機器要自建)
 docker compose up -d mongodb meilisearch   # 只起依賴服務
 npm ci
@@ -80,7 +80,7 @@ services:
 
 ### 1.5 `librechat.yaml`(全文)
 
-被 `.gitignore`,新機器要自建。全用 `${...}` 帶 `.env` 的值或 `tars://local` 探索標記,host、api key、project id 都不寫死,**照貼到專案根目錄即可,一個字都不用改**:
+此分支(`ci/26C4.CI`)已將 `librechat.yaml` 納入版控,clone 後即有;**以 repo 根目錄的檔案為準**,下面是同一份內容供對照。全用 `${...}` 帶 `.env` 的值,host、api key、project id 都不寫死,**照貼到專案根目錄即可**——唯一例外是 `Azure` endpoint:它的 `baseURL` 與 deployment 清單是客戶專屬,要照該客戶 pwc_tars `model_profile` 的 Azure 資料列填;key 用 `${tars:KEY_OPEN_AI_API}` 直接讀 pwc_tars sys_config(`${tars:KEY}` 語法目前只支援 custom endpoint 的 `apiKey`):
 
 ```yaml
 # LibreChat configuration
@@ -115,29 +115,30 @@ endpoints:
       - context
 
   custom:
-    # Local (地端) models served by vLLM. This endpoint is fully auto-discovered
-    # from the pwc_tars model registry — the special baseURL `tars://local` tells
-    # LibreChat to source BOTH the model list and each model's host live from
-    # pwc_tars `GET /api/model/health_status` (30s TTL cache):
-    #   - Which models appear = whichever local models are currently loaded on any
-    #     vLLM host (availability-gated; the whole endpoint is hidden when none are
-    #     up or pwc_tars is unreachable — nothing to fall back to).
-    #   - Each model routes to its OWN host (models may live on different machines;
-    #     e.g. gemma-4-31B and a deepseek-reasoner build can be on separate boxes).
-    # Add a local model purely on the pwc_tars side (register it in model_profile
-    # with its endpoint + serve it on vLLM) and it appears here with ZERO LibreChat
-    # config. `models.default` is nominal only (schema requires ≥1); the real list
-    # always comes from pwc_tars.
-    - name: 'vLLM'
-      # vLLM runs without --api-key, so any non-empty placeholder works. The real
-      # per-model baseURL is injected at request time (see tars://local above).
-      apiKey: 'EMPTY'
-      baseURL: 'tars://local'
+    # The customer's Azure OpenAI deployment(s), configured statically. The
+    # model id MUST be the Azure deployment name (= pwc_tars model_profile.name),
+    # because pwc_tars routes gateway calls here as `Azure/<deployment>` — keep
+    # `name: 'Azure'` as is (case-sensitive) and this list in step with the
+    # model_profile rows whose endpoint is this Azure resource.
+    #   - dropParams temperature: gpt56-luna-dev only accepts its default
+    #     (model_profile supports_temperature=false); a custom value is a 400.
+    #   - tokenConfig: the deployment name matches no built-in model, so without
+    #     it the context window falls back to 32k. prompt/completion are
+    #     per-1M-token rates for balance accounting (0 = not charged).
+    # apiKey `${tars:KEY}` is read from pwc_tars sys_config at request time
+    # (30s cache), so a key rotated in pwc_tars needs no LibreChat change.
+    # KEY_OPEN_AI_API is the key pwc_tars itself sends to Azure.
+    - name: 'Azure'
+      apiKey: '${tars:KEY_OPEN_AI_API}'
+      baseURL: 'https://aoai-dev-ca-pcc-cssai-jpe-001.openai.azure.com/openai/v1'
       models:
-        default: ['gemma-4-31B', 'gemma-4-26B-A4B']
+        default: ['gpt56-luna-dev']
+      dropParams: ['temperature']
+      tokenConfig:
+        gpt56-luna-dev: { prompt: 0, completion: 0, context: 400000 }
       titleConvo: true
       titleModel: 'current_model'
-      modelDisplayLabel: 'vLLM'
+      modelDisplayLabel: 'Azure OpenAI'
 
 mcpServers:
   # Langflow integration — exposes the flows of a Langflow project as callable tools.
@@ -230,10 +231,11 @@ npm run build
 
 ## 3. 設定檔變更紀錄
 
-`.env` 與 `librechat.yaml` 都被 `.gitignore`,git 看不到它們的歷史——**每次異動必須在此表新增一列**(新的放最上面),更新環境的人照表補設定。
+`.env` 被 `.gitignore`,git 看不到它的歷史;`librechat.yaml` 在 `ci/26C4.CI` 已納入版控,但它的異動常伴隨要補的 `.env` 值——**兩者每次異動都在此表新增一列**(新的放最上面),更新環境的人照表補設定。
 
 | 日期 | 檔案 | 變更內容 | 相關 commit |
 |---|---|---|---|
+| 2026-09-23 | `librechat.yaml` | `endpoints.custom` 新增 `Azure` endpoint(寫死 Azure 資源 URL 與 deployment `gpt56-luna-dev`、`dropParams: ['temperature']`、`tokenConfig` context 400000);`name` 必須是 `Azure`,與 pwc_tars gateway 前綴 `Azure/<deployment>` 對應;`apiKey: '${tars:KEY_OPEN_AI_API}'` 直接讀 pwc_tars sys_config,換 key 不用動 LibreChat。客戶換 deployment 時 pwc_tars `model_profile` 與此檔都要改。同時 `librechat.yaml` 移出 `.gitignore`,改由此分支版控;移除 `vLLM` endpoint(此分支不用地端模型)。`.env` 無新增值。 | `ci/26C4.CI`(待 commit) |
 | 2026-09-15 | `librechat.yaml` | 新增 `interface.langflow: false`,控制側欄的 Langflow(Workflow)入口,設 `true` 才顯示;程式預設即為 `false`,不設也是隱藏。`/langflow` 頁面、管理選單與 MCP 設定頁的入口不受影響。Agent 市場改回只靠既有的 `interface.marketplace.use: false` 關閉(需明確寫在 yaml,才會覆蓋 MongoDB 角色權限)。`.env` 無新增值。 | `fix/sidebar-menu-yaml-gate`(待 commit) |
 | 2026-09-10 | `librechat.yaml` | 新增 `interface.marketplace.use: false`,關閉聊天左側的 Agent 市場入口。`.env` 無新增值。 | `feature/tars-ui-improvements`(待 commit) |
 | 2026-09-04 | `.env` | 新增 `HTTP_REQUEST_TIMEOUT_MS=1800000`(必設,解掉長期記憶區音檔上傳的 5 分鐘天花板);可選的 `TARS_MEMORY_UPLOAD_TIMEOUT_MS` 覆寫外送端逾時,程式內建同樣是 30 分鐘,不設也可用。 | `feature/tars-memory-upload-timing`(待 commit) |

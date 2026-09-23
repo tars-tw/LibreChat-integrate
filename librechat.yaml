@@ -3,14 +3,16 @@
 version: 1.3.13
 cache: true
 
-# The local Langflow host is auto-exempted from the MCP SSRF block — its host:port is derived
-# from VITE_LANGFLOW_URL in code (api/server/services/initializeMCPs.js), so no host is hardcoded
-# here. Add other services to mcpSettings.allowedAddresses if you need to exempt them too.
-
+# Explicit interface permissions are written into every role document on boot; a value that
+# is only defaulted here never overrides what MongoDB already holds for the role.
 interface:
   marketplace:
     use: false
   langflow: false
+
+# The local Langflow host is auto-exempted from the MCP SSRF block — its host:port is derived
+# from VITE_LANGFLOW_URL in code (api/server/services/initializeMCPs.js), so no host is hardcoded
+# here. Add other services to mcpSettings.allowedAddresses if you need to exempt them too.
 
 endpoints:
   agents:
@@ -30,29 +32,30 @@ endpoints:
       - context
 
   custom:
-    # Local (地端) models served by vLLM. This endpoint is fully auto-discovered
-    # from the pwc_tars model registry — the special baseURL `tars://local` tells
-    # LibreChat to source BOTH the model list and each model's host live from
-    # pwc_tars `GET /api/model/health_status` (30s TTL cache):
-    #   - Which models appear = whichever local models are currently loaded on any
-    #     vLLM host (availability-gated; the whole endpoint is hidden when none are
-    #     up or pwc_tars is unreachable — nothing to fall back to).
-    #   - Each model routes to its OWN host (models may live on different machines;
-    #     e.g. gemma-4-31B and a deepseek-reasoner build can be on separate boxes).
-    # Add a local model purely on the pwc_tars side (register it in model_profile
-    # with its endpoint + serve it on vLLM) and it appears here with ZERO LibreChat
-    # config. `models.default` is nominal only (schema requires ≥1); the real list
-    # always comes from pwc_tars.
-    - name: 'vLLM'
-      # vLLM runs without --api-key, so any non-empty placeholder works. The real
-      # per-model baseURL is injected at request time (see tars://local above).
-      apiKey: 'EMPTY'
-      baseURL: 'tars://local'
+    # The customer's Azure OpenAI deployment(s), configured statically. The
+    # model id MUST be the Azure deployment name (= pwc_tars model_profile.name),
+    # because pwc_tars routes gateway calls here as `Azure/<deployment>` — keep
+    # `name: 'Azure'` as is (case-sensitive) and this list in step with the
+    # model_profile rows whose endpoint is this Azure resource.
+    #   - dropParams temperature: gpt56-luna-dev only accepts its default
+    #     (model_profile supports_temperature=false); a custom value is a 400.
+    #   - tokenConfig: the deployment name matches no built-in model, so without
+    #     it the context window falls back to 32k. prompt/completion are
+    #     per-1M-token rates for balance accounting (0 = not charged).
+    # apiKey `${tars:KEY}` is read from pwc_tars sys_config at request time
+    # (30s cache), so a key rotated in pwc_tars needs no LibreChat change.
+    # KEY_OPEN_AI_API is the key pwc_tars itself sends to Azure.
+    - name: 'Azure'
+      apiKey: '${tars:KEY_OPEN_AI_API}'
+      baseURL: 'https://aoai-dev-ca-pcc-cssai-jpe-001.openai.azure.com/openai/v1'
       models:
-        default: ['gemma-4-31B', 'gemma-4-26B-A4B']
+        default: ['gpt56-luna-dev']
+      dropParams: ['temperature']
+      tokenConfig:
+        gpt56-luna-dev: { prompt: 0, completion: 0, context: 400000 }
       titleConvo: true
       titleModel: 'current_model'
-      modelDisplayLabel: 'vLLM'
+      modelDisplayLabel: 'Azure OpenAI'
 
 mcpServers:
   # Langflow integration — exposes the flows of a Langflow project as callable tools.
