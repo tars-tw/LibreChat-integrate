@@ -22,6 +22,8 @@ const {
   DELETE_MEMORY_TOOL_NAME,
   createAskUserQuestionTool,
   createTarsSqlTool,
+  createTarsRagTool,
+  createTarsAgentTool,
   createTarsChartTool,
   createTarsPluginTool,
   createTarsDataTool,
@@ -487,6 +489,15 @@ const loadTools = async ({
     } else if (tool === Tools.sql_agent) {
       requestedTools[tool] = async () =>
         createTarsSqlTool({
+          tarsUserId: options.req?.user?.tarsId,
+          domainId: options.req?.body?.domain_id,
+          model: agent?.model,
+          librechatUserId: user,
+        });
+      continue;
+    } else if (tool === Tools.rag_agent) {
+      requestedTools[tool] = async () =>
+        createTarsRagTool({
           tarsUserId: options.req?.user?.tarsId,
           domainId: options.req?.body?.domain_id,
           model: agent?.model,

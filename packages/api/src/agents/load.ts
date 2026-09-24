@@ -117,6 +117,9 @@ export async function loadEphemeralAgent(
   if (ephemeralAgent?.sql_agent === true) {
     tools.push(Tools.sql_agent);
   }
+  if (ephemeralAgent?.rag_agent === true) {
+    tools.push(Tools.rag_agent);
+  }
   if (ephemeralAgent?.chart_agent === true) {
     tools.push(Tools.chart_agent);
   }
