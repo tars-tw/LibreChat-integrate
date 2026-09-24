@@ -1737,3 +1737,83 @@ export type TTarsReleaseNote = {
 export type TTarsReleaseNotesResponse = {
   releaseNotes: TTarsReleaseNote[];
 };
+
+/** A JSON value as pwc_tars records a tool's arguments. */
+export type TTarsTraceJson =
+  | string
+  | number
+  | boolean
+  | null
+  | TTarsTraceJson[]
+  | { [key: string]: TTarsTraceJson };
+
+/**
+ * One record of a pwc_tars agent run's trace, exactly as its
+ * `AgentEvent.to_trace()` persists it (`extra_content.trace` in the pwc_tars
+ * chat, `trace` on every `/api/langflow-service/*` capability reply).
+ */
+export type TTarsTraceTurn = { type: 'turn'; turn: number };
+export type TTarsTraceThinking = { type: 'thinking'; turn?: number; text: string };
+export type TTarsTraceNote = { type: 'text'; turn?: number; text: string };
+export type TTarsTraceToolCall = {
+  type: 'tool_call';
+  id: string;
+  name: string;
+  title?: string;
+  input?: Record<string, TTarsTraceJson>;
+  turn?: number;
+  /** Set on a delegate's nested calls; they render under that tool's card. */
+  parent_id?: string;
+};
+export type TTarsTraceToolResult = {
+  type: 'tool_result';
+  id: string;
+  name: string;
+  ok: boolean;
+  /** Already clipped for display by pwc_tars. */
+  output?: string;
+  output_len_chars?: number;
+  truncated?: boolean;
+  duration_ms?: number;
+  summary?: string;
+  turn?: number;
+  parent_id?: string;
+};
+export type TTarsTraceStatus = {
+  type: 'status';
+  kind: string;
+  message: string;
+  parent_id?: string;
+};
+export type TTarsTracePlanItem = { content?: string; status?: string };
+export type TTarsTracePlan = { type: 'plan'; items: TTarsTracePlanItem[] };
+export type TTarsTraceClarification = {
+  type: 'clarification';
+  question: string;
+  options?: Record<string, string>[];
+};
+export type TTarsTraceError = { type: 'error'; message: string; error_code?: string };
+export type TTarsTraceEntry =
+  | TTarsTraceTurn
+  | TTarsTraceThinking
+  | TTarsTraceNote
+  | TTarsTraceToolCall
+  | TTarsTraceToolResult
+  | TTarsTraceStatus
+  | TTarsTracePlan
+  | TTarsTraceClarification
+  | TTarsTraceError;
+
+/**
+ * What a pwc_tars capability tool (`sql_agent`, `chart_agent`, `data_query`,
+ * `table_task`) attaches to its tool call so the chat can show the nested
+ * run the way pwc_tars's own chat does.
+ */
+export type TTarsTraceArtifact = {
+  trace: TTarsTraceEntry[];
+  mode?: string;
+  model_name?: string;
+  tokens?: { total?: number; prompt?: number; completion?: number };
+  /** The final statement a SQL run executed, when pwc_tars reported one. */
+  sql?: string;
+};

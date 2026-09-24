@@ -7,6 +7,7 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
+import { Tools } from 'librechat-data-provider';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import { invalidateTarsSqlDatabasesCache } from './client';
 import { createTarsSqlTool } from './tool';
@@ -138,6 +139,50 @@ describe('createTarsSqlTool', () => {
 
     expect(sqlTool.description).toContain('No database is bound');
     await expect(sqlTool.invoke({ question: 'q' })).resolves.toContain('nothing to query');
+  });
+
+  it('attaches the pwc_tars run trace for the chat, keeping only the answer for the model', async () => {
+    const trace = [
+      { type: 'turn', turn: 1 },
+      { type: 'tool_call', id: 'c1', name: 'sql_query', input: { sql: 'SELECT count(*)' } },
+      { type: 'tool_result', id: 'c1', name: 'sql_query', ok: true, output: '| 9 |' },
+    ];
+    mockBackend({
+      status: 200,
+      body: { success: true, data: { ...answerBody.data, sql: 'SELECT count(*)', trace } },
+    });
+    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 100 });
+
+    const message = await sqlTool.invoke({
+      id: 'call-1',
+      name: 'sql_agent',
+      type: 'tool_call',
+      args: { question: '有幾個模型？' },
+    });
+    expect(message.content).toBe('共有 9 個模型');
+    expect(message.artifact).toEqual({
+      [Tools.tars_trace]: {
+        trace,
+        mode: undefined,
+        model_name: 'gpt-5.4-mini',
+        tokens: { total: 8983 },
+        sql: 'SELECT count(*)',
+      },
+    });
+  });
+
+  it('attaches nothing when pwc_tars sent no trace', async () => {
+    mockBackend();
+    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 100 });
+
+    const message = await sqlTool.invoke({
+      id: 'call-1',
+      name: 'sql_agent',
+      type: 'tool_call',
+      args: { question: 'q' },
+    });
+    expect(message.content).toBe('共有 9 個模型');
+    expect(message.artifact).toBeUndefined();
   });
 
   it('returns the pwc_tars failure as tool output rather than throwing', async () => {

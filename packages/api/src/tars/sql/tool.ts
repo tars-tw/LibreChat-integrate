@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { Tools } from 'librechat-data-provider';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
+import type { LangflowToolResult } from '~/tars/langflow/client';
 import type { TarsSqlDatabase } from './client';
+import { langflowToolResult, LANGFLOW_TOOL_RESPONSE_FORMAT } from '~/tars/langflow/client';
 import { listTarsSqlDatabases, runTarsSqlAgent } from './client';
 import { TarsRequestError } from '~/tars/client';
 
@@ -145,17 +147,19 @@ export async function createTarsSqlTool(
   const only = databases.length === 1 ? databases[0].knowledge_base_id : undefined;
 
   return tool(
-    async (input: z.infer<typeof sqlAgentSchema>): Promise<string> => {
+    async (input: z.infer<typeof sqlAgentSchema>): Promise<LangflowToolResult> => {
       if (!tarsUserId) {
-        return NOT_LINKED;
+        return langflowToolResult(NOT_LINKED);
       }
       const knowledgeBaseId = input.knowledge_base_id?.trim() || only;
       if (!knowledgeBaseId) {
-        return databases.length
-          ? `Pick a database first: pass one of ${databases
-              .map((database) => `${database.name} (${database.knowledge_base_id})`)
-              .join(', ')} as \`knowledge_base_id\`.`
-          : 'The active brain (專用腦) has no knowledge base with a database bound, so there is nothing to query.';
+        return langflowToolResult(
+          databases.length
+            ? `Pick a database first: pass one of ${databases
+                .map((database) => `${database.name} (${database.knowledge_base_id})`)
+                .join(', ')} as \`knowledge_base_id\`.`
+            : 'The active brain (專用腦) has no knowledge base with a database bound, so there is nothing to query.',
+        );
       }
       try {
         const result = await runTarsSqlAgent(tarsUserId, {
@@ -165,15 +169,16 @@ export async function createTarsSqlTool(
           model: options.model,
           librechatUserId: options.librechatUserId,
         });
-        return result.answer;
+        return langflowToolResult(result.answer, result.trace);
       } catch (error) {
-        return `The database query failed: ${toErrorMessage(error)}`;
+        return langflowToolResult(`The database query failed: ${toErrorMessage(error)}`);
       }
     },
     {
       name: TARS_SQL_TOOL_NAME,
       description: tarsUserId ? describe(databases) : `${TARS_SQL_DESCRIPTION}\n\n${NOT_LINKED}`,
       schema: sqlAgentSchema,
+      responseFormat: LANGFLOW_TOOL_RESPONSE_FORMAT,
     },
   ) as unknown as DynamicStructuredTool;
 }

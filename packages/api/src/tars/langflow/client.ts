@@ -1,4 +1,6 @@
+import { Tools } from 'librechat-data-provider';
 import { logger } from '@librechat/data-schemas';
+import type { TTarsTraceArtifact, TTarsTraceEntry } from 'librechat-data-provider';
 import { getTarsModelProfileNames } from '~/tars/models';
 import { getTarsSysConfigValue } from '~/tars/sysconfig';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
@@ -33,6 +35,43 @@ export interface LangflowCapabilityData {
   file_url?: string;
   data_files?: string[];
   sql?: string;
+  /** The nested run's trace, in the shape pwc_tars's own chat persists. */
+  trace?: TTarsTraceEntry[];
+}
+
+/** The tool artifact the agent tool-end callback turns into a `tars_trace` attachment. */
+export type LangflowTraceArtifactRecord = { [Tools.tars_trace]: TTarsTraceArtifact };
+
+/**
+ * A capability tool's `content_and_artifact` output: the text the model reads,
+ * and the run trace the chat shows under the tool call. The artifact is
+ * absent when pwc_tars sent no trace, so nothing is attached for nothing.
+ */
+export type LangflowToolResult = [string, LangflowTraceArtifactRecord | undefined];
+
+export const LANGFLOW_TOOL_RESPONSE_FORMAT = 'content_and_artifact' as const;
+
+/** The trace artifact of one capability reply; undefined when the run reported none. */
+export function toTarsTraceArtifact(
+  data: LangflowCapabilityData | undefined,
+): TTarsTraceArtifact | undefined {
+  if (!data?.trace?.length) {
+    return undefined;
+  }
+  return {
+    trace: data.trace,
+    mode: data.mode,
+    model_name: data.model_name,
+    tokens: data.tokens,
+    sql: data.sql,
+  };
+}
+
+export function langflowToolResult(
+  content: string,
+  artifact?: TTarsTraceArtifact,
+): LangflowToolResult {
+  return [content, artifact ? { [Tools.tars_trace]: artifact } : undefined];
 }
 
 export interface LangflowRequestOptions {
