@@ -656,6 +656,7 @@ export enum AgentCapabilities {
   file_search = 'file_search',
   web_search = 'web_search',
   sql_agent = 'sql_agent',
+  rag_agent = 'rag_agent',
   chart_agent = 'chart_agent',
   artifacts = 'artifacts',
   subagents = 'subagents',
@@ -836,6 +837,7 @@ export const defaultAgentCapabilities = [
   AgentCapabilities.file_search,
   AgentCapabilities.web_search,
   AgentCapabilities.sql_agent,
+  AgentCapabilities.rag_agent,
   AgentCapabilities.chart_agent,
   AgentCapabilities.artifacts,
   AgentCapabilities.subagents,
@@ -2227,6 +2229,8 @@ export const interfaceSchema = z
     webSearch: z.boolean().optional(),
     /** pwc_tars SQL agent (資料庫查詢) — grants `SQL_AGENT.USE`. */
     sqlAgent: z.boolean().optional(),
+    /** pwc_tars RAG agent (知識庫檢索) — grants `RAG_AGENT.USE`. */
+    ragAgent: z.boolean().optional(),
     /** pwc_tars chart agent (產生圖表) — grants `CHART_AGENT.USE`. */
     chartAgent: z.boolean().optional(),
     /** Langflow workflow entry in the sidebar rail; the `/langflow` route stays reachable. */
@@ -2341,6 +2345,7 @@ export const interfaceSchema = z
     runCode: true,
     webSearch: true,
     sqlAgent: true,
+    ragAgent: true,
     chartAgent: true,
     langflow: false,
     contextUsage: true,
@@ -4522,6 +4527,7 @@ export enum LocalStorageKeys {
   /** Last checked toggle for Web Search per conversation ID */
   LAST_WEB_SEARCH_TOGGLE_ = 'LAST_WEB_SEARCH_TOGGLE_',
   LAST_SQL_AGENT_TOGGLE_ = 'LAST_SQL_AGENT_TOGGLE_',
+  LAST_RAG_AGENT_TOGGLE_ = 'LAST_RAG_AGENT_TOGGLE_',
   LAST_CHART_AGENT_TOGGLE_ = 'LAST_CHART_AGENT_TOGGLE_',
   /** Last selected pwc_tars plugin tools per conversation ID */
   LAST_TARS_PLUGINS_ = 'LAST_TARS_PLUGINS_',

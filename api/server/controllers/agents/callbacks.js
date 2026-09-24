@@ -1066,6 +1066,29 @@ function createToolEndCallback({ req, res, artifactPromises, streamId = null, jo
       );
     }
 
+    if (output.artifact[Tools.tars_trace]) {
+      artifactPromises.push(
+        (async () => {
+          const attachment = {
+            type: Tools.tars_trace,
+            ...getAttachmentOwnership(metadata),
+            messageId: metadata.run_id,
+            toolCallId: output.tool_call_id,
+            conversationId: metadata.thread_id,
+            [Tools.tars_trace]: output.artifact[Tools.tars_trace],
+          };
+          if (!streamId && !res.headersSent) {
+            return attachment;
+          }
+          writeAttachment(res, streamId, attachment, jobCreatedAt);
+          return attachment;
+        })().catch((error) => {
+          logger.error('Error processing TARS trace artifact content:', error);
+          return null;
+        }),
+      );
+    }
+
     if (output.artifact.content) {
       /** @type {FormattedContent[]} */
       const content = output.artifact.content;
@@ -1426,6 +1449,26 @@ function createResponsesToolEndCallback({ req, res, tracker, artifactPromises })
           return attachment;
         })().catch((error) => {
           logger.error('Error processing memory artifact content:', error);
+          return null;
+        }),
+      );
+    }
+
+    if (output.artifact[Tools.tars_trace]) {
+      artifactPromises.push(
+        (async () => {
+          const attachment = {
+            type: Tools.tars_trace,
+            toolCallId: output.tool_call_id,
+            ...getAttachmentOwnership(metadata),
+            [Tools.tars_trace]: output.artifact[Tools.tars_trace],
+          };
+          if (res.headersSent && !res.writableEnded) {
+            writeResponsesAttachment(res, tracker, attachment, metadata);
+          }
+          return attachment;
+        })().catch((error) => {
+          logger.error('Error processing TARS trace artifact content:', error);
           return null;
         }),
       );

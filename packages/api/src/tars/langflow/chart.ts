@@ -3,7 +3,15 @@ import { Tools } from 'librechat-data-provider';
 import { logger } from '@librechat/data-schemas';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
-import { langflowTimeoutMs, runLangflowCapability, resolveLangflowModelName } from './client';
+import type { LangflowToolResult } from './client';
+import {
+  langflowTimeoutMs,
+  langflowToolResult,
+  toTarsTraceArtifact,
+  runLangflowCapability,
+  resolveLangflowModelName,
+  LANGFLOW_TOOL_RESPONSE_FORMAT,
+} from './client';
 import { TarsRequestError } from '~/tars/client';
 
 export const TARS_CHART_TOOL_NAME: Tools = Tools.chart_agent;
@@ -75,7 +83,7 @@ function toErrorMessage(error: unknown): string {
  */
 export function createTarsChartTool(options: TarsChartToolOptions): DynamicStructuredTool {
   return tool(
-    async (input: z.infer<typeof chartAgentSchema>): Promise<string> => {
+    async (input: z.infer<typeof chartAgentSchema>): Promise<LangflowToolResult> => {
       try {
         const requestedModel = await resolveLangflowModelName(options.model, 'tars-chart');
         const data = await runLangflowCapability(
@@ -91,23 +99,25 @@ export function createTarsChartTool(options: TarsChartToolOptions): DynamicStruc
             `used=${data.model_name ?? '(unreported)'} tokens=${data.tokens?.total ?? 0} ` +
             `chart=${data.chart_url ? 'yes' : 'no'} gateway=requested`,
         );
+        const trace = toTarsTraceArtifact(data);
         const answer = data.answer?.trim() ?? '';
         const chartUrl = data.chart_url?.trim() ?? '';
         if (!chartUrl) {
-          return answer || 'The chart agent returned no chart.';
+          return langflowToolResult(answer || 'The chart agent returned no chart.', trace);
         }
         if (answer.includes(chartUrl)) {
-          return answer;
+          return langflowToolResult(answer, trace);
         }
-        return `${answer}\n\n![chart](${chartUrl})`.trim();
+        return langflowToolResult(`${answer}\n\n![chart](${chartUrl})`.trim(), trace);
       } catch (error) {
-        return `Chart generation failed: ${toErrorMessage(error)}`;
+        return langflowToolResult(`Chart generation failed: ${toErrorMessage(error)}`);
       }
     },
     {
       name: TARS_CHART_TOOL_NAME,
       description: TARS_CHART_DESCRIPTION,
       schema: chartAgentSchema,
+      responseFormat: LANGFLOW_TOOL_RESPONSE_FORMAT,
     },
   ) as unknown as DynamicStructuredTool;
 }

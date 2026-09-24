@@ -122,6 +122,7 @@ export async function loadAddedAgent(
       file_search?: boolean;
       web_search?: boolean;
       sql_agent?: boolean;
+      rag_agent?: boolean;
       chart_agent?: boolean;
       tars_plugins?: string[];
       artifacts?: unknown;
@@ -144,6 +145,7 @@ export async function loadAddedAgent(
         file_search?: boolean;
         web_search?: boolean;
         sql_agent?: boolean;
+        rag_agent?: boolean;
         chart_agent?: boolean;
         tars_plugins?: string[];
         artifacts?: unknown;
@@ -240,6 +242,9 @@ export async function loadAddedAgent(
   }
   if (ephemeralAgent?.sql_agent === true) {
     tools.push(Tools.sql_agent);
+  }
+  if (ephemeralAgent?.rag_agent === true) {
+    tools.push(Tools.rag_agent);
   }
   if (ephemeralAgent?.chart_agent === true) {
     tools.push(Tools.chart_agent);

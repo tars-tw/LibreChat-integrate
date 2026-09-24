@@ -1,3 +1,5 @@
+import { Tools } from './types/tools';
+
 /**
  * Shared pwc_tars data-source facts. Both the form in the browser and the
  * proxy in `packages/api` validate against these, so the two can never drift.
@@ -65,6 +67,22 @@ export const tarsProtocolNeedsCredentials = (protocol: string | null | undefined
 /** Only SMB sends a NetBIOS server name (`host_name`) alongside the address. */
 export const tarsProtocolUsesHostName = (protocol: string | null | undefined): boolean =>
   protocol === 'SMB';
+
+/**
+ * The native tools that run a whole pwc_tars agent loop per call
+ * (`/api/langflow-service/*`). Their replies carry that run's trace, which the
+ * chat shows under the tool call the way pwc_tars's own chat does.
+ */
+export const TARS_CAPABILITY_TOOLS: ReadonlySet<string> = new Set([
+  Tools.sql_agent,
+  Tools.rag_agent,
+  Tools.chart_agent,
+  Tools.data_query,
+  Tools.table_task,
+]);
+
+export const isTarsCapabilityToolName = (toolName: string | undefined | null): boolean =>
+  typeof toolName === 'string' && TARS_CAPABILITY_TOOLS.has(toolName);
 
 /**
  * pwc_tars plugin tools (`tars_tool_sdk`). An admin switches each plugin on per

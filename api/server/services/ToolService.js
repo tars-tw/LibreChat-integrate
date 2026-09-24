@@ -17,6 +17,7 @@ const {
   isActionDomainAllowed,
   buildWebSearchContext,
   buildTarsSqlContext,
+  buildTarsRagContext,
   isTarsConfigured,
   resolveTarsPluginToolNames,
   buildImageToolContext,
@@ -746,6 +747,7 @@ const nativeTools = new Set([
   Tools.file_search,
   Tools.web_search,
   Tools.sql_agent,
+  Tools.rag_agent,
   Tools.chart_agent,
   Tools.data_query,
   Tools.table_task,
@@ -908,6 +910,9 @@ async function loadToolDefinitionsWrapper({
     }
     if (tool === Tools.sql_agent) {
       return checkCapability(AgentCapabilities.sql_agent);
+    }
+    if (tool === Tools.rag_agent) {
+      return checkCapability(AgentCapabilities.rag_agent);
     }
     if (tool === Tools.chart_agent) {
       return checkCapability(AgentCapabilities.chart_agent);
@@ -1520,6 +1525,16 @@ async function loadToolDefinitionsWrapper({
       logger.warn('[loadToolDefinitionsWrapper] Failed to build TARS SQL context', error);
     }
   }
+  if (filteredTools.includes(Tools.rag_agent) && req.user?.tarsId) {
+    try {
+      toolContextMap[Tools.rag_agent] = await buildTarsRagContext(
+        req.user.tarsId,
+        req.body?.domain_id,
+      );
+    } catch (error) {
+      logger.warn('[loadToolDefinitionsWrapper] Failed to build TARS RAG context', error);
+    }
+  }
 
   /**
    * `files` carry the upload session_ids; we surface them so client.js can
@@ -1744,6 +1759,12 @@ async function loadAgentTools({
       return includesWebSearch;
     } else if (tool === Tools.sql_agent) {
       return checkCapability(AgentCapabilities.sql_agent);
+    } else if (tool === Tools.rag_agent) {
+      return checkCapability(AgentCapabilities.rag_agent);
+    } else if (tool === Tools.tars_agent) {
+      return (
+        checkCapability(AgentCapabilities.sql_agent) && checkCapability(AgentCapabilities.rag_agent)
+      );
     } else if (tool === Tools.chart_agent) {
       return checkCapability(AgentCapabilities.chart_agent);
     } else if (isTarsPluginToolName(tool)) {

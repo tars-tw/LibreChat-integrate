@@ -5,6 +5,7 @@ import { TarsChartToolDefinition } from '~/tars/langflow/chart';
 import { TarsTableToolDefinition } from '~/tars/langflow/table';
 import { TarsDataToolDefinition } from '~/tars/langflow/data';
 import { getTarsPluginDefinition } from '~/tars/plugins/tool';
+import { TarsRagToolDefinition } from '~/tars/rag/tool';
 import { TarsSqlToolDefinition } from '~/tars/sql/tool';
 import { geminiToolkit } from '~/tools/toolkits/gemini';
 import { oaiToolkit } from '~/tools/toolkits/oai';
@@ -464,24 +465,35 @@ const agentToolDefinitions: Record<string, ToolRegistryDefinition> = {
     description: TarsSqlToolDefinition.description,
     schema: TarsSqlToolDefinition.schema as unknown as ExtendedJsonSchema,
     toolType: 'builtin',
+    responseFormat: 'content_and_artifact',
+  },
+  [TarsRagToolDefinition.name]: {
+    name: TarsRagToolDefinition.name,
+    description: TarsRagToolDefinition.description,
+    schema: TarsRagToolDefinition.schema as unknown as ExtendedJsonSchema,
+    toolType: 'builtin',
+    responseFormat: 'content_and_artifact',
   },
   [TarsChartToolDefinition.name]: {
     name: TarsChartToolDefinition.name,
     description: TarsChartToolDefinition.description,
     schema: TarsChartToolDefinition.schema as unknown as ExtendedJsonSchema,
     toolType: 'builtin',
+    responseFormat: 'content_and_artifact',
   },
   [TarsDataToolDefinition.name]: {
     name: TarsDataToolDefinition.name,
     description: TarsDataToolDefinition.description,
     schema: TarsDataToolDefinition.schema as unknown as ExtendedJsonSchema,
     toolType: 'builtin',
+    responseFormat: 'content_and_artifact',
   },
   [TarsTableToolDefinition.name]: {
     name: TarsTableToolDefinition.name,
     description: TarsTableToolDefinition.description,
     schema: TarsTableToolDefinition.schema as unknown as ExtendedJsonSchema,
     toolType: 'builtin',
+    responseFormat: 'content_and_artifact',
   },
 };
 

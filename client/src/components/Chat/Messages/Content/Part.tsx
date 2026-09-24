@@ -6,6 +6,7 @@ import {
   ToolCallTypes,
   imageGenTools,
   isImageVisionTool,
+  isTarsCapabilityToolName,
 } from 'librechat-data-provider';
 import type { TMessageContentParts, TAttachment } from 'librechat-data-provider';
 import {
@@ -37,6 +38,7 @@ import { isBashProgrammaticToolCall } from './routing';
 import { useMessageContext } from '~/Providers';
 import { ErrorMessage } from './MessageContent';
 import AskUserQuestion from './AskUserQuestion';
+import TarsCapabilityCall from './TarsTrace';
 import RetrievalCall from './RetrievalCall';
 import ToolApproval from './ToolApproval';
 import AgentHandoff from './AgentHandoff';
@@ -391,6 +393,26 @@ const Part = memo(function Part({
               hideAttachments={hideAttachments}
               isLast={isLast}
               onExpand={onToolExpand}
+            />
+          );
+        } else if (isTarsCapabilityToolName(toolCall.name)) {
+          return (
+            <TarsCapabilityCall
+              args={toolCall.args ?? ''}
+              name={toolCall.name || ''}
+              toolCallId={toolCallId}
+              output={toolCall.output ?? ''}
+              initialProgress={toolCall.progress ?? 0.1}
+              isSubmitting={isSubmitting}
+              attachments={attachments}
+              auth={toolCall.auth}
+              isLast={isLast}
+              hideAttachments={hideAttachments}
+              onExpand={onToolExpand}
+              runStepStatus={
+                toolCall.backgroundTask?.cancelled === true ? 'cancelled' : toolCall.runStepStatus
+              }
+              runStepDurationMs={toolCall.runStepDurationMs}
             />
           );
         } else if (toolCall.name === 'file_search' || toolCall.name === 'retrieval') {

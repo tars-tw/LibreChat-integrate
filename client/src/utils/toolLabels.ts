@@ -16,6 +16,7 @@ export const TOOL_FRIENDLY_NAME_KEYS: Record<string, TranslationKeys> = {
   bash_tool: 'com_ui_tool_name_code',
   web_search: 'com_ui_tool_name_web_search',
   sql_agent: 'com_ui_tool_name_sql_agent',
+  rag_agent: 'com_ui_tool_name_rag_agent',
   chart_agent: 'com_ui_tool_name_chart_agent',
   data_query: 'com_ui_tool_name_data_query',
   table_task: 'com_ui_tool_name_table_task',

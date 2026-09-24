@@ -130,6 +130,8 @@ export type TEphemeralAgent = {
   web_search?: boolean;
   /** pwc_tars SQL agent (資料庫查詢). */
   sql_agent?: boolean;
+  /** pwc_tars RAG agent (知識庫檢索). */
+  rag_agent?: boolean;
   /** pwc_tars chart agent (產生圖表). */
   chart_agent?: boolean;
   /** pwc_tars plugin tools (`tars_tool_sdk`) switched on for this chat, by plugin name. */
