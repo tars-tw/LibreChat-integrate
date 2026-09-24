@@ -337,6 +337,11 @@ const startServer = async () => {
   app.use('/api/agents/chat', agentStartupIngressMiddleware);
   app.use(metricsMiddleware);
   app.use(noIndex);
+  /** The LLM gateway relays whole prompts from pwc_tars — a table task's map
+   *  batch carries a knowledge base's worth of documents — which the app-wide
+   *  3mb cap rejected as "request entity too large". Its parser runs first, so
+   *  the global one below skips the already-parsed body. */
+  app.use('/api/agents/v1m', express.json({ limit: process.env.LLM_GATEWAY_BODY_LIMIT || '50mb' }));
   app.use(express.json({ limit: '3mb' }));
   app.use(express.urlencoded({ extended: true, limit: '3mb' }));
   app.use(handleJsonParseError);

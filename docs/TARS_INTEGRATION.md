@@ -52,6 +52,7 @@ npm run frontend                           # build 全部 packages + client
 | 變數 | 預設 | 說明 |
 |---|---|---|
 | `LLM_GATEWAY_ALLOW_UNAUTHENTICATED` | `true` | `/api/agents/v1m` gateway 免認證(pwc_tars 反向借模型用)。**僅限封閉內網;對外部署改設 `LLM_GATEWAY_SERVICE_KEY`** |
+| `LLM_GATEWAY_BODY_LIMIT` | `50mb` | 只套用在 `/api/agents/v1m` 的 request body 上限(其餘 API 維持 3mb)。pwc_tars 的 table task 每個批次把整批知識庫文件塞進 prompt,超過 3mb 會被 Express 回 `request entity too large`(gateway 回 500)|
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GOOGLE_KEY` | `user_provided` | 哨兵值,`.env` 不放真 key。實際 key 解析鏈:使用者聊天室自設 > pwc_tars sys_config > 提示設 key |
 | `JWT_SECRET` / `JWT_REFRESH_SECRET` / `CREDS_KEY` / `CREDS_IV` / `MEILI_MASTER_KEY` | 內建範例值 | ⚠️ 是公開 repo 人人可見的值,**對外/共享環境務必重新產生** |
 | `TARS_ADMIN_ROLE_IDS` | `1` | pwc_tars `role_id` 屬此集合者 → LibreChat ADMIN |

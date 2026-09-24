@@ -18,6 +18,9 @@ const {
   buildWebSearchContext,
   buildTarsSqlContext,
   buildTarsRagContext,
+  buildTarsAgentContext,
+  getTarsMemorySnapshot,
+  resolveTarsAgentBindings,
   isTarsConfigured,
   resolveTarsPluginToolNames,
   buildImageToolContext,
@@ -748,6 +751,7 @@ const nativeTools = new Set([
   Tools.web_search,
   Tools.sql_agent,
   Tools.rag_agent,
+  Tools.tars_agent,
   Tools.chart_agent,
   Tools.data_query,
   Tools.table_task,
@@ -913,6 +917,11 @@ async function loadToolDefinitionsWrapper({
     }
     if (tool === Tools.rag_agent) {
       return checkCapability(AgentCapabilities.rag_agent);
+    }
+    if (tool === Tools.tars_agent) {
+      /** pwc_tars's combined loop; which capabilities it binds is decided per
+       *  turn by `resolveTarsAgentBindings`, the only gate here is TARS itself. */
+      return isTarsConfigured();
     }
     if (tool === Tools.chart_agent) {
       return checkCapability(AgentCapabilities.chart_agent);
@@ -1535,6 +1544,21 @@ async function loadToolDefinitionsWrapper({
       logger.warn('[loadToolDefinitionsWrapper] Failed to build TARS RAG context', error);
     }
   }
+  if (filteredTools.includes(Tools.tars_agent) && req.user?.tarsId) {
+    try {
+      toolContextMap[Tools.tars_agent] = await buildTarsAgentContext(
+        req.user.tarsId,
+        req.body?.domain_id,
+        resolveTarsAgentBindings({
+          toggles: req.body?.ephemeralAgent,
+          documents: getTarsMemorySnapshot(req)?.structuredDocuments,
+          capabilities: req.config?.endpoints?.agents?.capabilities,
+        }),
+      );
+    } catch (error) {
+      logger.warn('[loadToolDefinitionsWrapper] Failed to build TARS agent context', error);
+    }
+  }
 
   /**
    * `files` carry the upload session_ids; we surface them so client.js can
@@ -1762,9 +1786,7 @@ async function loadAgentTools({
     } else if (tool === Tools.rag_agent) {
       return checkCapability(AgentCapabilities.rag_agent);
     } else if (tool === Tools.tars_agent) {
-      return (
-        checkCapability(AgentCapabilities.sql_agent) && checkCapability(AgentCapabilities.rag_agent)
-      );
+      return isTarsConfigured();
     } else if (tool === Tools.chart_agent) {
       return checkCapability(AgentCapabilities.chart_agent);
     } else if (isTarsPluginToolName(tool)) {

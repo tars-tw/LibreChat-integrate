@@ -5,6 +5,7 @@ import { TarsChartToolDefinition } from '~/tars/langflow/chart';
 import { TarsTableToolDefinition } from '~/tars/langflow/table';
 import { TarsDataToolDefinition } from '~/tars/langflow/data';
 import { getTarsPluginDefinition } from '~/tars/plugins/tool';
+import { TarsAgentToolDefinition } from '~/tars/agent/tool';
 import { TarsRagToolDefinition } from '~/tars/rag/tool';
 import { TarsSqlToolDefinition } from '~/tars/sql/tool';
 import { geminiToolkit } from '~/tools/toolkits/gemini';
@@ -471,6 +472,13 @@ const agentToolDefinitions: Record<string, ToolRegistryDefinition> = {
     name: TarsRagToolDefinition.name,
     description: TarsRagToolDefinition.description,
     schema: TarsRagToolDefinition.schema as unknown as ExtendedJsonSchema,
+    toolType: 'builtin',
+    responseFormat: 'content_and_artifact',
+  },
+  [TarsAgentToolDefinition.name]: {
+    name: TarsAgentToolDefinition.name,
+    description: TarsAgentToolDefinition.description,
+    schema: TarsAgentToolDefinition.schema as unknown as ExtendedJsonSchema,
     toolType: 'builtin',
     responseFormat: 'content_and_artifact',
   },
