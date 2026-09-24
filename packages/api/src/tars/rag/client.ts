@@ -79,7 +79,7 @@ export async function listTarsRagKnowledgeBases(
  * names a knowledge base outside the scope is refused as a whole rather than
  * silently narrowed, so the model learns which id was wrong.
  */
-function resolveKnowledgeBaseIds(
+export function resolveTarsKnowledgeBaseIds(
   reachable: TarsRagKnowledgeBase[],
   requested: string[] | undefined,
 ): string[] {
@@ -111,7 +111,7 @@ export async function runTarsRagAgent(
   if (!reachable.length) {
     throw new Error('The active brain binds no knowledge base, so there is nothing to search.');
   }
-  const knowledgeBaseIds = resolveKnowledgeBaseIds(reachable, input.knowledgeBaseIds);
+  const knowledgeBaseIds = resolveTarsKnowledgeBaseIds(reachable, input.knowledgeBaseIds);
   const requestedModel = await resolveLangflowModelName(input.model, 'tars-rag');
   const data = await runLangflowCapability(
     RAG_AGENT_PATH,

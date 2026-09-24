@@ -172,6 +172,32 @@ describe('run trace artifact', () => {
     ).toEqual({ trace, mode: 'sql', model_name: 'm', tokens: undefined, sql: 'SELECT 1' });
   });
 
+  it('relays pwc_tars static links inside tool outputs and notes', () => {
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'trace-test-secret';
+    const raw = 'http://tars.test/static/generate_output/kb/topics_結果.xlsx';
+    const artifact = toTarsTraceArtifact({
+      answer: 'a',
+      trace: [
+        {
+          type: 'tool_result',
+          id: 'c1',
+          name: 'run_table_task',
+          ok: true,
+          output: `[下載](${raw})`,
+        },
+        { type: 'text', turn: 1, text: `see ${raw}` },
+        { type: 'tool_call', id: 'c1', name: 'run_table_task', input: {} },
+      ],
+    });
+    const [result, note, call] = artifact?.trace ?? [];
+    expect(result.type === 'tool_result' && result.output).toContain(
+      '/api/tars/static/generate_output/',
+    );
+    expect(result.type === 'tool_result' && result.output).not.toContain('tars.test/static');
+    expect(note.type === 'text' && note.text).toContain('/api/tars/static/');
+    expect(call).toEqual({ type: 'tool_call', id: 'c1', name: 'run_table_task', input: {} });
+  });
+
   it('is absent when pwc_tars sent no trace, so nothing is attached', () => {
     expect(toTarsTraceArtifact({ answer: 'a' })).toBeUndefined();
     expect(toTarsTraceArtifact({ answer: 'a', trace: [] })).toBeUndefined();

@@ -1893,16 +1893,15 @@ export async function initializeAgent(
     }
   }
 
-  /** Active structured (csv/xlsx) memory files auto-equip the pwc_tars data
-   *  tools for this turn — before `loadTools`, so the definitions path, the
-   *  capability filter, and execution all see a consistent tool set. Applies
-   *  to ephemeral and saved agents alike: the memory belongs to the
-   *  conversation, not the agent. */
+  /** Active structured (csv/xlsx) memory files auto-equip pwc_tars's combined
+   *  loop (`tars_agent`, which binds them as its spreadsheets) for this turn —
+   *  before `loadTools`, so the definitions path, the capability filter, and
+   *  execution all see a consistent tool set. Applies to ephemeral and saved
+   *  agents alike: the memory belongs to the conversation, not the agent. */
   const tarsMemorySnapshot = await tarsMemoryPromise;
   if (tarsMemorySnapshot != null && tarsMemorySnapshot.structuredDocuments.length > 0) {
     const withDataTools = new Set(agent.tools ?? []);
-    withDataTools.add(Tools.data_query);
-    withDataTools.add(Tools.table_task);
+    withDataTools.add(Tools.tars_agent);
     agent.tools = [...withDataTools];
   }
 

@@ -51,6 +51,21 @@ export type LangflowToolResult = [string, LangflowTraceArtifactRecord | undefine
 
 export const LANGFLOW_TOOL_RESPONSE_FORMAT = 'content_and_artifact' as const;
 
+/**
+ * Tool outputs and intermediate notes carry the same pwc_tars `/static` links
+ * the answer does (a table task's xlsx, a chart), and the trace panel shows
+ * them verbatim, so they go through the relay rewrite as well.
+ */
+function relayTraceLinks(entry: TTarsTraceEntry): TTarsTraceEntry {
+  if (entry.type === 'tool_result' && entry.output) {
+    return { ...entry, output: rewriteTarsAssetLinks(entry.output) };
+  }
+  if (entry.type === 'text' && entry.text) {
+    return { ...entry, text: rewriteTarsAssetLinks(entry.text) };
+  }
+  return entry;
+}
+
 /** The trace artifact of one capability reply; undefined when the run reported none. */
 export function toTarsTraceArtifact(
   data: LangflowCapabilityData | undefined,
@@ -59,7 +74,7 @@ export function toTarsTraceArtifact(
     return undefined;
   }
   return {
-    trace: data.trace,
+    trace: data.trace.map(relayTraceLinks),
     mode: data.mode,
     model_name: data.model_name,
     tokens: data.tokens,

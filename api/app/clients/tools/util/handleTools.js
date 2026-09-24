@@ -25,6 +25,7 @@ const {
   createTarsRagTool,
   createTarsAgentTool,
   createTarsChartTool,
+  resolveTarsAgentBindings,
   createTarsPluginTool,
   createTarsDataTool,
   createTarsTableTaskTool,
@@ -500,6 +501,20 @@ const loadTools = async ({
         createTarsRagTool({
           tarsUserId: options.req?.user?.tarsId,
           domainId: options.req?.body?.domain_id,
+          model: agent?.model,
+          librechatUserId: user,
+        });
+      continue;
+    } else if (tool === Tools.tars_agent) {
+      requestedTools[tool] = async () =>
+        createTarsAgentTool({
+          tarsUserId: options.req?.user?.tarsId,
+          domainId: options.req?.body?.domain_id,
+          bindings: resolveTarsAgentBindings({
+            toggles: options.req?.body?.ephemeralAgent,
+            documents: getTarsMemorySnapshot(options.req)?.structuredDocuments,
+            capabilities: options.req?.config?.endpoints?.agents?.capabilities,
+          }),
           model: agent?.model,
           librechatUserId: user,
         });
