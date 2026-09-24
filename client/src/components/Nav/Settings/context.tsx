@@ -33,7 +33,6 @@ export function useSettingsContext(): SettingsContextValue {
   const isLocalProvider = user?.provider === 'local';
   const twoFactorEnabled = user?.twoFactorEnabled === true;
   const allowAccountDeletion = startupConfig?.allowAccountDeletion !== false;
-  const aboutEnabled = startupConfig?.interface?.buildInfo !== false;
   const hasRemoteAgentsBool = hasRemoteAgents === true;
   const hasMultiConvoBool = hasMultiConvo === true;
   const hasPromptsBool = hasPrompts === true;
@@ -55,7 +54,6 @@ export function useSettingsContext(): SettingsContextValue {
       isLocalProvider,
       twoFactorEnabled,
       allowAccountDeletion,
-      aboutEnabled,
       engineTTS,
       langfuseConnectionAccess,
       adminPanelURL,
@@ -72,7 +70,6 @@ export function useSettingsContext(): SettingsContextValue {
       isLocalProvider,
       twoFactorEnabled,
       allowAccountDeletion,
-      aboutEnabled,
       engineTTS,
       langfuseConnectionAccess,
       adminPanelURL,

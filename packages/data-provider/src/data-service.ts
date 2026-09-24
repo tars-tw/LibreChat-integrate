@@ -1727,6 +1727,10 @@ export const saveTarsDomainMcp = (
   return request.post(endpoints.tarsMcpAdminDomainSave(), data);
 };
 
+export const getTarsMcpSystemVariables = (): Promise<t.TTarsMcpSystemVariablesResponse> => {
+  return request.get(endpoints.tarsMcpAdminSystemVariables());
+};
+
 export const getTarsMcpLogs = (query?: {
   conversationId?: string;
   limit?: number;
