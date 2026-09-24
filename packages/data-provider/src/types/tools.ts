@@ -10,6 +10,7 @@ export enum Tools {
   web_search = 'web_search',
   sql_agent = 'sql_agent',
   rag_agent = 'rag_agent',
+  tars_agent = 'tars_agent',
   chart_agent = 'chart_agent',
   data_query = 'data_query',
   table_task = 'table_task',

@@ -79,6 +79,24 @@ describe('buildPassthroughGetAgent', () => {
     expect(agent?.model_parameters).toMatchObject({ temperature: 0.2, topP: 0.9, maxTokens: 128 });
   });
 
+  it.each([
+    { endpoint: 'anthropic', temperature: 0.2, thinking: false },
+    { endpoint: 'anthropic', temperature: 1, thinking: undefined },
+    { endpoint: 'anthropic', temperature: undefined, thinking: undefined },
+    { endpoint: 'openAI', temperature: 0.2, thinking: undefined },
+  ])(
+    'turns Anthropic thinking off only for a caller temperature it cannot coexist with ($endpoint, $temperature)',
+    async ({ endpoint, temperature, thinking }) => {
+      const req = makeReq({ model: `${endpoint}/m`, temperature });
+      const getAgent = buildPassthroughGetAgent(req, { endpoint, model: 'm' }, deps);
+
+      const agent = await getAgent({ id: 'x' });
+
+      expect((agent?.model_parameters as { thinking?: boolean }).thinking).toBe(thinking);
+      expect(agent?.model_parameters.temperature).toBe(temperature);
+    },
+  );
+
   it('drops promptPrefix and ephemeralAgent toggles so the model stays bare', async () => {
     const req = makeReq({
       model: 'openAI/gpt-5.4-mini',

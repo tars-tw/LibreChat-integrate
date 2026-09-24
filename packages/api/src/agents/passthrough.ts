@@ -71,11 +71,30 @@ export function resolvePassthroughModel(
   return { ok: true, value: { endpoint, model } };
 }
 
+/**
+ * Anthropic accepts a temperature only while thinking is off, and LibreChat
+ * turns thinking on by default for every Claude that supports it. A caller
+ * that sets a temperature is asking for sampling control, so the gateway
+ * yields that default instead of answering 400 "temperature is not supported
+ * when thinking is enabled". Temperature 1 is the one value Anthropic allows
+ * alongside thinking, so it leaves thinking on.
+ */
+function reconcileAnthropicThinking(params: Record<string, unknown>, endpoint: string): void {
+  if (endpoint !== EModelEndpoint.anthropic) {
+    return;
+  }
+  const temperature = params.temperature;
+  if (typeof temperature !== 'number' || temperature === 1) {
+    return;
+  }
+  params.thinking = false;
+}
+
 function extractModelParameters(
   body: Record<string, unknown> | undefined,
-  model: string,
+  resolved: ParsedPassthroughModel,
 ): AgentModelParameters & { model: string } {
-  const params: Record<string, unknown> = { model };
+  const params: Record<string, unknown> = { model: resolved.model };
   if (body) {
     for (const openaiKey of Object.keys(samplingParamMap)) {
       const value = body[openaiKey];
@@ -84,6 +103,7 @@ function extractModelParameters(
       }
     }
   }
+  reconcileAnthropicThinking(params, resolved.endpoint);
   return params as AgentModelParameters & { model: string };
 }
 
@@ -107,7 +127,7 @@ export function buildPassthroughGetAgent(
 ): (params: { id: string }) => Promise<Agent | null> {
   const model_parameters = extractModelParameters(
     req.body as Record<string, unknown> | undefined,
-    resolved.model,
+    resolved,
   );
   const sanitizedReq: LoadAgentParams['req'] = {
     user: req.user,
