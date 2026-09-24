@@ -40,6 +40,7 @@ npm run frontend                           # build 全部 packages + client
 | 變數 | 設成 | 作用 / 不設的後果 |
 |---|---|---|
 | `TARS_AUTH_URL` | `http://localhost:5000` | **整個 TARS 整合的總開關**。不設就退回原生 LibreChat(email 登入、無影子使用者、所有 tars 功能不啟用) |
+| `TARS_JWT_SECRET` | 與 pwc_tars `SysConst.DEFAULT_SECRET_KEY` 相同 | pwc_tars 的 MCP 管理 API(新增/修改/刪除/測試/同步 server、工具編輯、專用腦綁定)有 `@admin_required`,LibreChat 以此金鑰替當下的管理員簽 60 秒 bearer。不設則 `/mcp-settings` 的這些操作全部失敗 |
 | `HOST` | `127.0.0.1`(同機)或 `0.0.0.0`(跨機) | 預設 `localhost` 在 macOS 綁 IPv6-only,pwc_tars 走 IPv4 探測會 `ECONNREFUSED` |
 | `MONGO_URI` | `mongodb://127.0.0.1:27017/LibreChat` | 後端在本機跑,連 override 打開的 27017 |
 | `VITE_LANGFLOW_URL` | `http://localhost:7860` | Langflow URL 單一來源(iframe + MCP url host + SSRF 白名單)。**Vite build-time,改了要重 build 前端** |

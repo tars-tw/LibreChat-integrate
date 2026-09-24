@@ -19,7 +19,6 @@ const settingsContext: SettingsContextValue = {
   isLocalProvider: true,
   twoFactorEnabled: false,
   allowAccountDeletion: true,
-  aboutEnabled: false,
   engineTTS: 'browser',
   langfuseConnectionAccess: false,
   adminPanelURL: '',

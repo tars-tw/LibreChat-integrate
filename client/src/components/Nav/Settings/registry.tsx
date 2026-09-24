@@ -45,13 +45,12 @@ import ProviderKeys from '../SettingsTabs/ProviderKeys';
 import { autoScrollAtom } from '~/store/autoScroll';
 import Avatar from '../SettingsTabs/Account/Avatar';
 import CodeEnvironments from './CodeEnvironments';
-import About from '../SettingsTabs/About/About';
 import ApiKeys from '../SettingsTabs/ApiKeys';
 import MemoryToggle from './MemoryToggle';
 import { TTSEndpoints } from '~/common';
 import store from '~/store';
 
-const { GENERAL, CHAT, SPEECH, DATA, ACCOUNT, ABOUT } = SettingsTabValues;
+const { GENERAL, CHAT, SPEECH, DATA, ACCOUNT } = SettingsTabValues;
 
 export const registry: SettingEntry[] = [
   // General · Appearance
@@ -712,16 +711,5 @@ export const registry: SettingEntry[] = [
     labelKey: 'com_ui_settings_label_auto_refill',
     show: (ctx) => ctx.balanceEnabled,
     Component: AutoRefill,
-  },
-
-  // About
-  {
-    id: 'about',
-    tab: ABOUT,
-    section: 'about',
-    labelKey: 'com_nav_setting_about',
-    keywords: ['version', 'build', 'diagnostics'],
-    show: (ctx) => ctx.aboutEnabled,
-    Component: About,
   },
 ];

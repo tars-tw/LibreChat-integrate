@@ -1,6 +1,6 @@
 import { logger } from '@librechat/data-schemas';
 import { TARS_MCP_LEGACY_SERVER_NAME } from 'librechat-data-provider';
-import type { TarsQuery } from '~/tars/client';
+import type { TarsFetchOptions } from '~/tars/client';
 import { gatewayNameFor, derivedTarsMcpEntryName, fitToolName } from './names';
 import { tarsFetch } from '~/tars/client';
 
@@ -88,12 +88,7 @@ function executeTimeoutMs(): number {
 /** pwc_tars `/api/mcp` fetch that unwraps the `{success, message, data}` envelope. */
 export async function tarsMcpFetch<T>(
   path: string,
-  options: {
-    method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-    body?: unknown;
-    query?: TarsQuery;
-    timeoutMs?: number;
-  } = {},
+  options: Pick<TarsFetchOptions, 'method' | 'body' | 'query' | 'timeoutMs' | 'asUser'> = {},
 ): Promise<T | undefined> {
   const envelope = await tarsFetch<TarsMcpEnvelope<T>>(path, options);
   if (envelope?.success === false) {

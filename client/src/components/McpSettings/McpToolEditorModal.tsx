@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import {
   Label,
   Input,
@@ -9,16 +9,23 @@ import {
   OGDialog,
   OGDialogTemplate,
 } from '@librechat/client';
+import { useTarsMcpSystemVariablesQuery } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 
 export type ParamLocation = 'path' | 'query' | 'header' | 'cookie';
 
+/**
+ * `value` is a fixed value pwc_tars sends instead of asking the model: it drops the field from
+ * the tool's input schema and substitutes `{{TARS_*}}` variables with the calling user's
+ * identity at execution time. Empty means the model fills the field.
+ */
 export interface ParamDraft {
   name: string;
   in: ParamLocation;
   type: string;
   required: boolean;
   description: string;
+  value: string;
 }
 
 export interface BodyPropertyDraft {
@@ -26,6 +33,7 @@ export interface BodyPropertyDraft {
   type: string;
   required: boolean;
   description: string;
+  value: string;
 }
 
 export interface ToolDraft {
@@ -55,6 +63,9 @@ const isParamLocation = (value: unknown): value is ParamLocation =>
 const asRecord = (value: unknown): Record<string, unknown> =>
   value != null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 
+const fixedValueOf = (value: string): { value?: string } =>
+  value.trim() ? { value: value.trim() } : {};
+
 export const emptyToolDraft = (): ToolDraft => ({
   name: '',
   description: '',
@@ -80,6 +91,7 @@ export function toToolDraft(raw: unknown): ToolDraft {
           type: String(schema.type ?? 'string'),
           required: Boolean(p.required),
           description: String(p.description ?? schema.description ?? ''),
+          value: p.value == null ? '' : String(p.value),
         };
       })
     : [];
@@ -91,6 +103,7 @@ export function toToolDraft(raw: unknown): ToolDraft {
           type: String(p.type ?? 'string'),
           required: Boolean(p.required),
           description: String(p.description ?? ''),
+          value: p.value == null ? '' : String(p.value),
         };
       })
     : [];
@@ -118,6 +131,7 @@ export function toolDraftToStored(draft: ToolDraft): Record<string, unknown> {
       required: param.required,
       ...(param.description.trim() ? { description: param.description.trim() } : {}),
       schema: { type: param.type },
+      ...fixedValueOf(param.value),
     })),
   };
   if (draft.description.trim()) {
@@ -132,6 +146,7 @@ export function toolDraftToStored(draft: ToolDraft): Record<string, unknown> {
         type: prop.type,
         required: prop.required,
         ...(prop.description.trim() ? { description: prop.description.trim() } : {}),
+        ...fixedValueOf(prop.value),
       })),
     };
   }
@@ -164,8 +179,46 @@ export function validateToolDraft(
   return null;
 }
 
-const PARAM_ROW = 'grid grid-cols-[1fr_6.5rem_6.5rem_3.5rem_1fr_2rem] items-center gap-2';
-const BODY_ROW = 'grid grid-cols-[1fr_6.5rem_3.5rem_1fr_2rem] items-center gap-2';
+const PARAM_ROW = 'grid grid-cols-[1fr_6.5rem_6.5rem_3.5rem_1fr_1fr_2rem] items-center gap-2';
+const BODY_ROW = 'grid grid-cols-[1fr_6.5rem_3.5rem_1fr_1fr_2rem] items-center gap-2';
+
+/** Lists the bindable `{{TARS_*}}` variables, with an opt-in reveal of the admin's own values. */
+function SystemVariablesHint() {
+  const localize = useLocalize();
+  const [showValues, setShowValues] = useState(false);
+  const { data: variables = [] } = useTarsMcpSystemVariablesQuery();
+  const toggleLabel = localize('com_ui_tars_mcp_fixed_value_preview');
+
+  return (
+    <div className="space-y-1 rounded-lg bg-surface-secondary p-2 text-xs text-text-secondary">
+      <div className="flex items-start justify-between gap-2">
+        <p>{localize('com_ui_tars_mcp_fixed_value_hint')}</p>
+        {variables.length > 0 && (
+          <button
+            type="button"
+            aria-label={toggleLabel}
+            aria-pressed={showValues}
+            title={toggleLabel}
+            onClick={() => setShowValues((prev) => !prev)}
+            className="shrink-0 rounded p-1 hover:bg-surface-tertiary hover:text-text-primary"
+          >
+            {showValues ? <Eye className="icon-sm" /> : <EyeOff className="icon-sm" />}
+          </button>
+        )}
+      </div>
+      {variables.length > 0 && (
+        <ul className="space-y-0.5">
+          {variables.map(({ name, value }) => (
+            <li key={name} className="break-all">
+              <code className="rounded bg-surface-tertiary px-1 text-text-primary">{`{{${name}}}`}</code>
+              {showValues && <span className="ml-1">= {value ?? '-'}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export default function McpToolEditorModal({
   isEdit,
@@ -197,7 +250,7 @@ export default function McpToolEditorModal({
       ...prev,
       parameters: [
         ...prev.parameters,
-        { name: '', in: 'query', type: 'string', required: false, description: '' },
+        { name: '', in: 'query', type: 'string', required: false, description: '', value: '' },
       ],
     }));
   const removeParam = (index: number) =>
@@ -215,7 +268,7 @@ export default function McpToolEditorModal({
       ...prev,
       bodyProperties: [
         ...prev.bodyProperties,
-        { name: '', type: 'string', required: false, description: '' },
+        { name: '', type: 'string', required: false, description: '', value: '' },
       ],
     }));
   const removeBodyProp = (index: number) =>
@@ -240,7 +293,7 @@ export default function McpToolEditorModal({
       <OGDialogTemplate
         title={localize(isEdit ? 'com_ui_tars_mcp_tool_edit' : 'com_ui_tars_mcp_tool_add')}
         showCloseButton={true}
-        className="w-11/12 md:max-w-3xl"
+        className="w-11/12 md:max-w-4xl"
         main={
           <div className="max-h-[65vh] space-y-4 overflow-y-auto pr-1">
             {error != null && <p className="text-sm text-red-500">{error}</p>}
@@ -290,6 +343,8 @@ export default function McpToolEditorModal({
               />
             </div>
 
+            <SystemVariablesHint />
+
             <div className="space-y-2 rounded-lg border border-border-light p-3">
               <div className="flex items-center justify-between">
                 <Label>{localize('com_ui_tars_mcp_params')}</Label>
@@ -306,6 +361,7 @@ export default function McpToolEditorModal({
                     <span>{localize('com_ui_tars_mcp_param_type')}</span>
                     <span>{localize('com_ui_tars_mcp_param_required')}</span>
                     <span>{localize('com_ui_description')}</span>
+                    <span>{localize('com_ui_tars_mcp_fixed_value')}</span>
                     <span />
                   </div>
                   {draft.parameters.map((param, index) => (
@@ -345,6 +401,12 @@ export default function McpToolEditorModal({
                         value={param.description}
                         onChange={(e) => updateParam(index, { description: e.target.value })}
                         aria-label={localize('com_ui_description')}
+                      />
+                      <Input
+                        value={param.value}
+                        onChange={(e) => updateParam(index, { value: e.target.value })}
+                        placeholder={localize('com_ui_tars_mcp_fixed_value_placeholder')}
+                        aria-label={localize('com_ui_tars_mcp_fixed_value')}
                       />
                       <button
                         type="button"
@@ -403,6 +465,7 @@ export default function McpToolEditorModal({
                       <span>{localize('com_ui_tars_mcp_param_type')}</span>
                       <span>{localize('com_ui_tars_mcp_param_required')}</span>
                       <span>{localize('com_ui_description')}</span>
+                      <span>{localize('com_ui_tars_mcp_fixed_value')}</span>
                       <span />
                     </div>
                     {draft.bodyProperties.map((prop, index) => (
@@ -431,6 +494,12 @@ export default function McpToolEditorModal({
                           value={prop.description}
                           onChange={(e) => updateBodyProp(index, { description: e.target.value })}
                           aria-label={localize('com_ui_description')}
+                        />
+                        <Input
+                          value={prop.value}
+                          onChange={(e) => updateBodyProp(index, { value: e.target.value })}
+                          placeholder={localize('com_ui_tars_mcp_fixed_value_placeholder')}
+                          aria-label={localize('com_ui_tars_mcp_fixed_value')}
                         />
                         <button
                           type="button"
