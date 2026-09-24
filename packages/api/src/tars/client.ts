@@ -1,4 +1,5 @@
 import { logger } from '@librechat/data-schemas';
+import { signTarsBearer } from './bearer';
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -12,6 +13,11 @@ export interface TarsFetchOptions {
   baseUrl?: string;
   /** Extra request headers, merged over the JSON content type (e.g. a service key). */
   headers?: Record<string, string>;
+  /**
+   * pwc_tars user id to authenticate as, for routes behind pwc_tars's `@admin_required`.
+   * Sends a short-lived bearer signed with `TARS_JWT_SECRET`.
+   */
+  asUser?: string;
 }
 
 /**
@@ -60,6 +66,20 @@ function buildUrl(base: string, path: string, query?: TarsQuery): string {
   return queryString ? `${base}${normalizedPath}?${queryString}` : `${base}${normalizedPath}`;
 }
 
+function bearerHeaders(
+  path: string,
+  asUser: string | undefined,
+  secret: string | undefined = process.env.TARS_JWT_SECRET,
+): Record<string, string> {
+  if (!asUser) {
+    return {};
+  }
+  if (!secret?.trim()) {
+    throw new TarsRequestError(503, path, 'TARS_JWT_SECRET is not configured');
+  }
+  return { Authorization: `Bearer ${signTarsBearer(asUser, secret)}` };
+}
+
 /**
  * Shared JSON fetch helper for pwc_tars Flask endpoints. Mirrors the timeout /
  * logging behavior of `auth/tars.ts` so every pwc_tars integration calls the
@@ -67,15 +87,24 @@ function buildUrl(base: string, path: string, query?: TarsQuery): string {
  * responses so callers can surface a 5xx.
  */
 export async function tarsFetch<T>(path: string, options: TarsFetchOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, timeoutMs = DEFAULT_TIMEOUT_MS, baseUrl, headers } = options;
+  const {
+    method = 'GET',
+    body,
+    query,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    baseUrl,
+    headers,
+    asUser,
+  } = options;
   const url = buildUrl(getTarsBaseUrl(baseUrl), path, query);
+  const authHeaders = bearerHeaders(path, asUser);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json', ...headers },
+      headers: { 'Content-Type': 'application/json', ...authHeaders, ...headers },
       body: body != null ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     });

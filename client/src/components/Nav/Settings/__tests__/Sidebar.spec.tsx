@@ -22,7 +22,6 @@ const ctx: SettingsContextValue = {
   isTwoFactorPolicyProvider: true,
   twoFactorEnabled: false,
   allowAccountDeletion: true,
-  aboutEnabled: false,
   mascotAllowed: true,
   engineTTS: 'browser',
   langfuseConnectionAccess: false,
@@ -49,14 +48,9 @@ function setup(extra: Partial<SettingsContextValue> = {}, query = '') {
 }
 
 describe('Sidebar', () => {
-  it('hides the About tab when build info is disabled', () => {
+  it('does not offer an About tab, which TARS serves as its own page', () => {
     setup();
     expect(screen.queryByText('About')).not.toBeInTheDocument();
-  });
-
-  it('shows the About tab when build info is enabled', () => {
-    setup({ aboutEnabled: true });
-    expect(screen.getByText('About')).toBeInTheDocument();
   });
 
   it('shows the Langfuse tab when Langfuse is available to the user', () => {

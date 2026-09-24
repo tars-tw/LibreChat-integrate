@@ -27,6 +27,7 @@ const {
   adminListTarsDomainAvailableServers,
   adminSaveTarsDomainMcp,
   adminGetTarsMcpLogs,
+  adminListTarsMcpSystemVariables,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 const { invalidateConfigCaches } = require('~/server/services/Config');
@@ -171,7 +172,7 @@ router.post(
   '/mcp/admin/servers',
   adminMiddleware,
   adminHandler('POST /api/tars/mcp/admin/servers', async (req) => {
-    const server = await adminCreateTarsMcpServer(req.body ?? {});
+    const server = await adminCreateTarsMcpServer(req.body ?? {}, req.user.tarsId);
     await invalidateMcpCaches('POST /api/tars/mcp/admin/servers');
     return { server };
   }),
@@ -181,7 +182,11 @@ router.put(
   '/mcp/admin/servers/:serverId',
   adminMiddleware,
   adminHandler('PUT /api/tars/mcp/admin/servers/:serverId', async (req) => {
-    const server = await adminUpdateTarsMcpServer(req.params.serverId, req.body ?? {});
+    const server = await adminUpdateTarsMcpServer(
+      req.params.serverId,
+      req.body ?? {},
+      req.user.tarsId,
+    );
     await invalidateMcpCaches('PUT /api/tars/mcp/admin/servers/:serverId');
     return { server };
   }),
@@ -191,7 +196,7 @@ router.delete(
   '/mcp/admin/servers/:serverId',
   adminMiddleware,
   adminHandler('DELETE /api/tars/mcp/admin/servers/:serverId', async (req) => {
-    await adminDeleteTarsMcpServer(req.params.serverId);
+    await adminDeleteTarsMcpServer(req.params.serverId, req.user.tarsId);
     await invalidateMcpCaches('DELETE /api/tars/mcp/admin/servers/:serverId');
     return { success: true };
   }),
@@ -208,7 +213,7 @@ router.post(
       error.serverMessage = 'ids is required';
       throw error;
     }
-    const result = await adminBatchDeleteTarsMcpServers(ids);
+    const result = await adminBatchDeleteTarsMcpServers(ids, req.user.tarsId);
     await invalidateMcpCaches('POST /api/tars/mcp/admin/servers/batch-delete');
     return { result };
   }),
@@ -218,7 +223,7 @@ router.post(
   '/mcp/admin/servers/:serverId/test',
   adminMiddleware,
   adminHandler('POST /api/tars/mcp/admin/servers/:serverId/test', async (req) => ({
-    result: await adminTestTarsMcpServer(req.params.serverId),
+    result: await adminTestTarsMcpServer(req.params.serverId, req.user.tarsId),
   })),
 );
 
@@ -226,7 +231,7 @@ router.post(
   '/mcp/admin/servers/:serverId/sync',
   adminMiddleware,
   adminHandler('POST /api/tars/mcp/admin/servers/:serverId/sync', async (req) => {
-    const result = await adminSyncTarsMcpServer(req.params.serverId);
+    const result = await adminSyncTarsMcpServer(req.params.serverId, req.user.tarsId);
     await invalidateMcpCaches('POST /api/tars/mcp/admin/servers/:serverId/sync');
     return { result };
   }),
@@ -236,7 +241,7 @@ router.post(
   '/mcp/admin/parse-openapi',
   adminMiddleware,
   adminHandler('POST /api/tars/mcp/admin/parse-openapi', async (req) => ({
-    parsed: await adminParseTarsOpenapi(req.body ?? {}),
+    parsed: await adminParseTarsOpenapi(req.body ?? {}, req.user.tarsId),
   })),
 );
 
@@ -245,11 +250,11 @@ router.put(
   adminMiddleware,
   adminHandler('PUT /api/tars/mcp/admin/tools/:toolId', async (req) => {
     const { is_enabled, description, input_schema } = req.body ?? {};
-    const tool = await adminUpdateTarsMcpTool(req.params.toolId, {
-      is_enabled,
-      description,
-      input_schema,
-    });
+    const tool = await adminUpdateTarsMcpTool(
+      req.params.toolId,
+      { is_enabled, description, input_schema },
+      req.user.tarsId,
+    );
     await invalidateMcpCaches('PUT /api/tars/mcp/admin/tools/:toolId');
     return { tool };
   }),
@@ -259,10 +264,18 @@ router.delete(
   '/mcp/admin/tools/:toolId',
   adminMiddleware,
   adminHandler('DELETE /api/tars/mcp/admin/tools/:toolId', async (req) => {
-    await adminDeleteTarsMcpTool(req.params.toolId);
+    await adminDeleteTarsMcpTool(req.params.toolId, req.user.tarsId);
     await invalidateMcpCaches('DELETE /api/tars/mcp/admin/tools/:toolId');
     return { success: true };
   }),
+);
+
+router.get(
+  '/mcp/admin/system-variables',
+  adminMiddleware,
+  adminHandler('GET /api/tars/mcp/admin/system-variables', async (req) => ({
+    variables: await adminListTarsMcpSystemVariables(req.user.tarsId),
+  })),
 );
 
 router.get(
