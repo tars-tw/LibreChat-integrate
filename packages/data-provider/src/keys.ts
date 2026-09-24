@@ -95,6 +95,7 @@ export enum QueryKeys {
   tarsMcpDomainTools = 'tarsMcpDomainTools',
   tarsMcpDomainServers = 'tarsMcpDomainServers',
   tarsMcpLogs = 'tarsMcpLogs',
+  tarsMcpSystemVariables = 'tarsMcpSystemVariables',
   files = 'files',
   fileConfig = 'fileConfig',
   tools = 'tools',

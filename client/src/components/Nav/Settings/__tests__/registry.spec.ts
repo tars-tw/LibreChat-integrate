@@ -24,7 +24,6 @@ const settingsContext: SettingsContextValue = {
   isTwoFactorPolicyProvider: true,
   twoFactorEnabled: false,
   allowAccountDeletion: true,
-  aboutEnabled: false,
   mascotAllowed: true,
   engineTTS: 'browser',
   langfuseConnectionAccess: false,
