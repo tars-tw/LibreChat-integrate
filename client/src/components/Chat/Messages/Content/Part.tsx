@@ -10,6 +10,7 @@ import {
   isImageVisionTool,
   hasToolCallPreview,
   getToolCallPreviewRevision,
+  isTarsCapabilityToolName,
 } from 'librechat-data-provider';
 import type {
   ToolRenderer,
@@ -50,6 +51,7 @@ import { isError } from './ToolOutput/OutputRenderer';
 import { ToolPreparation } from './preparation';
 import { ErrorMessage } from './MessageContent';
 import AskUserQuestion from './AskUserQuestion';
+import TarsCapabilityCall from './TarsTrace';
 import RetrievalCall from './RetrievalCall';
 import ToolApproval from './ToolApproval';
 import AgentHandoff from './AgentHandoff';
@@ -407,6 +409,34 @@ const renderDefaultTool: ToolRenderer = ({
   />
 );
 
+const renderTarsCapability: ToolRenderer = ({
+  toolCall,
+  toolCallId,
+  attachments,
+  isSubmitting,
+  isLast,
+  hideAttachments,
+  onToolExpand,
+}) => (
+  <TarsCapabilityCall
+    args={toolCall.args ?? ''}
+    name={toolCall.name || ''}
+    toolCallId={toolCallId}
+    output={toolCall.output ?? ''}
+    initialProgress={toolCall.progress ?? 0.1}
+    isSubmitting={isSubmitting}
+    attachments={attachments}
+    auth={toolCall.auth}
+    isLast={isLast}
+    hideAttachments={hideAttachments}
+    onExpand={onToolExpand}
+    runStepStatus={
+      toolCall.backgroundTask?.cancelled === true ? 'cancelled' : toolCall.runStepStatus
+    }
+    runStepDurationMs={toolCall.runStepDurationMs}
+  />
+);
+
 /** Calls a name alone cannot route: programmatic bash by its arguments, handoffs by prefix. */
 const matchTool = ({ name, args }: AgentToolCall): ToolRenderer | undefined => {
   if (isBashProgrammaticToolCall(name, args)) {
@@ -414,6 +444,9 @@ const matchTool = ({ name, args }: AgentToolCall): ToolRenderer | undefined => {
   }
   if (name?.startsWith(Constants.LC_TRANSFER_TO_)) {
     return renderHandoff;
+  }
+  if (isTarsCapabilityToolName(name)) {
+    return renderTarsCapability;
   }
   return undefined;
 };
