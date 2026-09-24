@@ -11,6 +11,7 @@ import {
   bookmarkPermissionsSchema,
   webSearchPermissionsSchema,
   sqlAgentPermissionsSchema,
+  ragAgentPermissionsSchema,
   chartAgentPermissionsSchema,
   fileSearchPermissionsSchema,
   multiConvoPermissionsSchema,
@@ -83,6 +84,9 @@ const defaultRolesSchema = z.object({
         [Permissions.USE]: z.boolean().default(true),
       }),
       [PermissionTypes.SQL_AGENT]: sqlAgentPermissionsSchema.extend({
+        [Permissions.USE]: z.boolean().default(true),
+      }),
+      [PermissionTypes.RAG_AGENT]: ragAgentPermissionsSchema.extend({
         [Permissions.USE]: z.boolean().default(true),
       }),
       [PermissionTypes.CHART_AGENT]: chartAgentPermissionsSchema.extend({
@@ -189,6 +193,9 @@ export const roleDefaults = defaultRolesSchema.parse({
       [PermissionTypes.SQL_AGENT]: {
         [Permissions.USE]: true,
       },
+      [PermissionTypes.RAG_AGENT]: {
+        [Permissions.USE]: true,
+      },
       [PermissionTypes.CHART_AGENT]: {
         [Permissions.USE]: true,
       },
@@ -258,6 +265,7 @@ export const roleDefaults = defaultRolesSchema.parse({
       [PermissionTypes.RUN_CODE]: {},
       [PermissionTypes.WEB_SEARCH]: {},
       [PermissionTypes.SQL_AGENT]: {},
+      [PermissionTypes.RAG_AGENT]: {},
       [PermissionTypes.CHART_AGENT]: {},
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,

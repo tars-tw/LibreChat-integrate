@@ -42,6 +42,9 @@ export interface IRole extends Document {
     [PermissionTypes.SQL_AGENT]?: {
       [Permissions.USE]?: boolean;
     };
+    [PermissionTypes.RAG_AGENT]?: {
+      [Permissions.USE]?: boolean;
+    };
     [PermissionTypes.CHART_AGENT]?: {
       [Permissions.USE]?: boolean;
     };

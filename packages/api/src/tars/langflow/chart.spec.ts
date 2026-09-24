@@ -7,6 +7,7 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
+import { Tools } from 'librechat-data-provider';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
@@ -92,6 +93,24 @@ describe('createTarsChartTool', () => {
     });
     const chartTool = createTarsChartTool({});
     await expect(chartTool.invoke({ request: 'q' })).resolves.toBe('沒有可畫的數據');
+  });
+
+  it('attaches the run trace under the chart call', async () => {
+    const trace = [{ type: 'tool_call', id: 'c1', name: 'create_chart', input: {} }];
+    mockBackend({
+      status: 200,
+      body: { success: true, data: { answer: '已完成', chart_url: CHART_URL, trace } },
+    });
+    const chartTool = createTarsChartTool({});
+
+    const message = await chartTool.invoke({
+      id: 'call-1',
+      name: 'chart_agent',
+      type: 'tool_call',
+      args: { request: 'q' },
+    });
+    expect(message.content).toBe(`已完成\n\n![chart](${RELAYED_CHART_URL})`);
+    expect(message.artifact?.[Tools.tars_trace]?.trace).toEqual(trace);
   });
 
   it('reports the pwc_tars failure instead of throwing into the agent loop', async () => {

@@ -41,6 +41,10 @@ export enum PermissionTypes {
    */
   SQL_AGENT = 'SQL_AGENT',
   /**
+   * Type for using the pwc_tars RAG agent ("知識庫檢索") feature
+   */
+  RAG_AGENT = 'RAG_AGENT',
+  /**
    * Type for using the pwc_tars chart agent ("產生圖表") feature
    */
   CHART_AGENT = 'CHART_AGENT',
@@ -97,6 +101,7 @@ export const PERMISSION_TYPE_INTERFACE_FIELDS: Record<PermissionTypes, string> =
   [PermissionTypes.RUN_CODE]: 'runCode',
   [PermissionTypes.WEB_SEARCH]: 'webSearch',
   [PermissionTypes.SQL_AGENT]: 'sqlAgent',
+  [PermissionTypes.RAG_AGENT]: 'ragAgent',
   [PermissionTypes.CHART_AGENT]: 'chartAgent',
   [PermissionTypes.FILE_SEARCH]: 'fileSearch',
   [PermissionTypes.FILE_CITATIONS]: 'fileCitations',
@@ -227,6 +232,11 @@ export const sqlAgentPermissionsSchema = z.object({
 });
 export type TSqlAgentPermissions = z.infer<typeof sqlAgentPermissionsSchema>;
 
+export const ragAgentPermissionsSchema = z.object({
+  [Permissions.USE]: z.boolean().default(true),
+});
+export type TRagAgentPermissions = z.infer<typeof ragAgentPermissionsSchema>;
+
 export const chartAgentPermissionsSchema = z.object({
   [Permissions.USE]: z.boolean().default(true),
 });
@@ -303,6 +313,7 @@ export const permissionsSchema = z.object({
   [PermissionTypes.RUN_CODE]: runCodePermissionsSchema,
   [PermissionTypes.WEB_SEARCH]: webSearchPermissionsSchema,
   [PermissionTypes.SQL_AGENT]: sqlAgentPermissionsSchema,
+  [PermissionTypes.RAG_AGENT]: ragAgentPermissionsSchema,
   [PermissionTypes.CHART_AGENT]: chartAgentPermissionsSchema,
   [PermissionTypes.PEOPLE_PICKER]: peoplePickerPermissionsSchema,
   [PermissionTypes.MARKETPLACE]: marketplacePermissionsSchema,

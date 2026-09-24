@@ -4,7 +4,15 @@ import { logger } from '@librechat/data-schemas';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
 import type { TarsMemoryDocument } from '~/tars/memory/client';
-import { langflowTimeoutMs, runLangflowCapability, resolveLangflowModelName } from './client';
+import type { LangflowToolResult } from './client';
+import {
+  langflowTimeoutMs,
+  langflowToolResult,
+  toTarsTraceArtifact,
+  runLangflowCapability,
+  resolveLangflowModelName,
+  LANGFLOW_TOOL_RESPONSE_FORMAT,
+} from './client';
 import { TarsRequestError } from '~/tars/client';
 
 export const TARS_DATA_TOOL_NAME: Tools = Tools.data_query;
@@ -117,13 +125,13 @@ function resolveDocumentIds(documents: TarsMemoryDocument[], requested?: string[
 export function createTarsDataTool(options: TarsDataToolOptions): DynamicStructuredTool {
   const documents = options.documents ?? [];
   return tool(
-    async (input: z.infer<typeof dataQuerySchema>): Promise<string> => {
+    async (input: z.infer<typeof dataQuerySchema>): Promise<LangflowToolResult> => {
       if (!options.tarsUserId) {
-        return NOT_LINKED;
+        return langflowToolResult(NOT_LINKED);
       }
       const documentIds = resolveDocumentIds(documents, input.document_ids);
       if (!documentIds.length) {
-        return NO_FILES;
+        return langflowToolResult(NO_FILES);
       }
       try {
         const requestedModel = await resolveLangflowModelName(options.model, 'tars-data');
@@ -144,9 +152,12 @@ export function createTarsDataTool(options: TarsDataToolOptions): DynamicStructu
             `used=${data.model_name ?? '(unreported)'} tokens=${data.tokens?.total ?? 0} ` +
             'gateway=requested',
         );
-        return data.answer?.trim() || '(pwc_tars returned no answer.)';
+        return langflowToolResult(
+          data.answer?.trim() || '(pwc_tars returned no answer.)',
+          toTarsTraceArtifact(data),
+        );
       } catch (error) {
-        return `The data query failed: ${toErrorMessage(error)}`;
+        return langflowToolResult(`The data query failed: ${toErrorMessage(error)}`);
       }
     },
     {
@@ -155,6 +166,7 @@ export function createTarsDataTool(options: TarsDataToolOptions): DynamicStructu
         ? describe(documents)
         : `${TARS_DATA_DESCRIPTION}\n\n${NOT_LINKED}`,
       schema: dataQuerySchema,
+      responseFormat: LANGFLOW_TOOL_RESPONSE_FORMAT,
     },
   ) as unknown as DynamicStructuredTool;
 }
