@@ -102,10 +102,11 @@ function buildDataContextText(documents: TarsMemoryDocument[]): string | null {
   }
   const lines = documents.map((doc) => `- ${doc.filename} (document_id: ${doc.id})`);
   return (
-    '# `data_query` / `table_task` Runtime Context\n' +
-    'Structured spreadsheet files attached to this conversation. Ask ad-hoc questions about ' +
-    'their contents with `data_query`; apply an instruction to every row with `table_task`. ' +
-    'By default both tools read all of the files below:\n' +
+    '# Attached spreadsheets Runtime Context\n' +
+    'Structured spreadsheet files attached to this conversation. They are bound into the ' +
+    '`tars_agent` tool: ask it about their contents (it queries them with SQL), or ask it to ' +
+    'apply an instruction to every row. Pass `document_ids` only to narrow to some of them; by ' +
+    'default it reads all of the files below:\n' +
     lines.join('\n')
   );
 }
