@@ -240,14 +240,14 @@ export async function loadAddedAgent(
   if (ephemeralAgent?.web_search === true || modelSpec?.webSearch === true) {
     tools.push(Tools.web_search);
   }
-  if (ephemeralAgent?.sql_agent === true) {
-    tools.push(Tools.sql_agent);
-  }
-  if (ephemeralAgent?.rag_agent === true) {
-    tools.push(Tools.rag_agent);
-  }
-  if (ephemeralAgent?.chart_agent === true) {
-    tools.push(Tools.chart_agent);
+  /** Every loop-backed pwc_tars capability the chat switches on rides in one
+   *  `tars_agent`; see `loadEphemeralAgent`. */
+  if (
+    ephemeralAgent?.sql_agent === true ||
+    ephemeralAgent?.rag_agent === true ||
+    ephemeralAgent?.chart_agent === true
+  ) {
+    tools.push(Tools.tars_agent);
   }
   /** pwc_tars plugin tools the user switched on; the brain's allowlist is
    *  enforced downstream in the capability filter (`resolveTarsPluginToolNames`). */

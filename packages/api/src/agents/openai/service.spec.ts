@@ -621,6 +621,34 @@ describe('createAgentChatCompletion - provider error disclosure', () => {
       `Provider echoed ${rawValue}`,
     );
   });
+
+  it('reports a streaming provider error as an OpenAI error object, not assistant text', async () => {
+    deps.appConfig = undefined;
+    const req = createMockReq(undefined, {
+      model: 'agent_test',
+      messages: [{ role: 'user', content: 'hi' }],
+      stream: true,
+    });
+    const res = createMockRes();
+    getResponseMock(res, 'flushHeaders').mockImplementation(() => {
+      (res as unknown as { headersSent: boolean }).headersSent = true;
+    });
+
+    await createAgentChatCompletion(req, res, deps);
+
+    const writes = (res.write as unknown as jest.Mock).mock.calls.map((call) => String(call[0]));
+    const errorWrite = writes.find((line) => line.includes(rawValue));
+    expect(JSON.parse(String(errorWrite).replace(/^data: /, ''))).toEqual({
+      error: {
+        message: `Provider echoed ${rawValue}`,
+        type: 'server_error',
+        param: null,
+        code: null,
+      },
+    });
+    expect(writes.some((line) => line.includes('"content"'))).toBe(false);
+    expect(writes[writes.length - 1]).toBe('data: [DONE]\n\n');
+  });
 });
 
 describe('createAgentChatCompletion - source-aware content protection', () => {

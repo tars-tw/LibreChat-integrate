@@ -76,6 +76,7 @@ export const tarsProtocolUsesHostName = (protocol: string | null | undefined): b
 export const TARS_CAPABILITY_TOOLS: ReadonlySet<string> = new Set([
   Tools.sql_agent,
   Tools.rag_agent,
+  Tools.tars_agent,
   Tools.chart_agent,
   Tools.data_query,
   Tools.table_task,
