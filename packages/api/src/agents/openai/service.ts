@@ -1254,37 +1254,49 @@ export async function createAgentChatCompletion(
       error,
       hasModelBoundContentProtection(filters, legacyPii),
     );
-    // Check if we already started streaming (headers sent)
-    if (res.headersSent) {
-      // Headers already sent, try to send error in stream format
-      const errorChunk = createChunk(context, { content: `\n\nError: ${errorMessage}` }, 'stop');
-      writeSSE(res, errorChunk);
-      writeSSE(res, '[DONE]');
-      res.end();
-    } else {
-      const candidateStatus =
-        error != null && typeof error === 'object'
-          ? ((error as { status?: unknown; statusCode?: unknown }).status ??
-            (error as { statusCode?: unknown }).statusCode)
-          : undefined;
-      const statusCode =
-        typeof candidateStatus === 'number' &&
-        Number.isInteger(candidateStatus) &&
-        candidateStatus >= 400 &&
-        candidateStatus < 600
-          ? candidateStatus
-          : 500;
-      const errorType =
-        statusCode >= 400 && statusCode < 500 ? 'invalid_request_error' : 'server_error';
-      const errorCode =
-        error != null &&
-        typeof error === 'object' &&
-        typeof (error as { code?: unknown }).code === 'string'
-          ? (error as { code: string }).code
-          : null;
+    const { statusCode, errorType, errorCode } = classifyProviderError(error);
+    if (!res.headersSent) {
       sendErrorResponse(res, statusCode, errorMessage, errorType, errorCode);
+      return;
     }
+    /** With the headers already out, the failure rides the stream the way
+     *  OpenAI's own API reports one: an `error` object, which every OpenAI
+     *  SDK raises on. Written as assistant text it would reach the caller as
+     *  a successful answer with the message inside — a retrying client never
+     *  sees the 429 and a batch job records the error sentence as its result. */
+    writeSSE(res, JSON.stringify(createErrorResponse(errorMessage, errorType, errorCode)));
+    writeSSE(res, '[DONE]');
+    res.end();
   }
+}
+
+/** The OpenAI-shaped status, type and code for a provider failure. */
+function classifyProviderError(error: unknown): {
+  statusCode: number;
+  errorType: string;
+  errorCode: string | null;
+} {
+  const candidateStatus =
+    error != null && typeof error === 'object'
+      ? ((error as { status?: unknown; statusCode?: unknown }).status ??
+        (error as { statusCode?: unknown }).statusCode)
+      : undefined;
+  const statusCode =
+    typeof candidateStatus === 'number' &&
+    Number.isInteger(candidateStatus) &&
+    candidateStatus >= 400 &&
+    candidateStatus < 600
+      ? candidateStatus
+      : 500;
+  const errorType =
+    statusCode >= 400 && statusCode < 500 ? 'invalid_request_error' : 'server_error';
+  const errorCode =
+    error != null &&
+    typeof error === 'object' &&
+    typeof (error as { code?: unknown }).code === 'string'
+      ? (error as { code: string }).code
+      : null;
+  return { statusCode, errorType, errorCode };
 }
 
 /**
