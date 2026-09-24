@@ -7,10 +7,13 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
+import { Tools } from 'librechat-data-provider';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import {
   langflowTimeoutMs,
+  langflowToolResult,
+  toTarsTraceArtifact,
   runLangflowCapability,
   resolveLangflowModelName,
   resolveLangflowServiceKey,
@@ -154,5 +157,33 @@ describe('env helpers', () => {
     expect(langflowTimeoutMs('TARS_TEST_TIMEOUT_MS', 1234)).toBe(5000);
     process.env.TARS_TEST_TIMEOUT_MS = 'abc';
     expect(langflowTimeoutMs('TARS_TEST_TIMEOUT_MS', 1234)).toBe(1234);
+  });
+});
+
+describe('run trace artifact', () => {
+  const trace = [
+    { type: 'turn' as const, turn: 1 },
+    { type: 'tool_call' as const, id: 'c1', name: 'sql_query', input: { sql: 'SELECT 1' } },
+  ];
+
+  it('carries the trace pwc_tars reported, with the run facts beside it', () => {
+    expect(
+      toTarsTraceArtifact({ answer: 'a', mode: 'sql', model_name: 'm', sql: 'SELECT 1', trace }),
+    ).toEqual({ trace, mode: 'sql', model_name: 'm', tokens: undefined, sql: 'SELECT 1' });
+  });
+
+  it('is absent when pwc_tars sent no trace, so nothing is attached', () => {
+    expect(toTarsTraceArtifact({ answer: 'a' })).toBeUndefined();
+    expect(toTarsTraceArtifact({ answer: 'a', trace: [] })).toBeUndefined();
+    expect(toTarsTraceArtifact(undefined)).toBeUndefined();
+  });
+
+  it('shapes the content_and_artifact tuple the tool-end callback expects', () => {
+    const artifact = { trace };
+    expect(langflowToolResult('answer', artifact)).toEqual([
+      'answer',
+      { [Tools.tars_trace]: artifact },
+    ]);
+    expect(langflowToolResult('failed')).toEqual(['failed', undefined]);
   });
 });

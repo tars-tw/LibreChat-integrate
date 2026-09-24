@@ -4,7 +4,15 @@ import { logger } from '@librechat/data-schemas';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
 import type { TarsMemoryDocument } from '~/tars/memory/client';
-import { langflowTimeoutMs, runLangflowCapability, resolveLangflowModelName } from './client';
+import type { LangflowToolResult } from './client';
+import {
+  langflowTimeoutMs,
+  langflowToolResult,
+  toTarsTraceArtifact,
+  runLangflowCapability,
+  resolveLangflowModelName,
+  LANGFLOW_TOOL_RESPONSE_FORMAT,
+} from './client';
 import { fetchTarsDomainKnowledgeBases } from '~/tars/prompts';
 import { TarsRequestError } from '~/tars/client';
 
@@ -120,24 +128,24 @@ function resolveDocumentIds(documents: TarsMemoryDocument[], requested?: string[
 export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicStructuredTool {
   const documents = options.documents ?? [];
   return tool(
-    async (input: z.infer<typeof tableTaskSchema>): Promise<string> => {
+    async (input: z.infer<typeof tableTaskSchema>): Promise<LangflowToolResult> => {
       if (!options.tarsUserId) {
-        return NOT_LINKED;
+        return langflowToolResult(NOT_LINKED);
       }
       const documentIds = resolveDocumentIds(documents, input.document_ids);
       if (!documentIds.length) {
-        return NO_FILES;
+        return langflowToolResult(NO_FILES);
       }
       const domainId =
         options.domainId == null || options.domainId === '' ? '' : String(options.domainId);
       if (!domainId) {
-        return NO_DOMAIN;
+        return langflowToolResult(NO_DOMAIN);
       }
       try {
         const knowledgeBases = await fetchTarsDomainKnowledgeBases(options.tarsUserId, domainId);
         const knowledgeBaseIds = (knowledgeBases ?? []).map((base) => base.id);
         if (!knowledgeBaseIds.length) {
-          return NO_KNOWLEDGE_BASES;
+          return langflowToolResult(NO_KNOWLEDGE_BASES);
         }
         const requestedModel = await resolveLangflowModelName(options.model, 'tars-table');
         const data = await runLangflowCapability(
@@ -158,14 +166,15 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
             `requested=${requestedModel ?? '(pwc_tars default)'} used=${data.model_name ?? '(unreported)'} ` +
             `tokens=${data.tokens?.total ?? 0} gateway=requested`,
         );
+        const trace = toTarsTraceArtifact(data);
         const answer = data.answer?.trim() ?? '';
         const fileUrl = data.file_url?.trim() ?? '';
         if (!fileUrl || answer.includes(fileUrl)) {
-          return answer || '(pwc_tars returned no answer.)';
+          return langflowToolResult(answer || '(pwc_tars returned no answer.)', trace);
         }
-        return `${answer}\n\n[下載完整結果 (xlsx)](${fileUrl})`;
+        return langflowToolResult(`${answer}\n\n[下載完整結果 (xlsx)](${fileUrl})`, trace);
       } catch (error) {
-        return `The table task failed: ${toErrorMessage(error)}`;
+        return langflowToolResult(`The table task failed: ${toErrorMessage(error)}`);
       }
     },
     {
@@ -174,6 +183,7 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
         ? describe(documents)
         : `${TARS_TABLE_DESCRIPTION}\n\n${NOT_LINKED}`,
       schema: tableTaskSchema,
+      responseFormat: LANGFLOW_TOOL_RESPONSE_FORMAT,
     },
   ) as unknown as DynamicStructuredTool;
 }

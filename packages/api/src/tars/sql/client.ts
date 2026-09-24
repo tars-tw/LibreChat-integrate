@@ -1,12 +1,16 @@
 import { logger } from '@librechat/data-schemas';
+import type { TTarsTraceArtifact } from 'librechat-data-provider';
 import type { TarsKnowledgeBase } from '~/tars/knowledge';
 import {
   langflowTimeoutMs,
+  toTarsTraceArtifact,
   runLangflowCapability,
   resolveLangflowModelName,
 } from '~/tars/langflow/client';
-import { fetchTarsDomainKnowledgeBases } from '~/tars/prompts';
-import { fetchTarsKnowledgeBases } from '~/tars/knowledge';
+import {
+  listTarsScopedKnowledgeBases,
+  invalidateTarsScopedKnowledgeBasesCache,
+} from '~/tars/scope';
 
 const SQL_AGENT_PATH = '/api/langflow-service/sql';
 /**
@@ -15,7 +19,6 @@ const SQL_AGENT_PATH = '/api/langflow-service/sql';
  * `TARS_SQL_AGENT_TIMEOUT_MS`.
  */
 const DEFAULT_TIMEOUT_MS = 240_000;
-const DATABASES_CACHE_TTL_MS = 30_000;
 
 /** A knowledge base whose bound SQL database the agent may query. */
 export interface TarsSqlDatabase {
@@ -39,18 +42,13 @@ export interface TarsSqlAgentResult {
   answer: string;
   modelName: string;
   totalTokens: number;
+  /** The nested run, for the chat to show; absent when pwc_tars sent no trace. */
+  trace?: TTarsTraceArtifact;
 }
 
-interface DatabasesCacheEntry {
-  databases: TarsSqlDatabase[];
-  cachedAt: number;
-}
-
-const databasesCache = new Map<string, DatabasesCacheEntry>();
-
-/** Drops the cached per-user database lists so the next call re-reads pwc_tars. */
+/** Drops the cached per-user knowledge-base scopes so the next call re-reads pwc_tars. */
 export function invalidateTarsSqlDatabasesCache(): void {
-  databasesCache.clear();
+  invalidateTarsScopedKnowledgeBasesCache();
 }
 
 const toSqlDatabase = (base: TarsKnowledgeBase): TarsSqlDatabase => ({
@@ -60,41 +58,17 @@ const toSqlDatabase = (base: TarsKnowledgeBase): TarsSqlDatabase => ({
 });
 
 /**
- * The databases one turn may query: the knowledge bases carrying a bound SQL
- * database (`has_sql_database`), narrowed to those the active 專用腦 binds.
- * This mirrors pwc_tars's own chat path, which resolves a database from the
- * domain's `knowledge_base_ids` rather than from everything the user can see —
- * a brain answers out of its own data, not the whole platform's.
- *
- * Both listings are already scoped by pwc_tars to the user's grants, so this
- * doubles as the authorization set for {@link runTarsSqlAgent}. Without a
- * domain (a caller outside the chat path) it falls back to every knowledge base
- * the user may access.
+ * The databases one turn may query: the knowledge bases the active 專用腦
+ * binds ({@link listTarsScopedKnowledgeBases}) that carry a bound SQL database
+ * (`has_sql_database`). That scope is already the user's grants, so this
+ * doubles as the authorization set for {@link runTarsSqlAgent}.
  */
 export async function listTarsSqlDatabases(
   tarsUserId: string,
   domainId?: string | number | null,
 ): Promise<TarsSqlDatabase[]> {
-  if (!tarsUserId) {
-    return [];
-  }
-  const scope = domainId == null || domainId === '' ? '' : String(domainId);
-  const cacheKey = `${tarsUserId}\u0000${scope}`;
-  const cached = databasesCache.get(cacheKey);
-  if (cached && Date.now() - cached.cachedAt < DATABASES_CACHE_TTL_MS) {
-    return cached.databases;
-  }
-
-  const [bases, domainBases] = await Promise.all([
-    fetchTarsKnowledgeBases(tarsUserId),
-    scope ? fetchTarsDomainKnowledgeBases(tarsUserId, scope) : Promise.resolve(null),
-  ]);
-  const inDomain = domainBases && new Set(domainBases.map((base) => base.id));
-  const databases = bases
-    .filter((base) => base.has_sql_database === true && (!inDomain || inDomain.has(base.id)))
-    .map(toSqlDatabase);
-  databasesCache.set(cacheKey, { databases, cachedAt: Date.now() });
-  return databases;
+  const bases = await listTarsScopedKnowledgeBases(tarsUserId, domainId);
+  return bases.filter((base) => base.has_sql_database === true).map(toSqlDatabase);
 }
 
 /**
@@ -141,9 +115,11 @@ export async function runTarsSqlAgent(
       `used=${data?.model_name ?? '(unreported)'} tokens=${data?.tokens?.total ?? 0} ` +
       'gateway=requested',
   );
+  const trace = toTarsTraceArtifact(data);
   return {
     answer: answer || '(pwc_tars returned no answer.)',
     modelName: data?.model_name ?? '',
     totalTokens: data?.tokens?.total ?? 0,
+    ...(trace ? { trace } : {}),
   };
 }

@@ -107,6 +107,7 @@ endpoints:
       - execute_code
       - web_search
       - sql_agent
+      - rag_agent
       - chart_agent
       - skills
       - context

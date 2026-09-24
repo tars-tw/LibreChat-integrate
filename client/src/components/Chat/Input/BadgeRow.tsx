@@ -24,6 +24,7 @@ import Artifacts from './Artifacts';
 import MCPSelect from './MCPSelect';
 import WebSearch from './WebSearch';
 import SqlAgent from './SqlAgent';
+import RagAgent from './RagAgent';
 import Memory from './Memory';
 import Skills from './Skills';
 import store from '~/store';
@@ -378,6 +379,7 @@ function BadgeRow({
           <>
             <WebSearch />
             <SqlAgent />
+            <RagAgent />
             <ChartAgent />
             <TarsPlugins />
             <CodeInterpreter />

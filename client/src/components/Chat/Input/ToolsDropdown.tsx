@@ -12,6 +12,7 @@ import {
   Brain,
   Globe,
   Puzzle,
+  BookOpen,
   Database,
   BarChart3,
   ScrollText,
@@ -52,6 +53,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     memoryEnabled,
     webSearchEnabled,
     sqlAgentEnabled,
+    ragAgentEnabled,
     chartAgentEnabled,
     artifactsEnabled,
     fileSearchEnabled,
@@ -88,6 +90,11 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     permission: Permissions.USE,
   });
 
+  const canUseRagAgent = useHasAccess({
+    permissionType: PermissionTypes.RAG_AGENT,
+    permission: Permissions.USE,
+  });
+
   const canUseChartAgent = useHasAccess({
     permissionType: PermissionTypes.CHART_AGENT,
     permission: Permissions.USE,
@@ -102,6 +109,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     skills,
     memory,
     sqlAgent,
+    ragAgent,
     chartAgent,
     webSearch,
     artifacts,
@@ -125,6 +133,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
   const { isPinned: isSkillsPinned, setIsPinned: setIsSkillsPinned } = skills ?? {};
   const { isPinned: isMemoryPinned, setIsPinned: setIsMemoryPinned } = memory ?? {};
   const { isPinned: isSqlAgentPinned, setIsPinned: setIsSqlAgentPinned } = sqlAgent ?? {};
+  const { isPinned: isRagAgentPinned, setIsPinned: setIsRagAgentPinned } = ragAgent ?? {};
   const { isPinned: isChartAgentPinned, setIsPinned: setIsChartAgentPinned } = chartAgent ?? {};
 
   const showWebSearchSettings = useMemo(() => {
@@ -189,6 +198,11 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     const newValue = !sqlAgent?.toggleState;
     sqlAgent?.debouncedChange({ value: newValue });
   }, [sqlAgent]);
+
+  const handleRagAgentToggle = useCallback(() => {
+    const newValue = !ragAgent?.toggleState;
+    ragAgent?.debouncedChange({ value: newValue });
+  }, [ragAgent]);
 
   const handleChartAgentToggle = useCallback(() => {
     const newValue = !chartAgent?.toggleState;
@@ -310,6 +324,38 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
           >
             <div className="h-4 w-4">
               <PinIcon unpin={isSqlAgentPinned} />
+            </div>
+          </button>
+        </div>
+      ),
+    });
+  }
+
+  if (canUseRagAgent && ragAgentEnabled) {
+    dropdownItems.push({
+      onClick: handleRagAgentToggle,
+      hideOnClick: false,
+      render: (props) => (
+        <div {...props} data-testid="tools-menu-rag-agent">
+          <div className="flex items-center gap-2">
+            <BookOpen className="icon-md" aria-hidden="true" />
+            <span>{localize('com_ui_tars_rag_agent')}</span>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsRagAgentPinned?.(!isRagAgentPinned);
+            }}
+            className={cn(
+              'rounded p-1 transition-all duration-200',
+              'hover:bg-surface-secondary hover:shadow-sm',
+              !isRagAgentPinned && 'text-text-secondary hover:text-text-primary',
+            )}
+            aria-label={isRagAgentPinned ? localize('com_ui_unpin') : localize('com_ui_pin')}
+          >
+            <div className="h-4 w-4">
+              <PinIcon unpin={isRagAgentPinned} />
             </div>
           </button>
         </div>

@@ -22,6 +22,7 @@ interface BadgeRowContextType {
   memory: ReturnType<typeof useToolToggle>;
   webSearch: ReturnType<typeof useToolToggle>;
   sqlAgent: ReturnType<typeof useToolToggle>;
+  ragAgent: ReturnType<typeof useToolToggle>;
   chartAgent: ReturnType<typeof useToolToggle>;
   artifacts: ReturnType<typeof useToolToggle>;
   fileSearch: ReturnType<typeof useToolToggle>;
@@ -111,6 +112,7 @@ export default function BadgeRowProvider({
       const skillsToggleKey = `${LocalStorageKeys.LAST_SKILLS_TOGGLE_}${storageSuffix}`;
       const memoryToggleKey = `${LocalStorageKeys.LAST_MEMORY_TOGGLE_}${storageSuffix}`;
       const sqlAgentToggleKey = `${LocalStorageKeys.LAST_SQL_AGENT_TOGGLE_}${storageSuffix}`;
+      const ragAgentToggleKey = `${LocalStorageKeys.LAST_RAG_AGENT_TOGGLE_}${storageSuffix}`;
       const chartAgentToggleKey = `${LocalStorageKeys.LAST_CHART_AGENT_TOGGLE_}${storageSuffix}`;
 
       const codeToggleValue = getTimestampedValue(codeToggleKey);
@@ -120,6 +122,7 @@ export default function BadgeRowProvider({
       const skillsToggleValue = getTimestampedValue(skillsToggleKey);
       const memoryToggleValue = getTimestampedValue(memoryToggleKey);
       const sqlAgentToggleValue = getTimestampedValue(sqlAgentToggleKey);
+      const ragAgentToggleValue = getTimestampedValue(ragAgentToggleKey);
       const chartAgentToggleValue = getTimestampedValue(chartAgentToggleKey);
 
       const initialValues: Record<string, boolean | string> = {};
@@ -177,6 +180,14 @@ export default function BadgeRowProvider({
           initialValues[Tools.sql_agent] = JSON.parse(sqlAgentToggleValue);
         } catch (e) {
           console.error('Failed to parse SQL agent toggle value:', e);
+        }
+      }
+
+      if (ragAgentToggleValue !== null) {
+        try {
+          initialValues[Tools.rag_agent] = JSON.parse(ragAgentToggleValue);
+        } catch (e) {
+          console.error('Failed to parse RAG agent toggle value:', e);
         }
       }
 
@@ -272,6 +283,15 @@ export default function BadgeRowProvider({
     isAuthenticated: true,
   });
 
+  /** pwc_tars RAG agent (知識庫檢索) — a plain capability toggle like the SQL agent. */
+  const ragAgent = useToolToggle({
+    conversationId,
+    storageContextKey,
+    toolKey: Tools.rag_agent,
+    localStorageKey: LocalStorageKeys.LAST_RAG_AGENT_TOGGLE_,
+    isAuthenticated: true,
+  });
+
   /** pwc_tars chart agent (產生圖表) — a plain capability toggle like the SQL agent. */
   const chartAgent = useToolToggle({
     conversationId,
@@ -342,6 +362,7 @@ export default function BadgeRowProvider({
     tarsMcpTools,
     tarsPlugins,
     sqlAgent,
+    ragAgent,
     chartAgent,
   };
 
