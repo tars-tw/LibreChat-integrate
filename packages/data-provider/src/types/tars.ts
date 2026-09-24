@@ -732,6 +732,18 @@ export type TTarsMcpSyncResult = {
   deleted?: number;
 };
 
+/**
+ * A `{{TARS_*}}` variable a tool field's fixed value may bind (pwc_tars
+ * `GET /api/mcp/system-variables`), with what it resolves to for the caller —
+ * null when that account has no such value (e.g. no email).
+ */
+export type TTarsMcpSystemVariable = {
+  name: string;
+  value: string | null;
+};
+
+export type TTarsMcpSystemVariablesResponse = { variables: TTarsMcpSystemVariable[] };
+
 /** Result of a batch server delete — some ids may be skipped or not found. */
 export type TTarsMcpBatchDeleteResult = {
   deleted: string[];

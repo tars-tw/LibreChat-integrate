@@ -1,9 +1,12 @@
+import type { TTarsMcpSystemVariable } from 'librechat-data-provider';
 import { tarsMcpFetch } from './client';
 
 /**
  * Admin-side proxy for managing pwc_tars MCP servers from LibreChat. pwc_tars
  * stays the source of truth — every call goes straight to its `/api/mcp` REST
- * API; nothing is persisted in LibreChat.
+ * API; nothing is persisted in LibreChat. Mutations sit behind pwc_tars's
+ * `@admin_required`, so they take the acting admin's pwc_tars id (`asUser`)
+ * and are sent with that admin's bearer.
  */
 
 /** `McpServer.to_dict()` plus route-injected fields (admin listing/detail). */
@@ -125,22 +128,32 @@ export async function adminGetTarsMcpServer(serverId: string): Promise<TarsMcpSe
 
 export async function adminCreateTarsMcpServer(
   input: TarsMcpServerInput,
+  asUser: string,
 ): Promise<TarsMcpServerDetail | undefined> {
-  return tarsMcpFetch<TarsMcpServerDetail>('/api/mcp/servers', { method: 'POST', body: input });
+  return tarsMcpFetch<TarsMcpServerDetail>('/api/mcp/servers', {
+    method: 'POST',
+    body: input,
+    asUser,
+  });
 }
 
 export async function adminUpdateTarsMcpServer(
   serverId: string,
   input: Partial<TarsMcpServerInput>,
+  asUser: string,
 ): Promise<TarsMcpServerDetail | undefined> {
   return tarsMcpFetch<TarsMcpServerDetail>(`/api/mcp/servers/${encodeURIComponent(serverId)}`, {
     method: 'PUT',
     body: input,
+    asUser,
   });
 }
 
-export async function adminDeleteTarsMcpServer(serverId: string): Promise<void> {
-  await tarsMcpFetch(`/api/mcp/servers/${encodeURIComponent(serverId)}`, { method: 'DELETE' });
+export async function adminDeleteTarsMcpServer(serverId: string, asUser: string): Promise<void> {
+  await tarsMcpFetch(`/api/mcp/servers/${encodeURIComponent(serverId)}`, {
+    method: 'DELETE',
+    asUser,
+  });
 }
 
 /** Result of `POST /api/mcp/servers/batch-delete` — some ids may be skipped or not found. */
@@ -155,45 +168,54 @@ export interface TarsMcpBatchDeleteResult {
 
 export async function adminBatchDeleteTarsMcpServers(
   ids: string[],
+  asUser: string,
 ): Promise<TarsMcpBatchDeleteResult | undefined> {
   return tarsMcpFetch<TarsMcpBatchDeleteResult>('/api/mcp/servers/batch-delete', {
     method: 'POST',
     body: { ids },
+    asUser,
   });
 }
 
 /** Type-specific connectivity + auth probe (parses spec / validates config / probes auth). */
 export async function adminTestTarsMcpServer(
   serverId: string,
+  asUser: string,
 ): Promise<Record<string, unknown> | undefined> {
   return tarsMcpFetch<Record<string, unknown>>(
     `/api/mcp/servers/${encodeURIComponent(serverId)}/test`,
-    { method: 'POST', body: {}, timeoutMs: 60_000 },
+    { method: 'POST', body: {}, timeoutMs: 60_000, asUser },
   );
 }
 
 /** Materializes the server's tool definitions into pwc_tars `mcp_tools` rows. */
 export async function adminSyncTarsMcpServer(
   serverId: string,
+  asUser: string,
 ): Promise<TarsMcpSyncResult | undefined> {
   return tarsMcpFetch<TarsMcpSyncResult>(`/api/mcp/servers/${encodeURIComponent(serverId)}/sync`, {
     method: 'POST',
     body: {},
     timeoutMs: 60_000,
+    asUser,
   });
 }
 
 /** Parses an OpenAPI/Swagger spec (URL or file) and previews the generated tools. */
-export async function adminParseTarsOpenapi(body: {
-  openapi_url?: string;
-  openapi_file?: string;
-  base_url?: string;
-  timeout?: number;
-}): Promise<TarsMcpParsedSpec | undefined> {
+export async function adminParseTarsOpenapi(
+  body: {
+    openapi_url?: string;
+    openapi_file?: string;
+    base_url?: string;
+    timeout?: number;
+  },
+  asUser: string,
+): Promise<TarsMcpParsedSpec | undefined> {
   return tarsMcpFetch<TarsMcpParsedSpec>('/api/mcp/parse-openapi', {
     method: 'POST',
     body,
     timeoutMs: 60_000,
+    asUser,
   });
 }
 
@@ -201,15 +223,20 @@ export async function adminParseTarsOpenapi(body: {
 export async function adminUpdateTarsMcpTool(
   toolId: string,
   input: TarsMcpToolInput,
+  asUser: string,
 ): Promise<TarsMcpToolDetail | undefined> {
   return tarsMcpFetch<TarsMcpToolDetail>(`/api/mcp/tools/${encodeURIComponent(toolId)}`, {
     method: 'PUT',
     body: input,
+    asUser,
   });
 }
 
-export async function adminDeleteTarsMcpTool(toolId: string): Promise<void> {
-  await tarsMcpFetch(`/api/mcp/tools/${encodeURIComponent(toolId)}`, { method: 'DELETE' });
+export async function adminDeleteTarsMcpTool(toolId: string, asUser: string): Promise<void> {
+  await tarsMcpFetch(`/api/mcp/tools/${encodeURIComponent(toolId)}`, {
+    method: 'DELETE',
+    asUser,
+  });
 }
 
 /** The `sys_domain_mcp` bindings of one domain (existing whitelist state). */
@@ -241,7 +268,21 @@ export async function adminSaveTarsDomainMcp(
   await tarsMcpFetch('/api/mcp/domain/save', {
     method: 'POST',
     body: { ...payload, user_id: tarsUserId },
+    asUser: tarsUserId,
   });
+}
+
+/**
+ * The `{{TARS_*}}` variables a custom_api / openapi field's fixed value may bind, each with
+ * the value it resolves to for `tarsUserId` (null when that user has none, e.g. no email).
+ */
+export async function adminListTarsMcpSystemVariables(
+  tarsUserId: string,
+): Promise<TTarsMcpSystemVariable[]> {
+  const rows = await tarsMcpFetch<TTarsMcpSystemVariable[]>('/api/mcp/system-variables', {
+    query: { user_id: tarsUserId },
+  });
+  return rows ?? [];
 }
 
 /** Recent `mcp_logs` audit rows (newest first; optional conversation filter). */
