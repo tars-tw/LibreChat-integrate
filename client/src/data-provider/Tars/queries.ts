@@ -46,6 +46,8 @@ import type {
   TTarsSyncScheduleResponse,
   TTarsMcpLog,
   TTarsMcpLogsResponse,
+  TTarsMcpSystemVariable,
+  TTarsMcpSystemVariablesResponse,
   TTarsMcpServersResponse,
   TTarsDomainMcpRelation,
   TTarsMcpDomainServer,
@@ -459,6 +461,21 @@ export const useTarsDomainMcpServersQuery = (
     {
       select: (data) => data.servers ?? [],
       enabled: domainId != null,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: the `{{TARS_*}}` variables a tool field may bind, resolved for the signed-in admin. */
+export const useTarsMcpSystemVariablesQuery = (
+  config?: UseQueryOptions<TTarsMcpSystemVariablesResponse, unknown, TTarsMcpSystemVariable[]>,
+): QueryObserverResult<TTarsMcpSystemVariable[]> => {
+  return useQuery<TTarsMcpSystemVariablesResponse, unknown, TTarsMcpSystemVariable[]>(
+    [QueryKeys.tarsMcpSystemVariables],
+    () => dataService.getTarsMcpSystemVariables(),
+    {
+      select: (data) => data.variables ?? [],
       ...adminQueryOptions,
       ...config,
     },

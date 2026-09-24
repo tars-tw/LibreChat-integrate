@@ -514,6 +514,7 @@ export const tarsMcpAdminDomainServers = (domainId: number) =>
 export const tarsMcpAdminDomainAvailableServers = (domainId: number) =>
   `${BASE_URL}/api/tars/mcp/admin/domains/${domainId}/available-servers`;
 export const tarsMcpAdminDomainSave = () => `${BASE_URL}/api/tars/mcp/admin/domains/save`;
+export const tarsMcpAdminSystemVariables = () => `${BASE_URL}/api/tars/mcp/admin/system-variables`;
 export const tarsMcpAdminLogs = (query?: { conversationId?: string; limit?: number }) => {
   const params = new URLSearchParams();
   if (query?.conversationId) {
