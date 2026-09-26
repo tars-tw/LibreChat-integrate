@@ -13,8 +13,7 @@ const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
 const router = express.Router();
 
-router.use(requireJwtAuth);
-router.use(requireTarsAdmin);
+router.use('/data-sources/file-systems', requireJwtAuth, requireTarsAdmin);
 
 /** pwc_tars answers a rejected connection with its own reason; relay it. */
 const relay = (res, error, fallback) => {

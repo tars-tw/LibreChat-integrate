@@ -19,7 +19,7 @@ const {
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
 const router = express.Router();
-router.use(requireJwtAuth);
+router.use('/users', requireJwtAuth);
 
 const upload = multer({ storage: multer.memoryStorage() });
 

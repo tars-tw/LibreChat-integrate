@@ -12,7 +12,7 @@ const {
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
 const router = express.Router();
-router.use(requireJwtAuth);
+router.use('/groups', requireJwtAuth);
 
 /** pwc_tars answers 4xx with its own user-facing `message`; relay it verbatim. */
 const relayTarsError = (res, error, fallback) => {

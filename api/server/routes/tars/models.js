@@ -5,7 +5,7 @@ const { requireJwtAuth } = require('~/server/middleware');
 
 const router = express.Router();
 
-router.use(requireJwtAuth);
+router.use('/models', requireJwtAuth);
 
 /**
  * @route GET /api/tars/models
