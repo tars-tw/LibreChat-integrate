@@ -11,8 +11,7 @@ const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
 const router = express.Router();
 
-router.use(requireJwtAuth);
-router.use(requireTarsAdmin);
+router.use('/data-sources/websites', requireJwtAuth, requireTarsAdmin);
 
 /** pwc_tars explains why a crawl failed; that beats a generic string. */
 const relay = (res, error, fallback) => {

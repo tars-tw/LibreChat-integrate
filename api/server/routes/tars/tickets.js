@@ -45,7 +45,7 @@ const ticketInput = (body) => ({
   component_id: body.component_id ?? '',
 });
 
-router.use(requireJwtAuth);
+router.use('/tickets', requireJwtAuth);
 
 /**
  * @route GET /api/tars/tickets

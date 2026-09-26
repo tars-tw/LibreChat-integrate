@@ -12,7 +12,7 @@ const {
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
 const router = express.Router();
-router.use(requireJwtAuth);
+router.use('/prompts', requireJwtAuth);
 
 /**
  * @route GET /api/tars/prompts
