@@ -103,8 +103,7 @@ const pick = (body, fields) =>
     return input;
   }, {});
 
-router.use(requireJwtAuth);
-router.use(requireTarsAdmin);
+router.use('/token', requireJwtAuth, requireTarsAdmin);
 
 /**
  * @route GET /api/tars/token/prepare-data

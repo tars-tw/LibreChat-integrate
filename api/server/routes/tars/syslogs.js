@@ -50,7 +50,7 @@ const readWindow = (query) => ({
   end: toTarsDateTime(query?.end_date),
 });
 
-router.use(requireJwtAuth);
+router.use('/audit/operations', requireJwtAuth);
 
 /**
  * @route GET /api/tars/audit/operations/options

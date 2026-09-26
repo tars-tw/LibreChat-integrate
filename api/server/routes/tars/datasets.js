@@ -25,8 +25,12 @@ const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
 const router = express.Router();
 
-router.use(requireJwtAuth);
-router.use(requireTarsAdmin);
+/** Shares `/knowledge-bases` with the knowledge router, so the gate names only this router's sub-resources. */
+const KNOWLEDGE_BASE_SOURCES = ['databases', 'datasets', 'file-systems', 'websites'].map(
+  (source) => `/knowledge-bases/:id/${source}`,
+);
+
+router.use(KNOWLEDGE_BASE_SOURCES, requireJwtAuth, requireTarsAdmin);
 
 /**
  * Relays a pwc_tars 4xx message instead of flattening it to a 500, so the
