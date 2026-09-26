@@ -147,7 +147,7 @@ describe('buildSharedLinkStartupPayload', () => {
           }),
           {},
         ),
-      ).toEqual({ appTitle: 'LibreChat', interface: { codeHighlightThrottleMs } });
+      ).toEqual({ appTitle: 'TARS.ai', interface: { codeHighlightThrottleMs } });
     },
   );
 
@@ -218,7 +218,7 @@ describe('buildSharedLinkStartupPayload', () => {
       {},
     );
 
-    expect(payload).toEqual({ appTitle: 'LibreChat', interface: { theme } });
+    expect(payload).toEqual({ appTitle: 'TARS.ai', interface: { theme } });
   });
 
   it('omits a theme that does not match the deployment theme schema', () => {
@@ -227,7 +227,7 @@ describe('buildSharedLinkStartupPayload', () => {
       {},
     );
 
-    expect(payload).toEqual({ appTitle: 'LibreChat' });
+    expect(payload).toEqual({ appTitle: 'TARS.ai' });
   });
 
   it('serves the share tenant theme rather than the viewer tenant theme', async () => {
