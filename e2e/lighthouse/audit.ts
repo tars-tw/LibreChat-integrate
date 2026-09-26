@@ -18,8 +18,19 @@ const DEFAULT_RUNS = 3;
 /** Attempts per run before a crashed Lighthouse process fails the audit. */
 const RUN_ATTEMPTS = 2;
 
+const DEFAULT_LCP_BUDGET_MS = 4500;
+
+/**
+ * The same page measures ~1 s slower on this fork's CI runner than on upstream's, so the
+ * fork's workflow raises the LCP budget here instead of editing the upstream default.
+ */
+function lcpBudget(): number {
+  const override = Number(process.env.LIGHTHOUSE_LCP_BUDGET_MS);
+  return Number.isFinite(override) && override > 0 ? override : DEFAULT_LCP_BUDGET_MS;
+}
+
 const DEFAULT_BUDGETS: MedianBudgets = {
-  'largest-contentful-paint': 4500,
+  'largest-contentful-paint': lcpBudget(),
   'cumulative-layout-shift': 0.1,
   'total-blocking-time': 500,
 };
