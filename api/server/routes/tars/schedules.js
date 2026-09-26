@@ -15,8 +15,7 @@ const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
 const router = express.Router();
 
-router.use(requireJwtAuth);
-router.use(requireTarsAdmin);
+router.use('/schedules', requireJwtAuth, requireTarsAdmin);
 
 /**
  * Relays a pwc_tars 4xx message rather than flattening it to a 500.

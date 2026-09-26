@@ -23,7 +23,7 @@ const toIdList = (value) =>
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-router.use(requireJwtAuth);
+router.use('/audit/messages', requireJwtAuth);
 
 /**
  * @route GET /api/tars/audit/messages/options
