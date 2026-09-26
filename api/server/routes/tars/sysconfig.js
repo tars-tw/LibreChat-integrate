@@ -5,8 +5,7 @@ const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
 const router = express.Router();
 
-router.use(requireJwtAuth);
-router.use(requireTarsAdmin);
+router.use('/sys-configs', requireJwtAuth, requireTarsAdmin);
 
 /**
  * @route GET /api/tars/sys-configs

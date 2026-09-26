@@ -30,7 +30,7 @@ const upload = multer({
   limits: { fileSize: MAX_MEMORY_UPLOAD_MB * 1024 * 1024, files: MAX_MEMORY_UPLOAD_FILES },
 });
 
-router.use(requireJwtAuth);
+router.use('/memory', requireJwtAuth);
 
 /** Long-term memory only exists for accounts linked to pwc_tars. */
 const requireTarsLink = (req, res, next) => {

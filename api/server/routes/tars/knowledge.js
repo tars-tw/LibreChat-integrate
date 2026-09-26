@@ -46,8 +46,7 @@ const parseIdList = (value) => {
   }
 };
 
-router.use(requireJwtAuth);
-router.use(requireTarsAdmin);
+router.use(['/knowledge-bases', '/documents'], requireJwtAuth, requireTarsAdmin);
 
 /**
  * @route GET /api/tars/knowledge-bases
