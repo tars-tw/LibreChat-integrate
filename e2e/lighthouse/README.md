@@ -33,6 +33,8 @@ does not replace the measured server delays with simulated network timing.
 Median budgets are LCP **4,500 ms**, CLS **0.1**, and TBT **500 ms**, asserted against
 the median of the three runs. These are lab regression budgets, not field web-vitals
 percentiles; Lighthouse does not measure INP.
+`LIGHTHOUSE_LCP_BUDGET_MS` overrides the LCP budget; this fork's `lighthouse.yml` sets it
+to 5,000 ms because its CI runner measures the same page about a second slower.
 The test also requires the seeded transcript to be the LCP element, so a fast
 login page, spinner, or empty shell cannot pass.
 
