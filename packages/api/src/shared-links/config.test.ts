@@ -115,7 +115,7 @@ describe('buildSharedLinkStartupPayload', () => {
           }),
           {},
         ),
-      ).toEqual({ appTitle: 'LibreChat', interface: { codeHighlightThrottleMs } });
+      ).toEqual({ appTitle: 'TARS.ai', interface: { codeHighlightThrottleMs } });
     },
   );
 

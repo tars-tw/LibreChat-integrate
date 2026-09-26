@@ -59,6 +59,7 @@ jest.mock('~/server/routes/agents/v1', () => ({
   v1: require('express').Router(),
 }));
 jest.mock('~/server/routes/agents/openai', () => require('express').Router());
+jest.mock('~/server/routes/agents/passthrough', () => require('express').Router());
 jest.mock('~/server/routes/agents/responses', () => require('express').Router());
 jest.mock('~/server/routes/agents/skills', () => require('express').Router());
 jest.mock('~/server/routes/agents/management', () => {
