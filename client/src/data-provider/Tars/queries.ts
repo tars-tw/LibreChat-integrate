@@ -85,6 +85,7 @@ import type {
   TTarsReleaseNotesResponse,
 } from 'librechat-data-provider';
 import type { UseQueryOptions, QueryObserverResult } from '@tanstack/react-query';
+import { useGetStartupConfig } from '../Endpoints';
 
 /** pwc_tars document status: 0 uploaded, 1 processing, 2 completed, 4 failed. */
 const PROCESSING_STATUSES = new Set([0, 1]);
@@ -96,12 +97,19 @@ const adminQueryOptions = {
 } as const;
 
 /**
+ * Chat-shell queries mount on every page load, including deployments without pwc_tars,
+ * where each would be a wasted round trip on the path to the first paint.
+ */
+const useTarsEnabled = (): boolean => useGetStartupConfig().data?.tarsAuth === true;
+
+/**
  * Lists the pwc_tars specialized brains (專用腦) the authenticated user may
  * access. Returns [] for non-tars users or when the integration is unconfigured.
  */
 export const useTarsDomainsQuery = (
   config?: UseQueryOptions<TTarsDomainsResponse, unknown, TTarsDomain[]>,
 ): QueryObserverResult<TTarsDomain[]> => {
+  const tarsEnabled = useTarsEnabled();
   return useQuery<TTarsDomainsResponse, unknown, TTarsDomain[]>(
     [QueryKeys.tarsDomains],
     () => dataService.getTarsDomains(),
@@ -109,6 +117,7 @@ export const useTarsDomainsQuery = (
       select: (data) => data.domains ?? [],
       ...adminQueryOptions,
       ...config,
+      enabled: tarsEnabled && (config?.enabled ?? true),
     },
   );
 };
@@ -544,6 +553,7 @@ export const useTarsMcpDomainToolsQuery = (
 export const useTarsAllowedModelsQuery = (
   config?: UseQueryOptions<TTarsModelsResponse, unknown, string[] | null>,
 ): QueryObserverResult<string[] | null> => {
+  const tarsEnabled = useTarsEnabled();
   return useQuery<TTarsModelsResponse, unknown, string[] | null>(
     [QueryKeys.tarsModels],
     () => dataService.getTarsModels(),
@@ -553,6 +563,7 @@ export const useTarsAllowedModelsQuery = (
       retry: false,
       ...adminQueryOptions,
       ...config,
+      enabled: tarsEnabled && (config?.enabled ?? true),
     },
   );
 };

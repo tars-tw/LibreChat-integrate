@@ -22,13 +22,16 @@ const token = require('./token');
 const usage = require('./usage');
 const users = require('./users');
 
+/**
+ * Every sub-router is mounted at `/` and sees every request, so each one scopes its
+ * `requireJwtAuth` / `requireTarsAdmin` to its own path prefixes. A pathless gate runs
+ * for its siblings' requests too: an admin router 403'd `/domains`, `/memory` and
+ * `/models` for every non-admin, and each pathless auth re-read the user.
+ */
 const router = express.Router();
-/** First: the MCP gateway authenticates by gateway key, and the sibling routers'
- *  pathless `router.use(requireJwtAuth)` would otherwise intercept `/mcp`. */
+/** The MCP gateway authenticates by gateway key, not JWT. */
 router.use('/', mcp);
-/** Second: `/settings/logo` is public so the login page can render the branding
- *  before anyone signs in, and the sibling routers' pathless `requireJwtAuth`
- *  would otherwise intercept it. */
+/** `/settings/logo` is public so the login page can render the branding before anyone signs in. */
 router.use('/', settings);
 router.use('/', audit);
 router.use('/', about);

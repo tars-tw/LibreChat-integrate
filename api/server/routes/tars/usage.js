@@ -16,7 +16,7 @@ const relayTarsError = (res, error, fallback) => {
 const PROVIDERS = new Set(['openai', 'anthropic']);
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-router.use(requireJwtAuth);
+router.use('/usage', requireJwtAuth);
 
 /**
  * @route GET /api/tars/usage/:provider

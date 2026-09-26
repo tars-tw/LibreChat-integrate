@@ -100,7 +100,7 @@ router.post('/settings/license', upload.single('file'), async (req, res) => {
   }
 });
 
-router.use(requireJwtAuth);
+router.use('/settings', requireJwtAuth);
 
 /**
  * @route GET /api/tars/settings
