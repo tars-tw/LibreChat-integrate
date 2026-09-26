@@ -16,6 +16,7 @@ jest.mock('@librechat/api', () => ({
   preAuthTenantMiddleware: (req, res, next) => next(),
   createRequireApiKeyAuth: jest.fn(() => (req, res, next) => next()),
   createRemoteAgentAuth: jest.fn(() => mockRemoteAgentAuth),
+  createAgentManagementAuth: jest.fn(() => (req, res, next) => next()),
   createCheckRemoteAgentAccess: jest.fn(() => (req, res, next) => next()),
   createCheckAgentTriggerAccess: jest.fn(() => (req, res, next) => next()),
 }));
