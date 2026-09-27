@@ -10,6 +10,7 @@ import {
   isImageVisionTool,
   hasToolCallPreview,
   getToolCallPreviewRevision,
+  isTarsBuiltinToolName,
   isTarsCapabilityToolName,
 } from 'librechat-data-provider';
 import type {
@@ -53,6 +54,7 @@ import { ErrorMessage } from './MessageContent';
 import AskUserQuestion from './AskUserQuestion';
 import TarsCapabilityCall from './TarsTrace';
 import RetrievalCall from './RetrievalCall';
+import TarsToolCall from './TarsToolCall';
 import ToolApproval from './ToolApproval';
 import AgentHandoff from './AgentHandoff';
 import CodeAnalyze from './CodeAnalyze';
@@ -409,6 +411,28 @@ const renderDefaultTool: ToolRenderer = ({
   />
 );
 
+const renderTarsBuiltin: ToolRenderer = ({
+  toolCall,
+  toolCallId,
+  attachments,
+  isSubmitting,
+  onToolExpand,
+}) => (
+  <TarsToolCall
+    name={toolCall.name}
+    args={toolCall.args ?? ''}
+    toolCallId={toolCallId}
+    attachments={attachments}
+    initialProgress={toolCall.progress ?? 0.1}
+    isSubmitting={isSubmitting}
+    onExpand={onToolExpand}
+    runStepStatus={
+      toolCall.backgroundTask?.cancelled === true ? 'cancelled' : toolCall.runStepStatus
+    }
+    runStepDurationMs={toolCall.runStepDurationMs}
+  />
+);
+
 const renderTarsCapability: ToolRenderer = ({
   toolCall,
   toolCallId,
@@ -444,6 +468,9 @@ const matchTool = ({ name, args }: AgentToolCall): ToolRenderer | undefined => {
   }
   if (name?.startsWith(Constants.LC_TRANSFER_TO_)) {
     return renderHandoff;
+  }
+  if (isTarsBuiltinToolName(name)) {
+    return renderTarsBuiltin;
   }
   if (isTarsCapabilityToolName(name)) {
     return renderTarsCapability;

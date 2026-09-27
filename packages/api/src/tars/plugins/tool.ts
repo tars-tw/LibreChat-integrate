@@ -3,6 +3,7 @@ import { tool } from '@librechat/agents/langchain/tools';
 import { tarsPluginNameFromToolName } from 'librechat-data-provider';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
 import type { JsonSchemaType } from '@librechat/data-schemas';
+import type { TarsProgressReporter, TarsToolRunConfig } from '~/tars/tools/progress';
 import type { TarsPluginManifest, TarsPluginRunResult } from './client';
 import { getTarsPluginManifest, primeTarsPluginManifests, runTarsPluginTool } from './client';
 import { normalizeJsonSchema, resolveJsonSchemaRefs } from '~/mcp/zod';
@@ -50,6 +51,8 @@ export interface TarsPluginToolOptions {
   librechatUserId?: string;
   /** The user's current message, offered to the plugin as `ctx.question`. */
   question?: string;
+  /** Relays the progress the tool reports to its card while it runs (host-bound). */
+  reportProgress?: TarsProgressReporter;
 }
 
 const NOT_LINKED = 'This LibreChat account is not linked to pwc_tars, so plugin tools cannot run.';
@@ -125,7 +128,7 @@ export async function createTarsPluginTool(
   const { tarsUserId } = options;
 
   return tool(
-    async (input: Record<string, unknown>): Promise<string> => {
+    async (input: Record<string, unknown>, config?: TarsToolRunConfig): Promise<string> => {
       if (!tarsUserId) {
         return NOT_LINKED;
       }
@@ -137,6 +140,8 @@ export async function createTarsPluginTool(
           domainId: options.domainId,
           model: options.model,
           librechatUserId: options.librechatUserId,
+          onProgress: (message) => options.reportProgress?.(message, config),
+          signal: config?.signal,
         });
         return formatTarsPluginResult(result);
       } catch (error) {

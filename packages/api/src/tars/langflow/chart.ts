@@ -11,14 +11,13 @@ import {
   runLangflowCapability,
   resolveLangflowModelName,
   LANGFLOW_TOOL_RESPONSE_FORMAT,
+  TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
 } from './client';
 import { TarsRequestError } from '~/tars/client';
 
 export const TARS_CHART_TOOL_NAME: Tools = Tools.chart_agent;
 
 const CHART_PATH = '/api/langflow-service/chart';
-/** pwc_tars caps one synchronous capability turn at 300s; surface our own timeout first. */
-const DEFAULT_TIMEOUT_MS = 240_000;
 
 const TARS_CHART_DESCRIPTION: string =
   'Render a chart as a PNG image. Sends a plain-language chart request to the TARS chart agent, ' +
@@ -90,7 +89,10 @@ export function createTarsChartTool(options: TarsChartToolOptions): DynamicStruc
           CHART_PATH,
           { query: input.request, model_name: requestedModel },
           {
-            timeoutMs: langflowTimeoutMs('TARS_CHART_AGENT_TIMEOUT_MS', DEFAULT_TIMEOUT_MS),
+            timeoutMs: langflowTimeoutMs(
+              'TARS_CHART_AGENT_TIMEOUT_MS',
+              TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
+            ),
             librechatUserId: options.librechatUserId,
           },
         );

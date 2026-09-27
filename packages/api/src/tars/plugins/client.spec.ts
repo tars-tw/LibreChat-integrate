@@ -18,6 +18,8 @@ import {
   invalidateTarsPluginManifestsCache,
 } from './client';
 
+import { tarsToolStreamResponse } from '~/tars/tools/mocks';
+
 const BASE_URL = 'http://tars.test';
 
 const buildResponse = (status: number, body: unknown): Response =>
@@ -112,8 +114,8 @@ const mockBackend = () =>
     if (url.endsWith('/api/langflow-service/tools') && init?.method === 'GET') {
       return buildResponse(200, serviceTools);
     }
-    if (url.endsWith('/api/langflow-service/tools/text_stats')) {
-      return buildResponse(200, runBody);
+    if (url.endsWith('/api/langflow-service/tools/text_stats/stream')) {
+      return tarsToolStreamResponse(200, runBody);
     }
     throw new Error(`Unexpected fetch: ${url}`);
   });
