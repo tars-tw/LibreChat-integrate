@@ -10,18 +10,13 @@ import {
   toTarsTraceArtifact,
   runLangflowCapability,
   resolveLangflowModelName,
+  TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
+  TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS,
 } from '~/tars/langflow/client';
 import { listTarsRagKnowledgeBases, resolveTarsKnowledgeBaseIds } from '~/tars/rag/client';
 import { listTarsSqlDatabases } from '~/tars/sql/client';
 
 const AGENT_PATH = '/api/langflow-service/agent';
-/**
- * pwc_tars caps one synchronous turn at 300s, so LibreChat waits a little less
- * and surfaces its own timeout first. Override with `TARS_AGENT_TIMEOUT_MS`.
- */
-const DEFAULT_TIMEOUT_MS = 240_000;
-/** A table task (one job per spreadsheet row) gets pwc_tars's 1800s budget instead. */
-const TABLE_TASK_TIMEOUT_MS = 1_740_000;
 
 /** What one combined turn may reach, after the bindings and the brain have had their say. */
 export interface TarsAgentScope {
@@ -84,7 +79,7 @@ export async function listTarsAgentScope(
  * brain has several and the model did not choose — pwc_tars's own chat runs
  * without SQL in that case too, rather than guessing a database.
  */
-function resolveDatabase(
+export function resolveTarsDatabaseId(
   databases: TarsSqlDatabase[],
   requested: string | undefined,
 ): string | undefined {
@@ -146,7 +141,10 @@ export async function runTarsAgent(
   if (input.databaseKnowledgeBaseId && !scope.databases.length) {
     throw new Error('No database is bound for this turn, so none can be queried.');
   }
-  const databaseKnowledgeBaseId = resolveDatabase(scope.databases, input.databaseKnowledgeBaseId);
+  const databaseKnowledgeBaseId = resolveTarsDatabaseId(
+    scope.databases,
+    input.databaseKnowledgeBaseId,
+  );
   const documentIds = resolveDocumentIds(scope.documents, input.documentIds);
 
   const requestedModel = await resolveLangflowModelName(input.model, 'tars-agent');
@@ -162,8 +160,8 @@ export async function runTarsAgent(
     },
     {
       timeoutMs: tableTaskPossible
-        ? langflowTimeoutMs('TARS_TABLE_TASK_TIMEOUT_MS', TABLE_TASK_TIMEOUT_MS)
-        : langflowTimeoutMs('TARS_AGENT_TIMEOUT_MS', DEFAULT_TIMEOUT_MS),
+        ? langflowTimeoutMs('TARS_TABLE_TASK_TIMEOUT_MS', TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS)
+        : langflowTimeoutMs('TARS_AGENT_TIMEOUT_MS', TARS_CAPABILITY_DEFAULT_TIMEOUT_MS),
       librechatUserId: input.librechatUserId,
     },
   );

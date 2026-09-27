@@ -4,16 +4,17 @@ import {
   langflowTimeoutMs,
   langflowServiceFetch,
   resolveLangflowModelName,
+  TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
 } from '~/tars/langflow/client';
+import { runTarsServiceTool } from '~/tars/tools/client';
 import { tarsFetch } from '~/tars/client';
 
 const PLUGIN_TOOLS_PATH = '/api/domain_settings/plugin_tools';
 const PLUGIN_TOOLS_RELOAD_PATH = '/api/domain_settings/plugin_tools/reload';
 const SERVICE_TOOLS_PATH = '/api/langflow-service/tools';
 const PLUGIN_KIND = 'plugin';
+const BUILTIN_KIND = 'builtin';
 
-/** pwc_tars caps one synchronous tool call at 300s; surface our own timeout first. */
-const DEFAULT_RUN_TIMEOUT_MS = 240_000;
 const LISTING_TIMEOUT_MS = 15_000;
 /**
  * The manifest listing also health-checks pwc_tars' model profiles, so it is
@@ -97,7 +98,25 @@ export interface TarsPluginManifest {
   ends_turn: boolean;
 }
 
-interface ServiceToolEntry extends Partial<TarsPluginManifest> {
+/** One `context_fields` entry: what a built-in tool needs bound before it can run. */
+export interface TarsToolContextField {
+  name: string;
+  required?: boolean;
+}
+
+/** A pwc_tars built-in agent tool as `GET /api/langflow-service/tools` lists it. */
+export interface TarsBuiltinManifest extends TarsPluginManifest {
+  context_fields: TarsToolContextField[];
+  long_running: boolean;
+  /**
+   * When-and-how guidance for the calling model — the body of pwc_tars's own
+   * chat tool guide. Tools sharing one guide carry the same text; empty when
+   * the description suffices (or on a pwc_tars that predates the field).
+   */
+  guide: string;
+}
+
+interface ServiceToolEntry extends Partial<TarsBuiltinManifest> {
   name?: string;
   kind?: string;
 }
@@ -125,38 +144,80 @@ const toManifest = (entry: ServiceToolEntry): TarsPluginManifest | undefined => 
   };
 };
 
-interface ManifestsCache {
-  byName: Map<string, TarsPluginManifest>;
+const toBuiltinManifest = (entry: ServiceToolEntry): TarsBuiltinManifest | undefined => {
+  const manifest = toManifest(entry);
+  if (!manifest) {
+    return undefined;
+  }
+  return {
+    ...manifest,
+    context_fields: entry.context_fields ?? [],
+    long_running: entry.long_running === true,
+    guide: typeof entry.guide === 'string' ? entry.guide.trim() : '',
+  };
+};
+
+/** Both kinds of directly callable tool, from the one listing that reports them. */
+interface ServiceManifests {
+  plugins: Map<string, TarsPluginManifest>;
+  builtins: Map<string, TarsBuiltinManifest>;
+}
+
+interface ManifestsCache extends ServiceManifests {
   cachedAt: number;
 }
 
 let manifestsCache: ManifestsCache | null = null;
-let manifestsInflight: Promise<Map<string, TarsPluginManifest>> | null = null;
+let manifestsInflight: Promise<ServiceManifests> | null = null;
 
 export function invalidateTarsPluginManifestsCache(): void {
   manifestsCache = null;
   manifestsInflight = null;
 }
 
-async function fetchTarsPluginManifests(): Promise<Map<string, TarsPluginManifest>> {
+async function fetchTarsServiceManifests(): Promise<ServiceManifests> {
   const payload = await langflowServiceFetch<ServiceToolsPayload>(SERVICE_TOOLS_PATH, {
     method: 'GET',
     timeoutMs: LISTING_TIMEOUT_MS,
   });
-  const byName = new Map<string, TarsPluginManifest>();
+  const plugins = new Map<string, TarsPluginManifest>();
+  const builtins = new Map<string, TarsBuiltinManifest>();
   for (const entry of payload?.tools ?? []) {
-    if (entry.kind !== PLUGIN_KIND) {
-      continue;
-    }
-    const manifest = toManifest(entry);
-    if (manifest) {
-      byName.set(manifest.name, manifest);
+    if (entry.kind === PLUGIN_KIND) {
+      const manifest = toManifest(entry);
+      if (manifest) {
+        plugins.set(manifest.name, manifest);
+      }
+    } else if (entry.kind === BUILTIN_KIND) {
+      const manifest = toBuiltinManifest(entry);
+      if (manifest) {
+        builtins.set(manifest.name, manifest);
+      }
     }
   }
   for (const problem of payload?.plugin_errors ?? []) {
     logger.warn(`[tars-plugins] pwc_tars rejected a plugin: ${problem}`);
   }
-  return byName;
+  return { plugins, builtins };
+}
+
+async function primeTarsServiceManifests(): Promise<ServiceManifests> {
+  const now = Date.now();
+  if (manifestsCache && now - manifestsCache.cachedAt < MANIFESTS_TTL_MS) {
+    return manifestsCache;
+  }
+  if (manifestsInflight) {
+    return manifestsInflight;
+  }
+  manifestsInflight = fetchTarsServiceManifests()
+    .then((manifests) => {
+      manifestsCache = { ...manifests, cachedAt: Date.now() };
+      return manifests;
+    })
+    .finally(() => {
+      manifestsInflight = null;
+    });
+  return manifestsInflight;
 }
 
 /**
@@ -165,27 +226,25 @@ async function fetchTarsPluginManifests(): Promise<Map<string, TarsPluginManifes
  * definition registry can consult it without becoming async.
  */
 export async function primeTarsPluginManifests(): Promise<Map<string, TarsPluginManifest>> {
-  const now = Date.now();
-  if (manifestsCache && now - manifestsCache.cachedAt < MANIFESTS_TTL_MS) {
-    return manifestsCache.byName;
-  }
-  if (manifestsInflight) {
-    return manifestsInflight;
-  }
-  manifestsInflight = fetchTarsPluginManifests()
-    .then((byName) => {
-      manifestsCache = { byName, cachedAt: Date.now() };
-      return byName;
-    })
-    .finally(() => {
-      manifestsInflight = null;
-    });
-  return manifestsInflight;
+  return (await primeTarsServiceManifests()).plugins;
 }
 
 /** A primed manifest by plugin name; undefined when unknown or not yet primed. */
 export function getTarsPluginManifest(pluginName: string): TarsPluginManifest | undefined {
-  return manifestsCache?.byName.get(pluginName);
+  return manifestsCache?.plugins.get(pluginName);
+}
+
+/**
+ * pwc_tars's built-in tool manifests, from the same cached listing as the
+ * plugins. Call before {@link getTarsBuiltinManifest} for the same reason.
+ */
+export async function primeTarsBuiltinManifests(): Promise<Map<string, TarsBuiltinManifest>> {
+  return (await primeTarsServiceManifests()).builtins;
+}
+
+/** A primed built-in manifest by pwc_tars tool name; undefined when unknown or not yet primed. */
+export function getTarsBuiltinManifest(toolName: string): TarsBuiltinManifest | undefined {
+  return manifestsCache?.builtins.get(toolName);
 }
 
 export interface TarsPluginRunInput {
@@ -200,6 +259,10 @@ export interface TarsPluginRunInput {
   model?: string;
   /** The account the LLM gateway resolves models and quota for. */
   librechatUserId?: string;
+  /** Receives each progress line the plugin reports (`ctx.progress`) while it runs. */
+  onProgress?: (message: string) => void;
+  /** Stops the plugin, e.g. when the chat run that called it is stopped. */
+  signal?: AbortSignal;
 }
 
 /** `ToolOutput.to_dict()` plus the run metadata `run_standard_tool` adds. */
@@ -249,16 +312,21 @@ export async function runTarsPluginTool(
     settings.domain_id = domainId;
   }
 
-  const data = await langflowServiceFetch<TarsPluginRunResult>(
-    `${SERVICE_TOOLS_PATH}/${encodeURIComponent(pluginName)}`,
+  const data = await runTarsServiceTool<TarsPluginRunResult>(
+    pluginName,
     {
-      body: {
-        inputs: input.inputs,
-        context: requestedModel ? { model_name: requestedModel } : {},
-        settings,
-      },
-      timeoutMs: langflowTimeoutMs('TARS_PLUGIN_TOOL_TIMEOUT_MS', DEFAULT_RUN_TIMEOUT_MS),
+      inputs: input.inputs,
+      context: requestedModel ? { model_name: requestedModel } : {},
+      settings,
+    },
+    {
+      timeoutMs: langflowTimeoutMs(
+        'TARS_PLUGIN_TOOL_TIMEOUT_MS',
+        TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
+      ),
       librechatUserId: input.librechatUserId,
+      onProgress: input.onProgress,
+      signal: input.signal,
     },
   );
   const result: TarsPluginRunResult = {

@@ -86,6 +86,39 @@ export const isTarsCapabilityToolName = (toolName: string | undefined | null): b
   typeof toolName === 'string' && TARS_CAPABILITY_TOOLS.has(toolName);
 
 /**
+ * pwc_tars's built-in agent tools, called one at a time
+ * (`POST /api/langflow-service/tools/<name>`) so the chat model here runs the
+ * loop pwc_tars's own chat would, instead of handing the question to a nested
+ * pwc_tars loop. LibreChat tool name → pwc_tars tool name.
+ */
+export const TARS_BUILTIN_TOOLS = {
+  tars_knowledge_search: 'knowledge_search',
+  tars_sql_schema: 'sql_schema',
+  tars_sql_query: 'sql_query',
+  tars_data_schema: 'data_schema',
+  tars_data_query: 'data_query',
+  tars_create_chart: 'create_chart',
+  tars_generate_file: 'generate_file',
+  tars_table_task: 'run_table_task',
+} as const;
+
+export type TTarsBuiltinToolName = keyof typeof TARS_BUILTIN_TOOLS;
+
+export type TTarsBuiltinTool = (typeof TARS_BUILTIN_TOOLS)[TTarsBuiltinToolName];
+
+export const isTarsBuiltinToolName = (
+  toolName: string | undefined | null,
+): toolName is TTarsBuiltinToolName =>
+  typeof toolName === 'string' &&
+  Object.prototype.hasOwnProperty.call(TARS_BUILTIN_TOOLS, toolName);
+
+/** The pwc_tars tool behind a LibreChat tool name; undefined for other tools. */
+export const tarsBuiltinToolOf = (
+  toolName: string | undefined | null,
+): TTarsBuiltinTool | undefined =>
+  isTarsBuiltinToolName(toolName) ? TARS_BUILTIN_TOOLS[toolName] : undefined;
+
+/**
  * pwc_tars plugin tools (`tars_tool_sdk`). An admin switches each plugin on per
  * brain inside `sys_domain.domain_functions` under `plugin:<name>`, next to the
  * built-in features; the chat only offers what that block enables. The helpers

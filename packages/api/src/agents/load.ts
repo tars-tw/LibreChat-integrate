@@ -28,6 +28,7 @@ import { ASK_USER_QUESTION_TOOL_NAME } from '~/agents/hitl/askUserQuestionTool';
 import { synthesizeBackgroundToolOptions } from '~/agents/background';
 import { mergeSynthesizedToolOptions } from '~/agents/selection';
 import { synthesizeIntentToolOptions } from '~/agents/intent';
+import { tarsToolsForToggles } from '~/tars/tools/names';
 import { getCustomEndpointConfig } from '~/app/config';
 
 const { mcp_all, mcp_delimiter } = Constants;
@@ -114,17 +115,10 @@ export async function loadEphemeralAgent(
   if (ephemeralAgent?.web_search === true || modelSpec?.webSearch === true) {
     tools.push(Tools.web_search);
   }
-  /** Every loop-backed pwc_tars capability the chat switches on rides in one
-   *  `tars_agent` — pwc_tars's own combined loop — so a question costs one
-   *  nested run however many switches are on. Which of them are bound is
-   *  resolved where the tool is built (`resolveTarsAgentBindings`). */
-  if (
-    ephemeralAgent?.sql_agent === true ||
-    ephemeralAgent?.rag_agent === true ||
-    ephemeralAgent?.chart_agent === true
-  ) {
-    tools.push(Tools.tars_agent);
-  }
+  /** The pwc_tars switches mount pwc_tars's built-in tools one by one, so the
+   *  model here drives the loop and each step streams as its own tool call;
+   *  the capability filter applies the librechat.yaml gate per tool. */
+  tools.push(...tarsToolsForToggles(ephemeralAgent));
   /** pwc_tars plugin tools the user switched on; the brain's allowlist is
    *  enforced downstream in the capability filter (`resolveTarsPluginToolNames`). */
   for (const pluginName of tarsPluginNamesOf(ephemeralAgent?.tars_plugins)) {
