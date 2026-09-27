@@ -4,7 +4,7 @@ import type { TTarsTraceArtifact, TTarsTraceEntry } from 'librechat-data-provide
 import { getTarsModelProfileNames } from '~/tars/models';
 import { getTarsSysConfigValue } from '~/tars/sysconfig';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
-import { tarsFetch } from '~/tars/client';
+import { tarsFetch, tarsStream } from '~/tars/client';
 
 /** pwc_tars sys_config key holding the shared secret for `/api/langflow-service/*`. */
 const SERVICE_KEY_CONFIG = 'KEY_LANGFLOW_API_KEY';
@@ -145,6 +145,23 @@ export interface LangflowServiceFetchOptions extends LangflowRequestOptions {
   body?: Record<string, unknown>;
 }
 
+async function langflowServiceHeaders(librechatUserId?: string): Promise<Record<string, string>> {
+  const key = await resolveLangflowServiceKey();
+  if (!key) {
+    throw new Error(
+      `The pwc_tars service key is not configured (sys_config ${SERVICE_KEY_CONFIG}).`,
+    );
+  }
+  const headers: Record<string, string> = {
+    [SERVICE_KEY_HEADER]: key,
+    [GATEWAY_HEADER]: 'true',
+  };
+  if (librechatUserId) {
+    headers[GATEWAY_USER_HEADER] = librechatUserId;
+  }
+  return headers;
+}
+
 /**
  * One authenticated `/api/langflow-service/*` request, unwrapped from its
  * `{success, status, data}` envelope. The gateway headers always ride along:
@@ -156,28 +173,37 @@ export async function langflowServiceFetch<T>(
   path: string,
   options: LangflowServiceFetchOptions,
 ): Promise<T | undefined> {
-  const key = await resolveLangflowServiceKey();
-  if (!key) {
-    throw new Error(
-      `The pwc_tars service key is not configured (sys_config ${SERVICE_KEY_CONFIG}).`,
-    );
-  }
-
-  const headers: Record<string, string> = {
-    [SERVICE_KEY_HEADER]: key,
-    [GATEWAY_HEADER]: 'true',
-  };
-  if (options.librechatUserId) {
-    headers[GATEWAY_USER_HEADER] = options.librechatUserId;
-  }
-
   const envelope = await tarsFetch<LangflowServiceEnvelope<T>>(path, {
     method: options.method ?? 'POST',
     timeoutMs: options.timeoutMs,
-    headers,
+    headers: await langflowServiceHeaders(options.librechatUserId),
     body: options.body,
   });
   return envelope?.data;
+}
+
+export interface LangflowServiceStreamOptions extends LangflowRequestOptions {
+  body?: Record<string, unknown>;
+  /** Stops the call, e.g. when the chat run that made it is stopped. */
+  signal?: AbortSignal;
+}
+
+/**
+ * {@link langflowServiceFetch} for the `/api/langflow-service` routes that
+ * answer with server-sent events: the same authentication and gateway headers,
+ * each `data:` frame handed to `onEvent` as it arrives.
+ */
+export async function langflowServiceStream<T>(
+  path: string,
+  onEvent: (event: T) => void,
+  options: LangflowServiceStreamOptions,
+): Promise<void> {
+  await tarsStream<T>(path, onEvent, {
+    timeoutMs: options.timeoutMs,
+    headers: await langflowServiceHeaders(options.librechatUserId),
+    body: options.body,
+    signal: options.signal,
+  });
 }
 
 /**
@@ -201,6 +227,15 @@ export async function runLangflowCapability(
     file_url: data.file_url && rewriteTarsAssetLinks(data.file_url),
   };
 }
+
+/**
+ * Default wait for one synchronous `/api/langflow-service/*` call. pwc_tars caps
+ * a turn at 300s, so LibreChat gives up a little earlier and reports its own
+ * timeout. Each capability can override it with its own env variable.
+ */
+export const TARS_CAPABILITY_DEFAULT_TIMEOUT_MS = 240_000;
+/** Default wait for a table task (one job per spreadsheet row); pwc_tars caps it at 1800s. */
+export const TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS = 1_740_000;
 
 /** Positive-number env parse with a fallback, for per-capability timeouts. */
 export function langflowTimeoutMs(env: string, fallback: number): number {

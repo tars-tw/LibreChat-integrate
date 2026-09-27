@@ -13,6 +13,8 @@ import { invalidateTarsPluginManifestsCache, primeTarsPluginManifests } from './
 import { createTarsPluginTool, formatTarsPluginResult, getTarsPluginDefinition } from './tool';
 import type { TarsPluginRunResult } from './client';
 
+import { tarsToolStreamResponse } from '~/tars/tools/mocks';
+
 const BASE_URL = 'http://tars.test';
 
 const buildResponse = (status: number, body: unknown): Response =>
@@ -68,8 +70,8 @@ const mockBackend = (run: { status: number; body: unknown }) =>
         },
       });
     }
-    if (url.endsWith('/api/langflow-service/tools/summarize_text')) {
-      return buildResponse(run.status, run.body);
+    if (url.endsWith('/api/langflow-service/tools/summarize_text/stream')) {
+      return tarsToolStreamResponse(run.status, run.body);
     }
     throw new Error(`Unexpected fetch: ${url}`);
   });
@@ -175,7 +177,9 @@ describe('createTarsPluginTool', () => {
 
     await expect(tool?.invoke({ sentences: 2 })).resolves.toBe('A short summary.');
 
-    const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/summarize_text'));
+    const call = fetchMock.mock.calls.find(([url]) =>
+      String(url).endsWith('/summarize_text/stream'),
+    );
     const body = JSON.parse(String((call?.[1] as RequestInit).body));
     expect(body.inputs).toEqual({ sentences: 2 });
     expect(body.context).toEqual({ model_name: 'gpt-5.4-mini' });
@@ -191,9 +195,9 @@ describe('createTarsPluginTool', () => {
     const fetchMock = mockBackend({ status: 200, body: {} });
     const tool = await createTarsPluginTool({ toolName: 'tars_plugin_summarize_text' });
     await expect(tool?.invoke({})).resolves.toMatch(/not linked to pwc_tars/);
-    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/summarize_text'))).toBe(
-      false,
-    );
+    expect(
+      fetchMock.mock.calls.some(([url]) => String(url).endsWith('/summarize_text/stream')),
+    ).toBe(false);
   });
 
   it('surfaces the pwc_tars failure reason instead of throwing', async () => {
