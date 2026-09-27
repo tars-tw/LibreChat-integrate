@@ -14,6 +14,7 @@ import { ASK_USER_QUESTION, getSubmittedAskAnswer } from '~/utils/approval';
 import { getToolDisplayLabel, parseToolName } from '~/utils/toolLabels';
 import { getToolIconName, getToolMeta, summarizeSpan } from './outcome';
 import { boundIntentLabel, getToolCallIntent } from './Parts/intent';
+import { getTarsToolLine, getTarsToolProgress } from './tars';
 import { isError } from './ToolOutput';
 
 /** How often a live fold's header may repaint. A streamed intent moves the
@@ -105,6 +106,7 @@ function toolCallLine(
   localize: Localize,
   serverNames: readonly string[],
   span: SpanSummary,
+  attachments?: TAttachment[],
 ): ToolLine {
   const intent = getToolCallIntent(toolCall.args);
   const label = getToolDisplayLabel(toolCall.name ?? '', localize, serverNames);
@@ -135,6 +137,21 @@ function toolCallLine(
   }
   if (intent != null) {
     return { text: intent, generic: false };
+  }
+  /** pwc_tars tools name their subject (the query, the SQL's purpose) in their
+   *  own args and report progress while they run, so the fold reads the
+   *  sentence their hidden card shows. */
+  const done = meta?.hasOutput === true;
+  const progress = done ? undefined : getTarsToolProgress(attachments, toolCall.id);
+  const tarsLine = getTarsToolLine(toolCall.name, toolCall.args, done, localize, progress);
+  if (tarsLine != null) {
+    return { text: tarsLine, generic: false };
+  }
+  if (progress != null && label) {
+    return {
+      text: `${localize('com_assistants_running_var', { 0: label })} · ${progress}`,
+      generic: false,
+    };
   }
   if (toolCall.name === Constants.CHECK_BACKGROUND_TASK) {
     return {
@@ -283,6 +300,7 @@ function newestLine(
   serverNames: readonly string[],
   span: SpanSummary,
   preferLabels: boolean,
+  attachmentsById?: Record<string, TAttachment[] | undefined>,
 ): Pick<
   LiveActivity,
   'text' | 'source' | 'pendingToolCallId' | 'comboCount' | 'isBackgroundTaskCheck'
@@ -345,7 +363,14 @@ function newestLine(
       continue;
     }
     if (toolCall != null) {
-      const line = toolCallLine(part, toolCall, localize, serverNames, span);
+      const line = toolCallLine(
+        part,
+        toolCall,
+        localize,
+        serverNames,
+        span,
+        toolCall.id != null ? attachmentsById?.[toolCall.id] : undefined,
+      );
       return {
         text: line.text,
         /** Provider ids repeat across batches, so the position is part of the
@@ -393,7 +418,7 @@ export function getLiveActivity(
 ): LiveActivity {
   const span = summarizeSpan(parts, attachmentsById);
   return {
-    ...newestLine(parts, localize, serverNames, span, preferLabels),
+    ...newestLine(parts, localize, serverNames, span, preferLabels, attachmentsById),
     outcome: { failed: span.failed, cancelled: span.cancelled },
     total: span.total,
     iconNames: getSpanIconNames(parts),

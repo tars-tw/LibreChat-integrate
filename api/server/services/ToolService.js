@@ -21,6 +21,9 @@ const {
   buildTarsAgentContext,
   getTarsMemorySnapshot,
   resolveTarsAgentBindings,
+  buildTarsToolsContext,
+  resolveTarsBuiltinTools,
+  createTarsProgressReporter,
   isTarsConfigured,
   resolveTarsPluginToolNames,
   buildImageToolContext,
@@ -95,6 +98,7 @@ const {
   AgentCapabilities,
   isEphemeralAgentId,
   isTarsPluginToolName,
+  isTarsBuiltinToolName,
   validateActionDomain,
   actionDomainSeparator,
   defaultAgentCapabilities,
@@ -788,7 +792,8 @@ const isBuiltInTool = (toolName) =>
     manifestToolMap[toolName] ||
       toolkits.some((t) => t.pluginKey === toolName) ||
       nativeTools.has(toolName) ||
-      isTarsPluginToolName(toolName),
+      isTarsPluginToolName(toolName) ||
+      isTarsBuiltinToolName(toolName),
   );
 
 /**
@@ -902,7 +907,10 @@ async function loadToolDefinitionsWrapper({
   const hasMCPTools = agent.tools?.some((tool) => tool?.includes(Constants.mcp_delimiter));
   const mcpPermissionContext = createMCPPermissionContext(req);
   const canUseMCP = hasMCPTools ? await mcpPermissionContext.canUseServers(req.user) : true;
-  const allowedTarsPluginTools = await resolveAllowedTarsPluginTools(req, agent.tools);
+  const [allowedTarsPluginTools, allowedTarsBuiltinTools] = await Promise.all([
+    resolveAllowedTarsPluginTools(req, agent.tools),
+    resolveTarsBuiltinTools(agent.tools, checkCapability),
+  ]);
 
   const filteredTools = agent.tools?.filter((tool) => {
     if (tool === Tools.file_search) {
@@ -931,6 +939,10 @@ async function loadToolDefinitionsWrapper({
     if (isTarsPluginToolName(tool)) {
       /** Switched on per brain by a pwc_tars admin; the brain is the gate. */
       return allowedTarsPluginTools.has(tool);
+    }
+    if (isTarsBuiltinToolName(tool)) {
+      /** pwc_tars must list it, and its chat switch's capability must be on. */
+      return allowedTarsBuiltinTools.has(tool);
     }
     if (tool === Tools.data_query || tool === Tools.table_task) {
       /** Auto-equipped by the memory prime, never user-selected; the only gate is TARS itself. */
@@ -1567,6 +1579,20 @@ async function loadToolDefinitionsWrapper({
       logger.warn('[loadToolDefinitionsWrapper] Failed to build TARS agent context', error);
     }
   }
+  /** pwc_tars's usage guide for the mounted built-ins plus what the active
+   *  專用腦 lets them reach. Non-fatal: the tools still validate every id. */
+  try {
+    const tarsToolsContext = await buildTarsToolsContext({
+      tarsUserId: req.user?.tarsId,
+      domainId: req.body?.domain_id,
+      tools: filteredTools,
+    });
+    if (tarsToolsContext) {
+      toolContextMap.tars_tools = tarsToolsContext;
+    }
+  } catch (error) {
+    logger.warn('[loadToolDefinitionsWrapper] Failed to build TARS tools context', error);
+  }
 
   /**
    * `files` carry the upload session_ids; we surface them so client.js can
@@ -1780,7 +1806,10 @@ async function loadAgentTools({
   const mcpPermissionContext = createMCPPermissionContext(req);
   const canUseMCP = hasMCPTools ? await mcpPermissionContext.canUseServers(req.user) : true;
   const canUseTool = await resolveAgentToolPermissions(req, agent.tools, enabledCapabilities);
-  const allowedTarsPluginTools = await resolveAllowedTarsPluginTools(req, agent.tools);
+  const [allowedTarsPluginTools, allowedTarsBuiltinTools] = await Promise.all([
+    resolveAllowedTarsPluginTools(req, agent.tools),
+    resolveTarsBuiltinTools(agent.tools, checkCapability),
+  ]);
 
   let includesWebSearch = false;
   const _agentTools = agent.tools?.filter((tool) => {
@@ -1802,6 +1831,8 @@ async function loadAgentTools({
     } else if (isTarsPluginToolName(tool)) {
       /** Switched on per brain by a pwc_tars admin; the brain is the gate. */
       return allowedTarsPluginTools.has(tool);
+    } else if (isTarsBuiltinToolName(tool)) {
+      return allowedTarsBuiltinTools.has(tool);
     } else if (tool === Tools.data_query || tool === Tools.table_task) {
       /** Auto-equipped by the memory prime, never user-selected; the only gate is TARS itself. */
       return isTarsConfigured();
@@ -2196,6 +2227,7 @@ async function loadAgentTools({
  * @param {string} [params.conversationId] - Resolved conversation identity for this request
  * @param {boolean} [params.actionsEnabled] - Whether the actions capability is enabled
  * @param {readonly string[]} [params.accessibleMcpServerNames] - COMPLETE accessible-server audit resolved at initialization
+ * @param {(attachment: Object) => void} [params.emitAttachment] - Live attachment writer; pwc_tars tools report progress through it
  * @returns {Promise<{ loadedTools: Array, configurable: Object }>}
  */
 async function loadToolsForExecution({
@@ -2222,6 +2254,7 @@ async function loadToolsForExecution({
   actionsEnabled,
   accessibleMcpServerNames,
   runFileCodeExecutionContext,
+  emitAttachment,
 }) {
   const appConfig = req.config;
   const allLoadedTools = [];
@@ -2535,6 +2568,7 @@ async function loadToolsForExecution({
         upstreamTokenProvider,
         upstreamTokenProviderResolver,
         [Tools.web_search]: webSearchCallbacks,
+        tarsProgress: createTarsProgressReporter(emitAttachment),
       },
       webSearch: appConfig?.webSearch,
       fileStrategy: appConfig?.fileStrategy,

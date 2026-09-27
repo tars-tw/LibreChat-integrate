@@ -12,6 +12,7 @@ import {
   runLangflowCapability,
   resolveLangflowModelName,
   LANGFLOW_TOOL_RESPONSE_FORMAT,
+  TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS,
 } from './client';
 import { fetchTarsDomainKnowledgeBases } from '~/tars/prompts';
 import { TarsRequestError } from '~/tars/client';
@@ -19,8 +20,6 @@ import { TarsRequestError } from '~/tars/client';
 export const TARS_TABLE_TOOL_NAME: Tools = Tools.table_task;
 
 const TABLE_TASK_PATH = '/api/langflow-service/table-task';
-/** pwc_tars caps a table-task run at 1800s; wait a little less to surface our timeout first. */
-const DEFAULT_TIMEOUT_MS = 1_740_000;
 
 const TARS_TABLE_DESCRIPTION: string =
   'Apply one instruction to EVERY row of an attached spreadsheet, enriching each row from the ' +
@@ -157,7 +156,10 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
             model_name: requestedModel,
           },
           {
-            timeoutMs: langflowTimeoutMs('TARS_TABLE_TASK_TIMEOUT_MS', DEFAULT_TIMEOUT_MS),
+            timeoutMs: langflowTimeoutMs(
+              'TARS_TABLE_TASK_TIMEOUT_MS',
+              TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS,
+            ),
             librechatUserId: options.librechatUserId,
           },
         );

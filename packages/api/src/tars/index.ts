@@ -27,6 +27,7 @@ export * from './sso';
 export * from './sysconfig';
 export * from './syslogs';
 export * from './tickets';
+export * from './tools';
 export * from './token';
 export * from './usage';
 export * from './websites';

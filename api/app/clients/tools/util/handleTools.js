@@ -28,6 +28,7 @@ const {
   createTarsChartTool,
   resolveTarsAgentBindings,
   createTarsPluginTool,
+  createTarsBuiltinTool,
   createTarsDataTool,
   createTarsTableTaskTool,
   getTarsMemorySnapshot,
@@ -47,6 +48,7 @@ const {
   PermissionTypes,
   AgentCapabilities,
   isTarsPluginToolName,
+  isTarsBuiltinToolName,
 } = require('librechat-data-provider');
 const {
   availableTools,
@@ -537,11 +539,29 @@ const loadTools = async ({
         model: agent?.model,
         librechatUserId: user,
         question: options.req?.body?.text,
+        reportProgress: options.tarsProgress,
       });
       if (!pluginTool) {
         continue;
       }
       requestedTools[tool] = async () => pluginTool;
+      continue;
+    } else if (isTarsBuiltinToolName(tool)) {
+      const builtinTool = await createTarsBuiltinTool({
+        toolName: tool,
+        tarsUserId: options.req?.user?.tarsId,
+        domainId: options.req?.body?.domain_id,
+        agentTools: agent?.tools,
+        documents: getTarsMemorySnapshot(options.req)?.structuredDocuments,
+        model: agent?.model,
+        librechatUserId: user,
+        question: options.req?.body?.text,
+        reportProgress: options.tarsProgress,
+      });
+      if (!builtinTool) {
+        continue;
+      }
+      requestedTools[tool] = async () => builtinTool;
       continue;
     } else if (tool === Tools.data_query) {
       requestedTools[tool] = async () =>

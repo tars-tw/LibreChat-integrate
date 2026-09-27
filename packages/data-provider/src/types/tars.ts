@@ -1828,4 +1828,38 @@ export type TTarsTraceArtifact = {
   tokens?: { total?: number; prompt?: number; completion?: number };
   /** The final statement a SQL run executed, when pwc_tars reported one. */
   sql?: string;
+  /** Set instead of `trace` by a directly called built-in tool (`tars_*`). */
+  step?: TTarsToolStep;
+  /**
+   * The newest progress line of a call still running (e.g. which rows a table
+   * task is on). Live-only: sent while the call works, never persisted.
+   */
+  progress?: string;
+};
+
+/** One knowledge-base document a search drew from, for the card's source list. */
+export type TTarsToolSource = {
+  filename: string;
+  /** How many retrieved chunks came from this file. */
+  chunks: number;
+  /** The start of the first chunk, so the user can see what was read. */
+  excerpt?: string;
+};
+
+/**
+ * What one directly called pwc_tars built-in tool reports for its card:
+ * pwc_tars's own one-line summary plus what the user may want to open.
+ */
+export type TTarsToolStep = {
+  /** pwc_tars tool name (`knowledge_search`, `sql_query`, ...). */
+  tool: string;
+  ok: boolean;
+  /** pwc_tars's summary, e.g. `9 chunks` or `12 rows`. */
+  summary?: string;
+  sources?: TTarsToolSource[];
+  /** Generated chart / file links, already routed through LibreChat's relay. */
+  links?: { type: string; url: string }[];
+  /** The output as the model read it, capped for display. */
+  output?: string;
+  truncated?: boolean;
 };

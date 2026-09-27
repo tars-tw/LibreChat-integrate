@@ -438,6 +438,7 @@ const initializeClientWithProvider = async ({
   const endpointTokenConfigByAgentId = new Map();
 
   const invokedSkillIdentities = new Map();
+  const emitAttachment = createAttachmentEmitter({ res, streamId, jobCreatedAt });
   const toolExecuteOptions = {
     // Keep foreground cancellation owned by this request even when the agents
     // SDK rebuilds a graph for approval resume. The SDK event's breaker signal
@@ -484,6 +485,7 @@ const initializeClientWithProvider = async ({
         actionsEnabled: ctx.actionsEnabled,
         accessibleMcpServerNames: ctx.accessibleMcpServerNames,
         jobCreatedAt,
+        emitAttachment,
       });
 
       logger.debug(`[ON_TOOL_EXECUTE] loaded ${result.loadedTools?.length ?? 0} tools`);
@@ -538,7 +540,7 @@ const initializeClientWithProvider = async ({
           ),
       ),
     },
-    emitAttachment: createAttachmentEmitter({ res, streamId, jobCreatedAt }),
+    emitAttachment,
     emitPtcProgress: createPtcProgressEmitter({ res, streamId, jobCreatedAt }),
     onSkillResolved: (skill, { agentId }) => {
       if (agentId === primaryConfig.id) {

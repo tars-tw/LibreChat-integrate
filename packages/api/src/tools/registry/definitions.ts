@@ -5,6 +5,7 @@ import { TarsChartToolDefinition } from '~/tars/langflow/chart';
 import { TarsTableToolDefinition } from '~/tars/langflow/table';
 import { TarsDataToolDefinition } from '~/tars/langflow/data';
 import { getTarsPluginDefinition } from '~/tars/plugins/tool';
+import { getTarsBuiltinDefinition } from '~/tars/tools/tool';
 import { TarsAgentToolDefinition } from '~/tars/agent/tool';
 import { TarsRagToolDefinition } from '~/tars/rag/tool';
 import { TarsSqlToolDefinition } from '~/tars/sql/tool';
@@ -506,13 +507,17 @@ const agentToolDefinitions: Record<string, ToolRegistryDefinition> = {
 };
 
 /**
- * pwc_tars plugin tools are discovered at runtime, so they are resolved from the
- * primed manifest cache rather than this static map (`primeTarsPluginManifests`
- * runs before the definition-only load path asks for them).
+ * pwc_tars plugin and built-in tools are discovered at runtime, so they are
+ * resolved from the primed manifest cache rather than this static map
+ * (`primeTarsPluginManifests` / `resolveTarsBuiltinTools` run before the
+ * definition-only load path asks for them).
  */
 export function getToolDefinition(toolName: string): ToolRegistryDefinition | undefined {
   return (
-    toolDefinitions[toolName] ?? agentToolDefinitions[toolName] ?? getTarsPluginDefinition(toolName)
+    toolDefinitions[toolName] ??
+    agentToolDefinitions[toolName] ??
+    getTarsPluginDefinition(toolName) ??
+    getTarsBuiltinDefinition(toolName)
   );
 }
 
