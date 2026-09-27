@@ -136,3 +136,92 @@ export async function tarsFetch<T>(path: string, options: TarsFetchOptions = {})
     clearTimeout(timeout);
   }
 }
+
+export interface TarsStreamOptions extends Omit<TarsFetchOptions, 'method' | 'query'> {
+  /** Ends the request early, e.g. when the chat run that asked for it is stopped. */
+  signal?: AbortSignal;
+}
+
+async function readErrorMessage(response: Response): Promise<string | undefined> {
+  try {
+    const body = (await response.json()) as { message?: unknown; error?: unknown };
+    if (typeof body?.message === 'string') {
+      return body.message;
+    }
+    return typeof body?.error === 'string' ? body.error : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Splits an SSE buffer into complete `data:` payloads, returning the unfinished tail. */
+function takeSseData(buffer: string): { payloads: string[]; rest: string } {
+  const frames = buffer.split('\n\n');
+  const rest = frames.pop() ?? '';
+  const payloads: string[] = [];
+  for (const frame of frames) {
+    const data = frame
+      .split('\n')
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).trimStart())
+      .join('\n');
+    if (data) {
+      payloads.push(data);
+    }
+  }
+  return { payloads, rest };
+}
+
+/**
+ * POSTs to a pwc_tars server-sent-events endpoint and hands each `data:` frame,
+ * parsed as JSON, to `onEvent` as it arrives. Comment frames (keepalives) are
+ * skipped. Resolves when the stream ends; throws like {@link tarsFetch} on a
+ * non-2xx response, on timeout, and when `signal` aborts.
+ */
+export async function tarsStream<T>(
+  path: string,
+  onEvent: (event: T) => void,
+  options: TarsStreamOptions = {},
+): Promise<void> {
+  const { body, timeoutMs = DEFAULT_TIMEOUT_MS, baseUrl, headers, asUser, signal } = options;
+  const url = buildUrl(getTarsBaseUrl(baseUrl), path);
+  const authHeaders = bearerHeaders(path, asUser);
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  const combined = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      ...authHeaders,
+      ...headers,
+    },
+    body: body != null ? JSON.stringify(body) : undefined,
+    signal: combined,
+  });
+  if (!response.ok || !response.body) {
+    logger.error(`[tarsStream] Unexpected status ${response.status} from POST ${url}`);
+    throw new TarsRequestError(response.status, path, await readErrorMessage(response));
+  }
+
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = '';
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+      const { payloads, rest } = takeSseData(buffer + value.replace(/\r\n/g, '\n'));
+      buffer = rest;
+      for (const payload of payloads) {
+        onEvent(JSON.parse(payload) as T);
+      }
+    }
+  } catch (error) {
+    /** Close the connection so pwc_tars sees the caller leave and stops the work. */
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  }
+}

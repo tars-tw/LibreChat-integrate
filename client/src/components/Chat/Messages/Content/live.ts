@@ -12,6 +12,7 @@ import { getBatchActivityLabelPart, getActivityLabelText } from '~/utils/activit
 import { hasPendingApprovalInPart, hasPendingAuthInPart } from '~/utils/groupToolCalls';
 import { ASK_USER_QUESTION, getSubmittedAskAnswer } from '~/utils/approval';
 import { boundIntentLabel, getToolCallIntent } from './Parts/intent';
+import { getTarsToolLine, getTarsToolProgress } from './tars';
 import { getToolDisplayLabel } from '~/utils/toolLabels';
 import { isBashProgrammaticToolCall } from './routing';
 import { getToolMeta, summarizeSpan } from './outcome';
@@ -101,6 +102,7 @@ function toolCallLine(
   localize: Localize,
   serverNames: readonly string[],
   span: SpanSummary,
+  attachments?: TAttachment[],
 ): ToolLine {
   const intent = getToolCallIntent(toolCall.args);
   const label = getToolDisplayLabel(toolCall.name ?? '', localize, serverNames);
@@ -131,6 +133,21 @@ function toolCallLine(
   }
   if (intent != null) {
     return { text: intent, generic: false };
+  }
+  /** pwc_tars tools name their subject (the query, the SQL's purpose) in their
+   *  own args and report progress while they run, so the fold reads the
+   *  sentence their hidden card shows. */
+  const done = meta?.hasOutput === true;
+  const progress = done ? undefined : getTarsToolProgress(attachments, toolCall.id);
+  const tarsLine = getTarsToolLine(toolCall.name, toolCall.args, done, localize, progress);
+  if (tarsLine != null) {
+    return { text: tarsLine, generic: false };
+  }
+  if (progress != null && label) {
+    return {
+      text: `${localize('com_assistants_running_var', { 0: label })} · ${progress}`,
+      generic: false,
+    };
   }
   if (!label) {
     return { text: localize('com_assistants_running_action'), generic: true };
@@ -257,6 +274,7 @@ function newestLine(
   localize: Localize,
   serverNames: readonly string[],
   span: SpanSummary,
+  attachmentsById?: Record<string, TAttachment[] | undefined>,
 ): Pick<LiveActivity, 'text' | 'source' | 'pendingToolCallId' | 'comboCount'> {
   for (let position = parts.length - 1; position >= 0; position -= 1) {
     const part = parts[position];
@@ -300,7 +318,14 @@ function newestLine(
     }
     const toolCall = getStandardToolCall(part);
     if (toolCall != null) {
-      const line = toolCallLine(part, toolCall, localize, serverNames, span);
+      const line = toolCallLine(
+        part,
+        toolCall,
+        localize,
+        serverNames,
+        span,
+        toolCall.id != null ? attachmentsById?.[toolCall.id] : undefined,
+      );
       return {
         text: line.text,
         /** Provider ids repeat across batches, so the position is part of the
@@ -337,7 +362,7 @@ export function getLiveActivity(
 ): LiveActivity {
   const span = summarizeSpan(parts, attachmentsById);
   return {
-    ...newestLine(parts, localize, serverNames, span),
+    ...newestLine(parts, localize, serverNames, span, attachmentsById),
     outcome: { failed: span.failed, cancelled: span.cancelled },
     iconNames: getSpanIconNames(parts),
   };

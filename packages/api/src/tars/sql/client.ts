@@ -6,6 +6,7 @@ import {
   toTarsTraceArtifact,
   runLangflowCapability,
   resolveLangflowModelName,
+  TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
 } from '~/tars/langflow/client';
 import {
   listTarsScopedKnowledgeBases,
@@ -13,12 +14,6 @@ import {
 } from '~/tars/scope';
 
 const SQL_AGENT_PATH = '/api/langflow-service/sql';
-/**
- * pwc_tars caps one synchronous SQL-agent turn at 300s, so LibreChat waits a
- * little less and surfaces its own timeout first. Override with
- * `TARS_SQL_AGENT_TIMEOUT_MS`.
- */
-const DEFAULT_TIMEOUT_MS = 240_000;
 
 /** A knowledge base whose bound SQL database the agent may query. */
 export interface TarsSqlDatabase {
@@ -97,7 +92,7 @@ export async function runTarsSqlAgent(
       model_name: requestedModel,
     },
     {
-      timeoutMs: langflowTimeoutMs('TARS_SQL_AGENT_TIMEOUT_MS', DEFAULT_TIMEOUT_MS),
+      timeoutMs: langflowTimeoutMs('TARS_SQL_AGENT_TIMEOUT_MS', TARS_CAPABILITY_DEFAULT_TIMEOUT_MS),
       librechatUserId: input.librechatUserId,
     },
   );
