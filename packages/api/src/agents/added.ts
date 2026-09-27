@@ -26,6 +26,7 @@ import { resolveMCPClientCapabilityProfile } from '~/mcp/capabilities';
 import { synthesizeBackgroundToolOptions } from '~/agents/background';
 import { mergeSynthesizedToolOptions } from '~/agents/selection';
 import { synthesizeIntentToolOptions } from '~/agents/intent';
+import { tarsToolsForToggles } from '~/tars/tools/names';
 import { getCustomEndpointConfig } from '~/app/config';
 
 const { mcp_all, mcp_delimiter } = Constants;
@@ -247,15 +248,8 @@ export async function loadAddedAgent(
   if (ephemeralAgent?.web_search === true || modelSpec?.webSearch === true) {
     tools.push(Tools.web_search);
   }
-  /** Every loop-backed pwc_tars capability the chat switches on rides in one
-   *  `tars_agent`; see `loadEphemeralAgent`. */
-  if (
-    ephemeralAgent?.sql_agent === true ||
-    ephemeralAgent?.rag_agent === true ||
-    ephemeralAgent?.chart_agent === true
-  ) {
-    tools.push(Tools.tars_agent);
-  }
+  /** pwc_tars's built-in tools per switch; see `loadEphemeralAgent`. */
+  tools.push(...tarsToolsForToggles(ephemeralAgent));
   /** pwc_tars plugin tools the user switched on; the brain's allowlist is
    *  enforced downstream in the capability filter (`resolveTarsPluginToolNames`). */
   for (const pluginName of tarsPluginNamesOf(ephemeralAgent?.tars_plugins)) {

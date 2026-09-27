@@ -12,13 +12,13 @@ import {
   runLangflowCapability,
   resolveLangflowModelName,
   LANGFLOW_TOOL_RESPONSE_FORMAT,
+  TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
 } from './client';
 import { TarsRequestError } from '~/tars/client';
 
 export const TARS_DATA_TOOL_NAME: Tools = Tools.data_query;
 
 const DATA_PATH = '/api/langflow-service/data';
-const DEFAULT_TIMEOUT_MS = 240_000;
 
 const TARS_DATA_DESCRIPTION: string =
   'Answer a question over the spreadsheet files (csv/xlsx) attached to this conversation. Sends ' +
@@ -143,7 +143,10 @@ export function createTarsDataTool(options: TarsDataToolOptions): DynamicStructu
             model_name: requestedModel,
           },
           {
-            timeoutMs: langflowTimeoutMs('TARS_DATA_AGENT_TIMEOUT_MS', DEFAULT_TIMEOUT_MS),
+            timeoutMs: langflowTimeoutMs(
+              'TARS_DATA_AGENT_TIMEOUT_MS',
+              TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
+            ),
             librechatUserId: options.librechatUserId,
           },
         );

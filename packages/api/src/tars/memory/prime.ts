@@ -103,10 +103,9 @@ function buildDataContextText(documents: TarsMemoryDocument[]): string | null {
   const lines = documents.map((doc) => `- ${doc.filename} (document_id: ${doc.id})`);
   return (
     '# Attached spreadsheets Runtime Context\n' +
-    'Structured spreadsheet files attached to this conversation. They are bound into the ' +
-    '`tars_agent` tool: ask it about their contents (it queries them with SQL), or ask it to ' +
-    'apply an instruction to every row. Pass `document_ids` only to narrow to some of them; by ' +
-    'default it reads all of the files below:\n' +
+    'Structured spreadsheet files attached to this conversation. All of them are loaded as ' +
+    'tables for `tars_data_schema` (list the tables and columns) and `tars_data_query` (one ' +
+    'read-only DuckDB query); `tars_create_chart` and `tars_generate_file` can query them too:\n' +
     lines.join('\n')
   );
 }
