@@ -250,6 +250,23 @@ async function langflowServiceHeaders({
   return headers;
 }
 
+async function langflowServiceHeaders(librechatUserId?: string): Promise<Record<string, string>> {
+  const key = await resolveLangflowServiceKey();
+  if (!key) {
+    throw new Error(
+      `The pwc_tars service key is not configured (sys_config ${SERVICE_KEY_CONFIG}).`,
+    );
+  }
+  const headers: Record<string, string> = {
+    [SERVICE_KEY_HEADER]: key,
+    [GATEWAY_HEADER]: 'true',
+  };
+  if (librechatUserId) {
+    headers[GATEWAY_USER_HEADER] = librechatUserId;
+  }
+  return headers;
+}
+
 /**
  * One authenticated `/api/langflow-service/*` request, unwrapped from its
  * `{success, status, data}` envelope. The gateway headers always ride along:
