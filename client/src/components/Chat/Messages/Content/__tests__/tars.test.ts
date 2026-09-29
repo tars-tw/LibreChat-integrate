@@ -1,6 +1,11 @@
 import { Tools, ContentTypes } from 'librechat-data-provider';
 import type { TAttachment, TMessageContentParts } from 'librechat-data-provider';
-import { getTarsToolLine, getTarsToolProgress } from '../tars';
+import {
+  splitTarsAnswer,
+  getTarsToolLine,
+  getTarsPluginAnswer,
+  getTarsToolProgress,
+} from '../tars';
 import { getLiveActivity } from '../live';
 
 const localize = (key: string) => key;
@@ -92,5 +97,38 @@ describe('progress a long pwc_tars call reports', () => {
       'call-1': [progressAttachment('call-1', '分類中…')],
     });
     expect(plugin.text).toContain('分類中…');
+  });
+});
+
+describe('splitTarsAnswer', () => {
+  it('splits <details> blocks out of a plugin answer', () => {
+    const answer =
+      '## 結果\n| a | b |\n\n<details>\n<summary>逐項檢查（3 步）</summary>\n\n- 1\\. 是\n</details>\n結尾';
+    expect(splitTarsAnswer(answer)).toEqual([
+      { type: 'markdown', content: '## 結果\n| a | b |\n\n' },
+      { type: 'details', summary: '逐項檢查（3 步）', content: '\n\n- 1\\. 是\n' },
+      { type: 'markdown', content: '\n結尾' },
+    ]);
+  });
+
+  it('keeps an answer without disclosures as one markdown block', () => {
+    expect(splitTarsAnswer('plain')).toEqual([{ type: 'markdown', content: 'plain' }]);
+    expect(splitTarsAnswer('  ')).toEqual([]);
+  });
+});
+
+describe('getTarsPluginAnswer', () => {
+  const stepAttachment = (toolCallId: string, answer?: string) =>
+    ({
+      type: Tools.tars_trace,
+      toolCallId,
+      [Tools.tars_trace]: { trace: [], step: { tool: 'cal', ok: true, answer } },
+    }) as unknown as TAttachment;
+
+  it('returns the answer of this tool call only', () => {
+    const attachments = [stepAttachment('call-1', 'mine'), stepAttachment('call-2', 'other')];
+    expect(getTarsPluginAnswer(attachments, 'call-1')).toBe('mine');
+    expect(getTarsPluginAnswer([stepAttachment('call-1')], 'call-1')).toBeUndefined();
+    expect(getTarsPluginAnswer(undefined, 'call-1')).toBeUndefined();
   });
 });
