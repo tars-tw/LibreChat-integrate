@@ -1,7 +1,7 @@
 import { useState, memo, useRef, useCallback } from 'react';
 import { useSetAtom } from 'jotai';
-import { useSetRecoilState } from 'recoil';
 import * as Menu from '@ariakit/react/menu';
+import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import {
   Archive,
@@ -21,6 +21,7 @@ import useSidebarToggle from '~/hooks/Nav/useSidebarToggle';
 import AdminMenu, { SubmenuGroup } from './Tars/AdminMenu';
 import useSidebarState from '~/hooks/Nav/useSidebarState';
 import { useLocalize, useTarsAdminAccess } from '~/hooks';
+import { getHelpAndFaqURL, openInNewTab } from '~/utils';
 import { useAuthContext } from '~/hooks/AuthContext';
 import { openInNewTab, policyUrls } from '~/utils';
 import { settingsOpenAtom } from './Settings';
@@ -40,25 +41,24 @@ function HelpSubmenu({
   onNavigate: () => void;
 }) {
   const localize = useLocalize();
-  const hasHelpFaq = !!helpAndFaqURL && helpAndFaqURL !== '/';
+  const lang = useRecoilValue(store.lang);
+  const helpURL = getHelpAndFaqURL(lang, helpAndFaqURL);
   const hasTos = !!termsOfServiceURL;
   const hasPrivacy = !!privacyPolicyURL;
-  const showLegalDivider = (hasHelpFaq || true) && (hasTos || hasPrivacy);
+  const showLegalDivider = hasTos || hasPrivacy;
 
   return (
     <SubmenuGroup icon={CircleHelp} label={localize('com_nav_help')}>
-      {hasHelpFaq && (
-        <Menu.MenuItem
-          onClick={() => {
-            onNavigate();
-            openInNewTab(helpAndFaqURL);
-          }}
-          className="select-item text-sm"
-        >
-          <LifeBuoy className="icon-md" aria-hidden="true" />
-          {localize('com_nav_help_faq')}
-        </Menu.MenuItem>
-      )}
+      <Menu.MenuItem
+        onClick={() => {
+          onNavigate();
+          openInNewTab(helpURL);
+        }}
+        className="select-item text-sm"
+      >
+        <LifeBuoy className="icon-md" aria-hidden="true" />
+        {localize('com_nav_help_faq')}
+      </Menu.MenuItem>
       <Menu.MenuItem
         onClick={() => {
           onNavigate();
