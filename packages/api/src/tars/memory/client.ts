@@ -48,6 +48,12 @@ export interface TarsMemoryDocument {
   tokens: number | null;
   /** The parsed text pwc_tars extracted at upload — what the LLM actually reads. */
   summary: string | null;
+  /**
+   * Where pwc_tars stored the upload, on pwc_tars's own disk. Plugins read
+   * attached spreadsheets from it (`ctx.settings.data_files`); server-side
+   * only, never sent to the browser.
+   */
+  file_path?: string | null;
   created_by: string | null;
   created_at: string | null;
   /** Derived: whether the data/table-task tools can query this file. */

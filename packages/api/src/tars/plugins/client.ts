@@ -1,5 +1,6 @@
 import { logger } from '@librechat/data-schemas';
 import type { JsonSchemaType } from '@librechat/data-schemas';
+import type { TarsHistoryMessage } from './context';
 import {
   langflowTimeoutMs,
   langflowServiceFetch,
@@ -257,6 +258,12 @@ export interface TarsPluginRunInput {
   domainId?: string | number | null;
   /** The model the chat turn runs on, as LibreChat names it. */
   model?: string;
+  /** pwc_tars paths of the spreadsheets attached to the conversation (`ctx.settings.data_files`). */
+  dataFiles?: string[];
+  /** Parsed text of the conversation's other attached files (`ctx.settings.file_input`). */
+  fileInput?: string;
+  /** Prior turns, oldest first (`ctx.history`). */
+  history?: TarsHistoryMessage[];
   /** The account the LLM gateway resolves models and quota for. */
   librechatUserId?: string;
   /** Receives each progress line the plugin reports (`ctx.progress`) while it runs. */
@@ -291,7 +298,10 @@ const toDomainId = (domainId: string | number | null | undefined): number | stri
  * Runs one plugin directly (`POST /api/langflow-service/tools/<name>`) — no
  * agent loop on the pwc_tars side, the chat model here is the one deciding.
  * The settings mirror what pwc_tars' own chat hands a plugin so a tool written
- * against `ctx.settings` sees the same keys from either host.
+ * against `ctx.settings` sees the same keys from either host. That includes
+ * `direct_call: false`: pwc_tars marks service-key calls as direct by default,
+ * which plugins read as "trust whatever the caller names", but the arguments
+ * here come from a chat model acting for an end user.
  */
 export async function runTarsPluginTool(
   pluginName: string,
@@ -299,8 +309,15 @@ export async function runTarsPluginTool(
 ): Promise<TarsPluginRunResult> {
   const requestedModel = await resolveLangflowModelName(input.model, 'tars-plugins');
   const settings: Record<string, unknown> = {
+    direct_call: false,
     plugin_tool_names: [pluginName],
   };
+  if (input.dataFiles?.length) {
+    settings.data_files = input.dataFiles;
+  }
+  if (input.fileInput) {
+    settings.file_input = input.fileInput;
+  }
   if (input.question) {
     settings.question = input.question;
   }
@@ -318,6 +335,7 @@ export async function runTarsPluginTool(
       inputs: input.inputs,
       context: requestedModel ? { model_name: requestedModel } : {},
       settings,
+      ...(input.history?.length ? { history: input.history } : {}),
     },
     {
       timeoutMs: langflowTimeoutMs(
