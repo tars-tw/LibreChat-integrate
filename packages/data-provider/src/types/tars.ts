@@ -1862,4 +1862,12 @@ export type TTarsToolStep = {
   /** The output as the model read it, capped for display. */
   output?: string;
   truncated?: boolean;
+  /** Display name of a plugin tool (`tars_tool_sdk` `display_name`). */
+  title?: string;
+  /**
+   * The answer a plugin that ends the turn (`ends_turn`) wrote for the user.
+   * pwc_tars shows it as the reply itself; LibreChat cannot end a turn from a
+   * tool, so the card shows it verbatim and the model only adds a line.
+   */
+  answer?: string;
 };
