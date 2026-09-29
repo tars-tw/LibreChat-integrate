@@ -7,11 +7,13 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
+import { Tools } from 'librechat-data-provider';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import { invalidateTarsPluginManifestsCache, primeTarsPluginManifests } from './client';
 import { createTarsPluginTool, formatTarsPluginResult, getTarsPluginDefinition } from './tool';
 import type { TarsPluginRunResult } from './client';
+import type { TarsMemoryDocument } from '~/tars/memory/client';
 
 import { tarsToolStreamResponse } from '~/tars/tools/mocks';
 
@@ -118,6 +120,18 @@ describe('formatTarsPluginResult', () => {
     ).toBe('See ![c](http://host/c.png)');
   });
 
+  it('points pwc_tars generated-file links at the LibreChat relay', () => {
+    process.env.JWT_SECRET = 'relay-test-secret';
+    const link = 'http://202.5.253.240:85/static/generate_output/cal/結果.xlsx';
+    const text = formatTarsPluginResult(
+      output({ final_text: `[下載](${link})`, artifacts: { file_url: link } }),
+    );
+    expect(text).toMatch(
+      /^\[下載\]\(\/api\/tars\/static\/generate_output\/cal\/結果\.xlsx\?sig=[\w-]+\)$/,
+    );
+    delete process.env.JWT_SECRET;
+  });
+
   it('labels errors so the model can recover', () => {
     expect(formatTarsPluginResult(output({ is_error: true, content: 'no text' }))).toBe(
       'The plugin tool reported an error: no text',
@@ -184,10 +198,170 @@ describe('createTarsPluginTool', () => {
     expect(body.inputs).toEqual({ sentences: 2 });
     expect(body.context).toEqual({ model_name: 'gpt-5.4-mini' });
     expect(body.settings).toEqual({
+      direct_call: false,
       plugin_tool_names: ['summarize_text'],
       question: 'Summarize this long text please',
       user_id: 'tars-user-1',
       domain_id: 100,
+    });
+  });
+
+  it('splits the memory files into data_files and file_input and reads the history on call', async () => {
+    const fetchMock = mockBackend({ status: 200, body: { success: true, data: output() } });
+    const loadHistory = jest.fn().mockResolvedValue([{ role: 'user', content: '上一題' }]);
+    const tool = await createTarsPluginTool({
+      toolName: 'tars_plugin_summarize_text',
+      tarsUserId: 'tars-user-1',
+      documents: [
+        {
+          id: 'x',
+          conversation_id: 'conv-1',
+          filename: 'x.xlsx',
+          extension: 'xlsx',
+          mime_type: null,
+          size: null,
+          status: 1,
+          word_count: null,
+          tokens: null,
+          summary: 'sheet preview',
+          file_path: '/srv/x.xlsx',
+          created_by: 'tars-user-1',
+          created_at: null,
+          structured: true,
+        },
+        {
+          id: 'p',
+          conversation_id: 'conv-1',
+          filename: 'p.pdf',
+          extension: 'pdf',
+          mime_type: null,
+          size: null,
+          status: 1,
+          word_count: null,
+          tokens: null,
+          summary: '合約內容',
+          file_path: '/srv/p.pdf',
+          created_by: 'tars-user-1',
+          created_at: null,
+          structured: false,
+        },
+      ],
+      loadHistory,
+    });
+    expect(loadHistory).not.toHaveBeenCalled();
+    await tool?.invoke({});
+
+    const call = fetchMock.mock.calls.find(([url]) =>
+      String(url).endsWith('/summarize_text/stream'),
+    );
+    const body = JSON.parse(String((call?.[1] as RequestInit).body));
+    expect(body.settings.data_files).toEqual(['/srv/x.xlsx']);
+    expect(body.settings.file_input).toBe('合約內容');
+    expect(body.history).toEqual([{ role: 'user', content: '上一題' }]);
+  });
+
+  it('runs without history when reading it fails', async () => {
+    mockBackend({ status: 200, body: { success: true, data: output({ content: 'ok' }) } });
+    const tool = await createTarsPluginTool({
+      toolName: 'tars_plugin_summarize_text',
+      tarsUserId: 'u1',
+      loadHistory: () => Promise.reject(new Error('mongo down')),
+    });
+    await expect(tool?.invoke({})).resolves.toBe('ok');
+  });
+
+  it('offers the attached spreadsheets that have a pwc_tars path as data_files', async () => {
+    const fetchMock = mockBackend({ status: 200, body: { success: true, data: output() } });
+    const document = (id: string, filePath?: string | null): TarsMemoryDocument => ({
+      id,
+      conversation_id: 'conv-1',
+      filename: `${id}.xlsx`,
+      extension: 'xlsx',
+      mime_type: null,
+      size: null,
+      status: 1,
+      word_count: null,
+      tokens: null,
+      summary: null,
+      file_path: filePath,
+      created_by: 'tars-user-1',
+      created_at: null,
+      structured: true,
+    });
+    const tool = await createTarsPluginTool({
+      toolName: 'tars_plugin_summarize_text',
+      tarsUserId: 'tars-user-1',
+      documents: [document('a', '/srv/uploads/a.xlsx'), document('b', null)],
+    });
+    await tool?.invoke({});
+
+    const call = fetchMock.mock.calls.find(([url]) =>
+      String(url).endsWith('/summarize_text/stream'),
+    );
+    const body = JSON.parse(String((call?.[1] as RequestInit).body));
+    expect(body.settings.data_files).toEqual(['/srv/uploads/a.xlsx']);
+  });
+
+  it('puts an ends_turn answer on the card and tells the model not to retell it', async () => {
+    process.env.JWT_SECRET = 'relay-test-secret';
+    const link = 'http://202.5.253.240:85/static/generate_output/cal/r.xlsx';
+    mockBackend({
+      status: 200,
+      body: {
+        success: true,
+        data: output({
+          content: '| 案號 | Subject |',
+          final_text: `## 結果\n[下載](${link})\n| 案號 | Subject |`,
+          summary: '5 cases, 0 failed',
+          end_turn: true,
+          artifacts: { file_url: link },
+        }),
+      },
+    });
+    const tool = await createTarsPluginTool({
+      toolName: 'tars_plugin_summarize_text',
+      tarsUserId: 'u1',
+    });
+    const message = await tool!.invoke({
+      id: 'call-1',
+      name: 'tars_plugin_summarize_text',
+      type: 'tool_call',
+      args: {},
+    });
+
+    expect(message.content).toMatch(/^The tool has already shown the user its complete answer/);
+    expect(message.content).toContain('/api/tars/static/generate_output/cal/r.xlsx?sig=');
+    const step = message.artifact?.[Tools.tars_trace]?.step;
+    expect(step).toEqual({
+      tool: 'summarize_text',
+      ok: true,
+      title: 'Summarize Text',
+      summary: '5 cases, 0 failed',
+      links: [{ type: 'file', url: expect.stringMatching(/^\/api\/tars\/static\/.+\?sig=/) }],
+      answer: expect.stringMatching(
+        /^## 結果\n\[下載\]\(\/api\/tars\/static\/[\s\S]+\| 案號 \| Subject \|$/,
+      ),
+    });
+    delete process.env.JWT_SECRET;
+  });
+
+  it('keeps an ordinary plugin result for the model and off the card', async () => {
+    mockBackend({ status: 200, body: { success: true, data: output({ content: 'words: 3' }) } });
+    const tool = await createTarsPluginTool({
+      toolName: 'tars_plugin_summarize_text',
+      tarsUserId: 'u1',
+    });
+    const message = await tool!.invoke({
+      id: 'call-1',
+      name: 'tars_plugin_summarize_text',
+      type: 'tool_call',
+      args: {},
+    });
+    expect(message.content).toBe('words: 3');
+    expect(message.artifact?.[Tools.tars_trace]?.step).toEqual({
+      tool: 'summarize_text',
+      ok: true,
+      title: 'Summarize Text',
     });
   });
 

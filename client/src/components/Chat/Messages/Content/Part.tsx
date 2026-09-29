@@ -6,6 +6,7 @@ import {
   ToolCallTypes,
   imageGenTools,
   isImageVisionTool,
+  isTarsPluginToolName,
   isTarsBuiltinToolName,
   isTarsCapabilityToolName,
 } from 'librechat-data-provider';
@@ -36,6 +37,7 @@ import {
 import { getAskUserQuestionPart } from '~/utils/approval';
 import AskUserQuestionCall from './AskUserQuestionCall';
 import { isBashProgrammaticToolCall } from './routing';
+import TarsPluginAnswer from './TarsPluginAnswer';
 import { useMessageContext } from '~/Providers';
 import { ErrorMessage } from './MessageContent';
 import AskUserQuestion from './AskUserQuestion';
@@ -449,7 +451,7 @@ const Part = memo(function Part({
         } else if (toolCall.name?.startsWith(Constants.LC_TRANSFER_TO_)) {
           return <AgentHandoff args={toolCall.args ?? ''} name={toolCall.name || ''} />;
         }
-        return (
+        const toolCallCard = (
           <ToolCall
             args={toolCall.args ?? ''}
             name={toolCall.name || ''}
@@ -467,6 +469,15 @@ const Part = memo(function Part({
             }
             runStepDurationMs={toolCall.runStepDurationMs}
           />
+        );
+        if (!isTarsPluginToolName(toolCall.name)) {
+          return toolCallCard;
+        }
+        return (
+          <>
+            {toolCallCard}
+            <TarsPluginAnswer attachments={attachments} toolCallId={toolCallId} />
+          </>
         );
       })();
 
