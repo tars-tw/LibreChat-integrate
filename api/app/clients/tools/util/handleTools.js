@@ -28,6 +28,7 @@ const {
   createTarsChartTool,
   resolveTarsAgentBindings,
   createTarsPluginTool,
+  loadTarsPluginHistory,
   createTarsBuiltinTool,
   createTarsDataTool,
   createTarsTableTaskTool,
@@ -82,7 +83,13 @@ const { getUserPluginAuthValue } = require('~/server/services/PluginService');
 const { loadAuthValues } = require('~/server/services/Tools/credentials');
 const { getMCPServerTools, checkCapability } = require('~/server/services/Config');
 const { getMCPServersRegistry } = require('~/config');
-const { getRoleByName, setMemory, deleteMemory, getFormattedMemories } = require('~/models');
+const {
+  getRoleByName,
+  setMemory,
+  deleteMemory,
+  getMessages,
+  getFormattedMemories,
+} = require('~/models');
 
 /**
  * Validates the availability and authentication of tools for a user based on environment variables or user-specific plugin authentication values.
@@ -537,6 +544,14 @@ const loadTools = async ({
         tarsUserId: options.req?.user?.tarsId,
         domainId: options.req?.body?.domain_id,
         model: agent?.model,
+        documents: getTarsMemorySnapshot(options.req)?.activeDocuments,
+        loadHistory: () =>
+          loadTarsPluginHistory({
+            conversationId: options.req?.body?.conversationId,
+            parentMessageId: options.req?.body?.parentMessageId,
+            userId: user,
+            getMessages,
+          }),
         librechatUserId: user,
         question: options.req?.body?.text,
         reportProgress: options.tarsProgress,

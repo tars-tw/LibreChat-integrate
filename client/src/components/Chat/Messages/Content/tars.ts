@@ -154,3 +154,47 @@ export function getTarsToolLine(
   const subject = !done && progress ? progress : getTarsToolDetail(copy, args);
   return subject ? `${label} · ${subject}` : label;
 }
+
+/**
+ * The answer a pwc_tars plugin that ends the turn wrote for the user
+ * (`step.answer`), for the tool call it belongs to.
+ */
+export function getTarsPluginAnswer(
+  attachments: readonly TAttachment[] | undefined,
+  toolCallId: string | undefined,
+): string | undefined {
+  return attachments?.find(
+    (attachment) =>
+      attachment.type === Tools.tars_trace &&
+      attachment[Tools.tars_trace]?.step?.answer != null &&
+      (!toolCallId || !attachment.toolCallId || attachment.toolCallId === toolCallId),
+  )?.[Tools.tars_trace]?.step?.answer;
+}
+
+export type TarsAnswerBlock =
+  | { type: 'markdown'; content: string }
+  | { type: 'details'; summary: string; content: string };
+
+const DETAILS_BLOCK = /<details>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/g;
+
+/**
+ * pwc_tars renders a plugin answer with raw HTML enabled, and plugins fold long
+ * check lists into `<details>`; the chat's markdown drops raw HTML, so those
+ * blocks are split out and rendered as real disclosures.
+ */
+export function splitTarsAnswer(answer: string): TarsAnswerBlock[] {
+  const blocks: TarsAnswerBlock[] = [];
+  const pushMarkdown = (content: string) => {
+    if (content.trim()) {
+      blocks.push({ type: 'markdown', content });
+    }
+  };
+  let cursor = 0;
+  for (const match of answer.matchAll(DETAILS_BLOCK)) {
+    pushMarkdown(answer.slice(cursor, match.index));
+    blocks.push({ type: 'details', summary: match[1].trim(), content: match[2] });
+    cursor = match.index + match[0].length;
+  }
+  pushMarkdown(answer.slice(cursor));
+  return blocks;
+}
