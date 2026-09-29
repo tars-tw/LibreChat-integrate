@@ -203,6 +203,7 @@ describe('runTarsPluginTool', () => {
       inputs: { text: 'hello big world' },
       context: { model_name: 'gpt-5.4-mini' },
       settings: {
+        direct_call: false,
         plugin_tool_names: ['text_stats'],
         question: 'how long is this?',
         user_id: 'tars-user-1',
@@ -216,6 +217,42 @@ describe('runTarsPluginTool', () => {
         'X-Librechat-User-Id': 'lc-user-1',
       }),
     );
+  });
+
+  it('hands the attached spreadsheets over as data_files', async () => {
+    const fetchMock = mockBackend();
+    await runTarsPluginTool('text_stats', {
+      inputs: {},
+      dataFiles: ['/srv/tars/uploads/cases.xlsx'],
+    });
+    const [, init] = callsTo(fetchMock, '/tools/text_stats')[0];
+    expect(JSON.parse(String((init as RequestInit).body)).settings).toEqual({
+      direct_call: false,
+      plugin_tool_names: ['text_stats'],
+      data_files: ['/srv/tars/uploads/cases.xlsx'],
+    });
+  });
+
+  it('hands over the other attachments as file_input and the prior turns as history', async () => {
+    const fetchMock = mockBackend();
+    await runTarsPluginTool('text_stats', {
+      inputs: {},
+      fileInput: '合約內容',
+      history: [{ role: 'user', content: '上一題' }],
+    });
+    const [, init] = callsTo(fetchMock, '/tools/text_stats')[0];
+    const body = JSON.parse(String((init as RequestInit).body));
+    expect(body.settings.file_input).toBe('合約內容');
+    expect(body.history).toEqual([{ role: 'user', content: '上一題' }]);
+  });
+
+  it('omits file_input and history when there is none', async () => {
+    const fetchMock = mockBackend();
+    await runTarsPluginTool('text_stats', { inputs: {}, fileInput: '', history: [] });
+    const [, init] = callsTo(fetchMock, '/tools/text_stats')[0];
+    const body = JSON.parse(String((init as RequestInit).body));
+    expect(body.settings).not.toHaveProperty('file_input');
+    expect(body).not.toHaveProperty('history');
   });
 
   it('leaves the model to pwc_tars when the chat model is not a model_profile', async () => {

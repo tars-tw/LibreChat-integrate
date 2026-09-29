@@ -30,6 +30,7 @@ const {
   createTarsChartTool,
   resolveTarsAgentBindings,
   createTarsPluginTool,
+  loadTarsPluginHistory,
   createTarsBuiltinTool,
   createTarsDataTool,
   createTarsTableTaskTool,
@@ -84,7 +85,13 @@ const { primeFiles: primeCodeFiles } = require('~/server/services/Files/Code/pro
 const { loadAuthValues } = require('~/server/services/Tools/credentials');
 const { getMCPServerTools, checkCapability } = require('~/server/services/Config');
 const { getMCPServersRegistry } = require('~/config');
-const { getRoleByName, setMemory, deleteMemory, getFormattedMemories } = require('~/models');
+const {
+  getRoleByName,
+  setMemory,
+  deleteMemory,
+  getMessages,
+  getFormattedMemories,
+} = require('~/models');
 
 /** @typedef {typeof import('@librechat/agents/langchain/tools').Tool} ToolConstructor */
 /** @typedef {import('@librechat/agents/langchain/tools').Tool} Tool */
@@ -475,6 +482,14 @@ const loadTools = async ({
         tarsUserId: options.req?.user?.tarsId,
         domainId: options.req?.body?.domain_id,
         model: agent?.model,
+        documents: getTarsMemorySnapshot(options.req)?.activeDocuments,
+        loadHistory: () =>
+          loadTarsPluginHistory({
+            conversationId: options.req?.body?.conversationId,
+            parentMessageId: options.req?.body?.parentMessageId,
+            userId: user,
+            getMessages,
+          }),
         librechatUserId: user,
         question: options.req?.body?.text,
         reportProgress: options.tarsProgress,

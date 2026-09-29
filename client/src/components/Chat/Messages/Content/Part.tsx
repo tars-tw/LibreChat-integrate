@@ -10,6 +10,8 @@ import {
   isImageVisionTool,
   hasToolCallPreview,
   getToolCallPreviewRevision,
+  isTarsPluginToolName,
+  isTarsPluginToolName,
   isTarsBuiltinToolName,
   isTarsCapabilityToolName,
 } from 'librechat-data-provider';
@@ -50,6 +52,7 @@ import AskUserQuestionCall from './AskUserQuestionCall';
 import { isBashProgrammaticToolCall } from './routing';
 import { isError } from './ToolOutput/OutputRenderer';
 import { ToolPreparation } from './preparation';
+import TarsPluginAnswer from './TarsPluginAnswer';
 import { ErrorMessage } from './MessageContent';
 import AskUserQuestion from './AskUserQuestion';
 import TarsCapabilityCall from './TarsTrace';
@@ -378,7 +381,7 @@ const tools: Record<string, ToolRenderer> = {
   retrieval: renderRetrieval,
 };
 
-const renderDefaultTool: ToolRenderer = ({
+const renderToolCallCard: ToolRenderer = ({
   toolCall,
   toolCallId,
   attachments,
@@ -410,6 +413,20 @@ const renderDefaultTool: ToolRenderer = ({
     toolExecutionDurationMs={toolCall.toolExecutionDurationMs}
   />
 );
+
+/** A pwc_tars plugin that ends the turn shows its own answer under the generic card. */
+const renderDefaultTool: ToolRenderer = (props) => {
+  const card = renderToolCallCard(props);
+  if (!isTarsPluginToolName(props.toolCall.name)) {
+    return card;
+  }
+  return (
+    <>
+      {card}
+      <TarsPluginAnswer attachments={props.attachments} toolCallId={props.toolCallId} />
+    </>
+  );
+};
 
 const renderTarsBuiltin: ToolRenderer = ({
   toolCall,
