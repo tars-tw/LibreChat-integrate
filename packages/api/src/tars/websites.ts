@@ -5,14 +5,12 @@ import { tarsFetch } from './client';
 /**
  * A row of the 外部網站 master list.
  *
- * pwc_tars joins the knowledge base in from `dataset_website_to_knowledge_base`
- * and only ever reports the first relation, so a website belongs to at most
- * one base here. Importing the same URL into a second base creates a second
- * row upstream rather than a second relation on this one.
+ * pwc_tars returns every knowledge base the website is bound to. Importing the
+ * same URL into another base reuses this row and adds a relation.
  */
 export interface TarsWebsiteSource extends TarsDatasetWebsite {
-  knowledge_base_id: string | null;
-  knowledge_base_name: string | null;
+  knowledge_base_ids: string[];
+  knowledge_base_names: string[];
 }
 
 /** The knowledge bases a website may be imported into (enabled ones only). */
@@ -52,10 +50,10 @@ export async function fetchTarsWebsites(baseUrl?: string): Promise<TarsWebsiteLi
  * Deletes a website dataset.
  *
  * A bound row has crawled chunks and vectors behind it, which only the
- * knowledge-base endpoint clears; an unbound row (created before a knowledge
- * base was mandatory) has none, and that endpoint would fail looking for the
- * relation. The caller states which it is; picking the path is not the
- * browser's job.
+ * knowledge-base endpoint clears (and it removes the dataset itself once the
+ * last relation is gone). An unbound row has none, and that endpoint would
+ * fail looking for the relation, so it is deleted directly. The caller states
+ * which it is; picking the path is not the browser's job.
  */
 export async function deleteTarsWebsite(
   tarsId: string,
@@ -72,4 +70,66 @@ export async function deleteTarsWebsite(
     query: { operator_id: tarsId },
     baseUrl,
   });
+}
+
+export interface TarsWebsiteUpdate {
+  name: string;
+  description?: string;
+  url?: string;
+  status?: 0 | 1;
+  knowledgeBaseIds?: string[];
+}
+
+interface WebsiteUpdateResponse {
+  dataset_website?: TarsDatasetWebsite | null;
+  kb_ids_to_import?: string[];
+}
+
+/**
+ * Updates a website and syncs its knowledge-base bindings
+ * pwc_tars unbinds the removed bases itself (without deleting the dataset) but
+ * does not import into the added ones; it reports them in `kb_ids_to_import`
+ * and the caller imports them one at a time.
+ */
+export async function updateTarsWebsite(
+  tarsId: string,
+  websiteId: string,
+  data: TarsWebsiteUpdate,
+  baseUrl?: string,
+): Promise<{ website: TarsDatasetWebsite | null; kbIdsToImport: string[] }> {
+  const res = await tarsFetch<WebsiteUpdateResponse>(
+    `/api/dataset_website/update_dataset_website/${encodeURIComponent(websiteId)}`,
+    {
+      method: 'PUT',
+      body: {
+        name: data.name,
+        description: data.description,
+        url: data.url,
+        status: data.status,
+        knowledge_base_ids: data.knowledgeBaseIds ?? [],
+        updated_by: tarsId,
+      },
+      baseUrl,
+    },
+  );
+  return { website: res?.dataset_website ?? null, kbIdsToImport: res?.kb_ids_to_import ?? [] };
+}
+
+/**
+ * Creates a website dataset without binding or crawling it
+ */
+export async function createTarsWebsiteRecord(
+  tarsId: string,
+  data: { name: string; url: string; description?: string; status?: 0 | 1 },
+  baseUrl?: string,
+): Promise<TarsDatasetWebsite | null> {
+  const res = await tarsFetch<{ dataset_website?: TarsDatasetWebsite }>(
+    '/api/dataset_website/create_dataset_website',
+    {
+      method: 'POST',
+      body: { ...data, created_by: tarsId },
+      baseUrl,
+    },
+  );
+  return res?.dataset_website ?? null;
 }
