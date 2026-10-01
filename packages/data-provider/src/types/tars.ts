@@ -306,8 +306,8 @@ export type TTarsFileSystemInput = {
 
 /** A row of the 外部網站 master list, with the knowledge base it was imported into. */
 export type TTarsWebsiteSource = TTarsDatasetWebsite & {
-  knowledge_base_id: string | null;
-  knowledge_base_name: string | null;
+  knowledge_base_ids: string[];
+  knowledge_base_names: string[];
 };
 
 export type TTarsWebsitesResponse = {
@@ -317,12 +317,20 @@ export type TTarsWebsitesResponse = {
 };
 
 export type TTarsWebsiteSourceInput = {
-  knowledgeBaseId: string;
+  knowledgeBaseId?: string;
   name: string;
   url: string;
   description?: string;
   enabled?: boolean;
   chunkSize?: number;
+};
+
+export type TTarsWebsiteSourceUpdate = {
+  name: string;
+  description?: string;
+  url?: string;
+  status?: 0 | 1;
+  knowledgeBaseIds?: string[];
 };
 
 export type TTarsFileSystemsResponse = {
