@@ -1,5 +1,5 @@
-import type { TarsDatasetWebsite } from './datasets';
-import { deleteTarsWebsiteDataset } from './datasets';
+import type { TarsDatasetWebsite, TarsWebsiteImportInput } from './datasets';
+import { deleteTarsWebsiteDataset, importTarsWebsiteDataset } from './datasets';
 import { tarsFetch } from './client';
 
 /**
@@ -75,9 +75,11 @@ export async function deleteTarsWebsite(
 export interface TarsWebsiteUpdate {
   name: string;
   description?: string;
-  url?: string;
-  status?: 0 | 1;
-  knowledgeBaseIds?: string[];
+  /**
+   * The complete set of bound knowledge bases. Required because pwc_tars reads
+   * a missing list as empty and unbinds (and drops the vectors of) every base.
+   */
+  knowledgeBaseIds: string[];
 }
 
 interface WebsiteUpdateResponse {
@@ -86,10 +88,12 @@ interface WebsiteUpdateResponse {
 }
 
 /**
- * Updates a website and syncs its knowledge-base bindings
+ * Updates a website and syncs its knowledge-base bindings.
+ *
  * pwc_tars unbinds the removed bases itself (without deleting the dataset) but
  * does not import into the added ones; it reports them in `kb_ids_to_import`
- * and the caller imports them one at a time.
+ * and the caller imports them one at a time, since each import crawls and
+ * embeds inside its own request.
  */
 export async function updateTarsWebsite(
   tarsId: string,
@@ -104,9 +108,7 @@ export async function updateTarsWebsite(
       body: {
         name: data.name,
         description: data.description,
-        url: data.url,
-        status: data.status,
-        knowledge_base_ids: data.knowledgeBaseIds ?? [],
+        knowledge_base_ids: data.knowledgeBaseIds,
         updated_by: tarsId,
       },
       baseUrl,
@@ -115,9 +117,7 @@ export async function updateTarsWebsite(
   return { website: res?.dataset_website ?? null, kbIdsToImport: res?.kb_ids_to_import ?? [] };
 }
 
-/**
- * Creates a website dataset without binding or crawling it
- */
+/** Creates a website dataset without binding or crawling it. */
 export async function createTarsWebsiteRecord(
   tarsId: string,
   data: { name: string; url: string; description?: string; status?: 0 | 1 },
@@ -132,4 +132,34 @@ export async function createTarsWebsiteRecord(
     },
   );
   return res?.dataset_website ?? null;
+}
+
+export type TarsWebsiteCreateInput = Omit<TarsWebsiteImportInput, 'knowledgeBaseId'> & {
+  knowledgeBaseId?: string;
+};
+
+/**
+ * Adds a website: crawled into the knowledge base when one is named, otherwise
+ * stored as an unbound row that a later edit can bind (pwc_tars reuses the row
+ * by URL when it is then imported).
+ */
+export async function createTarsWebsite(
+  tarsId: string,
+  input: TarsWebsiteCreateInput,
+  baseUrl?: string,
+): Promise<TarsDatasetWebsite | null> {
+  const { knowledgeBaseId, ...rest } = input;
+  if (knowledgeBaseId == null || knowledgeBaseId === '') {
+    return createTarsWebsiteRecord(
+      tarsId,
+      {
+        name: rest.name,
+        url: rest.url,
+        description: rest.description,
+        status: rest.enabled === false ? 0 : 1,
+      },
+      baseUrl,
+    );
+  }
+  return importTarsWebsiteDataset(tarsId, { ...rest, knowledgeBaseId }, baseUrl);
 }

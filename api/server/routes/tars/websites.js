@@ -3,10 +3,9 @@ const { logger } = require('@librechat/data-schemas');
 const {
   TarsRequestError,
   fetchTarsWebsites,
+  createTarsWebsite,
   deleteTarsWebsite,
-  importTarsWebsiteDataset,
   updateTarsWebsite,
-  createTarsWebsiteRecord,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
@@ -39,13 +38,13 @@ router.get('/data-sources/websites', async (req, res) => {
 
 /**
  * @route POST /api/tars/data-sources/websites
- * @desc Crawl a site and import it into a knowledge base. Slow by nature:
- *       pwc_tars fetches, chunks and embeds inside this request.
+ * @desc Crawl a site and import it into a knowledge base, or store it unbound
+ *       when no knowledge base is named. Importing is slow by nature: pwc_tars
+ *       fetches, chunks and embeds inside this request.
  * @access Admin (pwc_tars)
  */
 router.post('/data-sources/websites', async (req, res) => {
   const body = req.body ?? {};
-  const knowledgeBaseId = (body.knowledgeBaseId ?? '').trim();
   const name = (body.name ?? '').trim();
   const url = (body.url ?? '').trim();
 
@@ -53,19 +52,9 @@ router.post('/data-sources/websites', async (req, res) => {
     return res.status(400).json({ error: 'name and url are required' });
   }
 
-  if (!knowledgeBaseId) {
-    const website = await createTarsWebsiteRecord(req.user.tarsId, {
-      name,
-      url,
-      description: body.description ?? '',
-      status: body.enabled !== false ? 1 : 0,
-    });
-    return res.status(201).json({ website });
-  }
-
   try {
-    const website = await importTarsWebsiteDataset(req.user.tarsId, {
-      knowledgeBaseId,
+    const website = await createTarsWebsite(req.user.tarsId, {
+      knowledgeBaseId: (body.knowledgeBaseId ?? '').trim(),
       name,
       url,
       description: body.description ?? '',
@@ -82,8 +71,10 @@ router.post('/data-sources/websites', async (req, res) => {
 
 /**
  * @route PUT /api/tars/data-sources/websites/:websiteId
- * @desc Rename or re-describe. The URL is fixed at import: pwc_tars does not
- *       re-crawl on an edit, so a changed address would not match its chunks.
+ * @desc Rename, re-describe and set the bound knowledge bases. pwc_tars unbinds
+ *       the removed ones; the added ones come back as `kbIdsToImport` for the
+ *       caller to import. The URL is fixed at import: pwc_tars does not re-crawl
+ *       on an edit, so a changed address would not match its chunks.
  * @access Admin (pwc_tars)
  */
 router.put('/data-sources/websites/:websiteId', async (req, res) => {

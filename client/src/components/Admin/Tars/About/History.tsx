@@ -3,42 +3,32 @@ import ReactMarkdown from 'react-markdown';
 import { Button, Spinner } from '@librechat/client';
 import { ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
 import type { ReleaseNote } from './helpers';
-import { formatDate, filterNotes, PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from './helpers';
+import {
+  formatDate,
+  filterNotes,
+  parseReleaseNote,
+  PAGE_SIZE_OPTIONS,
+  DEFAULT_PAGE_SIZE,
+} from './helpers';
 import { useLocalize } from '~/hooks';
 
+const SectionTitle = ({ children }: { children?: React.ReactNode }) => (
+  <h2 className="my-3 border-l-2 border-orange-400 pl-2.5 text-sm font-medium text-text-primary">
+    {children}
+  </h2>
+);
+
 const markdownComponents = {
+  h2: SectionTitle,
   ul: ({ children }: { children?: React.ReactNode }) => <ul className="mb-1 pl-4">{children}</ul>,
   li: ({ children }: { children?: React.ReactNode }) => <li className="mb-1">{children}</li>,
   p: ({ children }: { children?: React.ReactNode }) => <p className="mb-2">{children}</p>,
 };
 
-type ReleaseSection = {
-  title: string;
-  content: string;
-};
-
-const parseReleaseSections = (content: string): ReleaseSection[] => {
-  const normalized = content.replace(/^\n/, '').trim();
-
-  // Remove the top-level "# Release ..." heading.
-  const sectionsContent = normalized.replace(/^# .+$(\r?\n)?/m, '').trim();
-
-  return sectionsContent
-    .split(/^## /m)
-    .filter(Boolean)
-    .map((section) => {
-      const [title, ...contentLines] = section.split(/\r?\n/);
-
-      return {
-        title: title.trim(),
-        content: contentLines.join('\n').trim(),
-      };
-    });
-};
-
 /**
  * Version history: a searchable, paged list on the left, the selected note's
- * content on the right. Release sections are displayed in a two-column layout.
+ * content on the right. Layout mirrors the Comments/History split-panel style;
+ * a note's `##` sections are laid out as cards in two columns on wide screens.
  */
 export default function History({
   notes,
@@ -54,19 +44,15 @@ export default function History({
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => filterNotes(notes, query), [notes, query]);
-
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-
   const paged = useMemo(
     () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [filtered, currentPage, pageSize],
   );
-
   const selected = notes.find((note) => note.id === selectedId) ?? notes[0] ?? null;
-
-  const sections = useMemo(
-    () => (selected ? parseReleaseSections(selected.content ?? '') : []),
+  const parsed = useMemo(
+    () => (selected ? parseReleaseNote(selected.content ?? '') : null),
     [selected],
   );
 
@@ -95,7 +81,6 @@ export default function History({
 
   return (
     <div className="grid min-h-[24rem] overflow-hidden rounded-lg border border-border-light md:grid-cols-[18rem_minmax(0,1fr)]">
-      {/* Version list */}
       <div className="flex flex-col border-b border-border-light bg-surface-secondary md:border-b-0 md:border-r">
         <div className="border-b border-border-light p-2">
           <input
@@ -116,7 +101,6 @@ export default function History({
             paged.map((note) => {
               const active = selected?.id === note.id;
               const isLatest = notes[0]?.id === note.id;
-
               return (
                 <li key={note.id} className="border-b border-border-light last:border-b-0">
                   <button
@@ -130,10 +114,8 @@ export default function History({
                     <span className="block truncate text-sm font-medium text-text-primary">
                       {note.title}
                     </span>
-
                     <span className="mt-0.5 flex items-center gap-1.5">
                       <span className="text-xs text-text-secondary">{note.version}</span>
-
                       {isLatest && (
                         <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
                           {localize('com_ui_tars_about_latest')}
@@ -147,7 +129,6 @@ export default function History({
           )}
         </ul>
 
-        {/* Pagination */}
         <div className="flex items-center justify-between gap-2 border-t border-border-light p-2">
           <select
             value={pageSize}
@@ -163,7 +144,6 @@ export default function History({
               </option>
             ))}
           </select>
-
           {totalPages > 1 && (
             <div className="flex items-center gap-1">
               <Button
@@ -176,11 +156,9 @@ export default function History({
               >
                 <ChevronLeft className="size-4" aria-hidden />
               </Button>
-
               <span className="text-xs text-text-secondary">
                 {currentPage}/{totalPages}
               </span>
-
               <Button
                 type="button"
                 variant="outline"
@@ -196,32 +174,28 @@ export default function History({
         </div>
       </div>
 
-      {/* Release content */}
       <div className="overflow-y-auto p-5">
         {selected ? (
           <>
-            {/* Version metadata */}
-            <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-border-light pb-3">
+            <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-border-light pb-3">
               <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
                 {selected.version}
               </span>
-
               <span className="text-sm font-medium text-text-primary">{selected.title}</span>
-
               <span className="ml-auto text-xs text-text-secondary">
                 {formatDate(selected.created_at)}
               </span>
             </div>
-
-            {/* Markdown sections - fixed two columns */}
-            {sections.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {sections.map((section) => (
-                  <div key={section.title} className="rounded-lg bg-surface-primary p-3">
-                    <h2 className="mb-3 border-l-2 border-orange-400 pl-2.5 text-sm font-medium text-text-primary">
-                      {section.title}
-                    </h2>
-
+            {parsed != null && parsed.intro !== '' && (
+              <div className="text-sm leading-7 text-text-secondary">
+                <ReactMarkdown components={markdownComponents}>{parsed.intro}</ReactMarkdown>
+              </div>
+            )}
+            {parsed != null && parsed.sections.length > 0 && (
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                {parsed.sections.map((section, index) => (
+                  <div key={index} className="rounded-lg bg-surface-primary px-3 pb-1">
+                    <SectionTitle>{section.title}</SectionTitle>
                     <div className="text-sm leading-7 text-text-secondary">
                       <ReactMarkdown components={markdownComponents}>
                         {section.content}
@@ -229,12 +203,6 @@ export default function History({
                     </div>
                   </div>
                 ))}
-              </div>
-            ) : (
-              <div className="text-sm leading-7 text-text-secondary">
-                <ReactMarkdown components={markdownComponents}>
-                  {selected.content?.replace(/^# .+$(\r?\n)?/m, '').trim() ?? ''}
-                </ReactMarkdown>
               </div>
             )}
           </>
