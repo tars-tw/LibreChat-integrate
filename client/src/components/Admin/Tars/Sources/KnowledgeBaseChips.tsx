@@ -9,23 +9,30 @@ import { useLocalize } from '~/hooks';
  * onto more lines rather than collapsing into a "+N" that hides which bases a
  * source is actually granted to.
  */
-export default function KnowledgeBaseChips({ names }: { names: string[] }) {
+export default function KnowledgeBaseChips({
+  names,
+  emptyLabel,
+}: {
+  names: string[];
+  /** What an empty cell means for this source; defaults to "not granted". */
+  emptyLabel?: string;
+}) {
   const localize = useLocalize();
 
   if (names.length === 0) {
+    const label = emptyLabel ?? localize('com_ui_tars_db_allowed_kbs_none');
     return (
-      <CircleOff
-        className="size-3.5 text-text-tertiary"
-        aria-label={localize('com_ui_tars_db_allowed_kbs_none')}
-      />
+      <span role="img" aria-label={label} title={label} className="inline-flex">
+        <CircleOff className="size-3.5 text-text-tertiary" aria-hidden />
+      </span>
     );
   }
 
   return (
     <span className="flex flex-wrap items-center gap-1">
-      {names.map((name) => (
+      {names.map((name, index) => (
         <span
-          key={name}
+          key={`${index}-${name}`}
           className="max-w-[16rem] truncate rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary"
           title={name}
         >

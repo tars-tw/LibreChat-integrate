@@ -46,7 +46,7 @@ const mockBackend = (data: { status: number; body: unknown }) =>
     if (url.includes('/api/langflow-service/data')) {
       return buildResponse(data.status, data.body);
     }
-    if (url.includes('/api/sys_config/prepare_data')) {
+    if (url.includes('/api/settings/list_sys_configs')) {
       return buildResponse(200, [
         { key: 'KEY_LANGFLOW_API_KEY', value: 'service-key', status: 'active' },
       ]);

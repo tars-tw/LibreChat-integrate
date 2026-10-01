@@ -15,6 +15,7 @@ import { boundIds, boundNames, filterWebsites } from './helpers';
 import ChunkList from '../Knowledge/Detail/ChunkList';
 import WebsiteDetails from './Details';
 import { useLocalize } from '~/hooks';
+import UnbindWarning from './Unbind';
 import WebsiteTable from './Table';
 import WebsiteModal from './Modal';
 
@@ -63,9 +64,15 @@ export default function WebsiteManager() {
       showToast({ message: localize('com_ui_tars_web_deleted'), status: 'success' });
       setDeleting(null);
     },
-    onError: () =>
-      showToast({ message: localize('com_ui_tars_web_delete_failed'), status: 'error' }),
+    /** Closed on failure too: a multi-base delete may have unbound some bases
+     *  already, so a retry must start from the refetched row. */
+    onError: () => {
+      showToast({ message: localize('com_ui_tars_web_delete_failed'), status: 'error' });
+      setDeleting(null);
+    },
   });
+
+  const chunksKnowledgeBaseId = chunksOf != null ? boundIds(chunksOf)[0] : undefined;
 
   const knowledgeBaseOptions = [
     { value: ALL_KNOWLEDGE_BASES, label: localize('com_ui_tars_web_all_knowledge_bases') },
@@ -138,11 +145,11 @@ export default function WebsiteManager() {
 
       {details != null && <WebsiteDetails website={details} onClose={() => setDetails(null)} />}
 
-      {chunksOf != null && boundIds(chunksOf)[0] != null && (
+      {chunksOf != null && chunksKnowledgeBaseId != null && (
         <ChunkList
           source={{
             kind: 'website',
-            knowledgeBaseId: boundIds(chunksOf)[0],
+            knowledgeBaseId: chunksKnowledgeBaseId,
             website: chunksOf,
           }}
           onClose={() => setChunksOf(null)}
@@ -158,18 +165,16 @@ export default function WebsiteManager() {
             main={
               <div className="space-y-2">
                 <p className="text-sm text-text-secondary">
-                  {localize('com_ui_tars_db_delete_confirm_named', { 0: deleting.name ?? '' })}
+                  {localize('com_ui_tars_web_delete_confirm_named', { 0: deleting.name ?? '' })}
                 </p>
                 <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
                   {localize('com_ui_tars_web_delete_warning')}
                 </p>
                 {boundIds(deleting).length > 0 && (
-                  <div className="rounded-lg border border-border-light p-3 text-sm text-pwc-danger">
-                    <p className="mb-1">{localize('com_ui_tars_web_delete_kb_relations')}</p>
-                    {boundNames(deleting).map((name) => (
-                      <div key={name}>- {name}</div>
-                    ))}
-                  </div>
+                  <UnbindWarning
+                    label={localize('com_ui_tars_web_delete_kb_relations')}
+                    names={boundNames(deleting)}
+                  />
                 )}
               </div>
             }
