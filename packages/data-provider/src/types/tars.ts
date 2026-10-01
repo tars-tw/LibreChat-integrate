@@ -328,9 +328,8 @@ export type TTarsWebsiteSourceInput = {
 export type TTarsWebsiteSourceUpdate = {
   name: string;
   description?: string;
-  url?: string;
-  status?: 0 | 1;
-  knowledgeBaseIds?: string[];
+  /** The complete bound set; pwc_tars unbinds every base left out. */
+  knowledgeBaseIds: string[];
 };
 
 export type TTarsFileSystemsResponse = {

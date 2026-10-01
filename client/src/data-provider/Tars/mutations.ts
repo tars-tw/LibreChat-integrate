@@ -24,7 +24,6 @@ import type {
   TTarsFileSystemSource,
   TTarsFileSystemInput,
   TTarsFileSystemConnectionTest,
-  TTarsWebsiteSourceInput,
   TTarsWebsiteImportInput,
   TTarsFileSystemImportInput,
   TTarsDatasetBatchDelete,
@@ -1785,26 +1784,17 @@ const useWebsiteSourceMutation = <TData, TVariables>(
   const queryClient = useQueryClient();
   return useMutation(mutate, {
     ...options,
-    onSuccess: (...args) => {
+    /** Multi-base saves and deletes can fail part-way, after some calls landed. */
+    onSettled: (...args) => {
       queryClient.invalidateQueries([QueryKeys.tarsWebsites]);
       queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseDatasets]);
-      options?.onSuccess?.(...args);
+      options?.onSettled?.(...args);
     },
   });
 };
 
-type WebsiteResponse = { website: TTarsDatasetWebsite | null };
-
-/** Crawls and embeds inside the request, so expect this one to be slow. */
-export const useCreateTarsWebsiteSourceMutation = (
-  options?: UseMutationOptions<WebsiteResponse, unknown, TTarsWebsiteSourceInput>,
-): UseMutationResult<WebsiteResponse, unknown, TTarsWebsiteSourceInput> =>
-  useWebsiteSourceMutation(
-    (data: TTarsWebsiteSourceInput) => dataService.createTarsWebsiteSource(data),
-    options,
-  );
-
 export interface TarsWebsiteBindingsInput {
+  /** Absent for a new website. */
   id?: string;
   name: string;
   url: string;
@@ -1814,67 +1804,49 @@ export interface TarsWebsiteBindingsInput {
 }
 
 export interface TarsWebsiteBindingsResult {
-  failed: { knowledgeBaseId: string; error: unknown }[];
+  /** Knowledge bases whose import failed; the others were saved. */
+  failed: string[];
 }
 
+/**
+ * Creates or edits a website together with its knowledge-base bindings.
+ *
+ * Each import crawls and embeds inside its own request, so the bases are
+ * imported one call at a time from here rather than in one long server request.
+ * On edit, pwc_tars unbinds the removed bases and reports the added ones.
+ */
 export const useSaveTarsWebsiteBindingsMutation = (
   options?: UseMutationOptions<TarsWebsiteBindingsResult, unknown, TarsWebsiteBindingsInput>,
 ): UseMutationResult<TarsWebsiteBindingsResult, unknown, TarsWebsiteBindingsInput> =>
   useWebsiteSourceMutation(async (input: TarsWebsiteBindingsInput) => {
-    const failed: TarsWebsiteBindingsResult['failed'] = [];
-    let toImport: string[];
+    const { id, knowledgeBaseIds, ...website } = input;
 
-    if (input.id != null) {
-      const res = await dataService.updateTarsWebsiteSource(input.id, {
-        name: input.name,
-        description: input.description,
-        knowledgeBaseIds: input.knowledgeBaseIds,
-      });
-      toImport = res.kbIdsToImport;
-    } else if (input.knowledgeBaseIds.length === 0) {
-      await dataService.createTarsWebsiteSource({
-        name: input.name,
-        url: input.url,
-        description: input.description,
-        enabled: input.enabled,
-      });
-      return { failed };
-    } else {
-      toImport = input.knowledgeBaseIds;
+    if (id == null && knowledgeBaseIds.length === 0) {
+      await dataService.createTarsWebsiteSource(website);
+      return { failed: [] };
     }
 
+    const toImport =
+      id != null
+        ? (
+            await dataService.updateTarsWebsiteSource(id, {
+              name: website.name,
+              description: website.description,
+              knowledgeBaseIds,
+            })
+          ).kbIdsToImport
+        : knowledgeBaseIds;
+
+    const failed: string[] = [];
     for (const knowledgeBaseId of toImport) {
       try {
-        await dataService.createTarsWebsiteSource({
-          knowledgeBaseId,
-          name: input.name,
-          url: input.url,
-          description: input.description,
-          enabled: input.enabled,
-        });
-      } catch (error) {
-        failed.push({ knowledgeBaseId, error });
+        await dataService.createTarsWebsiteSource({ ...website, knowledgeBaseId });
+      } catch {
+        failed.push(knowledgeBaseId);
       }
     }
     return { failed };
   }, options);
-
-export const useUpdateTarsWebsiteSourceMutation = (
-  options?: UseMutationOptions<
-    WebsiteResponse,
-    unknown,
-    { id: string; name: string; description?: string }
-  >,
-): UseMutationResult<
-  WebsiteResponse,
-  unknown,
-  { id: string; name: string; description?: string }
-> =>
-  useWebsiteSourceMutation(
-    ({ id, name, description }: { id: string; name: string; description?: string }) =>
-      dataService.updateTarsWebsiteSource(id, { name, description }),
-    options,
-  );
 
 export const useDeleteTarsWebsiteSourceMutation = (
   options?: UseMutationOptions<

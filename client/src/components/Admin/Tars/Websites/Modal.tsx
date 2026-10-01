@@ -7,6 +7,7 @@ import {
   OGDialog,
   OGDialogTemplate,
   Spinner,
+  Switch,
   useToastContext,
 } from '@librechat/client';
 import type { TTarsWebsiteSource } from 'librechat-data-provider';
@@ -14,6 +15,7 @@ import type { WebsiteForm } from './helpers';
 import {
   NAME_MAX,
   NAME_MIN,
+  boundIds,
   emptyWebsiteForm,
   errorMessage,
   knowledgeBasePickerOptions,
@@ -24,6 +26,7 @@ import {
 import { useSaveTarsWebsiteBindingsMutation } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 import Picker from '../Audit/Picker';
+import UnbindWarning from './Unbind';
 
 /**
  * Imports a site, or edits one already imported.
@@ -58,6 +61,11 @@ export default function WebsiteModal({
   );
 
   const kbOptions = useMemo(() => knowledgeBasePickerOptions(knowledgeBases), [knowledgeBases]);
+  const kbName = (id: string) => knowledgeBases.find((kb) => kb.id === id)?.name ?? id;
+
+  const initialIds = isEdit ? boundIds(website) : [];
+  const removedNames = initialIds.filter((id) => !form.knowledgeBaseIds.includes(id)).map(kbName);
+  const importsAny = form.knowledgeBaseIds.some((id) => !initialIds.includes(id));
 
   const onSaved = () => {
     showToast({
@@ -80,16 +88,13 @@ export default function WebsiteModal({
         onSaved();
         return;
       }
-      const names = failed
-        .map(
-          (f) =>
-            knowledgeBases.find((kb) => kb.id === f.knowledgeBaseId)?.name ?? f.knowledgeBaseId,
-        )
-        .join(', ');
       showToast({
-        message: `${localize('com_ui_tars_web_partial_failed')}: ${names}`,
+        message: `${localize('com_ui_tars_web_partial_failed')}: ${failed.map(kbName).join(', ')}`,
         status: 'error',
       });
+      /** The site now exists, so a retry goes through edit, which imports only
+       *  the bases still missing; re-running this form would re-import all. */
+      onClose();
     },
     onError: onFailed,
   });
@@ -137,6 +142,12 @@ export default function WebsiteModal({
               <p className="text-xs text-text-secondary">
                 {localize('com_ui_tars_web_knowledge_base_hint')}
               </p>
+              {removedNames.length > 0 && (
+                <UnbindWarning
+                  label={localize('com_ui_tars_web_unbind_warning')}
+                  names={removedNames}
+                />
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -203,12 +214,24 @@ export default function WebsiteModal({
             </div>
 
             {!isEdit && (
+              <div className="flex items-center gap-2">
+                <Label htmlFor="tars-web-enabled">{localize('com_ui_tars_db_enabled')}</Label>
+                <Switch
+                  id="tars-web-enabled"
+                  aria-label={localize('com_ui_tars_db_enabled')}
+                  checked={form.enabled}
+                  onCheckedChange={(checked) => set('enabled', checked)}
+                />
+              </div>
+            )}
+
+            {!isEdit && (
               <p className="rounded-lg border border-border-light p-3 text-xs text-text-secondary">
                 {localize('com_ui_tars_web_import_notice')}
               </p>
             )}
 
-            {isBusy && (
+            {isBusy && importsAny && (
               <p className="flex items-center gap-2 text-sm text-text-secondary">
                 <Spinner className="size-4" />
                 {localize('com_ui_tars_web_importing')}

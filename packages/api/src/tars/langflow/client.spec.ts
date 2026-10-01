@@ -31,7 +31,7 @@ const buildResponse = (status: number, body: unknown): Response =>
 const mockBackend = (capability: { status: number; body: unknown }) =>
   jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
-    if (url.includes('/api/sys_config/prepare_data')) {
+    if (url.includes('/api/settings/list_sys_configs')) {
       return buildResponse(200, [
         { key: 'KEY_LANGFLOW_API_KEY', value: 'from-sysconfig', status: 'active' },
       ]);
@@ -127,7 +127,7 @@ describe('runLangflowCapability', () => {
   it('throws before calling pwc_tars when no service key is configured', async () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
       const url = String(input);
-      if (url.includes('/api/sys_config/prepare_data')) {
+      if (url.includes('/api/settings/list_sys_configs')) {
         return buildResponse(200, []);
       }
       throw new Error(`Unexpected fetch: ${url}`);

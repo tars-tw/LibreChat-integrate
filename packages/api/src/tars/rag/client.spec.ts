@@ -51,7 +51,7 @@ const mockBackend = (rag?: { status: number; body: unknown }) =>
     if (url.includes('/api/model/get_model_list')) {
       return buildResponse(200, [{ model_name: 'gpt-5.4-mini' }, { model_name: 'gpt-5.5' }]);
     }
-    if (url.includes('/api/sys_config/prepare_data')) {
+    if (url.includes('/api/settings/list_sys_configs')) {
       return buildResponse(200, [
         { key: 'KEY_LANGFLOW_API_KEY', value: 'from-sysconfig', status: 'active' },
       ]);
