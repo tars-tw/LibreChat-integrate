@@ -343,6 +343,7 @@ export async function runTarsPluginTool(
         TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
       ),
       librechatUserId: input.librechatUserId,
+      tarsUserId: input.tarsUserId,
       onProgress: input.onProgress,
       signal: input.signal,
     },

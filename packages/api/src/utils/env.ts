@@ -51,6 +51,7 @@ const ALLOWED_USER_FIELDS = [
   'twoFactorEnabled',
   'termsAccepted',
   'termsAcceptedAt',
+  'tarsId',
 ] as const;
 
 type AllowedUserField = (typeof ALLOWED_USER_FIELDS)[number];
