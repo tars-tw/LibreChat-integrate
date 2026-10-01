@@ -11,8 +11,8 @@ import {
 } from '@librechat/client';
 import type { TTarsWebsiteSource } from 'librechat-data-provider';
 import { useTarsWebsitesQuery, useDeleteTarsWebsiteSourceMutation } from '~/data-provider';
+import { boundIds, boundNames, filterWebsites } from './helpers';
 import ChunkList from '../Knowledge/Detail/ChunkList';
-import { filterWebsites } from './helpers';
 import WebsiteDetails from './Details';
 import { useLocalize } from '~/hooks';
 import WebsiteTable from './Table';
@@ -138,11 +138,11 @@ export default function WebsiteManager() {
 
       {details != null && <WebsiteDetails website={details} onClose={() => setDetails(null)} />}
 
-      {chunksOf != null && chunksOf.knowledge_base_id != null && (
+      {chunksOf != null && boundIds(chunksOf)[0] != null && (
         <ChunkList
           source={{
             kind: 'website',
-            knowledgeBaseId: chunksOf.knowledge_base_id,
+            knowledgeBaseId: boundIds(chunksOf)[0],
             website: chunksOf,
           }}
           onClose={() => setChunksOf(null)}
@@ -163,6 +163,14 @@ export default function WebsiteManager() {
                 <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
                   {localize('com_ui_tars_web_delete_warning')}
                 </p>
+                {boundIds(deleting).length > 0 && (
+                  <div className="rounded-lg border border-border-light p-3 text-sm text-pwc-danger">
+                    <p className="mb-1">{localize('com_ui_tars_web_delete_kb_relations')}</p>
+                    {boundNames(deleting).map((name) => (
+                      <div key={name}>- {name}</div>
+                    ))}
+                  </div>
+                )}
               </div>
             }
             buttons={
@@ -171,7 +179,7 @@ export default function WebsiteManager() {
                 onClick={() =>
                   deleteMutation.mutate({
                     id: deleting.id,
-                    knowledgeBaseId: deleting.knowledge_base_id,
+                    knowledgeBaseIds: boundIds(deleting),
                   })
                 }
                 disabled={deleteMutation.isLoading}
