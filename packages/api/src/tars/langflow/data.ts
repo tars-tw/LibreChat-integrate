@@ -148,6 +148,7 @@ export function createTarsDataTool(options: TarsDataToolOptions): DynamicStructu
               TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
             ),
             librechatUserId: options.librechatUserId,
+            tarsUserId: options.tarsUserId,
           },
         );
         logger.debug(

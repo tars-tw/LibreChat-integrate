@@ -379,6 +379,7 @@ export async function createTarsBuiltinTool(
           context,
           longRunning: manifest.long_running,
           librechatUserId: options.librechatUserId,
+          tarsUserId,
           onProgress: (message) => options.reportProgress?.(message, config),
           signal: config?.signal,
         });

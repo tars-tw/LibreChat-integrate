@@ -174,6 +174,15 @@ describe('resolveHeaders', () => {
     });
   });
 
+  it('should process the linked pwc_tars user id placeholder', () => {
+    const user = { id: 'test-user-123', tarsId: 'tars-uuid-1' } as Partial<IUser>;
+    const headers = { 'x-langflow-global-var-tars_user_id': '{{LIBRECHAT_USER_TARSID}}' };
+
+    const result = resolveHeaders({ headers, user });
+
+    expect(result).toEqual({ 'x-langflow-global-var-tars_user_id': 'tars-uuid-1' });
+  });
+
   it('should not process user ID placeholder when user is undefined', () => {
     const headers = {
       'User-Id': '{{LIBRECHAT_USER_ID}}',

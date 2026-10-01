@@ -165,6 +165,8 @@ mcpServers:
       # TarsAgent component 讀取後轉發 pwc_tars → LLM gateway 以該使用者身分解析個人 key。
       # 這個佔位符同時讓 langflow 的 MCP 連線變成 per-user scoped。
       x-langflow-global-var-librechat_user_id: '{{LIBRECHAT_USER_ID}}'
+      # 發話者對應的 pwc_tars 使用者（sys_user.id）；pwc_tars 依此限制可用的知識庫，沒帶就不能用知識庫。
+      x-langflow-global-var-tars_user_id: '{{LIBRECHAT_USER_TARSID}}'
     title: 'Langflow'
     description: 'Langflow flows exposed as callable tools'
     timeout: 60000

@@ -18,6 +18,8 @@ const SERVICE_KEY_HEADER = 'X-TARS-Service-Key';
  */
 const GATEWAY_HEADER = 'X-Use-Librechat-Gateway';
 const GATEWAY_USER_HEADER = 'X-Librechat-User-Id';
+/** The pwc_tars user acting behind the call; pwc_tars limits knowledge bases to what it may open. */
+const TARS_USER_HEADER = 'X-TARS-User-Id';
 
 export interface LangflowGeneratedUrl {
   type?: string;
@@ -93,6 +95,8 @@ export interface LangflowRequestOptions {
   timeoutMs: number;
   /** The account the gateway resolves models and quota for. */
   librechatUserId?: string;
+  /** The linked pwc_tars user; without it pwc_tars refuses knowledge-base access. */
+  tarsUserId?: string;
 }
 
 /**
@@ -145,7 +149,10 @@ export interface LangflowServiceFetchOptions extends LangflowRequestOptions {
   body?: Record<string, unknown>;
 }
 
-async function langflowServiceHeaders(librechatUserId?: string): Promise<Record<string, string>> {
+async function langflowServiceHeaders(
+  librechatUserId?: string,
+  tarsUserId?: string,
+): Promise<Record<string, string>> {
   const key = await resolveLangflowServiceKey();
   if (!key) {
     throw new Error(
@@ -158,6 +165,9 @@ async function langflowServiceHeaders(librechatUserId?: string): Promise<Record<
   };
   if (librechatUserId) {
     headers[GATEWAY_USER_HEADER] = librechatUserId;
+  }
+  if (tarsUserId) {
+    headers[TARS_USER_HEADER] = tarsUserId;
   }
   return headers;
 }
@@ -176,7 +186,7 @@ export async function langflowServiceFetch<T>(
   const envelope = await tarsFetch<LangflowServiceEnvelope<T>>(path, {
     method: options.method ?? 'POST',
     timeoutMs: options.timeoutMs,
-    headers: await langflowServiceHeaders(options.librechatUserId),
+    headers: await langflowServiceHeaders(options.librechatUserId, options.tarsUserId),
     body: options.body,
   });
   return envelope?.data;
@@ -200,7 +210,7 @@ export async function langflowServiceStream<T>(
 ): Promise<void> {
   await tarsStream<T>(path, onEvent, {
     timeoutMs: options.timeoutMs,
-    headers: await langflowServiceHeaders(options.librechatUserId),
+    headers: await langflowServiceHeaders(options.librechatUserId, options.tarsUserId),
     body: options.body,
     signal: options.signal,
   });
