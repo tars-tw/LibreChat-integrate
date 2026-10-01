@@ -3857,7 +3857,7 @@
   "com_ui_tars_web_imported": "Website imported.",
   "com_ui_tars_web_importing": "Crawling and importing the site…",
   "com_ui_tars_web_knowledge_base": "Knowledge base",
-  "com_ui_tars_web_knowledge_base_hint": "A website is only crawled once it is imported into a knowledge base, and cannot be moved to another afterwards.",
+  "com_ui_tars_web_knowledge_base_hint": "A website is only crawled once it is imported into a knowledge base.",
   "com_ui_tars_web_metatype": "Site type",
   "com_ui_tars_web_name": "Dataset name",
   "com_ui_tars_web_name_placeholder": "e.g. Public company site",
@@ -4295,5 +4295,7 @@
   "com_ui_tars_about_per_page": "{{0}} per page",
   "com_ui_tars_about_select_version": "Select a version to view its details.",
   "com_ui_tars_nav_ai_design": "AI Design",
-  "com_ui_tars_nav_model_management": "Model Management"
+  "com_ui_tars_nav_model_management": "Model Management",
+  "com_ui_tars_web_partial_failed": "Some knowledge bases failed to update",
+  "com_ui_tars_web_delete_kb_relations": "This will also unbind the following knowledge bases:"
 }

@@ -867,8 +867,8 @@ export const createTarsWebsiteSource = (
 
 export const updateTarsWebsiteSource = (
   id: string,
-  data: { name: string; description?: string },
-): Promise<{ website: t.TTarsDatasetWebsite | null }> => {
+  data: t.TTarsWebsiteSourceUpdate,
+): Promise<{ website: t.TTarsDatasetWebsite | null; kbIdsToImport: string[] }> => {
   return request.put(endpoints.tarsWebsite(id), data);
 };
 
