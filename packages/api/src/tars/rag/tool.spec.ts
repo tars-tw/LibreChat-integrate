@@ -55,7 +55,7 @@ const mockBackend = (rag: { status: number; body: unknown } = { status: 200, bod
     if (url.includes('/api/model/get_model_list')) {
       return buildResponse(200, [{ model_name: 'gemini-3.6-flash' }]);
     }
-    if (url.includes('/api/sys_config/prepare_data')) {
+    if (url.includes('/api/settings/list_sys_configs')) {
       return buildResponse(200, [
         { key: 'KEY_LANGFLOW_API_KEY', value: 'from-sysconfig', status: 'active' },
       ]);

@@ -1,7 +1,8 @@
 import { Button } from '@librechat/client';
-import { ExternalLink, Info, LayoutList, Pencil, Trash2, CircleOff } from 'lucide-react';
+import { ExternalLink, Info, LayoutList, Pencil, Trash2 } from 'lucide-react';
 import type { TTarsWebsiteSource } from 'librechat-data-provider';
 import Pagination, { usePagination } from '../Knowledge/Pagination';
+import KnowledgeBaseChips from '../Sources/KnowledgeBaseChips';
 import { formatCount } from '../Knowledge/Detail/helpers';
 import { boundIds, boundNames } from './helpers';
 import { useLocalize } from '~/hooks';
@@ -52,7 +53,6 @@ export default function WebsiteTable({
           <tbody>
             {paged.rows.map((website) => {
               const bound = boundIds(website).length > 0;
-              const names = boundNames(website);
 
               return (
                 <tr
@@ -82,24 +82,10 @@ export default function WebsiteTable({
                     </a>
                   </td>
                   <td className="px-3 py-1.5">
-                    {bound ? (
-                      <div className="flex flex-wrap gap-1">
-                        {names.map((name) => (
-                          <span
-                            key={name}
-                            title={name}
-                            className="max-w-[10rem] truncate rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-primary"
-                          >
-                            {name}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <CircleOff
-                        className="size-3.5 text-text-tertiary"
-                        aria-label={localize('com_ui_tars_web_unbound')}
-                      />
-                    )}
+                    <KnowledgeBaseChips
+                      names={boundNames(website)}
+                      emptyLabel={localize('com_ui_tars_web_unbound')}
+                    />
                   </td>
                   <td className="px-3 py-1.5 text-right tabular-nums text-text-secondary">
                     {formatCount(website.word_count)}
