@@ -9,7 +9,8 @@ router.use('/sys-configs', requireJwtAuth, requireTarsAdmin);
 
 /**
  * @route GET /api/tars/sys-configs
- * @desc List pwc_tars system parameters (sys_config rows with is_displayed=true).
+ * @desc List every pwc_tars system parameter, including `is_displayed=false` rows
+ *       such as the provider keys; the system-parameter page filters those out itself.
  * @access Admin (pwc_tars)
  */
 router.get('/sys-configs', async (req, res) => {
