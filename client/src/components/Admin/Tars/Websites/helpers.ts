@@ -5,8 +5,13 @@ export { NAME_MIN, NAME_MAX, nameInvalid, errorMessage } from '../Sources/helper
 /** pwc_tars crawls over HTTP(S) only; anything else fails at fetch time. */
 export const urlInvalid = (url: string): boolean => !/^https?:\/\/\S+$/.test(url.trim());
 
+export const boundIds = (w: TTarsWebsiteSource): string[] => w.knowledge_base_ids ?? [];
+
+export const boundNames = (w: TTarsWebsiteSource): string[] =>
+  w.knowledge_base_names?.length ? w.knowledge_base_names : boundIds(w);
+
 export interface WebsiteForm {
-  knowledgeBaseId: string;
+  knowledgeBaseIds: string[];
   name: string;
   url: string;
   description: string;
@@ -14,7 +19,7 @@ export interface WebsiteForm {
 }
 
 export const emptyWebsiteForm: WebsiteForm = {
-  knowledgeBaseId: '',
+  knowledgeBaseIds: [],
   name: '',
   url: '',
   description: '',
@@ -22,7 +27,7 @@ export const emptyWebsiteForm: WebsiteForm = {
 };
 
 export const toWebsiteForm = (website: TTarsWebsiteSource): WebsiteForm => ({
-  knowledgeBaseId: website.knowledge_base_id ?? '',
+  knowledgeBaseIds: boundIds(website),
   name: website.name ?? '',
   url: website.url ?? '',
   description: website.description ?? '',
@@ -37,7 +42,7 @@ export const filterWebsites = (
 ): TTarsWebsiteSource[] => {
   const query = search.trim().toLowerCase();
   return websites.filter((website) => {
-    if (knowledgeBaseId !== '' && website.knowledge_base_id !== knowledgeBaseId) {
+    if (knowledgeBaseId !== '' && !boundIds(website).includes(knowledgeBaseId)) {
       return false;
     }
     if (query === '') {
@@ -48,3 +53,8 @@ export const filterWebsites = (
     );
   });
 };
+
+export const knowledgeBasePickerOptions = (
+  knowledgeBases: { id: string; name: string }[],
+): { value: string; label: string }[] =>
+  knowledgeBases.map((kb) => ({ value: kb.id, label: kb.name }));

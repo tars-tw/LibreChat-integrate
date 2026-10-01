@@ -1,3 +1,4 @@
+import { CircleOff } from 'lucide-react';
 import { useLocalize } from '~/hooks';
 
 /**
@@ -13,7 +14,10 @@ export default function KnowledgeBaseChips({ names }: { names: string[] }) {
 
   if (names.length === 0) {
     return (
-      <span className="text-text-tertiary">{localize('com_ui_tars_db_allowed_kbs_none')}</span>
+      <CircleOff
+        className="size-3.5 text-text-tertiary"
+        aria-label={localize('com_ui_tars_db_allowed_kbs_none')}
+      />
     );
   }
 

@@ -3120,7 +3120,7 @@
   "com_ui_tars_web_imported": "網站已匯入。",
   "com_ui_tars_web_importing": "正在爬取與匯入網站內容…",
   "com_ui_tars_web_knowledge_base": "知識庫",
-  "com_ui_tars_web_knowledge_base_hint": "外部網站必須匯入到某個知識庫才會被爬取；建立後無法更換知識庫。",
+  "com_ui_tars_web_knowledge_base_hint": "外部網站必須匯入到某個知識庫才會被爬取。",
   "com_ui_tars_web_metatype": "網站類型",
   "com_ui_tars_web_name": "資料集名稱",
   "com_ui_tars_web_name_placeholder": "例如：公司公開資訊網",
@@ -3953,5 +3953,7 @@
   "com_ui_tars_about_per_page": "{{0}} 筆/頁",
   "com_ui_tars_about_select_version": "請選擇左側版本以查看內容",
   "com_ui_tars_nav_ai_design": "AI 設計",
-  "com_ui_tars_nav_model_management": "模型管理"
+  "com_ui_tars_nav_model_management": "模型管理",
+  "com_ui_tars_web_partial_failed": "部分知識庫處理失敗",
+  "com_ui_tars_web_delete_kb_relations": "將同時解除以下知識庫的綁定："
 }

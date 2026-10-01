@@ -5,7 +5,8 @@ const {
   fetchTarsWebsites,
   deleteTarsWebsite,
   importTarsWebsiteDataset,
-  updateTarsWebsiteDataset,
+  updateTarsWebsite,
+  createTarsWebsiteRecord,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 
@@ -48,8 +49,18 @@ router.post('/data-sources/websites', async (req, res) => {
   const name = (body.name ?? '').trim();
   const url = (body.url ?? '').trim();
 
-  if (!knowledgeBaseId || !name || !url) {
-    return res.status(400).json({ error: 'knowledgeBaseId, name and url are required' });
+  if (!name || !url) {
+    return res.status(400).json({ error: 'name and url are required' });
+  }
+
+  if (!knowledgeBaseId) {
+    const website = await createTarsWebsiteRecord(req.user.tarsId, {
+      name,
+      url,
+      description: body.description ?? '',
+      status: body.enabled !== false ? 1 : 0,
+    });
+    return res.status(201).json({ website });
   }
 
   try {
@@ -81,12 +92,22 @@ router.put('/data-sources/websites/:websiteId', async (req, res) => {
     return res.status(400).json({ error: 'name is required' });
   }
 
+  const knowledgeBaseIds = req.body?.knowledgeBaseIds;
+  if (!Array.isArray(knowledgeBaseIds)) {
+    return res.status(400).json({ error: 'knowledgeBaseIds must be an array' });
+  }
+
   try {
-    const website = await updateTarsWebsiteDataset(req.user.tarsId, req.params.websiteId, {
-      name,
-      description: req.body?.description ?? '',
-    });
-    return res.json({ website });
+    const { website, kbIdsToImport } = await updateTarsWebsite(
+      req.user.tarsId,
+      req.params.websiteId,
+      {
+        name,
+        description: req.body?.description ?? '',
+        knowledgeBaseIds: knowledgeBaseIds.filter((id) => typeof id === 'string' && id !== ''),
+      },
+    );
+    return res.json({ website, kbIdsToImport });
   } catch (error) {
     logger.error('[PUT /api/tars/data-sources/websites/:websiteId] Failed', error);
     return relay(res, error, 'Failed to update pwc_tars website dataset');
