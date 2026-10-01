@@ -2780,6 +2780,7 @@
   "com_ui_tars_fs_all_protocols": "All protocols",
   "com_ui_tars_fs_allowed_kbs_hint": "Only the knowledge bases granted here may import files from this document group.",
   "com_ui_tars_fs_delete": "Delete document group",
+  "com_ui_tars_fs_delete_confirm_named": "Delete the document group \"{{0}}\"?",
   "com_ui_tars_fs_delete_failed": "Failed to delete the document group.",
   "com_ui_tars_fs_delete_warning": "Granted knowledge bases will no longer sync from this document group. Documents already imported are left in place.",
   "com_ui_tars_fs_deleted": "Document group deleted.",
@@ -3908,7 +3909,9 @@
   "com_ui_tars_web_chunks_unavailable": "Not imported into a knowledge base — nothing was crawled",
   "com_ui_tars_web_created_by": "Created by",
   "com_ui_tars_web_delete": "Delete website",
+  "com_ui_tars_web_delete_confirm_named": "Delete the website \"{{0}}\"?",
   "com_ui_tars_web_delete_failed": "Failed to delete the website.",
+  "com_ui_tars_web_delete_kb_relations": "This will also unbind the following knowledge bases:",
   "com_ui_tars_web_delete_warning": "Its crawled chunks and vectors are removed with it, and the knowledge base will no longer find its content.",
   "com_ui_tars_web_deleted": "Website deleted.",
   "com_ui_tars_web_details": "Website details",
@@ -3926,6 +3929,7 @@
   "com_ui_tars_web_name_placeholder": "e.g. Public company site",
   "com_ui_tars_web_new": "New website",
   "com_ui_tars_web_no_search_results": "No websites match the filters.",
+  "com_ui_tars_web_partial_failed": "Some knowledge bases could not be imported; edit the website to retry",
   "com_ui_tars_web_preview": "Preview in a new tab",
   "com_ui_tars_web_save_failed": "Failed to save the website.",
   "com_ui_tars_web_saved": "Website saved.",
@@ -3934,6 +3938,7 @@
   "com_ui_tars_web_size": "Content size",
   "com_ui_tars_web_tags": "Tags",
   "com_ui_tars_web_tokens": "Tokens",
+  "com_ui_tars_web_unbind_warning": "Saving removes this website's crawled content from these knowledge bases:",
   "com_ui_tars_web_unbound": "Not imported",
   "com_ui_tars_web_updated_by": "Updated by",
   "com_ui_tars_web_url": "URL",
@@ -4360,7 +4365,5 @@
   "com_ui_tars_about_per_page": "{{0}} per page",
   "com_ui_tars_about_select_version": "Select a version to view its details.",
   "com_ui_tars_nav_ai_design": "AI Design",
-  "com_ui_tars_nav_model_management": "Model Management",
-  "com_ui_tars_web_partial_failed": "Some knowledge bases failed to update",
-  "com_ui_tars_web_delete_kb_relations": "This will also unbind the following knowledge bases:"
+  "com_ui_tars_nav_model_management": "Model Management"
 }

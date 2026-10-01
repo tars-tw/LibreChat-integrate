@@ -156,7 +156,7 @@ export default function FileSystemManager() {
             main={
               <div className="space-y-2">
                 <p className="text-sm text-text-secondary">
-                  {localize('com_ui_tars_db_delete_confirm_named', { 0: deleting.name })}
+                  {localize('com_ui_tars_fs_delete_confirm_named', { 0: deleting.name })}
                 </p>
                 {/* Documents already imported from the group are left behind. */}
                 <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
