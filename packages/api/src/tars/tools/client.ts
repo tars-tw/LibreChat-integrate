@@ -47,6 +47,8 @@ export interface TarsServiceToolCallOptions {
   timeoutMs: number;
   /** The account the LLM gateway bills when the tool calls a model itself. */
   librechatUserId?: string;
+  /** The linked pwc_tars user; pwc_tars scopes knowledge-base access to it. */
+  tarsUserId?: string;
   /** Receives each progress line the tool reports while it runs (e.g. which rows it is on). */
   onProgress?: (message: string) => void;
   /** Stops the tool, e.g. when the chat run that called it is stopped. */
@@ -84,6 +86,7 @@ async function streamToolRun<T>(
       body,
       timeoutMs: options.timeoutMs,
       librechatUserId: options.librechatUserId,
+      tarsUserId: options.tarsUserId,
       signal: options.signal,
     },
   );
@@ -120,6 +123,7 @@ export async function runTarsServiceTool<T>(
       body,
       timeoutMs: options.timeoutMs,
       librechatUserId: options.librechatUserId,
+      tarsUserId: options.tarsUserId,
     });
     outcome = { ok: true, data: legacy };
   }
@@ -151,6 +155,7 @@ export async function runTarsBuiltinTool(
         ? langflowTimeoutMs('TARS_TABLE_TASK_TIMEOUT_MS', TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS)
         : langflowTimeoutMs('TARS_AGENT_TIMEOUT_MS', TARS_CAPABILITY_DEFAULT_TIMEOUT_MS),
       librechatUserId: options.librechatUserId,
+      tarsUserId: options.tarsUserId,
       onProgress: options.onProgress,
       signal: options.signal,
     },

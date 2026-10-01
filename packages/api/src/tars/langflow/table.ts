@@ -161,6 +161,7 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
               TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS,
             ),
             librechatUserId: options.librechatUserId,
+            tarsUserId: options.tarsUserId,
           },
         );
         logger.debug(

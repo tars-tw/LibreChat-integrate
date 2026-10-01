@@ -215,8 +215,16 @@ describe('runTarsPluginTool', () => {
         'X-TARS-Service-Key': 'service-key',
         'X-Use-Librechat-Gateway': 'true',
         'X-Librechat-User-Id': 'lc-user-1',
+        'X-TARS-User-Id': 'tars-user-1',
       }),
     );
+  });
+
+  it('sends no acting-user header for an unlinked account', async () => {
+    const fetchMock = mockBackend();
+    await runTarsPluginTool('text_stats', { inputs: {} });
+    const [, init] = callsTo(fetchMock, '/tools/text_stats')[0];
+    expect((init as RequestInit).headers).not.toHaveProperty('X-TARS-User-Id');
   });
 
   it('hands the attached spreadsheets over as data_files', async () => {
