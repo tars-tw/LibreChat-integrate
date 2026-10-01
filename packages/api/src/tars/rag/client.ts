@@ -118,6 +118,7 @@ export async function runTarsRagAgent(
     {
       timeoutMs: langflowTimeoutMs('TARS_RAG_AGENT_TIMEOUT_MS', TARS_CAPABILITY_DEFAULT_TIMEOUT_MS),
       librechatUserId: input.librechatUserId,
+      tarsUserId,
     },
   );
 

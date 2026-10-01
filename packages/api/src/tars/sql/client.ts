@@ -94,6 +94,7 @@ export async function runTarsSqlAgent(
     {
       timeoutMs: langflowTimeoutMs('TARS_SQL_AGENT_TIMEOUT_MS', TARS_CAPABILITY_DEFAULT_TIMEOUT_MS),
       librechatUserId: input.librechatUserId,
+      tarsUserId,
     },
   );
 
