@@ -23,11 +23,14 @@ export default function SysConfigManager() {
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
   const [editing, setEditing] = useState<TTarsSysConfig | null>(null);
 
+  /** The query returns every row; this page keeps pwc_tars' own `is_displayed` listing. */
+  const displayed = useMemo(() => sysConfigs.filter((config) => config.is_displayed), [sysConfigs]);
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     const matched = !query
-      ? sysConfigs
-      : sysConfigs.filter((config) =>
+      ? displayed
+      : displayed.filter((config) =>
           [config.key, config.category, config.description]
             .filter(Boolean)
             .some((field) => (field as string).toLowerCase().includes(query)),
@@ -38,7 +41,7 @@ export default function SysConfigManager() {
         .localeCompare((b[sortField] ?? '').toLowerCase());
       return sortAsc ? compared : -compared;
     });
-  }, [sysConfigs, search, sortField, sortAsc]);
+  }, [displayed, search, sortField, sortAsc]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
