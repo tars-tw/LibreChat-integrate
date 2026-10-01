@@ -1804,6 +1804,61 @@ export const useCreateTarsWebsiteSourceMutation = (
     options,
   );
 
+export interface TarsWebsiteBindingsInput {
+  id?: string;
+  name: string;
+  url: string;
+  description?: string;
+  enabled: boolean;
+  knowledgeBaseIds: string[];
+}
+
+export interface TarsWebsiteBindingsResult {
+  failed: { knowledgeBaseId: string; error: unknown }[];
+}
+
+export const useSaveTarsWebsiteBindingsMutation = (
+  options?: UseMutationOptions<TarsWebsiteBindingsResult, unknown, TarsWebsiteBindingsInput>,
+): UseMutationResult<TarsWebsiteBindingsResult, unknown, TarsWebsiteBindingsInput> =>
+  useWebsiteSourceMutation(async (input: TarsWebsiteBindingsInput) => {
+    const failed: TarsWebsiteBindingsResult['failed'] = [];
+    let toImport: string[];
+
+    if (input.id != null) {
+      const res = await dataService.updateTarsWebsiteSource(input.id, {
+        name: input.name,
+        description: input.description,
+        knowledgeBaseIds: input.knowledgeBaseIds,
+      });
+      toImport = res.kbIdsToImport;
+    } else if (input.knowledgeBaseIds.length === 0) {
+      await dataService.createTarsWebsiteSource({
+        name: input.name,
+        url: input.url,
+        description: input.description,
+        enabled: input.enabled,
+      });
+      return { failed };
+    } else {
+      toImport = input.knowledgeBaseIds;
+    }
+
+    for (const knowledgeBaseId of toImport) {
+      try {
+        await dataService.createTarsWebsiteSource({
+          knowledgeBaseId,
+          name: input.name,
+          url: input.url,
+          description: input.description,
+          enabled: input.enabled,
+        });
+      } catch (error) {
+        failed.push({ knowledgeBaseId, error });
+      }
+    }
+    return { failed };
+  }, options);
+
 export const useUpdateTarsWebsiteSourceMutation = (
   options?: UseMutationOptions<
     WebsiteResponse,
@@ -1825,16 +1880,19 @@ export const useDeleteTarsWebsiteSourceMutation = (
   options?: UseMutationOptions<
     { success: boolean },
     unknown,
-    { id: string; knowledgeBaseId: string | null }
+    { id: string; knowledgeBaseIds: string[] }
   >,
-): UseMutationResult<
-  { success: boolean },
-  unknown,
-  { id: string; knowledgeBaseId: string | null }
-> =>
+): UseMutationResult<{ success: boolean }, unknown, { id: string; knowledgeBaseIds: string[] }> =>
   useWebsiteSourceMutation(
-    ({ id, knowledgeBaseId }: { id: string; knowledgeBaseId: string | null }) =>
-      dataService.deleteTarsWebsiteSource(id, knowledgeBaseId),
+    async ({ id, knowledgeBaseIds }: { id: string; knowledgeBaseIds: string[] }) => {
+      if (knowledgeBaseIds.length === 0) {
+        return dataService.deleteTarsWebsiteSource(id, null);
+      }
+      for (const knowledgeBaseId of knowledgeBaseIds) {
+        await dataService.deleteTarsWebsiteSource(id, knowledgeBaseId);
+      }
+      return { success: true };
+    },
     options,
   );
 

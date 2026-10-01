@@ -1,14 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 import {
   Button,
-  Dropdown,
   Input,
   Label,
   OGDialog,
   OGDialogTemplate,
   Spinner,
-  Switch,
   useToastContext,
 } from '@librechat/client';
 import type { TTarsWebsiteSource } from 'librechat-data-provider';
@@ -18,25 +16,28 @@ import {
   NAME_MIN,
   emptyWebsiteForm,
   errorMessage,
+  knowledgeBasePickerOptions,
   nameInvalid,
   toWebsiteForm,
   urlInvalid,
 } from './helpers';
-import {
-  useCreateTarsWebsiteSourceMutation,
-  useUpdateTarsWebsiteSourceMutation,
-} from '~/data-provider';
+import { useSaveTarsWebsiteBindingsMutation } from '~/data-provider';
 import { useLocalize } from '~/hooks';
+import Picker from '../Audit/Picker';
 
 /**
- * Imports a site, or renames one already imported.
+ * Imports a site, or edits one already imported.
+ *
+ * A site can be bound to several knowledge bases. On edit, pwc_tars unbinds the
+ * bases that were unticked and reports the newly ticked ones, which are then
+ * imported one at a time.
  *
  * Importing is not a form submission that returns immediately: pwc_tars
  * crawls, chunks and embeds inside the request, which is why the dialog stays
  * open with a busy state rather than closing optimistically.
  *
- * The URL is fixed at import time — pwc_tars' update endpoint only accepts a
- * name and description, because the crawled chunks belong to the old address.
+ * The URL is fixed at import time — pwc_tars does not re-crawl on an edit, so a
+ * changed address would not match its chunks.
  */
 export default function WebsiteModal({
   website,
@@ -56,6 +57,8 @@ export default function WebsiteModal({
     website != null ? toWebsiteForm(website) : emptyWebsiteForm,
   );
 
+  const kbOptions = useMemo(() => knowledgeBasePickerOptions(knowledgeBases), [knowledgeBases]);
+
   const onSaved = () => {
     showToast({
       message: localize(isEdit ? 'com_ui_tars_web_saved' : 'com_ui_tars_web_imported'),
@@ -71,12 +74,23 @@ export default function WebsiteModal({
       status: 'error',
     });
 
-  const createMutation = useCreateTarsWebsiteSourceMutation({
-    onSuccess: onSaved,
-    onError: onFailed,
-  });
-  const updateMutation = useUpdateTarsWebsiteSourceMutation({
-    onSuccess: onSaved,
+  const saveMutation = useSaveTarsWebsiteBindingsMutation({
+    onSuccess: ({ failed }) => {
+      if (failed.length === 0) {
+        onSaved();
+        return;
+      }
+      const names = failed
+        .map(
+          (f) =>
+            knowledgeBases.find((kb) => kb.id === f.knowledgeBaseId)?.name ?? f.knowledgeBaseId,
+        )
+        .join(', ');
+      showToast({
+        message: `${localize('com_ui_tars_web_partial_failed')}: ${names}`,
+        status: 'error',
+      });
+    },
     onError: onFailed,
   });
 
@@ -85,32 +99,22 @@ export default function WebsiteModal({
 
   const invalidName = nameInvalid(form.name);
   const invalidUrl = urlInvalid(form.url);
-  const isBusy = createMutation.isLoading || updateMutation.isLoading;
-  const canSave =
-    !invalidName && !isBusy && (isEdit || (!invalidUrl && form.knowledgeBaseId !== ''));
+  const isBusy = saveMutation.isLoading;
+  const canSave = !invalidName && !isBusy && (isEdit || !invalidUrl);
 
   const submit = () => {
     if (!canSave) {
       return;
     }
-    if (isEdit) {
-      updateMutation.mutate({
-        id: website.id,
-        name: form.name.trim(),
-        description: form.description,
-      });
-      return;
-    }
-    createMutation.mutate({
-      knowledgeBaseId: form.knowledgeBaseId,
+    saveMutation.mutate({
+      id: isEdit ? website.id : undefined,
       name: form.name.trim(),
       url: form.url.trim(),
       description: form.description,
       enabled: form.enabled,
+      knowledgeBaseIds: form.knowledgeBaseIds,
     });
   };
-
-  const kbOptions = knowledgeBases.map((kb) => ({ value: kb.id, label: kb.name }));
 
   return (
     <OGDialog open={true} onOpenChange={(open) => !open && !isBusy && onClose()}>
@@ -121,33 +125,19 @@ export default function WebsiteModal({
         mainClassName="min-w-0"
         main={
           <div className="min-w-0 space-y-4">
-            {!isEdit && (
-              <div className="space-y-1.5">
-                <Label htmlFor="tars-web-kb">
-                  {localize('com_ui_tars_web_knowledge_base')}
-                  <span className="ml-0.5 text-pwc-danger">*</span>
-                </Label>
-                <Dropdown
-                  value={form.knowledgeBaseId}
-                  onChange={(value) => set('knowledgeBaseId', value)}
-                  options={kbOptions}
-                  /** The trigger renders `label` before the value, and an
-                   *  unselected Dropdown renders nothing — so the prompt has
-                   *  to be the label, not an option with an empty value. */
-                  label={
-                    form.knowledgeBaseId === ''
-                      ? localize('com_ui_tars_web_select_knowledge_base')
-                      : ''
-                  }
-                  aria-label={localize('com_ui_tars_web_knowledge_base')}
-                  sizeClasses="w-full"
-                  className="w-full"
-                />
-                <p className="text-xs text-text-secondary">
-                  {localize('com_ui_tars_web_knowledge_base_hint')}
-                </p>
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <Picker
+                id="tars-web-kbs"
+                label={localize('com_ui_tars_web_knowledge_base')}
+                options={kbOptions}
+                selected={form.knowledgeBaseIds}
+                onChange={(values) => set('knowledgeBaseIds', values)}
+                placeholder={localize('com_ui_tars_web_select_knowledge_base')}
+              />
+              <p className="text-xs text-text-secondary">
+                {localize('com_ui_tars_web_knowledge_base_hint')}
+              </p>
+            </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="tars-web-name">
@@ -213,24 +203,12 @@ export default function WebsiteModal({
             </div>
 
             {!isEdit && (
-              <div className="flex items-center gap-2">
-                <Label htmlFor="tars-web-enabled">{localize('com_ui_tars_db_enabled')}</Label>
-                <Switch
-                  id="tars-web-enabled"
-                  aria-label={localize('com_ui_tars_db_enabled')}
-                  checked={form.enabled}
-                  onCheckedChange={(checked) => set('enabled', checked)}
-                />
-              </div>
-            )}
-
-            {!isEdit && (
               <p className="rounded-lg border border-border-light p-3 text-xs text-text-secondary">
                 {localize('com_ui_tars_web_import_notice')}
               </p>
             )}
 
-            {isBusy && !isEdit && (
+            {isBusy && (
               <p className="flex items-center gap-2 text-sm text-text-secondary">
                 <Spinner className="size-4" />
                 {localize('com_ui_tars_web_importing')}
