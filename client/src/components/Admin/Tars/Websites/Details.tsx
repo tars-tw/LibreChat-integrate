@@ -49,25 +49,10 @@ export default function WebsiteDetails({
 
             <dl className="divide-y divide-border-light text-sm">
               {row('com_ui_description', website.description ?? '')}
-              <div className="grid grid-cols-3 gap-3 py-1.5">
-                <dt className="text-text-secondary">
-                  {localize('com_ui_tars_web_knowledge_base')}
-                </dt>
-                <dd className="col-span-2 flex flex-wrap gap-1.5">
-                  {names.length > 0 ? (
-                    names.map((name) => (
-                      <span
-                        key={name}
-                        className="rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-primary"
-                      >
-                        {name}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-text-primary">{localize('com_ui_tars_web_unbound')}</span>
-                  )}
-                </dd>
-              </div>
+              {row(
+                'com_ui_tars_web_knowledge_base',
+                names.length > 0 ? names.join(', ') : localize('com_ui_tars_web_unbound'),
+              )}
               {row(
                 'com_ui_tars_users_status',
                 localize(

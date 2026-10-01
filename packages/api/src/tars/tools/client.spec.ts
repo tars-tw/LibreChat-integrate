@@ -41,7 +41,7 @@ const result = { content: '已完成 3 / 3 列', summary: '3 rows', sources: [],
 const mockBackend = (tool: (url: string, init?: RequestInit) => Response) =>
   jest.spyOn(global, 'fetch').mockImplementation(async (input, init) => {
     const url = String(input);
-    if (url.includes('/api/sys_config/prepare_data')) {
+    if (url.includes('/api/settings/list_sys_configs')) {
       return jsonResponse(200, [
         { key: 'KEY_LANGFLOW_API_KEY', value: 'service-key', status: 'active' },
       ]);
