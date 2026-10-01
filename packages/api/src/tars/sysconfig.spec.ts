@@ -57,14 +57,14 @@ afterEach(() => {
 });
 
 describe('fetchTarsSysConfigs', () => {
-  it('requests prepare_data and returns the bare array', async () => {
+  it('requests every sys_config row and returns the bare array', async () => {
     const rows = [row('KEY_OPEN_AI_API', 'sk-live')];
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, rows));
 
     const result = await fetchTarsSysConfigs(BASE_URL);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      `${BASE_URL}/api/sys_config/prepare_data`,
+      `${BASE_URL}/api/settings/list_sys_configs`,
       expect.objectContaining({ method: 'GET' }),
     );
     expect(result).toEqual(rows);
