@@ -41,6 +41,12 @@ const TARS_PROVIDER_KEY_MAP: Record<TarsKeyedProvider, string> = {
   [EModelEndpoint.google]: 'KEY_GEMINI_API',
 };
 
+/**
+ * Every sys_config row, regardless of `is_displayed`. `/api/sys_config/prepare_data`
+ * is not used because pwc_tars seeds the provider keys with `is_displayed=false`
+ * (its own UI edits them on the system-settings page), so that listing omits them.
+ */
+const SYSCONFIG_LIST_PATH = '/api/settings/list_sys_configs';
 const SYSCONFIG_CACHE_TTL_MS = 30_000;
 /** The chat path must not hang on a down pwc_tars, so this is far below tarsFetch's default. */
 const SYSCONFIG_FETCH_TIMEOUT_MS = 3_000;
@@ -49,9 +55,9 @@ let cachedKeys: Map<string, string> | null = null;
 let cachedAt = 0;
 let inflight: Promise<Map<string, string> | null> | null = null;
 
-/** All displayed system parameters (`sys_config` rows with `is_displayed=true`). */
+/** All system parameters; callers filter on `is_displayed` where the listing needs it. */
 export async function fetchTarsSysConfigs(baseUrl?: string): Promise<TarsSysConfig[]> {
-  const data = await tarsFetch<TarsSysConfig[]>('/api/sys_config/prepare_data', { baseUrl });
+  const data = await tarsFetch<TarsSysConfig[]>(SYSCONFIG_LIST_PATH, { baseUrl });
   return data ?? [];
 }
 
@@ -83,7 +89,7 @@ function isValidKeyValue(value: string | null): value is string {
 
 async function refreshKeyCache(): Promise<Map<string, string> | null> {
   try {
-    const rows = await tarsFetch<TarsSysConfig[]>('/api/sys_config/prepare_data', {
+    const rows = await tarsFetch<TarsSysConfig[]>(SYSCONFIG_LIST_PATH, {
       timeoutMs: SYSCONFIG_FETCH_TIMEOUT_MS,
     });
     const keys = new Map<string, string>();

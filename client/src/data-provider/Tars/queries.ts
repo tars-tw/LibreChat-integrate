@@ -412,7 +412,7 @@ export const useTarsKnowledgeBasePromptsQuery = (
   );
 };
 
-/** Admin: pwc_tars 系統參數設定 rows. */
+/** Admin: every pwc_tars sys_config row (系統參數設定 filters on `is_displayed`). */
 export const useTarsSysConfigsQuery = (
   config?: UseQueryOptions<TTarsSysConfigsResponse, unknown, TTarsSysConfig[]>,
 ): QueryObserverResult<TTarsSysConfig[]> => {
