@@ -3262,3 +3262,57 @@ describe('web.ts', () => {
     });
   });
 });
+
+describe('loadWebSearchAuth systemAuthValues', () => {
+  const tavilyOnly: TCustomConfig['webSearch'] = {
+    tavilyApiKey: '${tars:KEY_TAVILY}',
+    tavilySearchUrl: '${TAVILY_SEARCH_URL}',
+    tavilyExtractUrl: '${TAVILY_EXTRACT_URL}',
+    safeSearch: SafeSearchTypes.MODERATE,
+    searchProvider: SearchProviders.TAVILY,
+    scraperProvider: ScraperProviders.TAVILY,
+    rerankerType: RerankerTypes.NONE,
+  };
+
+  it('serves system fields from the map as system-defined and delegates the rest', async () => {
+    const loadAuthValues = jest.fn(async ({ authFields }: { authFields: string[] }) =>
+      Object.fromEntries(authFields.map((field) => [field, ''])),
+    );
+
+    const result = await loadWebSearchAuth({
+      userId: 'user-1',
+      webSearchConfig: tavilyOnly,
+      loadAuthValues,
+      systemAuthValues: new Map([['tars:KEY_TAVILY', 'tvly-from-tars']]),
+    });
+
+    expect(result.authenticated).toBe(true);
+    expect(result.authResult).toMatchObject({
+      searchProvider: SearchProviders.TAVILY,
+      scraperProvider: ScraperProviders.TAVILY,
+      rerankerType: RerankerTypes.NONE,
+      tavilyApiKey: 'tvly-from-tars',
+    });
+    expect(result.authTypes.every(([, type]) => type === AuthType.SYSTEM_DEFINED)).toBe(true);
+    for (const [params] of loadAuthValues.mock.calls) {
+      expect(params.authFields).not.toContain('tars:KEY_TAVILY');
+    }
+  });
+
+  it('leaves the provider unauthenticated when the system value is unset', async () => {
+    const loadAuthValues = jest.fn(async () => ({ 'tars:KEY_TAVILY': 'user-key' }));
+
+    const result = await loadWebSearchAuth({
+      userId: 'user-1',
+      webSearchConfig: tavilyOnly,
+      loadAuthValues,
+      systemAuthValues: new Map([['tars:KEY_TAVILY', undefined]]),
+    });
+
+    expect(result.authenticated).toBe(false);
+    expect(result.authResult.tavilyApiKey).toBeUndefined();
+    for (const [params] of loadAuthValues.mock.calls as unknown as [{ authFields: string[] }][]) {
+      expect(params.authFields).not.toContain('tars:KEY_TAVILY');
+    }
+  });
+});

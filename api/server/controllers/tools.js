@@ -3,7 +3,7 @@ const { logger } = require('@librechat/data-schemas');
 const {
   checkAccess,
   assertDirectToolOutputAllowed,
-  loadWebSearchAuth,
+  loadTarsWebSearchAuth,
   isContentFilterError,
   isActiveExpirationDate,
   getConversationExpirationDate,
@@ -48,7 +48,7 @@ const verifyWebSearchAuth = async (req, res) => {
     const userId = req.user.id;
     /** @type {TCustomConfig['webSearch']} */
     const webSearchConfig = appConfig?.webSearch || {};
-    const result = await loadWebSearchAuth({
+    const result = await loadTarsWebSearchAuth({
       userId,
       loadAuthValues,
       webSearchConfig,

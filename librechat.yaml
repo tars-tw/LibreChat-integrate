@@ -54,6 +54,16 @@ endpoints:
       titleModel: 'current_model'
       modelDisplayLabel: 'vLLM'
 
+# Web search runs on Tavily alone (search + page extract, no reranker), so no other
+# provider's key is ever consulted and users get no key/provider dialog. The key is
+# pwc_tars's sys_config KEY_TAVILY (系統參數設定), read live with a 30s cache — rotate
+# it there, not in .env. Unset or pwc_tars unreachable → web search is unavailable.
+webSearch:
+  searchProvider: 'tavily'
+  scraperProvider: 'tavily'
+  rerankerType: 'none'
+  tavilyApiKey: '${tars:KEY_TAVILY}'
+
 mcpServers:
   # Langflow integration — exposes the flows of a Langflow project as callable tools.
   # Which flows appear is controlled on the Langflow side (per-flow `mcp_enabled` toggle in the

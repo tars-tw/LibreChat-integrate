@@ -10,7 +10,7 @@ const {
   createAuthIdentityContext,
   selectMCPUpstreamTokenProvider,
   mcpToolPattern,
-  loadWebSearchAuth,
+  loadTarsWebSearchAuth,
   splitMCPToolKey,
   buildServerNameAliases,
   findShadowedServerNames,
@@ -472,7 +472,7 @@ const loadTools = async ({
       };
       continue;
     } else if (tool === Tools.web_search) {
-      const result = await loadWebSearchAuth({
+      const result = await loadTarsWebSearchAuth({
         userId: user,
         loadAuthValues,
         webSearchConfig: webSearch,
