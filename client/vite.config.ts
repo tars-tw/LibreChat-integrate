@@ -464,9 +464,10 @@ export function sourcemapExclude(opts?: SourcemapExclude): Plugin {
 /**
  * Production builds set `publicDir: false`, so nothing under public/ reaches dist on its
  * own. This copies what the server actually has to serve: all of public/assets (the PWA
- * icons plus the endpoint, tool and language logos referenced at runtime) and robots.txt.
- * public/fonts is deliberately left out, since fonts are emitted as bundle assets through
- * the `$fonts` alias.
+ * icons plus the endpoint, tool and language logos referenced at runtime), the bundled
+ * user manuals that 說明與常見問題 opens (`src/utils/manual.ts`; workbox ignores them, so
+ * they are served on demand), and robots.txt. public/fonts is deliberately left out, since
+ * fonts are emitted as bundle assets through the `$fonts` alias.
  *
  * The copy MUST happen inside the build. vite-plugin-pwa globs dist/ for
  * `workbox.globPatterns` from its `closeBundle` hook, which runs after every plugin's
@@ -485,9 +486,11 @@ export function copyPublicAssets(): Plugin {
       outDir = path.resolve(config.root, config.build.outDir);
     },
     async writeBundle() {
-      await fs.promises.cp(path.join(publicDir, 'assets'), path.join(outDir, 'assets'), {
-        recursive: true,
-      });
+      await Promise.all(
+        ['assets', 'manual_zh-Hant', 'manual_en'].map((dir) =>
+          fs.promises.cp(path.join(publicDir, dir), path.join(outDir, dir), { recursive: true }),
+        ),
+      );
       await fs.promises.copyFile(
         path.join(publicDir, 'robots.txt'),
         path.join(outDir, 'robots.txt'),
