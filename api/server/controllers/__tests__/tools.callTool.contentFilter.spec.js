@@ -18,7 +18,7 @@ jest.mock('@librechat/data-schemas', () => ({
 jest.mock('@librechat/api', () => ({
   ...jest.requireActual('@librechat/api'),
   checkAccess: jest.fn(async () => true),
-  loadWebSearchAuth: jest.fn(),
+  loadTarsWebSearchAuth: jest.fn(),
 }));
 
 jest.mock('~/models', () => ({

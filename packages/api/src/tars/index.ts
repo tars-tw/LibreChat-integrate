@@ -30,5 +30,6 @@ export * from './tickets';
 export * from './tools';
 export * from './token';
 export * from './usage';
+export * from './web';
 export * from './websites';
 export * from './users';
