@@ -160,28 +160,64 @@ interface KeenableAuthResolution {
   lookupFailed: boolean;
 }
 
+export type WebSearchAuthValuesLoader = (params: {
+  userId: string;
+  authFields: string[];
+  optional?: Set<string>;
+  throwError?: boolean;
+  failOnOptionalError?: boolean;
+}) => Promise<Record<string, string>>;
+
+/**
+ * Serves `systemAuthValues` fields from the map and delegates the rest, so a
+ * system-resolved field never falls through to the user's stored credentials.
+ */
+function withSystemAuthValues(
+  loadAuthValues: WebSearchAuthValuesLoader,
+  systemAuthValues?: ReadonlyMap<string, string | undefined>,
+): WebSearchAuthValuesLoader {
+  if (!systemAuthValues?.size) {
+    return loadAuthValues;
+  }
+  return async (params) => {
+    const delegated = params.authFields.filter((field) => !systemAuthValues.has(field));
+    const values = delegated.length
+      ? await loadAuthValues({ ...params, authFields: delegated })
+      : {};
+    for (const field of params.authFields) {
+      const value = systemAuthValues.get(field);
+      if (value) {
+        values[field] = value;
+      } else if (systemAuthValues.has(field)) {
+        delete values[field];
+      }
+    }
+    return values;
+  };
+}
+
 /**
  * Loads and verifies web search authentication values
  * @param params - Authentication parameters
+ * @param params.systemAuthValues - Auth fields the deployment resolves itself
+ *   (e.g. a pwc_tars sys_config reference) instead of env or user credentials;
+ *   they count as system-defined, and an undefined value means unset.
  * @returns Authentication result
  */
 export async function loadWebSearchAuth({
   userId,
   webSearchConfig,
-  loadAuthValues,
+  loadAuthValues: loadStoredAuthValues,
+  systemAuthValues,
   throwError = true,
 }: {
   userId: string;
   webSearchConfig: TCustomConfig['webSearch'];
-  loadAuthValues: (params: {
-    userId: string;
-    authFields: string[];
-    optional?: Set<string>;
-    throwError?: boolean;
-    failOnOptionalError?: boolean;
-  }) => Promise<Record<string, string>>;
+  loadAuthValues: WebSearchAuthValuesLoader;
+  systemAuthValues?: ReadonlyMap<string, string | undefined>;
   throwError?: boolean;
 }): Promise<WebSearchAuthResult> {
+  const loadAuthValues = withSystemAuthValues(loadStoredAuthValues, systemAuthValues);
   let authenticated = true;
   const authResult: Partial<TWebSearchConfig> = {};
 
@@ -496,7 +532,8 @@ export async function loadWebSearchAuth({
             break;
           }
 
-          const isFieldUserProvided = value != null && process.env[field] !== value;
+          const isFieldUserProvided =
+            value != null && !systemAuthValues?.has(field) && process.env[field] !== value;
           const isUserProvidedUrlKey =
             originalKey != null && USER_PROVIDED_URL_KEYS.has(originalKey);
           const isUserProvidedOptInUrlKey =
