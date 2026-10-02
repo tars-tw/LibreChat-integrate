@@ -178,6 +178,11 @@ export async function resolveTarsProviderKey(
 /** A `librechat.yaml` value of the form `${tars:KEY}`: read from pwc_tars sys_config, not env. */
 const SYSCONFIG_REF_PATTERN = /^\$\{tars:([^}]+)\}$/;
 
+/** The sys_config key a `${tars:KEY}` config value names, or undefined for any other value. */
+export function parseTarsConfigRef(value: string): string | undefined {
+  return SYSCONFIG_REF_PATTERN.exec(value.trim())?.[1];
+}
+
 /**
  * Resolves a config value that may name a pwc_tars sys_config key, e.g. a
  * custom endpoint's `apiKey: '${tars:KEY_OPEN_AI_API}'`, so a key an admin
@@ -186,7 +191,7 @@ const SYSCONFIG_REF_PATTERN = /^\$\{tars:([^}]+)\}$/;
  * written, which the caller's unresolved-placeholder check then rejects.
  */
 export async function resolveTarsConfigValue(value: string): Promise<string> {
-  const key = SYSCONFIG_REF_PATTERN.exec(value.trim())?.[1];
+  const key = parseTarsConfigRef(value);
   if (!key) {
     return extractEnvVariable(value);
   }

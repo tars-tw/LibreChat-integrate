@@ -286,10 +286,14 @@ function getServiceCredentials(
   return credentials;
 }
 
-/** Attaches each credential's value; a looked-up value that differs from the environment is the user's. */
+/**
+ * Attaches each credential's value; a looked-up value that differs from the environment is the
+ * user's, unless the deployment resolved that field itself (`systemAuthValues`).
+ */
 function resolveCredentials(
   credentials: ServiceCredential[],
   authValues: Record<string, string>,
+  systemAuthValues?: ReadonlyMap<string, string | undefined>,
 ): Map<TWebSearchKeys, ResolvedCredential> {
   const resolved = new Map<TWebSearchKeys, ResolvedCredential>();
   for (const { key, required, source } of credentials) {
@@ -298,7 +302,10 @@ function resolveCredentials(
       continue;
     }
     const value = authValues[source.field];
-    const origin = value != null && process.env[source.field] !== value ? 'user' : 'env';
+    const origin =
+      value != null && !systemAuthValues?.has(source.field) && process.env[source.field] !== value
+        ? 'user'
+        : 'env';
     resolved.set(key, { key, required, origin, value, field: source.field });
   }
   return resolved;
@@ -385,6 +392,42 @@ interface KeenableAuthResolution {
   lookupFailed: boolean;
 }
 
+export type WebSearchAuthValuesLoader = (params: {
+  userId: string;
+  authFields: string[];
+  optional?: Set<string>;
+  throwError?: boolean;
+  failOnOptionalError?: boolean;
+}) => Promise<Record<string, string>>;
+
+/**
+ * Serves `systemAuthValues` fields from the map and delegates the rest, so a
+ * system-resolved field never falls through to the user's stored credentials.
+ */
+function withSystemAuthValues(
+  loadAuthValues: WebSearchAuthValuesLoader,
+  systemAuthValues?: ReadonlyMap<string, string | undefined>,
+): WebSearchAuthValuesLoader {
+  if (!systemAuthValues?.size) {
+    return loadAuthValues;
+  }
+  return async (params) => {
+    const delegated = params.authFields.filter((field) => !systemAuthValues.has(field));
+    const values = delegated.length
+      ? await loadAuthValues({ ...params, authFields: delegated })
+      : {};
+    for (const field of params.authFields) {
+      const value = systemAuthValues.get(field);
+      if (value) {
+        values[field] = value;
+      } else if (systemAuthValues.has(field)) {
+        delete values[field];
+      }
+    }
+    return values;
+  };
+}
+
 /**
  * The Keenable scraper option block, carrying a deployment key kept from a
  * search URL the user supplied. The scraper fetches from `KEENABLE_FETCH_URL`
@@ -404,25 +447,25 @@ function getKeenableScraperOptions(
 /**
  * Loads and verifies web search authentication values
  * @param params - Authentication parameters
+ * @param params.systemAuthValues - Auth fields the deployment resolves itself
+ *   (e.g. a pwc_tars sys_config reference) instead of env or user credentials;
+ *   they count as system-defined, and an undefined value means unset.
  * @returns Authentication result
  */
 export async function loadWebSearchAuth({
   userId,
   webSearchConfig,
-  loadAuthValues,
+  loadAuthValues: loadStoredAuthValues,
+  systemAuthValues,
   throwError = true,
 }: {
   userId: string;
   webSearchConfig: TCustomConfig['webSearch'];
-  loadAuthValues: (params: {
-    userId: string;
-    authFields: string[];
-    optional?: Set<string>;
-    throwError?: boolean;
-    failOnOptionalError?: boolean;
-  }) => Promise<Record<string, string>>;
+  loadAuthValues: WebSearchAuthValuesLoader;
+  systemAuthValues?: ReadonlyMap<string, string | undefined>;
   throwError?: boolean;
 }): Promise<WebSearchAuthResult> {
+  const loadAuthValues = withSystemAuthValues(loadStoredAuthValues, systemAuthValues);
   let authenticated = true;
   const authResult: WebSearchAuthValues = {};
   /** A deployment Keenable key kept from a user's search URL, still usable by the Keenable scraper. */
@@ -737,7 +780,7 @@ export async function loadWebSearchAuth({
           authFields.length > 0
             ? await loadAuthValues({ userId, authFields, optional: optionalFields, throwError })
             : {};
-        const resolved = resolveCredentials(credentials, authValues);
+        const resolved = resolveCredentials(credentials, authValues, systemAuthValues);
 
         let allFieldsAuthenticated = true;
         for (const credential of resolved.values()) {

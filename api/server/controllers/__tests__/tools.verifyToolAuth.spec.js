@@ -4,7 +4,7 @@ jest.mock('@librechat/data-schemas', () => ({
 
 jest.mock('@librechat/api', () => ({
   checkAccess: jest.fn(),
-  loadWebSearchAuth: jest.fn(),
+  loadTarsWebSearchAuth: jest.fn(),
 }));
 
 jest.mock('~/models', () => ({
@@ -32,7 +32,7 @@ jest.mock('~/app/clients/tools/util', () => ({
 }));
 
 const { Tools, AuthType } = require('librechat-data-provider');
-const { loadWebSearchAuth } = require('@librechat/api');
+const { loadTarsWebSearchAuth } = require('@librechat/api');
 const { verifyToolAuth } = require('../tools');
 
 /**
@@ -111,7 +111,7 @@ describe('verifyToolAuth — web search selection contract', () => {
   };
 
   it('returns the resolved provider selections with the auth state', async () => {
-    loadWebSearchAuth.mockResolvedValue({
+    loadTarsWebSearchAuth.mockResolvedValue({
       authenticated: true,
       authTypes: {
         providers: AuthType.USER_PROVIDED,

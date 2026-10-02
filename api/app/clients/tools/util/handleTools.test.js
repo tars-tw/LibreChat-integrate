@@ -32,7 +32,7 @@ jest.mock('~/server/services/Files/Code/process', () => ({
 
 jest.mock('@librechat/api', () => ({
   ...jest.requireActual('@librechat/api'),
-  loadWebSearchAuth: (...args) => mockLoadWebSearchAuth(...args),
+  loadTarsWebSearchAuth: (...args) => mockLoadWebSearchAuth(...args),
 }));
 
 jest.mock('~/server/services/PluginService', () => mockPluginService);
