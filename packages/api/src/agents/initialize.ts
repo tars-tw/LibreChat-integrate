@@ -68,9 +68,9 @@ import type { TextContentFragment } from '../protection/types';
 import type { CheckAccessParams } from '../middleware/access';
 import type { GetProjectFiles } from '../projects/resources';
 import type { CodeContextEntry } from '~/files/code/priming';
-import type { TarsMemorySnapshot } from '~/tars/memory/prime';
 import type { MCPToolAlias } from '~/tools/classification';
 import type { CodeExecutionContext } from './execution';
+import type { TarsStoredFile } from '~/tars/files/turn';
 import type { AgentExecutionContext } from './runtime';
 import {
   injectSkillCatalog,
@@ -128,7 +128,7 @@ import { assertChatProjectInstructions, ChatProjectResourcesChangedError } from 
 import { extractAgentContent, extractSkillContent } from '../protection/adapters/submissions';
 import { createConfiguredContentInspector, inspectContent } from '../protection/runtime';
 import { assertAgentAttachmentLimits, isModelBoundAttachmentFile } from './attachments';
-import { primeTarsMemory, buildTarsMemoryContext } from '~/tars/memory/prime';
+import { primeTarsTurnFiles, buildTarsDataFilesContext } from '~/tars/files/turn';
 import { assertModelBoundContent } from '../middleware/modelBoundContent';
 import { resolveAttachedWorkspaceReadFileLines } from '~/code/workspace';
 import { isValidInstructionsPromptLink } from './instructions/linked';
@@ -1267,13 +1267,32 @@ export async function initializeAgent(
     throw new Error('initializeAgent requires db methods to be passed');
   }
 
-  /** pwc_tars long-term memory for this conversation, loaded in parallel with
-   *  the rest of init. Fail-soft: resolves `null` unless TARS is configured,
-   *  the user is linked, and the conversation maps to a pwc_tars one.
-   *  Request-free hosts carry no pwc_tars conversation mapping, so they skip it. */
-  const tarsMemoryPromise = params.req
-    ? primeTarsMemory(params.req)
-    : Promise.resolve<TarsMemorySnapshot | null>(null);
+  /** The thread's spreadsheets for pwc_tars's data tools, resolved in parallel
+   *  with the rest of init. Fail-soft, and skipped unless TARS is configured;
+   *  request-free hosts have no tool factories to hand them to. */
+  const tarsFilesPromise =
+    params.req && requestFileOwnerScope
+      ? primeTarsTurnFiles(params.req, {
+          requestFileIds: requestFiles.map((file) => file.file_id).filter(Boolean),
+          conversationId,
+          parentMessageId,
+          findOwnedFiles: async (fileIds, withText) =>
+            ((await db.getFiles(
+              {
+                file_id: { $in: fileIds },
+                user: requestFileOwnerScope.userId,
+                ...(requestFileOwnerScope.tenantId != null && {
+                  tenantId: requestFileOwnerScope.tenantId,
+                }),
+              },
+              {},
+              withText ? 'file_id text' : 'file_id filename llmDeliveryPath',
+            )) as TarsStoredFile[] | null) ?? [],
+          getThreadMessages: db.getMessages
+            ? (id) => db.getMessages!({ conversationId: id }, 'messageId parentMessageId files')
+            : undefined,
+        })
+      : null;
 
   /**
    * Computed up front, before the definition-content check below, because
@@ -1520,13 +1539,12 @@ export async function initializeAgent(
     );
   }
 
-  /** Active structured (csv/xlsx) memory files auto-equip pwc_tars's
-   *  spreadsheet tools for this turn — before `loadTools`, so the definitions
-   *  path, the capability filter, and execution all see a consistent tool set.
-   *  Applies to ephemeral and saved agents alike: the memory belongs to the
-   *  conversation, not the agent. */
-  const tarsMemorySnapshot = await tarsMemoryPromise;
-  if (tarsMemorySnapshot != null && tarsMemorySnapshot.structuredDocuments.length > 0) {
+  /** Spreadsheets anywhere in the thread auto-equip pwc_tars's data tools for
+   *  this turn — before `loadTools`, so the definitions path, the capability
+   *  filter, and execution all see a consistent tool set. Applies to ephemeral
+   *  and saved agents alike: the files belong to the conversation, not the agent. */
+  const tarsFiles = await tarsFilesPromise;
+  if (tarsFiles != null && tarsFiles.dataFiles.length > 0) {
     agent.tools = withTarsSpreadsheetTools(agent.tools ?? []);
   }
 
@@ -2383,22 +2401,12 @@ export async function initializeAgent(
     }
   }
 
-  /** Long-term-memory context joins the system prompt via `toolContextMap`
-   *  (keys need not be tool names): extracted text of the non-structured
-   *  files, plus the structured-file listing the data tools refer to. Built
-   *  here rather than at prime time because its truncation budget is a share
-   *  of this agent's resolved context window. */
-  if (toolContextMap != null && tarsMemorySnapshot != null) {
-    const tarsMemoryContext = buildTarsMemoryContext(
-      tarsMemorySnapshot,
-      Number(agentMaxContextTokens) || undefined,
-    );
-    if (tarsMemoryContext.contextText) {
-      toolContextMap['tars_memory'] = tarsMemoryContext.contextText;
-    }
-    if (tarsMemoryContext.dataContextText) {
-      toolContextMap['tars_memory_data'] = tarsMemoryContext.dataContextText;
-    }
+  /** The spreadsheet listing the data tools refer to joins the system prompt
+   *  via `toolContextMap` (keys need not be tool names). Other attachments'
+   *  text reaches the model through LibreChat's own file context. */
+  const tarsDataFilesContext = tarsFiles ? buildTarsDataFilesContext(tarsFiles.dataFiles) : null;
+  if (toolContextMap != null && tarsDataFilesContext) {
+    toolContextMap['tars_data_files'] = tarsDataFilesContext;
   }
 
   /**

@@ -35,9 +35,6 @@ export type RequestBody = {
   codeApprovalMode?: CodeApprovalMode;
   codeEnvironmentMode?: CodeEnvironmentMode;
   codeWorkspaces?: CodeWorkspaceSelection[];
-  /** Linked pwc_tars conversation; on a first send it carries the id a pre-send
-   *  long-term-memory upload created, pending adoption by `request.js`. */
-  tarsConversationId?: string;
 };
 
 export type ServerRequest = Request<unknown, unknown, RequestBody> & {
@@ -72,8 +69,4 @@ export type ServerRequest = Request<unknown, unknown, RequestBody> & {
     thinkingHadValue?: boolean;
     thinkingValue?: unknown;
   };
-  /** The pwc_tars conversation this turn's long-term memory lives on, resolved
-   *  by `request.js` from the conversation doc (or adopted from the body on a
-   *  first send). */
-  tarsConversationId?: string;
 };

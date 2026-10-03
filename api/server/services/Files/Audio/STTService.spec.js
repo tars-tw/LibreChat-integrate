@@ -36,6 +36,9 @@ jest.mock('@librechat/api', () => ({
   })),
   applyAxiosProxyConfig: jest.fn(),
   resolveConfigSecret: jest.fn((value) => value),
+  resolveTarsSchemaApiKey: jest.fn(async (schema) => schema),
+  convertSpeechTranscript: jest.fn((text) => text),
+  transcribeWithGemini: jest.fn(),
   applySSRFSafeAgentIfDirect: jest.fn(),
   contentFilterBlockResponse: jest.fn((finding) => ({
     error: 'content_filter_block',
@@ -55,7 +58,8 @@ jest.mock('librechat-data-provider', () => ({
   /* Real selection logic: these tests are about which provider a schema resolves to. */
   listConfiguredSpeechProviders:
     jest.requireActual('librechat-data-provider').listConfiguredSpeechProviders,
-  STTProviders: {},
+  resolveSpeechProvider: jest.requireActual('librechat-data-provider').resolveSpeechProvider,
+  STTProviders: jest.requireActual('librechat-data-provider').STTProviders,
 }));
 jest.mock('~/server/services/Config', () => ({ getAppConfig: jest.fn() }));
 
@@ -69,6 +73,7 @@ const {
   contentFilterBlockResponse,
   contentFilterUninspectableResponse,
   getBlockedUninspectableFileField,
+  transcribeWithGemini,
 } = require('@librechat/api');
 const { STTService, getFileExtensionFromMime, MIME_TO_EXTENSION_MAP } = require('./STTService');
 
@@ -143,6 +148,50 @@ describe('STTService.getProviderSchema provider detection', () => {
       },
     });
     await expect(service.getProviderSchema(req)).rejects.toThrow('Multiple providers are set');
+  });
+
+  it('routes a chat endpoint to its own provider and others to the default', async () => {
+    const gemini = { apiKey: 'g', model: 'gemini-3.6-flash' };
+    const req = buildReq({
+      provider: 'openai',
+      endpoints: { google: 'gemini' },
+      openai: { apiKey: 'sk', model: 'gpt-4o-mini-transcribe' },
+      gemini,
+    });
+    await expect(service.getProviderSchema(req, 'google')).resolves.toEqual([
+      'gemini',
+      gemini,
+      undefined,
+    ]);
+    const [provider] = await service.getProviderSchema(req, 'openAI');
+    expect(provider).toBe('openai');
+    const [micProvider] = await service.getProviderSchema(req);
+    expect(micProvider).toBe('openai');
+  });
+});
+
+describe('STTService.sttRequest gemini', () => {
+  it('hands Gemini transcription to transcribeWithGemini instead of the HTTP strategies', async () => {
+    transcribeWithGemini.mockResolvedValueOnce('逐字稿');
+    const service = new STTService();
+    const schema = { apiKey: 'g', model: 'gemini-3.6-flash' };
+    const audioBuffer = Buffer.from('audio');
+
+    await expect(
+      service.sttRequest(
+        'gemini',
+        schema,
+        { audioBuffer, audioFile: { mimetype: 'audio/mpeg', originalname: 'a.mp3', size: 5 } },
+        ['stt:1'],
+      ),
+    ).resolves.toBe('逐字稿');
+    expect(transcribeWithGemini).toHaveBeenCalledWith({
+      config: schema,
+      audio: audioBuffer,
+      mimeType: 'audio/mpeg',
+      allowedAddresses: ['stt:1'],
+    });
+    expect(axios.post).not.toHaveBeenCalled();
   });
 });
 

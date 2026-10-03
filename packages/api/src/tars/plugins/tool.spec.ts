@@ -13,7 +13,6 @@ import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import { invalidateTarsPluginManifestsCache, primeTarsPluginManifests } from './client';
 import { createTarsPluginTool, formatTarsPluginResult, getTarsPluginDefinition } from './tool';
 import type { TarsPluginRunResult } from './client';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
 
 import { tarsToolStreamResponse } from '~/tars/tools/mocks';
 
@@ -206,56 +205,35 @@ describe('createTarsPluginTool', () => {
     });
   });
 
-  it('splits the memory files into data_files and file_input and reads the history on call', async () => {
+  it('sends the spreadsheets as signed refs and reads file_input and history on call', async () => {
+    process.env.JWT_SECRET = 'plugin-test-secret';
     const fetchMock = mockBackend({ status: 200, body: { success: true, data: output() } });
     const loadHistory = jest.fn().mockResolvedValue([{ role: 'user', content: '上一題' }]);
+    const loadFileInput = jest.fn().mockResolvedValue('合約內容');
     const tool = await createTarsPluginTool({
       toolName: 'tars_plugin_summarize_text',
       tarsUserId: 'tars-user-1',
-      documents: [
-        {
-          id: 'x',
-          conversation_id: 'conv-1',
-          filename: 'x.xlsx',
-          extension: 'xlsx',
-          mime_type: null,
-          size: null,
-          status: 1,
-          word_count: null,
-          tokens: null,
-          summary: 'sheet preview',
-          file_path: '/srv/x.xlsx',
-          created_by: 'tars-user-1',
-          created_at: null,
-          structured: true,
-        },
-        {
-          id: 'p',
-          conversation_id: 'conv-1',
-          filename: 'p.pdf',
-          extension: 'pdf',
-          mime_type: null,
-          size: null,
-          status: 1,
-          word_count: null,
-          tokens: null,
-          summary: '合約內容',
-          file_path: '/srv/p.pdf',
-          created_by: 'tars-user-1',
-          created_at: null,
-          structured: false,
-        },
-      ],
+      librechatUserId: 'lc-user',
+      dataFiles: [{ id: 'file-x', filename: 'x.xlsx' }],
+      loadFileInput,
       loadHistory,
     });
     expect(loadHistory).not.toHaveBeenCalled();
+    expect(loadFileInput).not.toHaveBeenCalled();
     await tool?.invoke({});
 
     const call = fetchMock.mock.calls.find(([url]) =>
       String(url).endsWith('/summarize_text/stream'),
     );
     const body = JSON.parse(String((call?.[1] as RequestInit).body));
-    expect(body.settings.data_files).toEqual(['/srv/x.xlsx']);
+    expect(body.settings.data_files).toBeUndefined();
+    expect(JSON.parse(body.settings.data_file_refs)).toEqual([
+      {
+        id: 'file-x',
+        filename: 'x.xlsx',
+        path: expect.stringMatching(/^\/api\/tars\/files\/file-x\?u=lc-user&exp=\d+&sig=/),
+      },
+    ]);
     expect(body.settings.file_input).toBe('合約內容');
     expect(body.history).toEqual([{ role: 'user', content: '上一題' }]);
   });
@@ -270,28 +248,12 @@ describe('createTarsPluginTool', () => {
     await expect(tool?.invoke({})).resolves.toBe('ok');
   });
 
-  it('offers the attached spreadsheets that have a pwc_tars path as data_files', async () => {
+  it('runs without file_input when reading the attachments fails', async () => {
     const fetchMock = mockBackend({ status: 200, body: { success: true, data: output() } });
-    const document = (id: string, filePath?: string | null): TarsMemoryDocument => ({
-      id,
-      conversation_id: 'conv-1',
-      filename: `${id}.xlsx`,
-      extension: 'xlsx',
-      mime_type: null,
-      size: null,
-      status: 1,
-      word_count: null,
-      tokens: null,
-      summary: null,
-      file_path: filePath,
-      created_by: 'tars-user-1',
-      created_at: null,
-      structured: true,
-    });
     const tool = await createTarsPluginTool({
       toolName: 'tars_plugin_summarize_text',
       tarsUserId: 'tars-user-1',
-      documents: [document('a', '/srv/uploads/a.xlsx'), document('b', null)],
+      loadFileInput: () => Promise.reject(new Error('mongo down')),
     });
     await tool?.invoke({});
 
@@ -299,7 +261,8 @@ describe('createTarsPluginTool', () => {
       String(url).endsWith('/summarize_text/stream'),
     );
     const body = JSON.parse(String((call?.[1] as RequestInit).body));
-    expect(body.settings.data_files).toEqual(['/srv/uploads/a.xlsx']);
+    expect(body.settings).not.toHaveProperty('file_input');
+    expect(body.settings).not.toHaveProperty('data_file_refs');
   });
 
   it('puts an ends_turn answer on the card and tells the model not to retell it', async () => {

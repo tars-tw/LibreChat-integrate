@@ -227,17 +227,15 @@ describe('runTarsPluginTool', () => {
     expect((init as RequestInit).headers).not.toHaveProperty('X-TARS-User-Id');
   });
 
-  it('hands the attached spreadsheets over as data_files', async () => {
+  it('hands the attached spreadsheets over as data_file_refs', async () => {
     const fetchMock = mockBackend();
-    await runTarsPluginTool('text_stats', {
-      inputs: {},
-      dataFiles: ['/srv/tars/uploads/cases.xlsx'],
-    });
+    const refs = JSON.stringify([{ id: 'f1', filename: 'cases.xlsx', path: '/api/tars/files/f1' }]);
+    await runTarsPluginTool('text_stats', { inputs: {}, dataFileRefs: refs });
     const [, init] = callsTo(fetchMock, '/tools/text_stats')[0];
     expect(JSON.parse(String((init as RequestInit).body)).settings).toEqual({
       direct_call: false,
       plugin_tool_names: ['text_stats'],
-      data_files: ['/srv/tars/uploads/cases.xlsx'],
+      data_file_refs: refs,
     });
   });
 

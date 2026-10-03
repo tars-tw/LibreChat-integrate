@@ -46,7 +46,7 @@ npm run frontend                           # build 全部 packages + client
 | `VITE_LANGFLOW_URL` | `http://localhost:7860` | Langflow URL 單一來源(iframe + MCP url host + SSRF 白名單)。**Vite build-time,改了要重 build 前端** |
 | `LANGFLOW_API_KEY` | 你的 Langflow API key | `librechat.yaml` 以 `${LANGFLOW_API_KEY}` 帶入 MCP header |
 | `SCHEDULES_SINGLE_PROCESS` | `true` | 單機跑排程,避免多實例重複執行 |
-| `HTTP_REQUEST_TIMEOUT_MS` | `1800000`(30 分鐘) | Node 預設 300 秒,涵蓋整個請求含 body。長期記憶區上傳一支長音檔時,pwc_tars 是同步解析＋轉錄才回應,會撞到這個上限:瀏覽器看到請求斷掉,pwc_tars 卻已寫入 memory_document |
+| `HTTP_REQUEST_TIMEOUT_MS` | `1800000`(30 分鐘) | Node 預設 300 秒,涵蓋整個請求含 body。大檔上傳(含音檔轉錄、OCR)在回應前同步處理,超過上限時瀏覽器會看到請求中斷 |
 
 以下在 `.env.example` **已預設可用**,本機 dev 不用動,但要知道它們的意義:
 
@@ -57,7 +57,6 @@ npm run frontend                           # build 全部 packages + client
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GOOGLE_KEY` | `user_provided` | 哨兵值,`.env` 不放真 key。實際 key 解析鏈:使用者聊天室自設 > pwc_tars sys_config > 提示設 key |
 | `JWT_SECRET` / `JWT_REFRESH_SECRET` / `CREDS_KEY` / `CREDS_IV` / `MEILI_MASTER_KEY` | 內建範例值 | ⚠️ 是公開 repo 人人可見的值,**對外/共享環境務必重新產生** |
 | `TARS_ADMIN_ROLE_IDS` | `1` | pwc_tars `role_id` 屬此集合者 → LibreChat ADMIN |
-| `TARS_MEMORY_UPLOAD_TIMEOUT_MS` | `1800000`(30 分鐘) | LibreChat 等 pwc_tars `upload_memory_data` 回應的上限(undici `headersTimeout`/`bodyTimeout`)。不設就吃 undici 的 300 秒預設。調高時 `HTTP_REQUEST_TIMEOUT_MS` 要一起調 |
 | `TARS_PLUGIN_TOOL_TIMEOUT_MS` | `240000`(4 分鐘) | 聊天室呼叫 pwc_tars 外掛工具(`tars_tool_sdk`,`POST /api/langflow-service/tools/<name>`)的上限。外掛本身由 pwc_tars `backend/.env` 的 `TARS_TOOL_PLUGINS_DIR` 載入,LibreChat 這邊不用設定;在專用腦管理的「外掛工具」區塊決定每個腦要顯示哪些 |
 
 > Langflow 的 project id **不用設**:開機時後端從唯一的 Langflow 專案自動探測。Langflow 有多個專案時才需在 `.env` 設 `LANGFLOW_PROJECT_ID`。
@@ -246,6 +245,7 @@ npm run build
 
 | 日期 | 檔案 | 變更內容 | 相關 commit |
 |---|---|---|---|
+| 2026-10-03 | `librechat.yaml`、`.env` | 聊天上傳改回 LibreChat 原生檔案(不再用 pwc_tars 長期記憶區)。`librechat.yaml` 新增 `fileConfig.defaultLLMDeliveryPath.overrides`,把 `text/csv`、`application/csv`、`application/vnd.ms-excel`、`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` 設為 `none`(只存原檔,整張表不會被抽成文字塞進 prompt;試算表由 pwc_tars 資料工具查詢)。`.env` 的 `TARS_MEMORY_UPLOAD_TIMEOUT_MS` 已無作用,可刪。pwc_tars 端:sys_config `KEY_LIBRECHAT_BASE_URL` 必須是 pwc_tars 連得到的 LibreChat 位址(資料工具從它的 `/api/tars/files` 下載試算表);可選 env `LIBRECHAT_DATA_CACHE_DIR`、`LIBRECHAT_DATA_FILE_MAX_BYTES`(預設 100MB)、`LIBRECHAT_DATA_CACHE_TTL_HOURS`(預設 24)、`LIBRECHAT_DATA_FILE_TIMEOUT_SEC`(預設 120)。同日再加 `speech.stt.openai`(`apiKey: '${tars:KEY_OPEN_AI_API}'` 即時讀 pwc_tars sys_config、`model: gpt-4o-mini-transcribe`)與 `fileConfig.defaultLLMDeliveryPath.overrides` 的 `audio/*: text`,音檔一律轉成逐字稿再給模型;`KEY_OPEN_AI_API` 沒有有效值時音檔上傳會失敗。`speech.stt.traditionalChinese: true` 把逐字稿轉成繁體台灣用語(OpenCC s2twp,與 pwc_tars 相同;新增依賴 `opencc-js`),附件與輸入框麥克風都套用;不設則維持模型原樣輸出。STT 改為可設多個 provider:`speech.stt.provider: openai` 為預設(麥克風與非 Gemini 對話),`speech.stt.endpoints: { google: gemini }` 讓 Gemini 對話裡附的音檔改由 `speech.stt.gemini`(`apiKey: '${tars:KEY_GEMINI_API}'`、`model: gemini-3.6-flash`,`generateContent` 直接聽音檔轉錄)處理。 | `feature/longterm_memory_fix`、pwc_tars `feature/librechat_data_file_refs`(待 commit) |
 | 2026-10-02 | `librechat.yaml` | 新增 `webSearch` 區塊:網路搜尋只用 Tavily(`searchProvider`/`scraperProvider: tavily`、`rerankerType: none`),key 為 `tavilyApiKey: '${tars:KEY_TAVILY}'`,即時讀 pwc_tars sys_config `KEY_TAVILY`(30 秒快取)。`.env` 的 `TAVILY_API_KEY` 不再被網路搜尋使用;`KEY_TAVILY` 未設或 pwc_tars 連不到時網路搜尋不可用。 | `feature/web_search_tavily_only`(待 commit) |
 | 2026-09-15 | `librechat.yaml` | 新增 `interface.langflow: false`,控制側欄的 Langflow(Workflow)入口,設 `true` 才顯示;程式預設即為 `false`,不設也是隱藏。`/langflow` 頁面、管理選單與 MCP 設定頁的入口不受影響。Agent 市場改回只靠既有的 `interface.marketplace.use: false` 關閉(需明確寫在 yaml,才會覆蓋 MongoDB 角色權限)。`.env` 無新增值。 | `fix/sidebar-menu-yaml-gate`(待 commit) |
 | 2026-09-10 | `librechat.yaml` | 新增 `interface.marketplace.use: false`,關閉聊天左側的 Agent 市場入口。`.env` 無新增值。 | `feature/tars-ui-improvements`(待 commit) |

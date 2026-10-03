@@ -17,7 +17,7 @@ import type { TarsBuiltinToolContext, TarsBuiltinToolResult } from './client';
 import type { TarsProgressReporter, TarsToolRunConfig } from './progress';
 import type { TarsBuiltinManifest } from '~/tars/plugins/client';
 import type { LangflowToolResult } from '~/tars/langflow/client';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
+import type { TarsDataFile } from '~/tars/files/sign';
 import {
   langflowToolResult,
   resolveLangflowModelName,
@@ -28,6 +28,7 @@ import { getTarsBuiltinManifest, primeTarsBuiltinManifests } from '~/tars/plugin
 import { TARS_DATABASE_SWITCH_TOOL, tarsBuiltinToolCapability } from './names';
 import { normalizeJsonSchema, resolveJsonSchemaRefs } from '~/mcp/zod';
 import { TarsRequestError, isTarsConfigured } from '~/tars/client';
+import { toTarsDataFileRefsContext } from '~/tars/files/sign';
 import { resolveTarsDatabaseId } from '~/tars/agent/client';
 import { listTarsSqlDatabases } from '~/tars/sql/client';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
@@ -147,8 +148,8 @@ export interface TarsBuiltinToolOptions {
   domainId?: string | number | null;
   /** The turn's tools; charts and files reach the database only when it is switched on. */
   agentTools?: readonly string[];
-  /** The conversation's active spreadsheets (csv / xlsx memory files). */
-  documents?: TarsMemoryDocument[] | null;
+  /** The thread's spreadsheets (csv / xlsx / xls LibreChat uploads). */
+  dataFiles?: TarsDataFile[] | null;
   /** Model the chat turn runs on; a tool that calls a model itself inherits it. */
   model?: string;
   librechatUserId?: string;
@@ -234,8 +235,8 @@ async function bindCall(
       ? resolveLangflowModelName(options.model, 'tars-tools')
       : Promise.resolve(undefined),
   ]);
-  const documentIds = needsContext(manifest, 'document_ids')
-    ? (options.documents ?? []).map((doc) => doc.id).join(',')
+  const dataFileRefs = needsContext(manifest, 'data_file_refs')
+    ? toTarsDataFileRefsContext(options.dataFiles, options.librechatUserId)
     : '';
 
   const context: TarsBuiltinToolContext = {};
@@ -251,8 +252,8 @@ async function bindCall(
   if (databaseId) {
     context.knowledge_base_id = databaseId;
   }
-  if (documentIds) {
-    context.document_ids = documentIds;
+  if (dataFileRefs) {
+    context.data_file_refs = dataFileRefs;
   }
   return { inputs, context };
 }
