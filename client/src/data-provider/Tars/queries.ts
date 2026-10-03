@@ -7,6 +7,8 @@ import type {
   TTarsDocument,
   TTarsUser,
   TTarsSysConfig,
+  TTarsModelProfile,
+  TTarsModelProfilesResponse,
   TTarsMcpServer,
   TTarsModelOptions,
   TTarsModelsResponse,
@@ -633,6 +635,17 @@ export const useTarsUserGroupsQuery = (
     [QueryKeys.tarsUserGroups],
     () => dataService.getTarsUserGroups(),
     { ...adminQueryOptions, ...config },
+  );
+};
+
+/** Admin: every pwc_tars model profile, disabled ones included (模型管理). */
+export const useTarsModelProfilesQuery = (
+  config?: UseQueryOptions<TTarsModelProfilesResponse, unknown, TTarsModelProfile[]>,
+): QueryObserverResult<TTarsModelProfile[]> => {
+  return useQuery<TTarsModelProfilesResponse, unknown, TTarsModelProfile[]>(
+    [QueryKeys.tarsModelProfiles],
+    () => dataService.getTarsModelProfiles(),
+    { select: (data) => data.profiles ?? [], ...adminQueryOptions, ...config },
   );
 };
 
