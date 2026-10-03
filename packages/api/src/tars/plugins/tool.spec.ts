@@ -13,7 +13,6 @@ import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import { invalidateTarsPluginManifestsCache, primeTarsPluginManifests } from './client';
 import { createTarsPluginTool, formatTarsPluginResult, getTarsPluginDefinition } from './tool';
 import type { TarsPluginRunResult } from './client';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
 
 import { tarsToolStreamResponse } from '~/tars/tools/mocks';
 

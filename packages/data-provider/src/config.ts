@@ -3823,8 +3823,6 @@ export type TStartupConfig = {
   tarsAuth?: boolean;
   /** Whether pwc_tars is the MCP server source of truth (hides native MCP server management UI) */
   tarsMcpEnabled?: boolean;
-  /** Whether chat uploads are stored in the pwc_tars long-term memory area (replaces native upload UI) */
-  tarsMemoryEnabled?: boolean;
   /** pwc_tars SSO status, used to offer the LDAP login option on the login page */
   tarsSso?: {
     enabled: boolean;

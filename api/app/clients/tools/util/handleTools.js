@@ -577,7 +577,7 @@ const loadTools = async ({
         createTarsTableTaskTool({
           tarsUserId: options.req?.user?.tarsId,
           domainId: options.req?.body?.domain_id,
-          documents: getTarsMemorySnapshot(options.req)?.structuredDocuments,
+          dataFiles: getTarsTurnFiles(options.req)?.dataFiles,
           model: agent?.model,
           librechatUserId: user,
         });

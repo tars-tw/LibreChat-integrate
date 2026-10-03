@@ -12,11 +12,9 @@ import type { NavLink } from '~/common';
 import { useAgentCapabilities, useGetAgentsConfig, useHasAccess } from '~/hooks';
 import AgentPanelSwitch from '~/components/SidePanel/Agents/AgentPanelSwitch';
 import PanelSwitch from '~/components/SidePanel/Builder/PanelSwitch';
-import { TarsMemoryPanel } from '~/components/SidePanel/TarsMemory';
 import { SchedulePanel } from '~/components/SidePanel/Schedules';
 import FilesPanel from '~/components/SidePanel/Files/Panel';
 import { PromptsAccordion } from '~/components/Prompts';
-import { useGetStartupConfig } from '~/data-provider';
 import { SkillsAccordion } from '~/components/Skills';
 
 export default function useSideNavLinks({
