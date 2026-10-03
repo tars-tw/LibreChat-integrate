@@ -3679,7 +3679,7 @@
   "com_ui_tars_trace_tool_generate_file": "Generate file",
   "com_ui_tars_trace_tool_input": "Input",
   "com_ui_tars_trace_tool_knowledge_search": "Search knowledge base",
-  "com_ui_tars_trace_tool_langflow_run": "Langflow workflow",
+  "com_ui_tars_trace_tool_langflow_run": "Run workflow",
   "com_ui_tars_trace_tool_no_details": "No details",
   "com_ui_tars_trace_tool_output": "Result",
   "com_ui_tars_trace_tool_run_table_task": "Process table row by row",

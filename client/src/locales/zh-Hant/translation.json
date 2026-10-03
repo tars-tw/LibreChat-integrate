@@ -2879,7 +2879,7 @@
   "com_ui_tars_trace_tool_generate_file": "產生檔案",
   "com_ui_tars_trace_tool_input": "輸入參數",
   "com_ui_tars_trace_tool_knowledge_search": "搜尋知識庫",
-  "com_ui_tars_trace_tool_langflow_run": "Langflow 工作流",
+  "com_ui_tars_trace_tool_langflow_run": "執行 Workflow",
   "com_ui_tars_trace_tool_no_details": "沒有詳細資料",
   "com_ui_tars_trace_tool_output": "執行結果",
   "com_ui_tars_trace_tool_run_table_task": "逐列處理表格",

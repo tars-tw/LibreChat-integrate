@@ -85,7 +85,7 @@ mcpServers:
     title: 'Langflow'
     description: 'Langflow flows exposed as callable tools'
     timeout: 60000
-    # Hidden from the regular chat input toggle — the per-flow "Langflow ·" Agents are the
+    # Hidden from the regular chat input toggle — the per-flow "Workflow ·" Agents are the
     # intended entry point. The server still loads on startup so those Agents can call its tools.
     chatMenu: false
     startup: true
