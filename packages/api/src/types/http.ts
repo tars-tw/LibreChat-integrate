@@ -72,8 +72,4 @@ export type ServerRequest = Request<unknown, unknown, RequestBody> & {
     thinkingHadValue?: boolean;
     thinkingValue?: unknown;
   };
-  /** The pwc_tars conversation this turn's long-term memory lives on, resolved
-   *  by `request.js` from the conversation doc (or adopted from the body on a
-   *  first send). */
-  tarsConversationId?: string;
 };

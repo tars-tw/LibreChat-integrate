@@ -151,7 +151,6 @@ function buildPreLoginPayload() {
     emailLoginEnabled,
     tarsAuth,
     tarsMcpEnabled: isTarsMcpEnabled(),
-    tarsMemoryEnabled: isTarsConfigured(),
     registrationEnabled: !tarsAuth && !ldap?.enabled && isEnabled(process.env.ALLOW_REGISTRATION),
     socialLoginEnabled: isEnabled(process.env.ALLOW_SOCIAL_LOGIN),
     emailEnabled: checkEmailConfig(),
