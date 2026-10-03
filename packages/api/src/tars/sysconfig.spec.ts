@@ -14,6 +14,7 @@ import {
   getTarsProviderApiKey,
   resolveTarsProviderKey,
   resolveTarsConfigValue,
+  resolveTarsSchemaApiKey,
   isExpiredKeyCoveredByTars,
   invalidateTarsSysConfigCache,
 } from './sysconfig';
@@ -295,5 +296,33 @@ describe('resolveTarsConfigValue', () => {
     await expect(resolveTarsConfigValue('user_provided')).resolves.toBe('user_provided');
     expect(fetchMock).not.toHaveBeenCalled();
     delete process.env.TEST_TARS_REF_KEY;
+  });
+});
+
+describe('resolveTarsSchemaApiKey', () => {
+  const stt = { model: 'gpt-4o-transcribe', apiKey: '${tars:KEY_OPEN_AI_API}' };
+
+  it('swaps a ${tars:KEY} api key for the sys_config value', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, [row('KEY_OPEN_AI_API', 'sk-from-tars')]));
+    await expect(resolveTarsSchemaApiKey(stt)).resolves.toEqual({
+      model: 'gpt-4o-transcribe',
+      apiKey: 'sk-from-tars',
+    });
+  });
+
+  it('throws instead of sending the placeholder when sys_config has no usable value', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, [row('KEY_OPEN_AI_API', 'DEFAULT')]));
+    await expect(resolveTarsSchemaApiKey(stt)).rejects.toThrow('KEY_OPEN_AI_API');
+  });
+
+  it('leaves env references and literals for the caller', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+    const env = { model: 'm', apiKey: '${STT_API_KEY}' };
+    await expect(resolveTarsSchemaApiKey(env)).resolves.toBe(env);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -19,7 +19,7 @@ const {
   buildTarsSqlContext,
   buildTarsRagContext,
   buildTarsAgentContext,
-  getTarsMemorySnapshot,
+  getTarsTurnFiles,
   resolveTarsAgentBindings,
   buildTarsToolsContext,
   resolveTarsBuiltinTools,
@@ -1571,7 +1571,7 @@ async function loadToolDefinitionsWrapper({
         req.body?.domain_id,
         resolveTarsAgentBindings({
           toggles: req.body?.ephemeralAgent,
-          documents: getTarsMemorySnapshot(req)?.structuredDocuments,
+          documents: getTarsTurnFiles(req)?.dataFiles,
           capabilities: req.config?.endpoints?.agents?.capabilities,
         }),
       );

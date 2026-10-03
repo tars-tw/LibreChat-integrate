@@ -1980,11 +1980,32 @@ const sttAzureOpenAISchema = z.object({
   apiVersion: z.string(),
 });
 
+/** Gemini transcribes through `generateContent` with the audio inline. */
+const sttGeminiSchema = z.object({
+  /** API base; defaults to `https://generativelanguage.googleapis.com/v1beta`. */
+  url: z.string().optional(),
+  apiKey: z.string(),
+  apiKeyPreview: apiKeyPreviewSchema,
+  model: z.string(),
+});
+
+const sttProviderNameSchema = z.enum(['openai', 'azureOpenAI', 'gemini']);
+
 const sttSchema = z.object({
   allowedAddresses: allowedAddressesSchema,
+  /** Convert transcripts from Simplified to Traditional Chinese with Taiwan phrasing (OpenCC s2twp). */
+  traditionalChinese: z.boolean().optional(),
+  /** The provider to use when several are configured and no `endpoints` route matches. */
+  provider: sttProviderNameSchema.optional(),
+  /** Chat endpoint → provider, e.g. `{ google: gemini }`: audio attached on that endpoint uses it. */
+  endpoints: z.record(z.string(), sttProviderNameSchema).optional(),
   openai: sttOpenaiSchema.optional(),
   azureOpenAI: sttAzureOpenAISchema.optional(),
+  gemini: sttGeminiSchema.optional(),
 });
+
+/** Keys of a speech schema that configure routing or output rather than naming a provider. */
+const SPEECH_SETTING_KEYS = new Set(['allowedAddresses', 'endpoints']);
 
 /**
  * The speech providers a schema actually configures. `allowedAddresses` is transport
@@ -2001,16 +2022,41 @@ export function listConfiguredSpeechProviders(
   }
   return Object.entries(schema).filter(
     ([key, value]) =>
-      key !== 'allowedAddresses' &&
+      !SPEECH_SETTING_KEYS.has(key) &&
       value != null &&
       typeof value === 'object' &&
       Object.keys(value).length > 0,
   ) as Array<[string, Record<string, unknown>]>;
 }
 
-/** Whether a speech schema names exactly one usable provider. */
+/**
+ * The provider a request uses: the one `endpoints` routes the chat's endpoint to, else
+ * the `provider` default, else the only one configured. Undefined when none applies —
+ * several configured with no default, or a default naming an unconfigured provider.
+ */
+export function resolveSpeechProvider(
+  schema?: Record<string, unknown> | null,
+  endpoint?: string | null,
+): [string, Record<string, unknown>] | undefined {
+  const providers = listConfiguredSpeechProviders(schema);
+  const byName = new Map(providers);
+  const routes = schema?.endpoints as Record<string, string> | undefined;
+  const routed = endpoint ? routes?.[endpoint] : undefined;
+  const routedSchema = routed != null ? byName.get(routed) : undefined;
+  if (routed != null && routedSchema != null) {
+    return [routed, routedSchema];
+  }
+  const fallback = schema?.provider as string | undefined;
+  if (fallback == null) {
+    return providers.length === 1 ? providers[0] : undefined;
+  }
+  const fallbackSchema = byName.get(fallback);
+  return fallbackSchema != null ? [fallback, fallbackSchema] : undefined;
+}
+
+/** Whether a speech schema resolves to a usable provider. */
 export function isSpeechProviderConfigured(schema?: Record<string, unknown> | null): boolean {
-  return listConfiguredSpeechProviders(schema).length === 1;
+  return resolveSpeechProvider(schema) != null;
 }
 
 const speechTab = z
@@ -2576,8 +2622,6 @@ export type TStartupConfig = {
   tarsAuth?: boolean;
   /** Whether pwc_tars is the MCP server source of truth (hides native MCP server management UI) */
   tarsMcpEnabled?: boolean;
-  /** Whether chat uploads are stored in the pwc_tars long-term memory area (replaces native upload UI) */
-  tarsMemoryEnabled?: boolean;
   /** pwc_tars SSO status, used to offer the LDAP login option on the login page */
   tarsSso?: {
     enabled: boolean;
@@ -4166,6 +4210,10 @@ export enum STTProviders {
    * Provider for Microsoft Azure STT
    */
   AZURE_OPENAI = 'azureOpenAI',
+  /**
+   * Provider for Google Gemini STT (multimodal `generateContent`)
+   */
+  GEMINI = 'gemini',
 }
 
 export enum TTSProviders {

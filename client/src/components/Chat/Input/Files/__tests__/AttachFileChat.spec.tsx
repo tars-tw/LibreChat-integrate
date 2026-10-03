@@ -26,7 +26,6 @@ let mockFileConfig = defaultFileConfig;
 let mockAgentsMap: Record<string, Partial<Agent>> = {};
 let mockAgentQueryData: Partial<Agent> | undefined;
 let mockFileConfigLoaded = true;
-let mockStartupConfig: Record<string, unknown> = {};
 
 jest.mock('~/data-provider', () => ({
   useGetEndpointsQuery: () => ({ data: mockEndpointsConfig }),
@@ -35,7 +34,6 @@ jest.mock('~/data-provider', () => ({
     isSuccess: mockFileConfigLoaded,
   }),
   useGetAgentByIdQuery: () => ({ data: mockAgentQueryData }),
-  useGetStartupConfig: () => ({ data: mockStartupConfig }),
 }));
 
 jest.mock('~/Providers', () => ({
@@ -60,12 +58,6 @@ jest.mock('../AttachFileMenu', () => {
 jest.mock('../AttachFile', () => {
   return function MockAttachFile() {
     return <div data-testid="attach-file" />;
-  };
-});
-
-jest.mock('../TarsMemoryAttach', () => {
-  return function MockTarsMemoryAttach() {
-    return <div data-testid="tars-memory-attach" />;
   };
 });
 
@@ -94,7 +86,6 @@ describe('AttachFileChat', () => {
     mockAgentQueryData = undefined;
     mockAttachFileMenuProps = {};
     mockFileConfigLoaded = true;
-    mockStartupConfig = {};
   });
 
   describe('rendering decisions', () => {
@@ -111,19 +102,6 @@ describe('AttachFileChat', () => {
     it('renders null for null conversation', () => {
       const { container } = renderComponent(null);
       expect(container.innerHTML).toBe('');
-    });
-
-    it('renders the TARS memory uploader instead of the native menu when tarsMemoryEnabled', () => {
-      mockStartupConfig = { tarsMemoryEnabled: true };
-      renderComponent({ endpoint: EModelEndpoint.agents, agent_id: 'agent-1' });
-      expect(screen.getByTestId('tars-memory-attach')).toBeInTheDocument();
-      expect(screen.queryByTestId('attach-file-menu')).not.toBeInTheDocument();
-    });
-
-    it('keeps the native menu when tarsMemoryEnabled is absent', () => {
-      renderComponent({ endpoint: EModelEndpoint.agents, agent_id: 'agent-1' });
-      expect(screen.queryByTestId('tars-memory-attach')).not.toBeInTheDocument();
-      expect(screen.getByTestId('attach-file-menu')).toBeInTheDocument();
     });
   });
 

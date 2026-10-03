@@ -64,6 +64,39 @@ webSearch:
   rerankerType: 'none'
   tavilyApiKey: '${tars:KEY_TAVILY}'
 
+# Spreadsheets are queried by pwc_tars's data tools (tars_data_* / tars_table_task), which
+# download them from LibreChat per call. `none` stores the bytes only, so the whole sheet is
+# never extracted into the prompt as text as well.
+fileConfig:
+  defaultLLMDeliveryPath:
+    overrides:
+      text/csv: none
+      application/csv: none
+      application/vnd.ms-excel: none
+      application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: none
+      # Audio is always transcribed (speech.stt below) and the text goes to the model,
+      # whichever model the chat is on — as pwc_tars's own chat did.
+      audio/*: text
+
+# Speech-to-text for audio uploads (and the composer mic's external engine). Keys are
+# pwc_tars's sys_config rows, read live like webSearch's — rotate them there.
+# Audio attached in a Gemini chat (endpoint `google`) is transcribed by Gemini itself;
+# every other chat, and the mic, uses the `provider` default.
+# Transcripts are converted to Traditional Chinese with Taiwan phrasing (OpenCC s2twp),
+# as pwc_tars did.
+speech:
+  stt:
+    traditionalChinese: true
+    provider: openai
+    endpoints:
+      google: gemini
+    openai:
+      apiKey: '${tars:KEY_OPEN_AI_API}'
+      model: 'gpt-4o-mini-transcribe'
+    gemini:
+      apiKey: '${tars:KEY_GEMINI_API}'
+      model: 'gemini-3.6-flash'
+
 mcpServers:
   # Langflow integration — exposes the flows of a Langflow project as callable tools.
   # Which flows appear is controlled on the Langflow side (per-flow `mcp_enabled` toggle in the
