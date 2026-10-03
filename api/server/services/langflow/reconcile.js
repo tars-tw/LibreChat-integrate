@@ -9,14 +9,19 @@ const {
   AccessRoleIds,
   EModelEndpoint,
 } = require('librechat-data-provider');
-const { fetchFlowAgentModels, findModelEndpoint } = require('@librechat/api');
+const {
+  flowAgentName,
+  findModelEndpoint,
+  fetchFlowAgentModels,
+  flowAgentDescription,
+  flowAgentInstructions,
+} = require('@librechat/api');
 const { grantPermission } = require('~/server/services/PermissionService');
 const { getModelsConfig } = require('~/server/controllers/ModelController');
 const db = require('~/models');
 
 const SERVER_NAME = 'langflow';
 const MCP_DELIMITER = '_mcp_';
-const AGENT_PREFIX = 'Langflow · ';
 const AGENT_ID_PREFIX = `agent_${SERVER_NAME}_`;
 /** Fallback orchestration provider/model, used only for a flow whose TARS node leaves the model
  *  blank ("let pwc_tars pick"). Env-overridable so other deployments can route Langflow agents
@@ -137,12 +142,9 @@ function flowAgentId(actionName) {
 function flowOwnedFields(flow, orchestration) {
   return {
     ...orchestration,
-    name: `${AGENT_PREFIX}${flow.name}`,
-    description: flow.description || flow.action_description || '',
-    instructions:
-      `You are a thin wrapper around the Langflow "${flow.name}" flow. ` +
-      `For every user message, call the ${flow.action_name} tool with the user's input ` +
-      `and return its result verbatim. Do not answer from your own knowledge.`,
+    name: flowAgentName(flow.name),
+    description: flowAgentDescription(flow.description || flow.action_description || ''),
+    instructions: flowAgentInstructions(flow.name, flow.action_name),
     tools: [`${flow.action_name}${MCP_DELIMITER}${SERVER_NAME}`],
     mcpServerNames: [SERVER_NAME],
   };
@@ -287,7 +289,7 @@ async function doReconcile(req) {
     if (!agent) {
       try {
         await createSharedAgent(flow, ownerId, orchestration);
-        created.push(`${AGENT_PREFIX}${flow.name}`);
+        created.push(flowAgentName(flow.name));
       } catch (err) {
         if (!isDuplicateKeyError(err)) {
           logger.error(

@@ -43,7 +43,7 @@ const endpoint = {
   models: [{ name: 'agent_local_1' }, { name: 'agent_langflow_simple' }, { name: 'agent_local_2' }],
   agentNames: {
     agent_local_1: '簡報高手',
-    agent_langflow_simple: 'Langflow · Simple Agent',
+    agent_langflow_simple: 'Workflow · Simple Agent',
     agent_local_2: 'RAG 助手',
   },
 } as Endpoint;
@@ -64,8 +64,8 @@ describe('AgentItems', () => {
 
     const rows = screen.getAllByRole('menuitem');
     expect(rows.map((row) => row.textContent)).toEqual([
-      'agent_langflow_simple',
       'agent_local_2',
+      'agent_langflow_simple',
       'agent_local_1',
     ]);
   });
@@ -87,7 +87,7 @@ describe('AgentItems', () => {
   });
 
   it('filters the list by the search term', async () => {
-    mockSearchValue = 'langflow';
+    mockSearchValue = 'workflow';
     render(<AgentItems endpoint={endpoint} />);
     await openMenu();
 

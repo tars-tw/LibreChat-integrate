@@ -111,8 +111,8 @@ describe('reconcileLangflowAgents', () => {
   it('creates one shared agent per MCP-enabled flow', async () => {
     await reconcile([flow('TARS_RAG', 'tars_rag'), flow('Simple Agent', 'simple_agent')]);
     expect(await agentNames()).toEqual([
-      'agent_langflow_simple_agent|Langflow · Simple Agent',
-      'agent_langflow_tars_rag|Langflow · TARS_RAG',
+      'agent_langflow_simple_agent|Workflow · Simple Agent',
+      'agent_langflow_tars_rag|Workflow · TARS_RAG',
     ]);
   });
 
@@ -124,9 +124,9 @@ describe('reconcileLangflowAgents', () => {
 
     const after = await db.getAgents({ id: 'agent_langflow_tars_rag' });
     expect(after).toHaveLength(1);
-    expect(after[0].name).toBe('Langflow · TARS_tool');
+    expect(after[0].name).toBe('Workflow · TARS_tool');
     expect(after[0]._id.toString()).toBe(before._id.toString());
-    expect(after[0].instructions).toContain('"TARS_tool" flow');
+    expect(after[0].instructions).toContain('"TARS_tool" workflow');
   });
 
   it('keeps the tool binding pointed at the flow action name', async () => {
@@ -139,14 +139,14 @@ describe('reconcileLangflowAgents', () => {
     await mongoose.models.Agent.insertMany([
       {
         id: 'agent_langflow_tars_rag',
-        name: 'Langflow · TARS_RAG',
+        name: 'Workflow · TARS_RAG',
         provider: 'openAI',
         model: 'gpt-5.4-mini',
         author: ownerId,
       },
       {
         id: 'agent_langflow_tars_rag',
-        name: 'Langflow · TARS_tool',
+        name: 'Workflow · TARS_tool',
         provider: 'openAI',
         model: 'gpt-5.4-mini',
         author: ownerId,
@@ -157,13 +157,35 @@ describe('reconcileLangflowAgents', () => {
 
     const rows = await db.getAgents({ id: 'agent_langflow_tars_rag' });
     expect(rows).toHaveLength(1);
-    expect(rows[0].name).toBe('Langflow · TARS_tool');
+    expect(rows[0].name).toBe('Workflow · TARS_tool');
+  });
+
+  it('rebrands agents published under the old Langflow name in place', async () => {
+    await mongoose.models.Agent.create({
+      id: 'agent_langflow_tars_rag',
+      name: 'Langflow · TARS_tool',
+      description: 'Design Dialogues with Langflow.',
+      instructions: 'You are a thin wrapper around the Langflow "TARS_tool" flow.',
+      provider: 'openAI',
+      model: 'gpt-5.4-mini',
+      author: ownerId,
+    });
+
+    await reconcile([
+      { ...flow('TARS_tool', 'tars_rag'), description: 'Design Dialogues with Langflow.' },
+    ]);
+
+    const rows = await db.getAgents({ id: 'agent_langflow_tars_rag' });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe('Workflow · TARS_tool');
+    expect(rows[0].description).toBe('Design Dialogues with workflow.');
+    expect(rows[0].instructions).not.toMatch(/langflow/i);
   });
 
   it('removes agents whose flow is gone or no longer MCP-enabled', async () => {
     await reconcile([flow('TARS_tool', 'tars_rag'), flow('Simple Agent (1)', 'simple_agent_1')]);
     await reconcile([flow('TARS_tool', 'tars_rag')]);
-    expect(await agentNames()).toEqual(['agent_langflow_tars_rag|Langflow · TARS_tool']);
+    expect(await agentNames()).toEqual(['agent_langflow_tars_rag|Workflow · TARS_tool']);
   });
 
   it('leaves everything alone when Langflow is unreachable', async () => {
@@ -175,7 +197,7 @@ describe('reconcileLangflowAgents', () => {
     clock += 60_000;
     await reconcileLangflowAgents({ user: { id: 'req-user' } });
 
-    expect(await agentNames()).toEqual(['agent_langflow_tars_rag|Langflow · TARS_tool']);
+    expect(await agentNames()).toEqual(['agent_langflow_tars_rag|Workflow · TARS_tool']);
   });
 
   it("orchestrates on the model the flow's TARS node names", async () => {
