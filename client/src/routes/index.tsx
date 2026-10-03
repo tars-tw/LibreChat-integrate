@@ -144,6 +144,11 @@ const loadModelKeysView = () =>
     Component: m.ModelKeysView,
   }));
 
+const loadModelsView = () =>
+  import('~/components/Admin/Tars/Models').then((m) => ({
+    Component: m.ModelsView,
+  }));
+
 const loadTokenQuotaView = () =>
   import('~/components/Admin/Tars/TokenQuota').then((m) => ({
     Component: m.TokenQuotaView,
@@ -359,6 +364,10 @@ export const router = createBrowserRouter(
               lazy: loadSystemSettingsView,
             },
             {
+              path: 'admin/models',
+              lazy: loadModelsView,
+            },
+            {
               path: 'admin/model-keys',
               lazy: loadModelKeysView,
             },
@@ -382,7 +391,6 @@ export const router = createBrowserRouter(
               path: 'audit/tokens',
               lazy: loadTokenQuotaView,
             },
-            placeholderRoute('admin/models', 'com_ui_tars_nav_model_management'),
             placeholderRoute('audit/governance', 'com_ui_tars_nav_audit_governance'),
             {
               path: 'agents',
