@@ -84,22 +84,16 @@ fileConfig:
 
 # Speech-to-text for audio uploads (and the composer mic's external engine). Keys are
 # pwc_tars's sys_config rows, read live like webSearch's — rotate them there.
-# Audio attached in a Gemini chat (endpoint `google`) is transcribed by Gemini itself;
-# every other chat, and the mic, uses the `provider` default.
+# This customer has no Gemini, so `openai` is the only provider: every chat and the mic
+# use it, and no `provider` / `endpoints` routing is needed.
 # Transcripts are converted to Traditional Chinese with Taiwan phrasing (OpenCC s2twp),
 # as pwc_tars did.
 speech:
   stt:
     traditionalChinese: true
-    provider: openai
-    endpoints:
-      google: gemini
     openai:
       apiKey: '${tars:KEY_OPEN_AI_API}'
       model: 'gpt-4o-mini-transcribe'
-    gemini:
-      apiKey: '${tars:KEY_GEMINI_API}'
-      model: 'gemini-3.6-flash'
 
 mcpServers:
   # Langflow integration — exposes the flows of a Langflow project as callable tools.
