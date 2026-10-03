@@ -1,6 +1,6 @@
 import { memo, useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Lightbulb } from 'lucide-react';
+import { NotebookPen } from 'lucide-react';
 import { TooltipAnchor } from '@librechat/client';
 import type { TTarsDomain } from 'librechat-data-provider';
 import { useTarsDomainsQuery } from '~/data-provider';
@@ -103,7 +103,7 @@ function PromptsButton({
           disabled && 'pointer-events-none opacity-50',
         )}
       >
-        <Lightbulb size={18} aria-hidden={true} />
+        <NotebookPen size={18} aria-hidden={true} />
       </TooltipAnchor>
       {open &&
         coords &&
