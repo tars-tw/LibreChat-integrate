@@ -1,6 +1,5 @@
 import * as artifacts from './artifacts';
 import isTemporary from './temporary';
-import tarsMemory from './tarsMemory';
 import families from './families';
 import settings from './settings';
 import prompts from './prompts';
@@ -24,5 +23,4 @@ export default {
   ...settings,
   ...misc,
   ...isTemporary,
-  ...tarsMemory,
 };
