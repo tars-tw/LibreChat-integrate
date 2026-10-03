@@ -69,6 +69,30 @@ export const tarsProtocolUsesHostName = (protocol: string | null | undefined): b
   protocol === 'SMB';
 
 /**
+ * The `model_profile.type` values the model admin page offers. pwc_tars has
+ * normalised every row to CLOUD (provider-hosted) or VLLM (on-premises) — see
+ * its `fix_model_profile.sql` — and seeds GOOGLE_VERTEX, which it hides while no
+ * Vertex AI key is configured. Older type names still classify there, so a row
+ * carrying one keeps it until an admin picks one of these.
+ */
+export const TARS_MODEL_TYPES = ['CLOUD', 'VLLM', 'GOOGLE_VERTEX'] as const;
+
+export type TTarsModelType = (typeof TARS_MODEL_TYPES)[number];
+
+export const isTarsModelType = (value: unknown): value is TTarsModelType =>
+  TARS_MODEL_TYPES.includes(value as TTarsModelType);
+
+/** pwc_tars calls a model's endpoint as an OpenAI-compatible base URL, so it must be absolute http(s). */
+export const isTarsModelEndpoint = (value: string | null | undefined): boolean => {
+  try {
+    const url = new URL((value ?? '').trim());
+    return (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname !== '';
+  } catch {
+    return false;
+  }
+};
+
+/**
  * The native tools that run a whole pwc_tars agent loop per call
  * (`/api/langflow-service/*`). Their replies carry that run's trace, which the
  * chat shows under the tool call the way pwc_tars's own chat does.

@@ -166,6 +166,60 @@ export type TTarsModelsResponse = {
   models: string[] | null;
 };
 
+/** A pwc_tars `model_profile` row on the model admin page (模型管理). */
+export type TTarsModelProfile = {
+  id: string;
+  name: string;
+  version: string | null;
+  type: string | null;
+  /** Plain text, or a JSON object keyed by locale (`{"zh-TW": …, "en-US": …}`). */
+  description: string | null;
+  /** 1 = enabled, 0 = disabled. */
+  status: number;
+  /** JSON object text; null or '' means "no settings". */
+  config: string | null;
+  endpoint: string | null;
+  api_version: string | null;
+  created_by?: string | null;
+  created_at?: string | null;
+  updated_by?: string | null;
+  updated_at?: string | null;
+};
+
+export type TTarsModelProfilesResponse = {
+  profiles: TTarsModelProfile[];
+};
+
+/** Create/update payload. On update an omitted field is kept and '' clears it. */
+export type TTarsModelProfileInput = {
+  name?: string;
+  version?: string;
+  type?: string;
+  description?: string;
+  config?: string;
+  endpoint?: string;
+  apiVersion?: string;
+  /** Update only: pwc_tars creates every profile enabled. */
+  enabled?: boolean;
+};
+
+/**
+ * What pwc_tars retargeted when a profile was disabled, deleted or renamed:
+ * the model the references now point at and how many rows of each kind moved.
+ */
+export type TTarsModelProfileSync = {
+  target: { id: string; name: string } | null;
+  knowledge_base: number;
+  sys_model: number;
+  sys_rag_model: number;
+  sys_domain: number;
+};
+
+export type TTarsModelProfileWriteResult = {
+  profile: TTarsModelProfile;
+  sync: TTarsModelProfileSync | null;
+};
+
 export type TTarsKnowledgeBaseInput = {
   name: string;
   description?: string;
