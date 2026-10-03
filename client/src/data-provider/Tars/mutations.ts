@@ -4,7 +4,6 @@ import type {
   TTarsTicket,
   TTarsDomain,
   TTarsPrompt,
-  TTarsMemoryUploadResult,
   TTarsDocument,
   TTarsChunk,
   TTarsDomainInput,
@@ -1929,78 +1928,3 @@ export const useDeleteTarsWebsiteSourceMutation = (
     },
     options,
   );
-
-/** One long-term-memory upload plus the callback tracking its transfer. */
-export interface TarsMemoryUploadVariables {
-  formData: FormData;
-  /** 0-100 for the browser -> LibreChat leg; pwc_tars's own work follows it. */
-  onProgress?: (percent: number) => void;
-}
-
-/**
- * Upload chat files into the pwc_tars long-term memory area. On a brand-new
- * chat the response carries the pwc_tars conversation id the upload created;
- * the caller must stash it on the conversation state so the first send links
- * it. Invalidates the memory listing of that conversation.
- */
-export const useUploadTarsMemoryMutation = (
-  options?: UseMutationOptions<TTarsMemoryUploadResult, unknown, TarsMemoryUploadVariables>,
-): UseMutationResult<TTarsMemoryUploadResult, unknown, TarsMemoryUploadVariables> => {
-  const queryClient = useQueryClient();
-  return useMutation(
-    ({ formData, onProgress }: TarsMemoryUploadVariables) =>
-      dataService.uploadTarsMemoryFiles(formData, {
-        onUploadProgress: ({ loaded, total }) =>
-          onProgress?.(total ? Math.round((loaded * 100) / total) : 0),
-      }),
-    {
-      ...options,
-      onSuccess: (result, variables, context) => {
-        queryClient.invalidateQueries([QueryKeys.tarsMemory, result.tars_conversation_id]);
-        options?.onSuccess?.(result, variables, context);
-      },
-    },
-  );
-};
-
-/** Flip one memory document's include-in-chat flag. */
-export const useTarsMemoryStatusMutation = (
-  tarsConversationId?: string | null,
-  options?: UseMutationOptions<
-    { document_id: string; status: number },
-    unknown,
-    { documentId: string; status: 0 | 1 }
-  >,
-): UseMutationResult<
-  { document_id: string; status: number },
-  unknown,
-  { documentId: string; status: 0 | 1 }
-> => {
-  const queryClient = useQueryClient();
-  return useMutation(
-    ({ documentId, status }: { documentId: string; status: 0 | 1 }) =>
-      dataService.updateTarsMemoryDocumentStatus(documentId, status),
-    {
-      ...options,
-      onSuccess: (result, variables, context) => {
-        queryClient.invalidateQueries([QueryKeys.tarsMemory, tarsConversationId]);
-        options?.onSuccess?.(result, variables, context);
-      },
-    },
-  );
-};
-
-/** Hard-delete one memory document (row + file on the pwc_tars side). */
-export const useDeleteTarsMemoryDocumentMutation = (
-  tarsConversationId?: string | null,
-  options?: UseMutationOptions<{ deleted_document_id: string }, unknown, string>,
-): UseMutationResult<{ deleted_document_id: string }, unknown, string> => {
-  const queryClient = useQueryClient();
-  return useMutation((documentId: string) => dataService.deleteTarsMemoryDocument(documentId), {
-    ...options,
-    onSuccess: (result, variables, context) => {
-      queryClient.invalidateQueries([QueryKeys.tarsMemory, tarsConversationId]);
-      options?.onSuccess?.(result, variables, context);
-    },
-  });
-};

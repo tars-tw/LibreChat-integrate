@@ -5,7 +5,10 @@ import type { DownloadURLParams } from '~/storage/types';
 import type { ServerRequest } from './http';
 export interface STTService {
   getInstance(): Promise<STTService>;
-  getProviderSchema(req: ServerRequest): Promise<[string, object, string[] | undefined]>;
+  getProviderSchema(
+    req: ServerRequest,
+    endpoint?: string | null,
+  ): Promise<[string, object, string[] | undefined]>;
   sttRequest(
     provider: string,
     schema: object,

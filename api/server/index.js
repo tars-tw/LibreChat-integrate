@@ -469,6 +469,7 @@ const startServer = async () => {
   app.use('/api/rum', routes.rum);
   /** Ahead of `/api/tars`, whose routers require a JWT that an `<img>` cannot send. */
   app.use('/api/tars/static', routes.tarsAssets);
+  app.use('/api/tars/files', routes.tarsFiles);
   app.use('/api/tars', routes.tars);
 
   app.use('/metrics', metricsRouter);

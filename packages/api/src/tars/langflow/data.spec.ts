@@ -7,7 +7,7 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
-import type { TarsMemoryDocument } from '~/tars/memory/client';
+import type { TarsDataFile } from '~/tars/files/sign';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import { createTarsDataTool } from './data';
@@ -15,23 +15,15 @@ import { createTarsDataTool } from './data';
 const BASE_URL = 'http://tars.test';
 const USER_ID = 'tars-user-1';
 
-const doc = (id: string, filename: string): TarsMemoryDocument => ({
-  id,
-  conversation_id: 'conv-1',
-  filename,
-  extension: 'xlsx',
-  mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  size: 1024,
-  status: 1,
-  word_count: 10,
-  tokens: 100,
-  summary: null,
-  created_by: USER_ID,
-  created_at: null,
-  structured: true,
-});
+const LIBRECHAT_USER_ID = 'lc-user';
 
-const documents = [doc('doc-1', 'orders.xlsx'), doc('doc-2', 'sales.xlsx')];
+const dataFiles: TarsDataFile[] = [
+  { id: 'file-1', filename: 'orders.xlsx' },
+  { id: 'file-2', filename: 'sales.xlsx' },
+];
+
+const refIds = (body: Record<string, unknown>): string[] =>
+  (JSON.parse(String(body.data_file_refs)) as Array<{ id: string }>).map((ref) => ref.id);
 
 const buildResponse = (status: number, body: unknown): Response =>
   ({
@@ -66,6 +58,7 @@ const dataBodyOf = (fetchMock: jest.SpyInstance): Record<string, unknown> => {
 
 beforeEach(() => {
   process.env.TARS_AUTH_URL = BASE_URL;
+  process.env.JWT_SECRET = 'data-test-secret';
   invalidateTarsSysConfigCache();
   invalidateTarsModelProfilesCache();
 });
@@ -80,14 +73,21 @@ describe('createTarsDataTool', () => {
       status: 200,
       body: { success: true, data: { answer: '共 42 列', data_files: ['orders.xlsx'] } },
     });
-    const dataTool = createTarsDataTool({ tarsUserId: USER_ID, documents, model: 'gpt-5.4-mini' });
+    const dataTool = createTarsDataTool({
+      tarsUserId: USER_ID,
+      librechatUserId: LIBRECHAT_USER_ID,
+      dataFiles,
+      model: 'gpt-5.4-mini',
+    });
 
     await expect(dataTool.invoke({ question: '有幾列？' })).resolves.toBe('共 42 列');
-    expect(dataBodyOf(fetchMock)).toEqual({
+    const body = dataBodyOf(fetchMock);
+    expect(body).toEqual({
       query: '有幾列？',
-      document_ids: 'doc-1,doc-2',
+      data_file_refs: expect.any(String),
       model_name: 'gpt-5.4-mini',
     });
+    expect(refIds(body)).toEqual(['file-1', 'file-2']);
   });
 
   it('drops requested ids outside the conversation attachments', async () => {
@@ -95,35 +95,43 @@ describe('createTarsDataTool', () => {
       status: 200,
       body: { success: true, data: { answer: 'ok' } },
     });
-    const dataTool = createTarsDataTool({ tarsUserId: USER_ID, documents });
+    const dataTool = createTarsDataTool({
+      tarsUserId: USER_ID,
+      librechatUserId: LIBRECHAT_USER_ID,
+      dataFiles,
+    });
 
-    await dataTool.invoke({ question: 'q', document_ids: ['doc-2', 'foreign-doc'] });
-    expect(dataBodyOf(fetchMock)).toMatchObject({ document_ids: 'doc-2' });
+    await dataTool.invoke({ question: 'q', file_ids: ['file-2', 'foreign-file'] });
+    expect(refIds(dataBodyOf(fetchMock))).toEqual(['file-2']);
   });
 
   it('advertises the attached files in its description', () => {
-    const dataTool = createTarsDataTool({ tarsUserId: USER_ID, documents });
+    const dataTool = createTarsDataTool({ tarsUserId: USER_ID, dataFiles });
     expect(dataTool.description).toContain('orders.xlsx');
-    expect(dataTool.description).toContain('doc-2');
+    expect(dataTool.description).toContain('file-2');
   });
 
   it('fails closed for an unlinked account', async () => {
     const fetchMock = mockBackend({ status: 200, body: {} });
-    const dataTool = createTarsDataTool({ documents });
+    const dataTool = createTarsDataTool({ dataFiles });
     await expect(dataTool.invoke({ question: 'q' })).resolves.toMatch(/not linked to pwc_tars/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('answers cleanly when no spreadsheet is attached', async () => {
     const fetchMock = mockBackend({ status: 200, body: {} });
-    const dataTool = createTarsDataTool({ tarsUserId: USER_ID, documents: [] });
+    const dataTool = createTarsDataTool({ tarsUserId: USER_ID, dataFiles: [] });
     await expect(dataTool.invoke({ question: 'q' })).resolves.toMatch(/No spreadsheet file/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('reports pwc_tars data errors as tool output', async () => {
     mockBackend({ status: 410, body: { message: '資料檔已不存在' } });
-    const dataTool = createTarsDataTool({ tarsUserId: USER_ID, documents });
+    const dataTool = createTarsDataTool({
+      tarsUserId: USER_ID,
+      librechatUserId: LIBRECHAT_USER_ID,
+      dataFiles,
+    });
     await expect(dataTool.invoke({ question: 'q' })).resolves.toBe(
       'The data query failed: 資料檔已不存在',
     );

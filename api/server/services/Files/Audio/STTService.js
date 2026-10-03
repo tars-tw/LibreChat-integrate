@@ -11,6 +11,9 @@ const {
   getSafeErrorMetadata,
   applyAxiosProxyConfig,
   resolveConfigSecret,
+  resolveTarsSchemaApiKey,
+  convertSpeechTranscript,
+  transcribeWithGemini,
   applySSRFSafeAgentIfDirect,
   contentFilterBlockResponse,
   contentFilterUninspectableResponse,
@@ -19,6 +22,7 @@ const {
 const {
   STTProviders,
   extractEnvVariable,
+  resolveSpeechProvider,
   listConfiguredSpeechProviders,
 } = require('librechat-data-provider');
 const { getAppConfig } = require('~/server/services/Config');
@@ -152,7 +156,7 @@ class STTService {
    * @returns {Promise<[string, Object, (string[]|undefined)]>} A promise that resolves to the provider name, its schema, and the section-level allowedAddresses exemption list.
    * @throws {Error} If no STT schema is set, multiple providers are set, or no provider is set.
    */
-  async getProviderSchema(req) {
+  async getProviderSchema(req, endpoint) {
     const appConfig =
       req.config ??
       (await getAppConfig({
@@ -167,18 +171,19 @@ class STTService {
       );
     }
 
-    const providers = listConfiguredSpeechProviders(sttSchema);
+    const resolved = resolveSpeechProvider(sttSchema, endpoint);
 
-    if (providers.length !== 1) {
+    if (!resolved) {
       throw new Error(
-        providers.length > 1
-          ? 'Multiple providers are set. Please set only one provider.'
+        listConfiguredSpeechProviders(sttSchema).length > 1
+          ? 'Multiple providers are set. Please set only one provider, or name the default with `provider`.'
           : 'No provider is set. Please set a provider.',
       );
     }
 
-    const [provider, schema] = providers[0];
-    return [provider, schema, sttSchema.allowedAddresses];
+    const [provider, schema] = resolved;
+    logger.debug(`[STT] Using provider "${provider}" for endpoint "${endpoint ?? '(none)'}"`);
+    return [provider, await resolveTarsSchemaApiKey(schema), sttSchema.allowedAddresses];
   }
 
   /**
@@ -297,6 +302,14 @@ class STTService {
    * @throws {Error} If the provider is invalid, the response status is not 200, or the response data is missing.
    */
   async sttRequest(provider, sttSchema, { audioBuffer, audioFile, language }, allowedAddresses) {
+    if (provider === STTProviders.GEMINI) {
+      return transcribeWithGemini({
+        config: sttSchema,
+        audio: audioBuffer,
+        mimeType: audioFile.mimetype,
+        allowedAddresses,
+      });
+    }
     const strategy = this.providerStrategies[provider];
     if (!strategy) {
       throw new Error('Invalid provider');
@@ -378,11 +391,14 @@ class STTService {
         };
         const [provider, sttSchema, allowedAddresses] = await this.getProviderSchema(req);
         const language = req.body?.language || '';
-        text = await this.sttRequest(
-          provider,
-          sttSchema,
-          { audioBuffer, audioFile, language },
-          allowedAddresses,
+        text = convertSpeechTranscript(
+          await this.sttRequest(
+            provider,
+            sttSchema,
+            { audioBuffer, audioFile, language },
+            allowedAddresses,
+          ),
+          req.config?.speech?.stt,
         );
       } catch (error) {
         const uninspectableField = getBlockedUninspectableFileField(req.config?.filters, [

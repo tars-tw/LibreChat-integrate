@@ -144,7 +144,7 @@ export async function isUnpersistedPreliminaryParent({
  * walk must visit both so the next turn's `tool_resources.execute_code.file_ids`
  * picks up files the assistant generated, not just files the user
  * uploaded. */
-type ThreadMessage = {
+export type ThreadMessage = {
   messageId: string;
   parentMessageId?: string | null;
   files?: Array<{ file_id?: string }>;
