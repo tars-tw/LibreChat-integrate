@@ -7,13 +7,13 @@ import type { TTarsToolStep } from 'librechat-data-provider';
 import type { TarsProgressReporter, TarsToolRunConfig } from '~/tars/tools/progress';
 import type { TarsPluginManifest, TarsPluginRunResult } from './client';
 import type { LangflowToolResult } from '~/tars/langflow/client';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
+import type { TarsDataFile } from '~/tars/files/sign';
 import type { TarsHistoryMessage } from './context';
 import { getTarsPluginManifest, primeTarsPluginManifests, runTarsPluginTool } from './client';
 import { langflowToolResult, LANGFLOW_TOOL_RESPONSE_FORMAT } from '~/tars/langflow/client';
 import { normalizeJsonSchema, resolveJsonSchemaRefs } from '~/mcp/zod';
+import { toTarsDataFileRefsContext } from '~/tars/files/sign';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
-import { buildTarsPluginFileInput } from './context';
 import { TarsRequestError } from '~/tars/client';
 
 /** Shape shared with the definition registry, kept local to avoid a runtime import cycle. */
@@ -60,11 +60,10 @@ export interface TarsPluginToolOptions {
   librechatUserId?: string;
   /** The user's current message, offered to the plugin as `ctx.question`. */
   question?: string;
-  /**
-   * The conversation's active memory files (snapshot): spreadsheets go out as
-   * `ctx.settings.data_files`, the rest's parsed text as `ctx.settings.file_input`.
-   */
-  documents?: TarsMemoryDocument[];
+  /** The thread's spreadsheets, sent as signed refs pwc_tars turns into `ctx.settings.data_files`. */
+  dataFiles?: TarsDataFile[];
+  /** Reads the thread's other attachments' text (`ctx.settings.file_input`) when the plugin runs. */
+  loadFileInput?: () => Promise<string>;
   /** Reads the prior turns (`ctx.history`) when the plugin runs; see `loadTarsPluginHistory`. */
   loadHistory?: () => Promise<TarsHistoryMessage[]>;
   /** Relays the progress the tool reports to its card while it runs (host-bound). */
@@ -157,9 +156,20 @@ export function toTarsPluginStep(
   };
 }
 
-/** Paths pwc_tars reported for the attached spreadsheets; rows without one are skipped. */
-const toDataFiles = (documents: TarsMemoryDocument[] | undefined): string[] =>
-  (documents ?? []).flatMap((doc) => (doc.structured && doc.file_path ? [doc.file_path] : []));
+/** Attachment text is context, not a precondition: a failed read runs the plugin without it. */
+async function readFileInput(
+  loadFileInput: TarsPluginToolOptions['loadFileInput'],
+): Promise<string | undefined> {
+  if (!loadFileInput) {
+    return undefined;
+  }
+  try {
+    return (await loadFileInput()) || undefined;
+  } catch (error) {
+    logger.warn('[tars-plugins] Could not read the attached files; running without them', error);
+    return undefined;
+  }
+}
 
 /** History is context, not a precondition: a failed read runs the plugin without it. */
 async function readHistory(
@@ -207,8 +217,6 @@ export async function createTarsPluginTool(
     return undefined;
   }
   const { tarsUserId } = options;
-  const dataFiles = toDataFiles(options.documents);
-  const fileInput = buildTarsPluginFileInput(options.documents);
 
   return tool(
     async (
@@ -225,8 +233,8 @@ export async function createTarsPluginTool(
           tarsUserId,
           domainId: options.domainId,
           model: options.model,
-          dataFiles,
-          fileInput,
+          dataFileRefs: toTarsDataFileRefsContext(options.dataFiles, options.librechatUserId),
+          fileInput: await readFileInput(options.loadFileInput),
           history: await readHistory(options.loadHistory),
           librechatUserId: options.librechatUserId,
           onProgress: (message) => options.reportProgress?.(message, config),

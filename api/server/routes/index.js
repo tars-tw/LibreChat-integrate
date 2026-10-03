@@ -46,6 +46,7 @@ const rum = require('./rum');
 const insights = require('./insights');
 const tars = require('./tars');
 const tarsAssets = require('./tars/assets');
+const tarsFiles = require('./tars/files');
 
 module.exports = {
   pullRequests,
@@ -54,6 +55,7 @@ module.exports = {
   mcp,
   tars,
   tarsAssets,
+  tarsFiles,
   auth,
   adminAuth,
   adminConfig,

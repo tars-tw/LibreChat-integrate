@@ -1,7 +1,7 @@
 import fs from 'fs';
 import type { FileObject, ServerRequest, STTService } from '~/types';
+import { processAudioFile, convertSpeechTranscript } from './audio';
 import { UninspectableFileError } from '~/protection/files';
-import { processAudioFile } from './audio';
 
 jest.mock('fs', () => {
   const actual = jest.requireActual('fs');
@@ -93,5 +93,41 @@ describe('processAudioFile transcript inspection coverage', () => {
     await expect(
       processAudioFile({ req: createRequest('block'), file, sttService }),
     ).resolves.toEqual({ text: 'inspectable transcript', bytes: 22 });
+  });
+});
+
+describe('convertSpeechTranscript', () => {
+  const simplified = '本季北区业绩是十六万九千元，软件信息';
+
+  it('converts to Traditional Chinese with Taiwan phrasing when the config asks for it', () => {
+    expect(convertSpeechTranscript(simplified, { traditionalChinese: true })).toBe(
+      '本季北區業績是十六萬九千元，軟體資訊',
+    );
+  });
+
+  it('leaves the transcript as is by default', () => {
+    expect(convertSpeechTranscript(simplified)).toBe(simplified);
+    expect(convertSpeechTranscript(simplified, { traditionalChinese: false })).toBe(simplified);
+    expect(convertSpeechTranscript('', { traditionalChinese: true })).toBe('');
+  });
+
+  it('converts audio attachments transcribed by processAudioFile', async () => {
+    (fs.promises.readFile as jest.Mock).mockResolvedValue(Buffer.from('audio'));
+    const sttService: STTService = {
+      getInstance: jest.fn(),
+      getProviderSchema: jest.fn().mockResolvedValue(['openai', {}]),
+      sttRequest: jest.fn().mockResolvedValue('这是一段语音测试'),
+    };
+    const req = { config: { speech: { stt: { traditionalChinese: true } } } } as ServerRequest;
+    const file: FileObject = {
+      path: '/tmp/a.m4a',
+      originalname: 'a.m4a',
+      mimetype: 'audio/mp4',
+      size: 5,
+    };
+
+    await expect(processAudioFile({ req, file, sttService })).resolves.toMatchObject({
+      text: '這是一段語音測試',
+    });
   });
 });

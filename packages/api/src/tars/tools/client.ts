@@ -19,8 +19,8 @@ export interface TarsBuiltinToolContext {
   knowledge_base_ids?: string;
   /** The knowledge base whose database the SQL tools (and charts / excel sheets) query. */
   knowledge_base_id?: string;
-  /** Comma-separated memory document ids of the attached spreadsheets. */
-  document_ids?: string;
+  /** JSON `TarsDataFileRef[]`: signed paths pwc_tars downloads the attached spreadsheets from. */
+  data_file_refs?: string;
 }
 
 export interface TarsBuiltinToolSource {

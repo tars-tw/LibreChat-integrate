@@ -7,7 +7,7 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
-import type { TarsMemoryDocument } from '~/tars/memory/client';
+import type { TarsDataFile } from '~/tars/files/sign';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
@@ -19,23 +19,7 @@ const FILE_URL = 'http://tars.test/static/generate_output/kb_1/table_task_ab.xls
 process.env.JWT_SECRET = 'table-test-secret';
 const RELAYED_FILE_URL = rewriteTarsAssetLinks(FILE_URL);
 
-const documents: TarsMemoryDocument[] = [
-  {
-    id: 'doc-1',
-    conversation_id: 'conv-1',
-    filename: 'orders.xlsx',
-    extension: 'xlsx',
-    mime_type: null,
-    size: 1024,
-    status: 1,
-    word_count: 10,
-    tokens: 100,
-    summary: null,
-    created_by: USER_ID,
-    created_at: null,
-    structured: true,
-  },
-];
+const dataFiles: TarsDataFile[] = [{ id: 'file-1', filename: 'orders.xlsx' }];
 
 const buildResponse = (status: number, body: unknown): Response =>
   ({
@@ -104,19 +88,28 @@ describe('createTarsTableTaskTool', () => {
     const tableTool = createTarsTableTaskTool({
       tarsUserId: USER_ID,
       domainId: 100,
-      documents,
+      dataFiles,
       model: 'gpt-5.4-mini',
+      librechatUserId: 'lc-user',
     });
 
     await expect(tableTool.invoke({ task: '逐列比對規格' })).resolves.toBe(
       `| 列 | 結果 |\n\n[下載完整結果 (xlsx)](${RELAYED_FILE_URL})`,
     );
-    expect(tableBodyOf(fetchMock)).toEqual({
+    const body = tableBodyOf(fetchMock);
+    expect(body).toEqual({
       query: '逐列比對規格',
       knowledge_base_ids: 'kb-1,kb-2',
-      document_ids: 'doc-1',
+      data_file_refs: expect.any(String),
       model_name: 'gpt-5.4-mini',
     });
+    expect(JSON.parse(String(body.data_file_refs))).toEqual([
+      {
+        id: 'file-1',
+        filename: 'orders.xlsx',
+        path: expect.stringMatching(/^\/api\/tars\/files\/file-1\?u=lc-user&exp=\d+&sig=/),
+      },
+    ]);
   });
 
   it('relays the embedded download link without appending a second one', async () => {
@@ -125,7 +118,7 @@ describe('createTarsTableTaskTool', () => {
     const tableTool = createTarsTableTaskTool({
       tarsUserId: USER_ID,
       domainId: 100,
-      documents,
+      dataFiles,
     });
     await expect(tableTool.invoke({ task: 't' })).resolves.toBe(
       `| 列 |\n[下載完整結果 (xlsx)](${RELAYED_FILE_URL})`,
@@ -134,7 +127,7 @@ describe('createTarsTableTaskTool', () => {
 
   it('refuses without an active brain', async () => {
     const fetchMock = mockBackend({ status: 200, body: {} });
-    const tableTool = createTarsTableTaskTool({ tarsUserId: USER_ID, documents });
+    const tableTool = createTarsTableTaskTool({ tarsUserId: USER_ID, dataFiles });
     await expect(tableTool.invoke({ task: 't' })).resolves.toMatch(/No active brain/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -144,7 +137,7 @@ describe('createTarsTableTaskTool', () => {
     const tableTool = createTarsTableTaskTool({
       tarsUserId: USER_ID,
       domainId: 200,
-      documents,
+      dataFiles,
     });
     await expect(tableTool.invoke({ task: 't' })).resolves.toMatch(/binds no knowledge base/);
     expect(
@@ -154,10 +147,10 @@ describe('createTarsTableTaskTool', () => {
 
   it('fails closed for an unlinked account and with no attachments', async () => {
     const fetchMock = mockBackend({ status: 200, body: {} });
-    const notLinked = createTarsTableTaskTool({ domainId: 100, documents });
+    const notLinked = createTarsTableTaskTool({ domainId: 100, dataFiles });
     await expect(notLinked.invoke({ task: 't' })).resolves.toMatch(/not linked to pwc_tars/);
 
-    const noFiles = createTarsTableTaskTool({ tarsUserId: USER_ID, domainId: 100, documents: [] });
+    const noFiles = createTarsTableTaskTool({ tarsUserId: USER_ID, domainId: 100, dataFiles: [] });
     await expect(noFiles.invoke({ task: 't' })).resolves.toMatch(/No spreadsheet file/);
     expect(fetchMock).not.toHaveBeenCalled();
   });

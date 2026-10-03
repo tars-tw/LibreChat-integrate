@@ -258,8 +258,11 @@ export interface TarsPluginRunInput {
   domainId?: string | number | null;
   /** The model the chat turn runs on, as LibreChat names it. */
   model?: string;
-  /** pwc_tars paths of the spreadsheets attached to the conversation (`ctx.settings.data_files`). */
-  dataFiles?: string[];
+  /**
+   * JSON `TarsDataFileRef[]` for the thread's spreadsheets; pwc_tars downloads
+   * them and hands the plugin the local paths as `ctx.settings.data_files`.
+   */
+  dataFileRefs?: string;
   /** Parsed text of the conversation's other attached files (`ctx.settings.file_input`). */
   fileInput?: string;
   /** Prior turns, oldest first (`ctx.history`). */
@@ -312,8 +315,8 @@ export async function runTarsPluginTool(
     direct_call: false,
     plugin_tool_names: [pluginName],
   };
-  if (input.dataFiles?.length) {
-    settings.data_files = input.dataFiles;
+  if (input.dataFileRefs) {
+    settings.data_file_refs = input.dataFileRefs;
   }
   if (input.fileInput) {
     settings.file_input = input.fileInput;

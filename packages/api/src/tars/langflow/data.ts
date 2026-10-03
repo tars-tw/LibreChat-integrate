@@ -3,7 +3,7 @@ import { Tools } from 'librechat-data-provider';
 import { logger } from '@librechat/data-schemas';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
+import type { TarsDataFile } from '~/tars/files/sign';
 import type { LangflowToolResult } from './client';
 import {
   langflowTimeoutMs,
@@ -14,6 +14,7 @@ import {
   LANGFLOW_TOOL_RESPONSE_FORMAT,
   TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
 } from './client';
+import { toTarsDataFileRefsContext } from '~/tars/files/sign';
 import { TarsRequestError } from '~/tars/client';
 
 export const TARS_DATA_TOOL_NAME: Tools = Tools.data_query;
@@ -25,7 +26,7 @@ const TARS_DATA_DESCRIPTION: string =
   'the question to the TARS data agent, which loads the sheets into an in-memory SQL workspace, ' +
   'writes and runs read-only queries, and returns the answer. Ask a complete question in plain ' +
   "language — never SQL. The files it can read are listed in this tool's runtime context; leave " +
-  '`document_ids` empty to use all of them.';
+  '`file_ids` empty to use all of them.';
 
 const TARS_DATA_JSON_SCHEMA = {
   type: 'object',
@@ -35,11 +36,11 @@ const TARS_DATA_JSON_SCHEMA = {
       description:
         'The question to answer over the attached spreadsheets, in plain language and in the language the user asked it.',
     },
-    document_ids: {
+    file_ids: {
       type: 'array',
       items: { type: 'string' },
       description:
-        'Optional subset of the attached files (document_id values from the runtime context). Omit to query every attached spreadsheet.',
+        'Optional subset of the attached files (file_id values from the runtime context). Omit to query every attached spreadsheet.',
     },
   },
   required: ['question'],
@@ -65,11 +66,11 @@ const dataQuerySchema = z.object({
       'The question to answer over the attached spreadsheets, in plain language and in the ' +
         'language the user asked it.',
     ),
-  document_ids: z
+  file_ids: z
     .array(z.string())
     .optional()
     .describe(
-      'Optional subset of the attached files (document_id values from the runtime context). ' +
+      'Optional subset of the attached files (file_id values from the runtime context). ' +
         'Omit to query every attached spreadsheet.',
     ),
 });
@@ -77,8 +78,8 @@ const dataQuerySchema = z.object({
 export interface TarsDataToolOptions {
   /** Absent for a LibreChat account not linked to pwc_tars — nothing is reachable. */
   tarsUserId?: string;
-  /** The status=1 structured memory documents of this conversation. */
-  documents?: TarsMemoryDocument[];
+  /** The thread's spreadsheets (csv / xlsx / xls LibreChat uploads). */
+  dataFiles?: TarsDataFile[];
   model?: string;
   librechatUserId?: string;
 }
@@ -95,42 +96,42 @@ function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function describe(documents: TarsMemoryDocument[]): string {
-  if (!documents.length) {
+function describe(files: TarsDataFile[]): string {
+  if (!files.length) {
     return `${TARS_DATA_DESCRIPTION}\n\n${NO_FILES}`;
   }
-  const lines = documents.map((doc) => `- ${doc.filename} (document_id: ${doc.id})`);
+  const lines = files.map((file) => `- ${file.filename} (file_id: ${file.id})`);
   return `${TARS_DATA_DESCRIPTION}\n\nAttached spreadsheets:\n${lines.join('\n')}`;
 }
 
 /**
  * Resolves the requested subset against the conversation's own attachments —
- * ids outside the snapshot are dropped rather than forwarded, so the call can
+ * ids outside the thread are dropped rather than forwarded, so the call can
  * never read another conversation's files.
  */
-function resolveDocumentIds(documents: TarsMemoryDocument[], requested?: string[]): string[] {
+function selectFiles(files: TarsDataFile[], requested?: string[]): TarsDataFile[] {
   if (!requested?.length) {
-    return documents.map((doc) => doc.id);
+    return files;
   }
-  const known = new Set(documents.map((doc) => doc.id));
-  return requested.filter((id) => known.has(id));
+  const wanted = new Set(requested);
+  return files.filter((file) => wanted.has(file.id));
 }
 
 /**
  * The pwc_tars data capability as one native LibreChat tool. Equipped
- * automatically whenever the conversation's long-term memory holds an active
- * structured file; pwc_tars owns the sheet-to-SQL loop, LibreChat only bounds
- * which documents may be asked and relays the answer.
+ * for saved agents that list it; pwc_tars owns the sheet-to-SQL loop,
+ * LibreChat only bounds which files may be asked and relays the answer.
  */
 export function createTarsDataTool(options: TarsDataToolOptions): DynamicStructuredTool {
-  const documents = options.documents ?? [];
+  const files = options.dataFiles ?? [];
   return tool(
     async (input: z.infer<typeof dataQuerySchema>): Promise<LangflowToolResult> => {
       if (!options.tarsUserId) {
         return langflowToolResult(NOT_LINKED);
       }
-      const documentIds = resolveDocumentIds(documents, input.document_ids);
-      if (!documentIds.length) {
+      const selected = selectFiles(files, input.file_ids);
+      const dataFileRefs = toTarsDataFileRefsContext(selected, options.librechatUserId);
+      if (!dataFileRefs) {
         return langflowToolResult(NO_FILES);
       }
       try {
@@ -139,7 +140,7 @@ export function createTarsDataTool(options: TarsDataToolOptions): DynamicStructu
           DATA_PATH,
           {
             query: input.question,
-            document_ids: documentIds.join(','),
+            data_file_refs: dataFileRefs,
             model_name: requestedModel,
           },
           {
@@ -152,7 +153,7 @@ export function createTarsDataTool(options: TarsDataToolOptions): DynamicStructu
           },
         );
         logger.debug(
-          `[tars-data] docs=${documentIds.length} requested=${requestedModel ?? '(pwc_tars default)'} ` +
+          `[tars-data] files=${selected.length} requested=${requestedModel ?? '(pwc_tars default)'} ` +
             `used=${data.model_name ?? '(unreported)'} tokens=${data.tokens?.total ?? 0} ` +
             'gateway=requested',
         );
@@ -167,7 +168,7 @@ export function createTarsDataTool(options: TarsDataToolOptions): DynamicStructu
     {
       name: TARS_DATA_TOOL_NAME,
       description: options.tarsUserId
-        ? describe(documents)
+        ? describe(files)
         : `${TARS_DATA_DESCRIPTION}\n\n${NOT_LINKED}`,
       schema: dataQuerySchema,
       responseFormat: LANGFLOW_TOOL_RESPONSE_FORMAT,

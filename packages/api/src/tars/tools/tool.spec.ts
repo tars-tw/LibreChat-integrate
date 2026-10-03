@@ -8,7 +8,7 @@ jest.mock('@librechat/data-schemas', () => ({
 }));
 
 import { Tools, AgentCapabilities } from 'librechat-data-provider';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
+import type { TarsDataFile } from '~/tars/files/sign';
 import { invalidateTarsPluginManifestsCache } from '~/tars/plugins/client';
 import { invalidateTarsScopedKnowledgeBasesCache } from '~/tars/scope';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
@@ -46,10 +46,10 @@ const domains = {
   ],
 };
 
-const documents = [
-  { id: 'doc-1', filename: 'orders.xlsx' },
-  { id: 'doc-2', filename: 'stock.csv' },
-] as TarsMemoryDocument[];
+const dataFiles: TarsDataFile[] = [
+  { id: 'file-1', filename: 'orders.xlsx' },
+  { id: 'file-2', filename: 'stock.csv' },
+];
 
 const manifest = (
   name: string,
@@ -96,6 +96,7 @@ const listing = {
       manifest('create_chart', { instruction: { type: 'string' } }, [
         { name: 'document_ids', required: false },
         { name: 'conversation_id', required: false },
+        { name: 'data_file_refs', required: false },
         { name: 'knowledge_base_id', required: false },
         { name: 'model_name', required: false },
       ]),
@@ -334,14 +335,28 @@ describe('createTarsBuiltinTool', () => {
       tarsUserId: USER_ID,
       domainId: 100,
       agentTools: ['tars_create_chart'],
-      documents,
+      dataFiles,
       model: 'Gemini-3.6-Flash',
+      librechatUserId: 'lc-user',
     });
     const message = await invoke(withoutDatabase, 'tars_create_chart', { instruction: 'bar' });
-    expect(bodyOf(fetchMock).context).toEqual({
-      model_name: 'gemini-3.6-flash',
-      document_ids: 'doc-1,doc-2',
-    });
+    const { data_file_refs: refs, ...context } = bodyOf(fetchMock).context as Record<
+      string,
+      string
+    >;
+    expect(context).toEqual({ model_name: 'gemini-3.6-flash' });
+    expect(JSON.parse(refs)).toEqual([
+      {
+        id: 'file-1',
+        filename: 'orders.xlsx',
+        path: expect.stringMatching(/^\/api\/tars\/files\/file-1\?u=lc-user&exp=\d+&sig=[\w-]+$/),
+      },
+      {
+        id: 'file-2',
+        filename: 'stock.csv',
+        path: expect.stringMatching(/^\/api\/tars\/files\/file-2\?u=lc-user&exp=\d+&sig=[\w-]+$/),
+      },
+    ]);
     expect(message.content).toMatch(
       /^chart ready\n\n!\[chart\]\(\/api\/tars\/static\/quickchart\/chart_1\.png\?sig=[\w-]+\)$/,
     );

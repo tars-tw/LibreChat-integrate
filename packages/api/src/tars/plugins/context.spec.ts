@@ -1,27 +1,6 @@
 import { Tools, ContentTypes } from 'librechat-data-provider';
 import type { TMessage } from 'librechat-data-provider';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
-import {
-  loadTarsPluginHistory,
-  buildTarsPluginFileInput,
-  TARS_PLUGIN_HISTORY_MAX_MESSAGES,
-} from './context';
-
-const doc = (id: string, structured: boolean, summary: string | null): TarsMemoryDocument => ({
-  id,
-  conversation_id: 'c',
-  filename: id,
-  extension: structured ? 'xlsx' : 'pdf',
-  mime_type: null,
-  size: null,
-  status: 1,
-  word_count: null,
-  tokens: null,
-  summary,
-  created_by: 'u',
-  created_at: null,
-  structured,
-});
+import { loadTarsPluginHistory, TARS_PLUGIN_HISTORY_MAX_MESSAGES } from './context';
 
 const message = (
   messageId: string,
@@ -29,20 +8,6 @@ const message = (
   isCreatedByUser: boolean,
   body: Partial<TMessage>,
 ): TMessage => ({ messageId, parentMessageId, isCreatedByUser, ...body }) as TMessage;
-
-describe('buildTarsPluginFileInput', () => {
-  it('joins the parsed text of the non-structured files only', () => {
-    expect(
-      buildTarsPluginFileInput([
-        doc('a.pdf', false, ' 合約內容 '),
-        doc('b.xlsx', true, 'sheet preview'),
-        doc('c.pdf', false, null),
-        doc('d.docx', false, '會議紀錄'),
-      ]),
-    ).toBe('合約內容\n\n會議紀錄');
-    expect(buildTarsPluginFileInput(undefined)).toBe('');
-  });
-});
 
 describe('loadTarsPluginHistory', () => {
   const rows = [

@@ -3,7 +3,7 @@ import { Tools } from 'librechat-data-provider';
 import { logger } from '@librechat/data-schemas';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
+import type { TarsDataFile } from '~/tars/files/sign';
 import type { LangflowToolResult } from './client';
 import {
   langflowTimeoutMs,
@@ -15,6 +15,7 @@ import {
   TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS,
 } from './client';
 import { fetchTarsDomainKnowledgeBases } from '~/tars/prompts';
+import { toTarsDataFileRefsContext } from '~/tars/files/sign';
 import { TarsRequestError } from '~/tars/client';
 
 export const TARS_TABLE_TOOL_NAME: Tools = Tools.table_task;
@@ -27,7 +28,7 @@ const TARS_TABLE_DESCRIPTION: string =
   'flag mismatches). This is an exhaustive, long-running batch job — do NOT use it for a single ' +
   'lookup, a filter, or an aggregation; use `data_query` for those. Returns the augmented table ' +
   'plus an xlsx download link — include that link verbatim in your reply. The files it can read ' +
-  "are listed in this tool's runtime context; leave `document_ids` empty to use all of them.";
+  "are listed in this tool's runtime context; leave `file_ids` empty to use all of them.";
 
 const TARS_TABLE_JSON_SCHEMA = {
   type: 'object',
@@ -37,11 +38,11 @@ const TARS_TABLE_JSON_SCHEMA = {
       description:
         'What to do for every row, in plain language and in the language the user asked it.',
     },
-    document_ids: {
+    file_ids: {
       type: 'array',
       items: { type: 'string' },
       description:
-        'Optional subset of the attached files (document_id values from the runtime context). Omit to use every attached spreadsheet.',
+        'Optional subset of the attached files (file_id values from the runtime context). Omit to use every attached spreadsheet.',
     },
   },
   required: ['task'],
@@ -64,11 +65,11 @@ const tableTaskSchema = z.object({
   task: z
     .string()
     .describe('What to do for every row, in plain language and in the language the user asked it.'),
-  document_ids: z
+  file_ids: z
     .array(z.string())
     .optional()
     .describe(
-      'Optional subset of the attached files (document_id values from the runtime context). ' +
+      'Optional subset of the attached files (file_id values from the runtime context). ' +
         'Omit to use every attached spreadsheet.',
     ),
 });
@@ -78,8 +79,8 @@ export interface TarsTableToolOptions {
   tarsUserId?: string;
   /** Active 專用腦 — its knowledge bases are what each row is enriched from. */
   domainId?: string | number | null;
-  /** The status=1 structured memory documents of this conversation. */
-  documents?: TarsMemoryDocument[];
+  /** The thread's spreadsheets (csv / xlsx / xls LibreChat uploads). */
+  dataFiles?: TarsDataFile[];
   model?: string;
   librechatUserId?: string;
 }
@@ -100,39 +101,38 @@ function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function describe(documents: TarsMemoryDocument[]): string {
-  if (!documents.length) {
+function describe(files: TarsDataFile[]): string {
+  if (!files.length) {
     return `${TARS_TABLE_DESCRIPTION}\n\n${NO_FILES}`;
   }
-  const lines = documents.map((doc) => `- ${doc.filename} (document_id: ${doc.id})`);
+  const lines = files.map((file) => `- ${file.filename} (file_id: ${file.id})`);
   return `${TARS_TABLE_DESCRIPTION}\n\nAttached spreadsheets:\n${lines.join('\n')}`;
 }
 
-function resolveDocumentIds(documents: TarsMemoryDocument[], requested?: string[]): string[] {
+function selectFiles(files: TarsDataFile[], requested?: string[]): TarsDataFile[] {
   if (!requested?.length) {
-    return documents.map((doc) => doc.id);
+    return files;
   }
-  const known = new Set(documents.map((doc) => doc.id));
-  return requested.filter((id) => known.has(id));
+  const wanted = new Set(requested);
+  return files.filter((file) => wanted.has(file.id));
 }
 
 /**
  * The pwc_tars table-task capability as one native LibreChat tool. Equipped
- * automatically alongside `data_query` when the conversation holds active
- * structured memory files. Every row is enriched against the knowledge bases
+ * for saved agents that list it, over the thread's spreadsheets. Every row is enriched against the knowledge bases
  * the active 專用腦 binds — the same scoping pwc_tars's own chat path uses —
  * so without a domain (or with a KB-less one) the call is refused up front
  * instead of letting pwc_tars 400 it.
  */
 export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicStructuredTool {
-  const documents = options.documents ?? [];
+  const files = options.dataFiles ?? [];
   return tool(
     async (input: z.infer<typeof tableTaskSchema>): Promise<LangflowToolResult> => {
       if (!options.tarsUserId) {
         return langflowToolResult(NOT_LINKED);
       }
-      const documentIds = resolveDocumentIds(documents, input.document_ids);
-      if (!documentIds.length) {
+      const selected = selectFiles(files, input.file_ids);
+      if (!selected.length) {
         return langflowToolResult(NO_FILES);
       }
       const domainId =
@@ -152,7 +152,7 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
           {
             query: input.task,
             knowledge_base_ids: knowledgeBaseIds.join(','),
-            document_ids: documentIds.join(','),
+            data_file_refs: toTarsDataFileRefsContext(selected, options.librechatUserId),
             model_name: requestedModel,
           },
           {
@@ -165,7 +165,7 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
           },
         );
         logger.debug(
-          `[tars-table] docs=${documentIds.length} kbs=${knowledgeBaseIds.length} ` +
+          `[tars-table] files=${selected.length} kbs=${knowledgeBaseIds.length} ` +
             `requested=${requestedModel ?? '(pwc_tars default)'} used=${data.model_name ?? '(unreported)'} ` +
             `tokens=${data.tokens?.total ?? 0} gateway=requested`,
         );
@@ -183,7 +183,7 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
     {
       name: TARS_TABLE_TOOL_NAME,
       description: options.tarsUserId
-        ? describe(documents)
+        ? describe(files)
         : `${TARS_TABLE_DESCRIPTION}\n\n${NOT_LINKED}`,
       schema: tableTaskSchema,
       responseFormat: LANGFLOW_TOOL_RESPONSE_FORMAT,

@@ -1,6 +1,5 @@
 import { Tools, ContentTypes } from 'librechat-data-provider';
 import type { TMessage } from 'librechat-data-provider';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
 
 /** One prior turn as pwc_tars hands it to a plugin (`ctx.history`). */
 export interface TarsHistoryMessage {
@@ -26,20 +25,6 @@ export interface TarsPluginHistorySource {
   parentMessageId?: string;
   userId?: string;
   getMessages: (filter: { conversationId: string; user: string }) => Promise<StoredMessage[]>;
-}
-
-/**
- * `ctx.settings.file_input`: the parsed text of the conversation's active
- * non-structured memory files, joined the way pwc_tars's
- * `render_long_term_memory` joins them (websites are not part of LibreChat's
- * memory integration). Spreadsheets travel as `data_files` instead.
- */
-export function buildTarsPluginFileInput(documents: TarsMemoryDocument[] | undefined): string {
-  return (documents ?? [])
-    .filter((doc) => !doc.structured)
-    .map((doc) => (doc.summary ?? '').trim())
-    .filter(Boolean)
-    .join('\n\n');
 }
 
 type ContentPart = NonNullable<TMessage['content']>[number];

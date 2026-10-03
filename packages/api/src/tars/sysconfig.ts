@@ -197,3 +197,23 @@ export async function resolveTarsConfigValue(value: string): Promise<string> {
   }
   return (await getTarsSysConfigValue(key)) ?? value;
 }
+
+/**
+ * A provider schema whose `apiKey` may be a `${tars:KEY}` reference (speech
+ * STT/TTS), with the key read from pwc_tars sys_config. Other values pass
+ * through for the caller's own env resolution; a reference with no active
+ * value throws rather than sending the placeholder as a bearer token.
+ */
+export async function resolveTarsSchemaApiKey<T extends { apiKey?: string }>(
+  schema: T,
+): Promise<T> {
+  const key = schema.apiKey ? parseTarsConfigRef(schema.apiKey) : undefined;
+  if (!key) {
+    return schema;
+  }
+  const apiKey = await getTarsSysConfigValue(key);
+  if (!apiKey) {
+    throw new Error(`pwc_tars sys_config "${key}" has no active value`);
+  }
+  return { ...schema, apiKey };
+}

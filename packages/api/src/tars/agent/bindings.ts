@@ -1,6 +1,6 @@
 import { AgentCapabilities, defaultAgentCapabilities } from 'librechat-data-provider';
 import type { TEphemeralAgent } from 'librechat-data-provider';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
+import type { TarsDataFile } from '~/tars/files/sign';
 
 /**
  * What one `tars_agent` turn binds into pwc_tars's loop. Mirrors the switches
@@ -13,7 +13,7 @@ export interface TarsAgentBindings {
   knowledgeBases: boolean;
   database: boolean;
   chart: boolean;
-  documents: TarsMemoryDocument[];
+  documents: TarsDataFile[];
 }
 
 export type TarsAgentToggles = Pick<TEphemeralAgent, 'sql_agent' | 'rag_agent' | 'chart_agent'>;
@@ -21,8 +21,8 @@ export type TarsAgentToggles = Pick<TEphemeralAgent, 'sql_agent' | 'rag_agent' |
 export interface ResolveTarsAgentBindingsParams {
   /** The chat's per-turn switches (`ephemeralAgent`). */
   toggles?: TarsAgentToggles | null;
-  /** The conversation's active structured memory files (csv / xlsx). */
-  documents?: TarsMemoryDocument[] | null;
+  /** The thread's spreadsheets (csv / xlsx / xls LibreChat uploads). */
+  documents?: TarsDataFile[] | null;
   /** The agent capabilities librechat.yaml enables; defaults to all of them. */
   capabilities?: Iterable<string> | null;
 }

@@ -1,9 +1,9 @@
 import { logger } from '@librechat/data-schemas';
 import type { TTarsTraceArtifact } from 'librechat-data-provider';
 import type { LangflowCapabilityData } from '~/tars/langflow/client';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
 import type { TarsRagKnowledgeBase } from '~/tars/rag/client';
 import type { TarsSqlDatabase } from '~/tars/sql/client';
+import type { TarsDataFile } from '~/tars/files/sign';
 import type { TarsAgentBindings } from './bindings';
 import {
   langflowTimeoutMs,
@@ -14,6 +14,7 @@ import {
   TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS,
 } from '~/tars/langflow/client';
 import { listTarsRagKnowledgeBases, resolveTarsKnowledgeBaseIds } from '~/tars/rag/client';
+import { toTarsDataFileRefsContext } from '~/tars/files/sign';
 import { listTarsSqlDatabases } from '~/tars/sql/client';
 
 const AGENT_PATH = '/api/langflow-service/agent';
@@ -22,7 +23,7 @@ const AGENT_PATH = '/api/langflow-service/agent';
 export interface TarsAgentScope {
   knowledgeBases: TarsRagKnowledgeBase[];
   databases: TarsSqlDatabase[];
-  documents: TarsMemoryDocument[];
+  documents: TarsDataFile[];
   chart: boolean;
 }
 
@@ -96,7 +97,7 @@ export function resolveTarsDatabaseId(
 }
 
 /** Ids outside the conversation's own attachments are dropped, never forwarded. */
-function resolveDocumentIds(documents: TarsMemoryDocument[], requested?: string[]): string[] {
+function resolveDocumentIds(documents: TarsDataFile[], requested?: string[]): string[] {
   if (!requested?.length) {
     return documents.map((doc) => doc.id);
   }
@@ -146,6 +147,11 @@ export async function runTarsAgent(
     input.databaseKnowledgeBaseId,
   );
   const documentIds = resolveDocumentIds(scope.documents, input.documentIds);
+  const wanted = new Set(documentIds);
+  const dataFileRefs = toTarsDataFileRefsContext(
+    scope.documents.filter((file) => wanted.has(file.id)),
+    input.librechatUserId,
+  );
 
   const requestedModel = await resolveLangflowModelName(input.model, 'tars-agent');
   const tableTaskPossible = documentIds.length > 0 && knowledgeBaseIds.length > 0;
@@ -155,7 +161,7 @@ export async function runTarsAgent(
       query: input.question,
       ...(knowledgeBaseIds.length ? { knowledge_base_ids: knowledgeBaseIds.join(',') } : {}),
       ...(databaseKnowledgeBaseId ? { database_knowledge_base_id: databaseKnowledgeBaseId } : {}),
-      ...(documentIds.length ? { document_ids: documentIds.join(',') } : {}),
+      ...(dataFileRefs ? { data_file_refs: dataFileRefs } : {}),
       model_name: requestedModel,
     },
     {
