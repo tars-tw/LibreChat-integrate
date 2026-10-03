@@ -161,7 +161,7 @@ npm run frontend:dev
 | 入口 | 位置 | 用途 |
 |---|---|---|
 | **內嵌 Langflow 頁面** | 左側 rail 的 **Langflow**（流程圖示）→ 全頁 `/langflow` iframe | 在 LibreChat 裡直接編輯 Langflow flow |
-| **每個 flow 一個共享 Agent** | endpoint 切 **Agents** → 選 `Langflow · <flow 名>` | 明確指定用哪個 flow；對話會顯示 tool-call 卡片 |
+| **每個 flow 一個共享 Agent** | endpoint 切 **Agents** → 選 `Workflow · <flow 名>` | 明確指定用哪個 flow；對話會顯示 tool-call 卡片 |
 | ~~一般聊天的 MCP「Langflow」開關~~ | 已用 `chatMenu: false` 隱藏 | 避免「所有 flow 一起、模型自動挑」造成混淆 |
 
 > Agent 屬於 **Agents endpoint**，不在 `gpt-5.4-mini` 那層。共享的 agent 出現在 **Agents 市場**（「My Agents」只列你自己擁有的）。
