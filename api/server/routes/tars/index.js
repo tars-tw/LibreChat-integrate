@@ -9,7 +9,6 @@ const domains = require('./domains');
 const groups = require('./groups');
 const knowledge = require('./knowledge');
 const mcp = require('./mcp');
-const memory = require('./memory');
 const models = require('./models');
 const prompts = require('./prompts');
 const roles = require('./roles');
@@ -25,8 +24,8 @@ const users = require('./users');
 /**
  * Every sub-router is mounted at `/` and sees every request, so each one scopes its
  * `requireJwtAuth` / `requireTarsAdmin` to its own path prefixes. A pathless gate runs
- * for its siblings' requests too: an admin router 403'd `/domains`, `/memory` and
- * `/models` for every non-admin, and each pathless auth re-read the user.
+ * for its siblings' requests too: an admin router 403'd `/domains` and `/models` for every
+ * non-admin, and each pathless auth re-read the user.
  */
 const router = express.Router();
 /** The MCP gateway authenticates by gateway key, not JWT. */
@@ -42,7 +41,6 @@ router.use('/', datasets);
 router.use('/', domains);
 router.use('/', groups);
 router.use('/', knowledge);
-router.use('/', memory);
 router.use('/', models);
 router.use('/', prompts);
 router.use('/', roles);

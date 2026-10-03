@@ -1145,7 +1145,7 @@ const processAgentFileUpload = async ({ req, res, metadata, sseStream }) => {
 
     if (shouldUseSTT) {
       const sttService = await STTService.getInstance();
-      const { text } = await processAudioFile({ req, file, sttService });
+      const { text } = await processAudioFile({ req, file, sttService, endpoint });
       return await createTextFile({ text, isTranscript: true });
     }
 

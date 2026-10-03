@@ -102,7 +102,6 @@ describe('/api/tars auth gates', () => {
     ['get', '/domains'],
     ['get', '/models'],
     ['get', '/prompts'],
-    ['get', '/memory/stt-models'],
   ])('lets a non-admin through to %s %s, authenticating once', async (method, path) => {
     const res = await request(app)
       [method](toUrl(path))

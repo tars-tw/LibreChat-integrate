@@ -7,7 +7,7 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
-import type { TarsMemoryDocument } from '~/tars/memory/client';
+import type { TarsDataFile } from '~/tars/files/sign';
 import type { TarsAgentBindings } from './bindings';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
@@ -39,10 +39,13 @@ const domains = {
   ],
 };
 
-const documents = [
-  { id: 'doc-1', filename: 'orders.xlsx' },
-  { id: 'doc-2', filename: 'stock.csv' },
-] as TarsMemoryDocument[];
+const documents: TarsDataFile[] = [
+  { id: 'file-1', filename: 'orders.xlsx' },
+  { id: 'file-2', filename: 'stock.csv' },
+];
+
+const refIds = (body: Record<string, unknown>): string[] =>
+  (JSON.parse(String(body.data_file_refs)) as Array<{ id: string }>).map((ref) => ref.id);
 
 const all: TarsAgentBindings = { knowledgeBases: true, database: true, chart: true, documents };
 const kbAndDb: TarsAgentBindings = {
@@ -97,6 +100,7 @@ const agentBodyOf = (fetchMock: jest.SpyInstance): Record<string, unknown> =>
 
 beforeEach(() => {
   process.env.TARS_AUTH_URL = BASE_URL;
+  process.env.JWT_SECRET = 'agent-test-secret';
   delete process.env.TARS_AGENT_TIMEOUT_MS;
   delete process.env.TARS_TABLE_TASK_TIMEOUT_MS;
   invalidateTarsScopedKnowledgeBasesCache();
@@ -144,20 +148,23 @@ describe('runTarsAgent', () => {
       bindings: all,
       domainId: 100,
       model: 'gemini-3.6-flash',
+      librechatUserId: 'lc-user',
     });
     expect(result).toMatchObject({
       answer: '共 65 張',
       knowledgeBaseIds: ['kb-general', 'kb-docs'],
       databaseKnowledgeBaseId: 'kb-general',
-      documentIds: ['doc-1', 'doc-2'],
+      documentIds: ['file-1', 'file-2'],
     });
-    expect(agentBodyOf(fetchMock)).toEqual({
+    const body = agentBodyOf(fetchMock);
+    expect(body).toEqual({
       query: '台北到成田的班機',
       knowledge_base_ids: 'kb-general,kb-docs',
       database_knowledge_base_id: 'kb-general',
-      document_ids: 'doc-1,doc-2',
+      data_file_refs: expect.any(String),
       model_name: 'gemini-3.6-flash',
     });
+    expect(refIds(body)).toEqual(['file-1', 'file-2']);
   });
 
   it('sends only what is bound', async () => {
@@ -230,9 +237,10 @@ describe('runTarsAgent', () => {
       question: 'q',
       bindings: all,
       domainId: 100,
-      documentIds: ['doc-2', 'foreign'],
+      documentIds: ['file-2', 'foreign'],
+      librechatUserId: 'lc-user',
     });
-    expect(agentBodyOf(fetchMock)).toMatchObject({ document_ids: 'doc-2' });
+    expect(refIds(agentBodyOf(fetchMock))).toEqual(['file-2']);
   });
 
   it('gives a table task its long budget only when spreadsheets and knowledge bases are both bound', async () => {

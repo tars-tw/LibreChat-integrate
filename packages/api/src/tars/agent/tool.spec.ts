@@ -8,7 +8,7 @@ jest.mock('@librechat/data-schemas', () => ({
 }));
 
 import { Tools } from 'librechat-data-provider';
-import type { TarsMemoryDocument } from '~/tars/memory/client';
+import type { TarsDataFile } from '~/tars/files/sign';
 import type { TarsAgentBindings } from './bindings';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import { invalidateTarsScopedKnowledgeBasesCache } from '~/tars/scope';
@@ -37,7 +37,7 @@ const domains = {
   ],
 };
 
-const documents = [{ id: 'doc-1', filename: 'orders.xlsx' }] as TarsMemoryDocument[];
+const documents: TarsDataFile[] = [{ id: 'file-1', filename: 'orders.xlsx' }];
 
 const kbAndDb: TarsAgentBindings = {
   knowledgeBases: true,
@@ -217,6 +217,6 @@ describe('buildTarsAgentContext', () => {
     expect(context).toContain('`tars_agent` Runtime Context');
     expect(context).toContain('kb-general');
     expect(context).toContain('bound automatically');
-    expect(context).toContain('doc-1');
+    expect(context).toContain('file-1');
   });
 });
