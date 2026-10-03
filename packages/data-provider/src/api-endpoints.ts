@@ -506,6 +506,9 @@ export const tarsUsersImport = () => `${BASE_URL}/api/tars/users/import`;
 export const tarsUsersImportTemplate = () => `${BASE_URL}/api/tars/users/import-template`;
 export const tarsUsersExportLog = () => `${BASE_URL}/api/tars/users/export-log`;
 export const tarsModels = () => `${BASE_URL}/api/tars/models`;
+export const tarsModelProfiles = () => `${BASE_URL}/api/tars/model-profiles`;
+export const tarsModelProfile = (id: string) =>
+  `${BASE_URL}/api/tars/model-profiles/${encodeURIComponent(id)}`;
 export const tarsMcpAdminServers = () => `${BASE_URL}/api/tars/mcp/admin/servers`;
 export const tarsMcpAdminServer = (id: string) =>
   `${BASE_URL}/api/tars/mcp/admin/servers/${encodeURIComponent(id)}`;

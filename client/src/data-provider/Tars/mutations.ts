@@ -47,6 +47,9 @@ import type {
   TTarsBulkUserUpdatePayload,
   TTarsUserGroupInput,
   TTarsUserGroupWithMembers,
+  TTarsModelProfileInput,
+  TTarsModelProfileSync,
+  TTarsModelProfileWriteResult,
   TTarsRoleInput,
   TTarsRoleDetail,
   TTarsSystemSettings,
@@ -1196,6 +1199,65 @@ export const useRemoveTarsUserGroupMemberMutation = (
       },
     },
   );
+};
+
+/**
+ * A profile write changes the chat model whitelist, the model options of the
+ * knowledge-base editor and the chat model list itself. Their observers are
+ * mostly unmounted while the admin page is open and read with
+ * `refetchOnMount: false`, hence `refetchType: 'all'`.
+ */
+const invalidateModelProfiles = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsModelProfiles]);
+  queryClient.invalidateQueries([QueryKeys.tarsModels], { refetchType: 'all' });
+  queryClient.invalidateQueries([QueryKeys.tarsModelOptions], { refetchType: 'all' });
+  queryClient.invalidateQueries([QueryKeys.models], { refetchType: 'all' });
+};
+
+export const useCreateTarsModelProfileMutation = (
+  options?: UseMutationOptions<TTarsModelProfileWriteResult, unknown, TTarsModelProfileInput>,
+): UseMutationResult<TTarsModelProfileWriteResult, unknown, TTarsModelProfileInput> => {
+  const queryClient = useQueryClient();
+  return useMutation((data: TTarsModelProfileInput) => dataService.createTarsModelProfile(data), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateModelProfiles(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
+type ModelProfileUpdate = { id: string; data: TTarsModelProfileInput };
+
+export const useUpdateTarsModelProfileMutation = (
+  options?: UseMutationOptions<TTarsModelProfileWriteResult, unknown, ModelProfileUpdate>,
+): UseMutationResult<TTarsModelProfileWriteResult, unknown, ModelProfileUpdate> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, data }: ModelProfileUpdate) => dataService.updateTarsModelProfile(id, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateModelProfiles(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+type ModelProfileDeleteResult = { success: boolean; sync: TTarsModelProfileSync | null };
+
+export const useDeleteTarsModelProfileMutation = (
+  options?: UseMutationOptions<ModelProfileDeleteResult, unknown, string>,
+): UseMutationResult<ModelProfileDeleteResult, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.deleteTarsModelProfile(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateModelProfiles(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
 };
 
 type RoleResponse = { role: TTarsRoleDetail };

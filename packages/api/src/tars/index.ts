@@ -15,6 +15,7 @@ export * from './memory';
 export * from './mirror';
 export * from './plugins';
 export * from './models';
+export * from './modelProfiles';
 export * from './prompts';
 export * from './rag';
 export * from './reports';

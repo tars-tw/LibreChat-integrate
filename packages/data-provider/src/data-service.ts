@@ -1645,6 +1645,29 @@ export const getTarsModels = (): Promise<t.TTarsModelsResponse> => {
   return request.get(endpoints.tarsModels());
 };
 
+export const getTarsModelProfiles = (): Promise<t.TTarsModelProfilesResponse> => {
+  return request.get(endpoints.tarsModelProfiles());
+};
+
+export const createTarsModelProfile = (
+  data: t.TTarsModelProfileInput,
+): Promise<t.TTarsModelProfileWriteResult> => {
+  return request.post(endpoints.tarsModelProfiles(), data);
+};
+
+export const updateTarsModelProfile = (
+  id: string,
+  data: t.TTarsModelProfileInput,
+): Promise<t.TTarsModelProfileWriteResult> => {
+  return request.put(endpoints.tarsModelProfile(id), data);
+};
+
+export const deleteTarsModelProfile = (
+  id: string,
+): Promise<{ success: boolean; sync: t.TTarsModelProfileSync | null }> => {
+  return request.delete(endpoints.tarsModelProfile(id));
+};
+
 export const updateTarsSysConfig = (
   data: t.TTarsSysConfigUpdate,
 ): Promise<{ success: boolean }> => {

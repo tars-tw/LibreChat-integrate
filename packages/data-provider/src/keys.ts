@@ -53,6 +53,7 @@ export enum QueryKeys {
   tarsMemoryDocumentContent = 'tarsMemoryDocumentContent',
   tarsMemorySttModels = 'tarsMemorySttModels',
   tarsModels = 'tarsModels',
+  tarsModelProfiles = 'tarsModelProfiles',
   tarsPrompts = 'tarsPrompts',
   tarsSysConfigs = 'tarsSysConfigs',
   tarsUsers = 'tarsUsers',
