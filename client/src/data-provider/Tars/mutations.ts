@@ -700,6 +700,28 @@ export const useUpdateTarsChunkMutation = (
   );
 };
 
+export const useSetTarsChunkEnabledMutation = (
+  docId: string,
+  options?: UseMutationOptions<
+    { chunk: TTarsChunk },
+    unknown,
+    { chunkId: string; enabled: boolean }
+  >,
+): UseMutationResult<{ chunk: TTarsChunk }, unknown, { chunkId: string; enabled: boolean }> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ chunkId, enabled }: { chunkId: string; enabled: boolean }) =>
+      dataService.setTarsChunkEnabled(docId, chunkId, enabled),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsDocumentChunks, docId]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
 export const useDeleteTarsChunkMutation = (
   docId: string,
   options?: UseMutationOptions<{ success: boolean }, unknown, string>,

@@ -14,6 +14,8 @@ export interface ViewerChunk {
   word_count: number | null;
   tokens: number | null;
   hit_count: number | null;
+  /** Whether retrieval uses the chunk; only document chunks can be switched off. */
+  enabled: boolean;
 }
 
 export const documentChunk = (chunk: TTarsChunk): ViewerChunk => ({
@@ -23,6 +25,7 @@ export const documentChunk = (chunk: TTarsChunk): ViewerChunk => ({
   word_count: chunk.word_count ?? null,
   tokens: chunk.tokens ?? null,
   hit_count: chunk.hit_count ?? null,
+  enabled: chunk.enabled !== false,
 });
 
 export const websiteChunk = (chunk: TTarsWebsiteChunk): ViewerChunk => ({
@@ -32,6 +35,7 @@ export const websiteChunk = (chunk: TTarsWebsiteChunk): ViewerChunk => ({
   word_count: chunk.word_count,
   tokens: chunk.tokens,
   hit_count: chunk.hit_count,
+  enabled: true,
 });
 
 /** A conservative test for content worth handing to the markdown renderer. */

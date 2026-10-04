@@ -12,24 +12,11 @@ const {
   TARS_SCHEDULE_DATASET_TYPES,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 
 router.use('/schedules', requireJwtAuth, requireTarsAdmin);
-
-/**
- * Relays a pwc_tars 4xx message rather than flattening it to a 500.
- * @param {import('express').Response} res
- * @param {unknown} error
- * @param {string} fallback
- */
-const relay = (res, error, fallback) => {
-  const status = error?.status;
-  if (typeof status === 'number' && status >= 400 && status < 500) {
-    return res.status(status).json({ error: error.message ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
 
 /**
  * @route GET /api/tars/schedules
@@ -43,7 +30,7 @@ router.get('/schedules', async (req, res) => {
     return res.json({ schedules });
   } catch (error) {
     logger.error('[GET /api/tars/schedules] Failed', error);
-    return relay(res, error, 'Failed to fetch pwc_tars schedules');
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars schedules');
   }
 });
 
@@ -82,7 +69,7 @@ router.post('/schedules', async (req, res) => {
     return res.status(201).json({ schedule });
   } catch (error) {
     logger.error('[POST /api/tars/schedules] Failed', error);
-    return relay(res, error, 'Failed to create pwc_tars schedule');
+    return relayTarsError(res, error, 'Failed to create pwc_tars schedule');
   }
 });
 
@@ -102,7 +89,7 @@ router.put('/schedules/:id', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[PUT /api/tars/schedules/:id] Failed', error);
-    return relay(res, error, 'Failed to update pwc_tars schedule');
+    return relayTarsError(res, error, 'Failed to update pwc_tars schedule');
   }
 });
 
@@ -116,7 +103,7 @@ router.delete('/schedules/:id', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/schedules/:id] Failed', error);
-    return relay(res, error, 'Failed to delete pwc_tars schedule');
+    return relayTarsError(res, error, 'Failed to delete pwc_tars schedule');
   }
 });
 
@@ -143,7 +130,7 @@ for (const [action, call, fallback] of JOB_ACTIONS) {
       return res.json({ success: true });
     } catch (error) {
       logger.error(`[POST /api/tars/schedules/:id/${action}] Failed`, error);
-      return relay(res, error, fallback);
+      return relayTarsError(res, error, fallback);
     }
   });
 }
@@ -165,7 +152,7 @@ router.put('/schedules/:id/sync-all', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[PUT /api/tars/schedules/:id/sync-all] Failed', error);
-    return relay(res, error, 'Failed to update pwc_tars sync setting');
+    return relayTarsError(res, error, 'Failed to update pwc_tars sync setting');
   }
 });
 

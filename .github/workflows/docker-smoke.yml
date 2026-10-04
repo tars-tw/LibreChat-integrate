@@ -1,6 +1,6 @@
 name: Docker Build Smoke Tests
 
-# Fork policy (release/26P3_dev): a full multi-stage Docker build costs ~25
+# Fork policy (release/26P4_dev): a full multi-stage Docker build costs ~25
 # minutes and only answers "does the image still build", which the deploy
 # pipeline already answers. Run it on demand before cutting an image instead of
 # on every PR. See .github/workflows/README.md.

@@ -1626,6 +1626,14 @@ export const updateTarsChunk = (
   return request.put(endpoints.tarsDocumentChunk(docId, chunkId), data);
 };
 
+export const setTarsChunkEnabled = (
+  docId: string,
+  chunkId: string,
+  enabled: boolean,
+): Promise<{ chunk: t.TTarsChunk }> => {
+  return request.put(endpoints.tarsDocumentChunkEnabled(docId, chunkId), { enabled });
+};
+
 export const deleteTarsChunk = (docId: string, chunkId: string): Promise<{ success: boolean }> => {
   return request.delete(endpoints.tarsDocumentChunk(docId, chunkId));
 };

@@ -1,4 +1,3 @@
-const multer = require('multer');
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const {
@@ -14,27 +13,15 @@ const {
   fetchTarsUserPrepareData,
   downloadTarsUserImportTemplate,
   recordTarsActionLog,
-  TarsRequestError,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
+const { createTarsUpload } = require('./upload');
 
 const router = express.Router();
 router.use('/users', requireJwtAuth);
 
-const upload = multer({ storage: multer.memoryStorage() });
-
-/**
- * pwc_tars validates account rules (duplicate username, password length, "you
- * cannot delete yourself", …) and answers 4xx with its own `message`/`error`.
- * Those are user-facing, so they are relayed verbatim instead of being
- * flattened into a generic 500.
- */
-const relayTarsError = (res, error, fallback) => {
-  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
-    return res.status(error.status).json({ error: error.serverMessage ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
+const upload = createTarsUpload();
 
 /**
  * @route GET /api/tars/users
@@ -47,7 +34,7 @@ router.get('/users', requireTarsAdmin, async (req, res) => {
     return res.json({ users });
   } catch (error) {
     logger.error('[GET /api/tars/users] Failed to fetch pwc_tars users', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars users' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars users');
   }
 });
 
@@ -62,7 +49,7 @@ router.get('/users/prepare-data', requireTarsAdmin, async (req, res) => {
     return res.json(data);
   } catch (error) {
     logger.error('[GET /api/tars/users/prepare-data] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars user data' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars user data');
   }
 });
 
@@ -77,7 +64,7 @@ router.get('/users/ad-whitelist', requireTarsAdmin, async (req, res) => {
     return res.json({ usernames });
   } catch (error) {
     logger.error('[GET /api/tars/users/ad-whitelist] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars AD whitelist' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars AD whitelist');
   }
 });
 
@@ -94,7 +81,7 @@ router.get('/users/import-template', requireTarsAdmin, async (req, res) => {
     return res.send(buffer);
   } catch (error) {
     logger.error('[GET /api/tars/users/import-template] Failed', error);
-    return res.status(500).json({ error: 'Failed to download pwc_tars import template' });
+    return relayTarsError(res, error, 'Failed to download pwc_tars import template');
   }
 });
 
@@ -123,7 +110,7 @@ router.post('/users/export-log', requireTarsAdmin, async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[POST /api/tars/users/export-log] Failed', error);
-    return res.status(500).json({ error: 'Failed to record the pwc_tars export' });
+    return relayTarsError(res, error, 'Failed to record the pwc_tars export');
   }
 });
 
@@ -146,7 +133,7 @@ router.post('/users/import', requireTarsAdmin, upload.single('file'), async (req
     return res.status(ok ? 200 : status).json(body);
   } catch (error) {
     logger.error('[POST /api/tars/users/import] Failed', error);
-    return res.status(500).json({ error: 'Failed to import pwc_tars users' });
+    return relayTarsError(res, error, 'Failed to import pwc_tars users');
   }
 });
 

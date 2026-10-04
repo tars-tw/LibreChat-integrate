@@ -38,6 +38,24 @@ export class TarsRequestError extends Error {
   }
 }
 
+export interface TarsErrorReply {
+  status: number;
+  error: string;
+}
+
+/**
+ * The status and message a route answers with when a pwc_tars call fails. A pwc_tars 4xx is a
+ * reason the operator can act on (a document still processing, a missing embedding model), so it
+ * is relayed with pwc_tars's own message; anything else stays a 500 with the route's fallback,
+ * since a 5xx body can carry raw exception text.
+ */
+export function tarsErrorReply(error: unknown, fallback: string): TarsErrorReply {
+  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
+    return { status: error.status, error: error.serverMessage ?? fallback };
+  }
+  return { status: 500, error: fallback };
+}
+
 /** Whether the pwc_tars integration is configured (env `TARS_AUTH_URL` is set). */
 export function isTarsConfigured(baseUrl: string | undefined = process.env.TARS_AUTH_URL): boolean {
   return !!baseUrl?.trim();
@@ -142,7 +160,8 @@ export interface TarsStreamOptions extends Omit<TarsFetchOptions, 'method' | 'qu
   signal?: AbortSignal;
 }
 
-async function readErrorMessage(response: Response): Promise<string | undefined> {
+/** The reason a pwc_tars error body gives, from its `{message}` or `{error}` field. */
+export async function readTarsErrorMessage(response: Response): Promise<string | undefined> {
   try {
     const body = (await response.json()) as { message?: unknown; error?: unknown };
     if (typeof body?.message === 'string') {
@@ -202,7 +221,7 @@ export async function tarsStream<T>(
   });
   if (!response.ok || !response.body) {
     logger.error(`[tarsStream] Unexpected status ${response.status} from POST ${url}`);
-    throw new TarsRequestError(response.status, path, await readErrorMessage(response));
+    throw new TarsRequestError(response.status, path, await readTarsErrorMessage(response));
   }
 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();

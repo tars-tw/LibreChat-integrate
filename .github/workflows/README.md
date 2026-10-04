@@ -1,4 +1,4 @@
-# CI/CD policy — `release/26P3_dev`
+# CI/CD policy — `release/26P4_dev`
 
 This repository is a fork of upstream LibreChat wrapped around the pwc_tars
 platform. Upstream's workflow set is tuned for `danny-avila/LibreChat`: it
@@ -7,7 +7,7 @@ gates on hygiene heuristics that assume no downstream customisation. Most of
 that either cannot succeed here (missing secrets, hard-coded repo names) or
 reports constantly against TARS-only code.
 
-`release/26P3_dev` is our integration branch and the base for every feature PR,
+`release/26P4_dev` is our integration branch and the base for every feature PR,
 so the CI it runs is defined here — deliberately **not** the same set upstream
 runs on `main`.
 
@@ -16,7 +16,7 @@ runs on `main`.
 A check stays blocking only if it can fail for a reason we would actually fix.
 Everything else is either non-blocking, manual-dispatch, or deleted.
 
-## What runs on a PR into `release/26P3_dev`
+## What runs on a PR into `release/26P4_dev`
 
 | Workflow | Gates the PR | What it protects |
 |---|---|---|
@@ -133,7 +133,7 @@ push.
 `dev-images.yml`, `dev-branch-images.yml`, `dev-staging-images.yml`,
 `main-image-workflow.yml`, `tag-images.yml`, `deploy-dev.yml`, and
 `retry-docker-builds.yml` trigger on `push` to `main`/`dev`, on tags, or on
-manual dispatch. They never fire on a `release/26P3_dev` PR, so they were left
+manual dispatch. They never fire on a `release/26P4_dev` PR, so they were left
 alone. Revisit them when the image-publishing story for this fork is settled.
 
 ## Deleted workflows
@@ -153,7 +153,7 @@ they burn schedule time for a signal we do not consume:
 
 ### What happens on the next upstream rebase
 
-We track upstream on `main` and rebase `release/26P3_dev` onto it, so the commit
+We track upstream on `main` and rebase `release/26P4_dev` onto it, so the commit
 that removes these files is replayed on top of the new upstream tree. Three
 cases:
 
