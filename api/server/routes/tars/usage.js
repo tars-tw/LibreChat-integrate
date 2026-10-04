@@ -1,17 +1,10 @@
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
-const { TarsRequestError, fetchTarsProviderUsage } = require('@librechat/api');
+const { fetchTarsProviderUsage } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
-
-/** pwc_tars answers 4xx with its own user-facing message; relay it verbatim. */
-const relayTarsError = (res, error, fallback) => {
-  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
-    return res.status(error.status).json({ error: error.serverMessage ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
 
 const PROVIDERS = new Set(['openai', 'anthropic']);
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;

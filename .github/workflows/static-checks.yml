@@ -1,6 +1,6 @@
 name: Static Checks
 
-# Deliberately unfiltered (fork policy, release/26P3_dev). A `paths:` filter here
+# Deliberately unfiltered (fork policy, release/26P4_dev). A `paths:` filter here
 # means the workflow never starts on an unrelated PR, so it reports no check run at
 # all — and a required status check that never reports leaves the PR stuck on
 # "Expected — waiting for status to be reported", unmergeable by anyone including

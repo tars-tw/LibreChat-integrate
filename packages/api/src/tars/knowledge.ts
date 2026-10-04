@@ -1,4 +1,4 @@
-import { tarsFetch, getTarsBaseUrl } from './client';
+import { tarsFetch, getTarsBaseUrl, TarsRequestError, readTarsErrorMessage } from './client';
 
 /**
  * A pwc_tars knowledge base. Base fields mirror `KnowledgeBase.to_dict()`; the
@@ -414,7 +414,11 @@ export async function createTarsKnowledgeBaseWithFile(
 
   const response = await fetch(url, { method: 'POST', body: form });
   if (!response.ok) {
-    throw new Error(`pwc_tars knowledge-base upload returned status ${response.status}`);
+    throw new TarsRequestError(
+      response.status,
+      '/api/knowledge_base/create_knowledge_base_with_file',
+      await readTarsErrorMessage(response),
+    );
   }
   return (await response.json()) as KnowledgeBasesResponse & Record<string, unknown>;
 }
@@ -474,7 +478,11 @@ export async function uploadTarsKnowledgeBaseDocuments(
 
   const response = await fetch(url, { method: 'POST', body: form });
   if (!response.ok) {
-    throw new Error(`pwc_tars document upload returned status ${response.status}`);
+    throw new TarsRequestError(
+      response.status,
+      '/api/knowledge_detail/upload_multiple_file',
+      await readTarsErrorMessage(response),
+    );
   }
   return (await response.json()) as Record<string, unknown>;
 }
@@ -530,8 +538,9 @@ export async function reprocessTarsKnowledgeBaseDocument(
       user_id: tarsId,
       knowledge_base_id: input.knowledgeBaseId,
       document_id: input.documentId,
-      chunk_size: input.chunkSize ?? 1000,
-      overlap: input.overlap ?? 200,
+      /** Left out unless given, so pwc_tars keeps the chunking the document was indexed with. */
+      chunk_size: input.chunkSize,
+      overlap: input.overlap,
     },
     baseUrl,
   });
@@ -592,6 +601,24 @@ export async function updateTarsChunk(
   const data = await tarsFetch<UpdateChunkResponse>('/api/knowledge_detail/update_chunk', {
     method: 'POST',
     body: { chunk_id: chunkId, content, updated_by: tarsId },
+    baseUrl,
+  });
+  return data.chunk;
+}
+
+/**
+ * Turns one chunk on or off for retrieval (`POST /api/knowledge_detail/set_chunk_enabled`).
+ * pwc_tars takes a disabled chunk out of the vector index and embeds it again when re-enabled.
+ */
+export async function setTarsChunkEnabled(
+  tarsId: string,
+  chunkId: string,
+  enabled: boolean,
+  baseUrl?: string,
+): Promise<TarsChunk> {
+  const data = await tarsFetch<UpdateChunkResponse>('/api/knowledge_detail/set_chunk_enabled', {
+    method: 'POST',
+    body: { chunk_id: chunkId, enabled, updated_by: tarsId },
     baseUrl,
   });
   return data.chunk;
