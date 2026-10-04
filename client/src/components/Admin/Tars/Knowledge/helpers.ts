@@ -86,3 +86,7 @@ export const accessSummaryKey = (kb: TTarsKnowledgeBase): TranslationKeys =>
   (kb.allowed_user_ids?.length ?? 0) + (kb.allowed_user_group_ids?.length ?? 0) === 0
     ? 'com_ui_tars_kb_access_everyone'
     : 'com_ui_tars_kb_access_restricted';
+
+/** The reason pwc_tars gave for refusing a call, relayed by the `/api/tars` routes. */
+export const relayedError = (error: unknown): string | undefined =>
+  (error as { response?: { data?: { error?: string } } })?.response?.data?.error;

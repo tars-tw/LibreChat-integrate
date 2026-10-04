@@ -2,6 +2,7 @@ const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const { fetchTarsReleaseNotes } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 
@@ -18,9 +19,7 @@ router.get('/home', requireTarsAdmin, async (req, res) => {
     return res.json({ releaseNotes });
   } catch (error) {
     logger.error('[GET /api/tars/home] Failed', error);
-    return res.status(500).json({
-      error: 'Failed to fetch pwc_tars release notes',
-    });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars release notes');
   }
 });
 

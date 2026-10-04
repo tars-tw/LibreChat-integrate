@@ -423,6 +423,8 @@ export const tarsDocumentChunks = (docId: string) =>
   `${BASE_URL}/api/tars/documents/${encodeURIComponent(docId)}/chunks`;
 export const tarsDocumentChunk = (docId: string, chunkId: string) =>
   `${tarsDocumentChunks(docId)}/${encodeURIComponent(chunkId)}`;
+export const tarsDocumentChunkEnabled = (docId: string, chunkId: string) =>
+  `${tarsDocumentChunk(docId, chunkId)}/enabled`;
 export const tarsPrompts = (domainId?: string | number) =>
   domainId != null && domainId !== ''
     ? `${BASE_URL}/api/tars/prompts?domain_id=${encodeURIComponent(String(domainId))}`

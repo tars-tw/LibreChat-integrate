@@ -1,8 +1,6 @@
-const multer = require('multer');
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const {
-  TarsRequestError,
   fetchTarsTickets,
   createTarsTicket,
   updateTarsTicket,
@@ -14,21 +12,15 @@ const {
   TARS_TICKET_MAX_FILE_MB,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
+const { createTarsUpload } = require('./upload');
 
 const router = express.Router();
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: TARS_TICKET_MAX_FILE_MB * 1024 * 1024, files: TARS_TICKET_MAX_FILES },
+const upload = createTarsUpload({
+  fileSize: TARS_TICKET_MAX_FILE_MB * 1024 * 1024,
+  files: TARS_TICKET_MAX_FILES,
 });
-
-/** pwc_tars answers 4xx with its own user-facing message; relay it verbatim. */
-const relayTarsError = (res, error, fallback) => {
-  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
-    return res.status(error.status).json({ error: error.serverMessage ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
 
 const toUploadFile = (file) => ({
   buffer: file.buffer,

@@ -16,7 +16,12 @@ import {
   useUpdateTarsKnowledgeBaseMutation,
   useUploadTarsKnowledgeBaseMutation,
 } from '~/data-provider';
-import { DEFAULT_MAX_RETRIEVE, groupPickerOptions, userPickerOptions } from './helpers';
+import {
+  DEFAULT_MAX_RETRIEVE,
+  relayedError,
+  groupPickerOptions,
+  userPickerOptions,
+} from './helpers';
 import { useLocalize } from '~/hooks';
 import Picker from '../Audit/Picker';
 
@@ -123,7 +128,11 @@ export default function KnowledgeModal({
       showToast({ message: localize('com_ui_tars_kb_saved'), status: 'success' });
       onClose();
     },
-    onError: () => showToast({ message: localize('com_ui_tars_kb_save_failed'), status: 'error' }),
+    onError: (error) =>
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_kb_save_failed'),
+        status: 'error',
+      }),
   });
 
   const updateMutation = useUpdateTarsKnowledgeBaseMutation({
@@ -131,7 +140,11 @@ export default function KnowledgeModal({
       showToast({ message: localize('com_ui_tars_kb_saved'), status: 'success' });
       onClose();
     },
-    onError: () => showToast({ message: localize('com_ui_tars_kb_save_failed'), status: 'error' }),
+    onError: (error) =>
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_kb_save_failed'),
+        status: 'error',
+      }),
   });
 
   const trimmedName = form.name.trim();
