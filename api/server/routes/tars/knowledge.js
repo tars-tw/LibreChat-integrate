@@ -1,4 +1,3 @@
-const multer = require('multer');
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const {
@@ -18,12 +17,15 @@ const {
   retryTarsStuckDocuments,
   fetchTarsDocumentChunks,
   updateTarsChunk,
+  setTarsChunkEnabled,
   deleteTarsChunk,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
+const { createTarsUpload } = require('./upload');
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = createTarsUpload();
 
 /**
  * Multipart fields arrive as strings, so the two access lists are sent as JSON
@@ -64,7 +66,7 @@ router.get('/knowledge-bases', async (req, res) => {
     });
   } catch (error) {
     logger.error('[GET /api/tars/knowledge-bases] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars knowledge bases' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars knowledge bases');
   }
 });
 
@@ -79,7 +81,7 @@ router.get('/knowledge-bases/models', async (req, res) => {
     return res.json(models);
   } catch (error) {
     logger.error('[GET /api/tars/knowledge-bases/models] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars model options' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars model options');
   }
 });
 
@@ -94,7 +96,7 @@ router.post('/knowledge-bases', async (req, res) => {
     return res.status(201).json({ knowledgeBase });
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases] Failed', error);
-    return res.status(500).json({ error: 'Failed to create pwc_tars knowledge base' });
+    return relayTarsError(res, error, 'Failed to create pwc_tars knowledge base');
   }
 });
 
@@ -143,7 +145,7 @@ router.post('/knowledge-bases/upload', upload.single('file'), async (req, res) =
     return res.status(201).json(result);
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/upload] Failed', error);
-    return res.status(500).json({ error: 'Failed to create pwc_tars knowledge base' });
+    return relayTarsError(res, error, 'Failed to create pwc_tars knowledge base');
   }
 });
 
@@ -158,7 +160,7 @@ router.get('/knowledge-bases/:id/model-bindings', async (req, res) => {
     return res.json(bindings);
   } catch (error) {
     logger.error('[GET /api/tars/knowledge-bases/:id/model-bindings] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars model bindings' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars model bindings');
   }
 });
 
@@ -182,9 +184,7 @@ router.put('/knowledge-bases/:id/model-bindings', async (req, res) => {
   } catch (error) {
     logger.error('[PUT /api/tars/knowledge-bases/:id/model-bindings] Failed', error);
     /** pwc_tars rejects a model name that no longer maps to an active profile. */
-    return res.status(error?.status === 400 ? 400 : 500).json({
-      error: error?.status === 400 ? error.message : 'Failed to update pwc_tars model bindings',
-    });
+    return relayTarsError(res, error, 'Failed to update pwc_tars model bindings');
   }
 });
 
@@ -199,7 +199,7 @@ router.get('/knowledge-bases/:id/documents', async (req, res) => {
     return res.json({ documents });
   } catch (error) {
     logger.error('[GET /api/tars/knowledge-bases/:id/documents] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars documents' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars documents');
   }
 });
 
@@ -241,7 +241,7 @@ router.post('/knowledge-bases/:id/documents', upload.array('files'), async (req,
     return res.status(201).json(result);
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/documents] Failed', error);
-    return res.status(500).json({ error: 'Failed to upload pwc_tars documents' });
+    return relayTarsError(res, error, 'Failed to upload pwc_tars documents');
   }
 });
 
@@ -264,7 +264,7 @@ router.put('/knowledge-bases/:id/documents/:docId/rename', async (req, res) => {
     return res.json({ document });
   } catch (error) {
     logger.error('[PUT /api/tars/knowledge-bases/:id/documents/:docId/rename] Failed', error);
-    return res.status(500).json({ error: 'Failed to rename pwc_tars document' });
+    return relayTarsError(res, error, 'Failed to rename pwc_tars document');
   }
 });
 
@@ -282,7 +282,7 @@ router.delete('/knowledge-bases/:id/documents/:docId', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/knowledge-bases/:id/documents/:docId] Failed', error);
-    return res.status(500).json({ error: 'Failed to delete pwc_tars document' });
+    return relayTarsError(res, error, 'Failed to delete pwc_tars document');
   }
 });
 
@@ -303,7 +303,7 @@ router.post('/knowledge-bases/:id/documents/:docId/reprocess', async (req, res) 
     return res.json(result);
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/documents/:docId/reprocess] Failed', error);
-    return res.status(500).json({ error: 'Failed to reprocess pwc_tars document' });
+    return relayTarsError(res, error, 'Failed to reprocess pwc_tars document');
   }
 });
 
@@ -322,7 +322,7 @@ router.post('/knowledge-bases/:id/documents/retry-stuck', async (req, res) => {
     return res.json(result);
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/documents/retry-stuck] Failed', error);
-    return res.status(500).json({ error: 'Failed to retry stuck pwc_tars documents' });
+    return relayTarsError(res, error, 'Failed to retry stuck pwc_tars documents');
   }
 });
 
@@ -341,7 +341,7 @@ router.post('/knowledge-bases/:id/documents/:docId/retry-stuck', async (req, res
     return res.json(result);
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/documents/:docId/retry-stuck] Failed', error);
-    return res.status(500).json({ error: 'Failed to retry stuck pwc_tars document' });
+    return relayTarsError(res, error, 'Failed to retry stuck pwc_tars document');
   }
 });
 
@@ -356,7 +356,7 @@ router.get('/documents/:docId/chunks', async (req, res) => {
     return res.json({ chunks });
   } catch (error) {
     logger.error('[GET /api/tars/documents/:docId/chunks] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars chunks' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars chunks');
   }
 });
 
@@ -375,7 +375,26 @@ router.put('/documents/:docId/chunks/:chunkId', async (req, res) => {
     return res.json({ chunk });
   } catch (error) {
     logger.error('[PUT /api/tars/documents/:docId/chunks/:chunkId] Failed', error);
-    return res.status(500).json({ error: 'Failed to update pwc_tars chunk' });
+    return relayTarsError(res, error, 'Failed to update pwc_tars chunk');
+  }
+});
+
+/**
+ * @route PUT /api/tars/documents/:docId/chunks/:chunkId/enabled
+ * @desc Turn one chunk on or off for retrieval.
+ * @access Admin (pwc_tars)
+ */
+router.put('/documents/:docId/chunks/:chunkId/enabled', async (req, res) => {
+  const { enabled } = req.body ?? {};
+  if (typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: 'enabled must be a boolean' });
+  }
+  try {
+    const chunk = await setTarsChunkEnabled(req.user.tarsId, req.params.chunkId, enabled);
+    return res.json({ chunk });
+  } catch (error) {
+    logger.error('[PUT /api/tars/documents/:docId/chunks/:chunkId/enabled] Failed', error);
+    return relayTarsError(res, error, 'Failed to update pwc_tars chunk');
   }
 });
 
@@ -390,7 +409,7 @@ router.delete('/documents/:docId/chunks/:chunkId', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/documents/:docId/chunks/:chunkId] Failed', error);
-    return res.status(500).json({ error: 'Failed to delete pwc_tars chunk' });
+    return relayTarsError(res, error, 'Failed to delete pwc_tars chunk');
   }
 });
 
@@ -409,7 +428,7 @@ router.put('/knowledge-bases/:id', async (req, res) => {
     return res.json({ knowledgeBase });
   } catch (error) {
     logger.error('[PUT /api/tars/knowledge-bases/:id] Failed', error);
-    return res.status(500).json({ error: 'Failed to update pwc_tars knowledge base' });
+    return relayTarsError(res, error, 'Failed to update pwc_tars knowledge base');
   }
 });
 
@@ -424,7 +443,7 @@ router.delete('/knowledge-bases/:id', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/knowledge-bases/:id] Failed', error);
-    return res.status(500).json({ error: 'Failed to delete pwc_tars knowledge base' });
+    return relayTarsError(res, error, 'Failed to delete pwc_tars knowledge base');
   }
 });
 

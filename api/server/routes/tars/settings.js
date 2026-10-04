@@ -1,8 +1,6 @@
-const multer = require('multer');
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const {
-  TarsRequestError,
   importTarsAdData,
   importTarsLicense,
   fetchTarsLdapTree,
@@ -22,18 +20,12 @@ const {
   fetchTarsWhitelistUsersDetail,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
+const { createTarsUpload } = require('./upload');
 
 const router = express.Router();
 
-const upload = multer({ storage: multer.memoryStorage() });
-
-/** pwc_tars answers 4xx with its own user-facing message; relay it verbatim. */
-const relayTarsError = (res, error, fallback) => {
-  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
-    return res.status(error.status).json({ error: error.serverMessage ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
+const upload = createTarsUpload();
 
 const toUploadFile = (file) => ({
   buffer: file.buffer,
@@ -113,7 +105,7 @@ router.get('/settings', requireTarsAdmin, async (req, res) => {
     return res.json(settings);
   } catch (error) {
     logger.error('[GET /api/tars/settings] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars system settings' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars system settings');
   }
 });
 
@@ -166,7 +158,7 @@ router.get('/settings/sso', requireTarsAdmin, async (req, res) => {
     return res.json({ configs });
   } catch (error) {
     logger.error('[GET /api/tars/settings/sso] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars SSO configurations' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars SSO configurations');
   }
 });
 
@@ -301,7 +293,7 @@ router.get('/settings/sso/:id/schedule', requireTarsAdmin, async (req, res) => {
     return res.json({ schedule });
   } catch (error) {
     logger.error('[GET /api/tars/settings/sso/:id/schedule] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch the sync schedule' });
+    return relayTarsError(res, error, 'Failed to fetch the sync schedule');
   }
 });
 

@@ -22,6 +22,7 @@ const {
   batchDeleteTarsDatasets,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 
@@ -31,21 +32,6 @@ const KNOWLEDGE_BASE_SOURCES = ['databases', 'datasets', 'file-systems', 'websit
 );
 
 router.use(KNOWLEDGE_BASE_SOURCES, requireJwtAuth, requireTarsAdmin);
-
-/**
- * Relays a pwc_tars 4xx message instead of flattening it to a 500, so the
- * operator sees why an import or binding was rejected.
- * @param {import('express').Response} res
- * @param {unknown} error
- * @param {string} fallback
- */
-const relay = (res, error, fallback) => {
-  const status = error?.status;
-  if (typeof status === 'number' && status >= 400 && status < 500) {
-    return res.status(status).json({ error: error.message ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
 
 /**
  * @route GET /api/tars/knowledge-bases/:id/datasets
@@ -58,7 +44,7 @@ router.get('/knowledge-bases/:id/datasets', async (req, res) => {
     return res.json(datasets);
   } catch (error) {
     logger.error('[GET /api/tars/knowledge-bases/:id/datasets] Failed', error);
-    return relay(res, error, 'Failed to fetch pwc_tars datasets');
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars datasets');
   }
 });
 
@@ -85,7 +71,7 @@ router.post('/knowledge-bases/:id/websites', async (req, res) => {
     return res.status(201).json({ website });
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/websites] Failed', error);
-    return relay(res, error, 'Failed to import pwc_tars website dataset');
+    return relayTarsError(res, error, 'Failed to import pwc_tars website dataset');
   }
 });
 
@@ -108,7 +94,7 @@ router.put('/knowledge-bases/:id/websites/:websiteId', async (req, res) => {
     return res.json({ website });
   } catch (error) {
     logger.error('[PUT /api/tars/knowledge-bases/:id/websites/:websiteId] Failed', error);
-    return relay(res, error, 'Failed to update pwc_tars website dataset');
+    return relayTarsError(res, error, 'Failed to update pwc_tars website dataset');
   }
 });
 
@@ -122,7 +108,7 @@ router.delete('/knowledge-bases/:id/websites/:websiteId', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/knowledge-bases/:id/websites/:websiteId] Failed', error);
-    return relay(res, error, 'Failed to delete pwc_tars website dataset');
+    return relayTarsError(res, error, 'Failed to delete pwc_tars website dataset');
   }
 });
 
@@ -137,7 +123,7 @@ router.get('/knowledge-bases/:id/websites/:websiteId/chunks', async (req, res) =
     return res.json(page);
   } catch (error) {
     logger.error('[GET /api/tars/knowledge-bases/:id/websites/:websiteId/chunks] Failed', error);
-    return relay(res, error, 'Failed to fetch pwc_tars website chunks');
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars website chunks');
   }
 });
 
@@ -155,7 +141,7 @@ router.get('/knowledge-bases/:id/databases/:databaseId/tables', async (req, res)
     return res.json({ ...available, bound });
   } catch (error) {
     logger.error('[GET /api/tars/knowledge-bases/:id/databases/:databaseId/tables] Failed', error);
-    return relay(res, error, 'Failed to list pwc_tars database tables');
+    return relayTarsError(res, error, 'Failed to list pwc_tars database tables');
   }
 });
 
@@ -175,7 +161,7 @@ router.put('/knowledge-bases/:id/databases/:databaseId', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[PUT /api/tars/knowledge-bases/:id/databases/:databaseId] Failed', error);
-    return relay(res, error, 'Failed to bind pwc_tars database');
+    return relayTarsError(res, error, 'Failed to bind pwc_tars database');
   }
 });
 
@@ -190,7 +176,7 @@ router.delete('/knowledge-bases/:id/databases/:databaseId', async (req, res) => 
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/knowledge-bases/:id/databases/:databaseId] Failed', error);
-    return relay(res, error, 'Failed to unbind pwc_tars database');
+    return relayTarsError(res, error, 'Failed to unbind pwc_tars database');
   }
 });
 
@@ -205,7 +191,7 @@ router.get('/knowledge-bases/:id/databases/:databaseId/prompt', async (req, res)
     return res.json(prompt);
   } catch (error) {
     logger.error('[GET /api/tars/knowledge-bases/:id/databases/:databaseId/prompt] Failed', error);
-    return relay(res, error, 'Failed to fetch pwc_tars database prompt');
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars database prompt');
   }
 });
 
@@ -224,7 +210,7 @@ router.put('/knowledge-bases/:id/databases/:databaseId/prompt', async (req, res)
     return res.json({ success: true });
   } catch (error) {
     logger.error('[PUT /api/tars/knowledge-bases/:id/databases/:databaseId/prompt] Failed', error);
-    return relay(res, error, 'Failed to update pwc_tars database prompt');
+    return relayTarsError(res, error, 'Failed to update pwc_tars database prompt');
   }
 });
 
@@ -239,7 +225,7 @@ router.get('/knowledge-bases/:id/file-systems', async (req, res) => {
     return res.json({ sources });
   } catch (error) {
     logger.error('[GET /api/tars/knowledge-bases/:id/file-systems] Failed', error);
-    return relay(res, error, 'Failed to fetch pwc_tars file systems');
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars file systems');
   }
 });
 
@@ -254,7 +240,7 @@ router.get('/knowledge-bases/:id/file-systems/:fsId/files', async (req, res) => 
     return res.json({ files });
   } catch (error) {
     logger.error('[GET /api/tars/knowledge-bases/:id/file-systems/:fsId/files] Failed', error);
-    return relay(res, error, 'Failed to list pwc_tars file server files');
+    return relayTarsError(res, error, 'Failed to list pwc_tars file server files');
   }
 });
 
@@ -282,7 +268,7 @@ router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
     return res.status(201).json({ success: true });
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/file-systems/:fsId] Failed', error);
-    return relay(res, error, 'Failed to import pwc_tars document group');
+    return relayTarsError(res, error, 'Failed to import pwc_tars document group');
   }
 });
 
@@ -301,7 +287,7 @@ router.post('/knowledge-bases/:id/file-systems/:fsId/refresh', async (req, res) 
     return res.json({ success: true });
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/file-systems/:fsId/refresh] Failed', error);
-    return relay(res, error, 'Failed to refresh pwc_tars document group');
+    return relayTarsError(res, error, 'Failed to refresh pwc_tars document group');
   }
 });
 
@@ -322,7 +308,7 @@ router.post('/knowledge-bases/:id/file-systems/:fsId/rebuild', async (req, res) 
     return res.json({ success: true });
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/file-systems/:fsId/rebuild] Failed', error);
-    return relay(res, error, 'Failed to rebuild pwc_tars document group');
+    return relayTarsError(res, error, 'Failed to rebuild pwc_tars document group');
   }
 });
 
@@ -337,7 +323,7 @@ router.post('/knowledge-bases/:id/file-systems/:fsId/reprocess', async (req, res
     return res.json({ success: true });
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/file-systems/:fsId/reprocess] Failed', error);
-    return relay(res, error, 'Failed to reprocess pwc_tars document group');
+    return relayTarsError(res, error, 'Failed to reprocess pwc_tars document group');
   }
 });
 
@@ -352,7 +338,7 @@ router.delete('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/knowledge-bases/:id/file-systems/:fsId] Failed', error);
-    return relay(res, error, 'Failed to unlink pwc_tars document group');
+    return relayTarsError(res, error, 'Failed to unlink pwc_tars document group');
   }
 });
 
@@ -378,7 +364,7 @@ router.post('/knowledge-bases/:id/datasets/batch-delete', async (req, res) => {
     return res.status(202).json({ accepted: total });
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/datasets/batch-delete] Failed', error);
-    return relay(res, error, 'Failed to delete pwc_tars datasets');
+    return relayTarsError(res, error, 'Failed to delete pwc_tars datasets');
   }
 });
 

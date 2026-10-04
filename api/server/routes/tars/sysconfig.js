@@ -2,6 +2,7 @@ const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const { fetchTarsSysConfigs, updateTarsSysConfig } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 
@@ -19,7 +20,7 @@ router.get('/sys-configs', async (req, res) => {
     return res.json({ sysConfigs });
   } catch (error) {
     logger.error('[GET /api/tars/sys-configs] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars system parameters' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars system parameters');
   }
 });
 
@@ -42,7 +43,7 @@ router.put('/sys-configs', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[PUT /api/tars/sys-configs] Failed', error);
-    return res.status(500).json({ error: 'Failed to update pwc_tars system parameter' });
+    return relayTarsError(res, error, 'Failed to update pwc_tars system parameter');
   }
 });
 

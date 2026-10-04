@@ -2,7 +2,6 @@ const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const { isTarsFileProtocol } = require('librechat-data-provider');
 const {
-  TarsRequestError,
   fetchTarsFileSystems,
   createTarsFileSystem,
   updateTarsFileSystem,
@@ -10,18 +9,11 @@ const {
   testTarsFileSystemConnection,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 
 router.use('/data-sources/file-systems', requireJwtAuth, requireTarsAdmin);
-
-/** pwc_tars answers a rejected connection with its own reason; relay it. */
-const relay = (res, error, fallback) => {
-  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
-    return res.status(error.status).json({ error: error.serverMessage ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
 
 const toIdList = (value) => {
   if (Array.isArray(value)) {
@@ -67,7 +59,7 @@ router.get('/data-sources/file-systems', async (req, res) => {
     return res.json({ fileSystems });
   } catch (error) {
     logger.error('[GET /api/tars/data-sources/file-systems] Failed', error);
-    return relay(res, error, 'Failed to fetch pwc_tars document groups');
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars document groups');
   }
 });
 
@@ -87,7 +79,7 @@ router.post('/data-sources/file-systems', async (req, res) => {
     return res.status(201).json({ fileSystem });
   } catch (error) {
     logger.error('[POST /api/tars/data-sources/file-systems] Failed', error);
-    return relay(res, error, 'Failed to create pwc_tars document group');
+    return relayTarsError(res, error, 'Failed to create pwc_tars document group');
   }
 });
 
@@ -110,7 +102,7 @@ router.post('/data-sources/file-systems/test', async (req, res) => {
     return res.json(result);
   } catch (error) {
     logger.error('[POST /api/tars/data-sources/file-systems/test] Failed', error);
-    return relay(res, error, 'Failed to connect to the file server');
+    return relayTarsError(res, error, 'Failed to connect to the file server');
   }
 });
 
@@ -130,7 +122,7 @@ router.put('/data-sources/file-systems/:fileSystemId', async (req, res) => {
     return res.json({ fileSystem });
   } catch (error) {
     logger.error('[PUT /api/tars/data-sources/file-systems/:fileSystemId] Failed', error);
-    return relay(res, error, 'Failed to update pwc_tars document group');
+    return relayTarsError(res, error, 'Failed to update pwc_tars document group');
   }
 });
 
@@ -144,7 +136,7 @@ router.delete('/data-sources/file-systems/:fileSystemId', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/data-sources/file-systems/:fileSystemId] Failed', error);
-    return relay(res, error, 'Failed to delete pwc_tars document group');
+    return relayTarsError(res, error, 'Failed to delete pwc_tars document group');
   }
 });
 

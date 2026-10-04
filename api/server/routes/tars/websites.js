@@ -1,25 +1,17 @@
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const {
-  TarsRequestError,
   fetchTarsWebsites,
   createTarsWebsite,
   deleteTarsWebsite,
   updateTarsWebsite,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 
 router.use('/data-sources/websites', requireJwtAuth, requireTarsAdmin);
-
-/** pwc_tars explains why a crawl failed; that beats a generic string. */
-const relay = (res, error, fallback) => {
-  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
-    return res.status(error.status).json({ error: error.serverMessage ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
 
 /**
  * @route GET /api/tars/data-sources/websites
@@ -32,7 +24,7 @@ router.get('/data-sources/websites', async (req, res) => {
     return res.json({ websites, knowledgeBases });
   } catch (error) {
     logger.error('[GET /api/tars/data-sources/websites] Failed', error);
-    return relay(res, error, 'Failed to fetch pwc_tars website datasets');
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars website datasets');
   }
 });
 
@@ -65,7 +57,7 @@ router.post('/data-sources/websites', async (req, res) => {
     return res.status(201).json({ website });
   } catch (error) {
     logger.error('[POST /api/tars/data-sources/websites] Failed', error);
-    return relay(res, error, 'Failed to import the website');
+    return relayTarsError(res, error, 'Failed to import the website');
   }
 });
 
@@ -101,7 +93,7 @@ router.put('/data-sources/websites/:websiteId', async (req, res) => {
     return res.json({ website, kbIdsToImport });
   } catch (error) {
     logger.error('[PUT /api/tars/data-sources/websites/:websiteId] Failed', error);
-    return relay(res, error, 'Failed to update pwc_tars website dataset');
+    return relayTarsError(res, error, 'Failed to update pwc_tars website dataset');
   }
 });
 
@@ -122,7 +114,7 @@ router.delete('/data-sources/websites/:websiteId', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/data-sources/websites/:websiteId] Failed', error);
-    return relay(res, error, 'Failed to delete pwc_tars website dataset');
+    return relayTarsError(res, error, 'Failed to delete pwc_tars website dataset');
   }
 });
 

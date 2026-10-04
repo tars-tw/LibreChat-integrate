@@ -153,13 +153,13 @@ Semantics mirror pwc_tars's chat exactly: the **brain's `domain_functions` is th
 
 ### Rebasing onto upstream (`main`)
 
-`main` mirrors upstream LibreChat; `release/26P3_dev` is this fork's trunk and is
+`main` mirrors upstream LibreChat; `release/26P4_dev` is this fork's trunk and is
 **replayed on top of it, never merged** — the fork stays a readable stack of TARS
-commits. The operation recurs every few weeks (see the `backup/26P3_dev-pre-rebase-*`
+commits. The operation recurs every few weeks (see the `backup/26P4_dev-pre-rebase-*`
 branches), so it is worth doing the same way every time:
 
 ```bash
-git fetch origin --prune && git branch backup/26P3_dev-pre-rebase-$(date +%Y%m%d) && git rebase main
+git fetch origin --prune && git branch backup/26P4_dev-pre-rebase-$(date +%Y%m%d) && git rebase main
 ```
 
 `rerere` is enabled in this clone with a large resolution cache, so most recurring
@@ -498,7 +498,7 @@ file list itself and runs the same per-file checks plus the path-gated tree-wide
 Prefer it — it cannot make the scoping mistake the manual commands can:
 
 ```bash
-node scripts/static-checks.mts --against release/26P3_dev
+node scripts/static-checks.mts --against release/26P4_dev
 ```
 
 `npm run static-checks` scopes to the staged diff (what the pre-commit hook runs);
@@ -519,7 +519,7 @@ working tree covers both committed and uncommitted work, so this is a superset
 of what CI inspects:
 
 ```bash
-git diff --name-only --diff-filter=ACMRTUXB "$(git merge-base release/26P3_dev HEAD)" | grep -E '^(api|client|packages)/.*\.(js|jsx|ts|tsx)$' > /tmp/style-files.txt; wc -l < /tmp/style-files.txt
+git diff --name-only --diff-filter=ACMRTUXB "$(git merge-base release/26P4_dev HEAD)" | grep -E '^(api|client|packages)/.*\.(js|jsx|ts|tsx)$' > /tmp/style-files.txt; wc -l < /tmp/style-files.txt
 ```
 
 **If that file is empty, stop — do not run the commands below.** With no path

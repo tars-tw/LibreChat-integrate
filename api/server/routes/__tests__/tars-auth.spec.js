@@ -3,7 +3,8 @@ const request = require('supertest');
 
 /** Every export is a no-op: the gates under test decide before any handler reaches pwc_tars. */
 jest.mock('@librechat/api', () => {
-  const stubs = {};
+  /** Constants read at module load stay numbers; a stub function would make multer's limits NaN. */
+  const stubs = { TARS_TICKET_MAX_FILES: 5, TARS_TICKET_MAX_FILE_MB: 20 };
   return new Proxy(stubs, {
     get: (target, key) => {
       if (key === '__esModule') {

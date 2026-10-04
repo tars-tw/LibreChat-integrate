@@ -1,7 +1,6 @@
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const {
-  TarsRequestError,
   toTarsDateTime,
   fetchTarsActionLogs,
   fetchTarsUserActionLogs,
@@ -9,16 +8,9 @@ const {
   fetchTarsActionLogDetail,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
-
-/** pwc_tars answers 4xx with its own user-facing message; relay it verbatim. */
-const relayTarsError = (res, error, fallback) => {
-  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
-    return res.status(error.status).json({ error: error.serverMessage ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
 
 /** Only non-empty string ids survive; pwc_tars splits these on commas. */
 const toIdList = (value) => {

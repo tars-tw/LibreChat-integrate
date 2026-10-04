@@ -1,7 +1,6 @@
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const {
-  TarsRequestError,
   createTarsUserGroup,
   updateTarsUserGroup,
   deleteTarsUserGroup,
@@ -10,17 +9,10 @@ const {
   fetchTarsGroupPrepareData,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 router.use('/groups', requireJwtAuth);
-
-/** pwc_tars answers 4xx with its own user-facing `message`; relay it verbatim. */
-const relayTarsError = (res, error, fallback) => {
-  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
-    return res.status(error.status).json({ error: error.serverMessage ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
 
 /**
  * @route GET /api/tars/groups
@@ -33,7 +25,7 @@ router.get('/groups', requireTarsAdmin, async (req, res) => {
     return res.json(data);
   } catch (error) {
     logger.error('[GET /api/tars/groups] Failed to fetch pwc_tars groups', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars groups' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars groups');
   }
 });
 

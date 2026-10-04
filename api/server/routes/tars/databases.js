@@ -1,9 +1,7 @@
-const multer = require('multer');
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const { isTarsDatabaseType } = require('librechat-data-provider');
 const {
-  TarsRequestError,
   fetchTarsDatabases,
   createTarsDatabase,
   updateTarsDatabase,
@@ -12,25 +10,16 @@ const {
   uploadTarsSqliteDatabase,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
+const { createTarsUpload } = require('./upload');
 
 const router = express.Router();
 
 router.use('/data-sources/databases', requireJwtAuth, requireTarsAdmin);
 
-/** pwc_tars answers a rejected connection with its own reason; relay it. */
-const relay = (res, error, fallback) => {
-  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
-    return res.status(error.status).json({ error: error.serverMessage ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
-
 /** SQLite files are the only upload here, and pwc_tars caps them the same way. */
 const MAX_SQLITE_MB = 100;
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_SQLITE_MB * 1024 * 1024, files: 1 },
-});
+const upload = createTarsUpload({ fileSize: MAX_SQLITE_MB * 1024 * 1024, files: 1 });
 
 const toIdList = (value) => {
   if (Array.isArray(value)) {
@@ -75,7 +64,7 @@ router.get('/data-sources/databases', async (req, res) => {
     return res.json({ databases });
   } catch (error) {
     logger.error('[GET /api/tars/data-sources/databases] Failed', error);
-    return relay(res, error, 'Failed to fetch pwc_tars database connections');
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars database connections');
   }
 });
 
@@ -95,7 +84,7 @@ router.post('/data-sources/databases', async (req, res) => {
     return res.status(201).json({ database });
   } catch (error) {
     logger.error('[POST /api/tars/data-sources/databases] Failed', error);
-    return relay(res, error, 'Failed to create pwc_tars database connection');
+    return relayTarsError(res, error, 'Failed to create pwc_tars database connection');
   }
 });
 
@@ -127,7 +116,7 @@ router.post('/data-sources/databases/sqlite', upload.single('file'), async (req,
     return res.status(201).json({ database });
   } catch (error) {
     logger.error('[POST /api/tars/data-sources/databases/sqlite] Failed', error);
-    return relay(res, error, 'Failed to upload pwc_tars SQLite database');
+    return relayTarsError(res, error, 'Failed to upload pwc_tars SQLite database');
   }
 });
 
@@ -150,7 +139,7 @@ router.post('/data-sources/databases/test', async (req, res) => {
     return res.json(result);
   } catch (error) {
     logger.error('[POST /api/tars/data-sources/databases/test] Failed', error);
-    return relay(res, error, 'Failed to connect to the database');
+    return relayTarsError(res, error, 'Failed to connect to the database');
   }
 });
 
@@ -170,7 +159,7 @@ router.put('/data-sources/databases/:databaseId', async (req, res) => {
     return res.json({ database });
   } catch (error) {
     logger.error('[PUT /api/tars/data-sources/databases/:databaseId] Failed', error);
-    return relay(res, error, 'Failed to update pwc_tars database connection');
+    return relayTarsError(res, error, 'Failed to update pwc_tars database connection');
   }
 });
 
@@ -184,7 +173,7 @@ router.delete('/data-sources/databases/:databaseId', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/data-sources/databases/:databaseId] Failed', error);
-    return relay(res, error, 'Failed to delete pwc_tars database connection');
+    return relayTarsError(res, error, 'Failed to delete pwc_tars database connection');
   }
 });
 

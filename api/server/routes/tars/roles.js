@@ -1,24 +1,16 @@
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const {
-  TarsRequestError,
   createTarsRole,
   updateTarsRole,
   deleteTarsRole,
   fetchTarsRolePrepareData,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 router.use('/roles', requireJwtAuth);
-
-/** pwc_tars answers 4xx with its own user-facing message; relay it verbatim. */
-const relayTarsError = (res, error, fallback) => {
-  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
-    return res.status(error.status).json({ error: error.serverMessage ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
 
 /**
  * @route GET /api/tars/roles
@@ -31,7 +23,7 @@ router.get('/roles', requireTarsAdmin, async (req, res) => {
     return res.json(data);
   } catch (error) {
     logger.error('[GET /api/tars/roles] Failed to fetch pwc_tars roles', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars roles' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars roles');
   }
 });
 
