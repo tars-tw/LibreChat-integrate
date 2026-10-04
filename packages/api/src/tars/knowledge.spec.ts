@@ -13,13 +13,16 @@ import {
   updateTarsKnowledgeBaseModel,
   fetchTarsKnowledgeBaseDocuments,
   uploadTarsKnowledgeBaseDocuments,
+  createTarsKnowledgeBaseWithFile,
   renameTarsKnowledgeBaseDocument,
   deleteTarsKnowledgeBaseDocument,
   reprocessTarsKnowledgeBaseDocument,
   fetchTarsDocumentChunks,
+  setTarsChunkEnabled,
   deleteTarsKnowledgeBase,
 } from './knowledge';
 import type { TarsDocument } from './knowledge';
+import { TarsRequestError, tarsErrorReply } from './client';
 
 const BASE_URL = 'http://tars.test';
 
@@ -117,6 +120,61 @@ describe('uploadTarsKnowledgeBaseDocuments', () => {
       ),
     ).rejects.toThrow('status 500');
   });
+
+  it("carries pwc_tars's status and reason on a refusal", async () => {
+    const reason = '知識庫設定的 embedding 模型（gone）不存在';
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(400, { error: reason }));
+    const failure = await uploadTarsKnowledgeBaseDocuments(
+      'u1',
+      {
+        knowledgeBaseId: 'kb1',
+        files: [{ buffer: Buffer.from('x'), filename: 'a.txt', mimetype: 'text/plain' }],
+      },
+      BASE_URL,
+    ).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(TarsRequestError);
+    expect(tarsErrorReply(failure, 'fallback')).toEqual({ status: 400, error: reason });
+  });
+});
+
+describe('createTarsKnowledgeBaseWithFile', () => {
+  it("carries pwc_tars's status and reason on a refusal", async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(400, { error: 'bad seed' }));
+    const failure = await createTarsKnowledgeBaseWithFile(
+      'u1',
+      { knowledgeName: 'kb', llmModel: 'm', embeddingModel: 'gone' },
+      BASE_URL,
+    ).catch((error: unknown) => error);
+    expect(tarsErrorReply(failure, 'fallback')).toEqual({ status: 400, error: 'bad seed' });
+  });
+});
+
+describe('tarsErrorReply', () => {
+  it('relays a pwc_tars 4xx with its own message', () => {
+    const busy = new TarsRequestError(409, '/x', '此檔案目前正在背景處理中');
+    expect(tarsErrorReply(busy, 'fallback')).toEqual({
+      status: 409,
+      error: '此檔案目前正在背景處理中',
+    });
+  });
+
+  it('uses the fallback when a 4xx carries no message', () => {
+    expect(tarsErrorReply(new TarsRequestError(404, '/x'), 'fallback')).toEqual({
+      status: 404,
+      error: 'fallback',
+    });
+  });
+
+  it('keeps a pwc_tars 5xx and non-pwc_tars errors as a 500 with the fallback', () => {
+    expect(tarsErrorReply(new TarsRequestError(500, '/x', 'psycopg2 trace'), 'fallback')).toEqual({
+      status: 500,
+      error: 'fallback',
+    });
+    expect(tarsErrorReply(new Error('socket hang up'), 'fallback')).toEqual({
+      status: 500,
+      error: 'fallback',
+    });
+  });
 });
 
 describe('document mutations', () => {
@@ -166,7 +224,7 @@ describe('document mutations', () => {
     );
   });
 
-  it('reprocesses a document with default chunk settings', async () => {
+  it('leaves chunking to the document when the caller sets none', async () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, {}));
 
     await reprocessTarsKnowledgeBaseDocument(
@@ -179,15 +237,22 @@ describe('document mutations', () => {
       `${BASE_URL}/api/knowledge_detail/reupload_files_to_filesystem`,
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({
-          user_id: 'u1',
-          knowledge_base_id: 'kb1',
-          document_id: 'd1',
-          chunk_size: 1000,
-          overlap: 200,
-        }),
+        body: JSON.stringify({ user_id: 'u1', knowledge_base_id: 'kb1', document_id: 'd1' }),
       }),
     );
+  });
+
+  it('passes explicit chunk settings through', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, {}));
+
+    await reprocessTarsKnowledgeBaseDocument(
+      'u1',
+      { knowledgeBaseId: 'kb1', documentId: 'd1', chunkSize: 500, overlap: 50 },
+      BASE_URL,
+    );
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(body).toEqual(expect.objectContaining({ chunk_size: 500, overlap: 50 }));
   });
 });
 
@@ -205,6 +270,28 @@ describe('chunk operations', () => {
       expect.objectContaining({ method: 'GET' }),
     );
     expect(result).toEqual(chunks);
+  });
+
+  it('turns a chunk off for retrieval, naming who changed it', async () => {
+    const chunk = { id: 'c1', document_id: 'd1', position: 0, content: 'hi', enabled: false };
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { chunk }));
+
+    const result = await setTarsChunkEnabled('tars-user', 'c1', false, BASE_URL);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${BASE_URL}/api/knowledge_detail/set_chunk_enabled`);
+    expect(init).toEqual(expect.objectContaining({ method: 'POST' }));
+    expect(JSON.parse(String(init?.body))).toEqual({
+      chunk_id: 'c1',
+      enabled: false,
+      updated_by: 'tars-user',
+    });
+    expect(result).toEqual(chunk);
+  });
+
+  it('surfaces a pwc_tars failure instead of reporting the change', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(500, { error: 'boom' }));
+    await expect(setTarsChunkEnabled('tars-user', 'c1', true, BASE_URL)).rejects.toThrow();
   });
 });
 

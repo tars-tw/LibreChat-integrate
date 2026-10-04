@@ -11,6 +11,7 @@ const {
   fetchTarsDomainPrepareData,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 router.use('/domains', requireJwtAuth);
@@ -30,7 +31,7 @@ router.get('/domains', async (req, res) => {
     return res.json({ domains });
   } catch (error) {
     logger.error('[GET /api/tars/domains] Failed to fetch pwc_tars domains', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars domains' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars domains');
   }
 });
 
@@ -45,7 +46,7 @@ router.get('/domains/admin/prepare-data', requireTarsAdmin, async (req, res) => 
     return res.json(data);
   } catch (error) {
     logger.error('[GET /api/tars/domains/admin/prepare-data] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars domain data' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars domain data');
   }
 });
 
@@ -61,7 +62,7 @@ router.get('/domains/admin/plugin-tools', requireTarsAdmin, async (req, res) => 
     return res.json(listing);
   } catch (error) {
     logger.error('[GET /api/tars/domains/admin/plugin-tools] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars plugin tools' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars plugin tools');
   }
 });
 
@@ -77,7 +78,7 @@ router.post('/domains/admin/plugin-tools/reload', requireTarsAdmin, async (req, 
     return res.json(listing);
   } catch (error) {
     logger.error('[POST /api/tars/domains/admin/plugin-tools/reload] Failed', error);
-    return res.status(500).json({ error: 'Failed to reload pwc_tars plugin tools' });
+    return relayTarsError(res, error, 'Failed to reload pwc_tars plugin tools');
   }
 });
 
@@ -92,7 +93,7 @@ router.post('/domains', requireTarsAdmin, async (req, res) => {
     return res.status(201).json({ domain });
   } catch (error) {
     logger.error('[POST /api/tars/domains] Failed to create pwc_tars domain', error);
-    return res.status(500).json({ error: 'Failed to create pwc_tars domain' });
+    return relayTarsError(res, error, 'Failed to create pwc_tars domain');
   }
 });
 
@@ -107,7 +108,7 @@ router.put('/domains/:id', requireTarsAdmin, async (req, res) => {
     return res.json({ domain });
   } catch (error) {
     logger.error('[PUT /api/tars/domains/:id] Failed to update pwc_tars domain', error);
-    return res.status(500).json({ error: 'Failed to update pwc_tars domain' });
+    return relayTarsError(res, error, 'Failed to update pwc_tars domain');
   }
 });
 
@@ -122,7 +123,7 @@ router.delete('/domains/:id', requireTarsAdmin, async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/domains/:id] Failed to delete pwc_tars domain', error);
-    return res.status(500).json({ error: 'Failed to delete pwc_tars domain' });
+    return relayTarsError(res, error, 'Failed to delete pwc_tars domain');
   }
 });
 

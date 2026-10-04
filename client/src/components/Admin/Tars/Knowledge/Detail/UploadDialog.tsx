@@ -12,6 +12,7 @@ import {
 } from '@librechat/client';
 import type { TTarsDatasetLimits } from 'librechat-data-provider';
 import { useUploadTarsDocumentsMutation } from '~/data-provider';
+import { relayedError } from '../helpers';
 import { useLocalize } from '~/hooks';
 
 const DEFAULT_CHUNK = 300;
@@ -51,7 +52,11 @@ export default function UploadDialog({
       showToast({ message: localize('com_ui_tars_kb_uploaded'), status: 'success' });
       onClose();
     },
-    onError: () => showToast({ message: localize('com_ui_tars_admin_error'), status: 'error' }),
+    onError: (error) =>
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+        status: 'error',
+      }),
   });
 
   const addFiles = (selected: FileList | null) => {

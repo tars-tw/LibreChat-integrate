@@ -10,6 +10,7 @@ const {
   fetchTarsKnowledgeBasePrompts,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 router.use('/prompts', requireJwtAuth);
@@ -33,7 +34,7 @@ router.get('/prompts', async (req, res) => {
     return res.json({ prompts, knowledgeBases });
   } catch (error) {
     logger.error('[GET /api/tars/prompts] Failed to fetch pwc_tars prompts', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars prompts' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars prompts');
   }
 });
 
@@ -57,7 +58,7 @@ router.get('/prompts/knowledge-base/:id', requireTarsAdmin, async (req, res) => 
       '[GET /api/tars/prompts/knowledge-base/:id] Failed to fetch pwc_tars KB prompts',
       error,
     );
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars knowledge base prompts' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars knowledge base prompts');
   }
 });
 
@@ -77,7 +78,7 @@ router.post('/prompts', async (req, res) => {
     return res.status(201).json({ prompt });
   } catch (error) {
     logger.error('[POST /api/tars/prompts] Failed to create pwc_tars prompt', error);
-    return res.status(500).json({ error: 'Failed to create pwc_tars prompt' });
+    return relayTarsError(res, error, 'Failed to create pwc_tars prompt');
   }
 });
 
@@ -96,7 +97,7 @@ router.put('/prompts/:id', async (req, res) => {
     return res.json({ prompt });
   } catch (error) {
     logger.error('[PUT /api/tars/prompts/:id] Failed to update pwc_tars prompt', error);
-    return res.status(500).json({ error: 'Failed to update pwc_tars prompt' });
+    return relayTarsError(res, error, 'Failed to update pwc_tars prompt');
   }
 });
 
@@ -118,7 +119,7 @@ router.delete('/prompts/:id', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/prompts/:id] Failed to delete pwc_tars prompt', error);
-    return res.status(500).json({ error: 'Failed to delete pwc_tars prompt' });
+    return relayTarsError(res, error, 'Failed to delete pwc_tars prompt');
   }
 });
 

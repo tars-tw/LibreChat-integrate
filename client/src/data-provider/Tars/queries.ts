@@ -4,7 +4,6 @@ import type {
   TTarsDomain,
   TTarsPrompt,
   TTarsChunk,
-  TTarsDocument,
   TTarsUser,
   TTarsSysConfig,
   TTarsModelProfile,
@@ -29,7 +28,6 @@ import type {
   TTarsWebsitesResponse,
   TTarsMcpUserServer,
   TTarsPromptsResponse,
-  TTarsDocumentsResponse,
   TTarsDomainPrepareData,
   TTarsPluginToolsResponse,
   TTarsSysConfigsResponse,
@@ -313,29 +311,6 @@ export const useTarsKnowledgeBasesQuery = (
     {
       select: (data) => data.knowledgeBases ?? [],
       ...adminQueryOptions,
-      ...config,
-    },
-  );
-};
-
-/**
- * Documents inside a knowledge base. Polls every 5s while any document is still
- * uploading/processing so status badges update without a manual refresh.
- */
-export const useTarsKnowledgeBaseDocumentsQuery = (
-  knowledgeBaseId?: string | null,
-  config?: UseQueryOptions<TTarsDocumentsResponse, unknown, TTarsDocument[]>,
-): QueryObserverResult<TTarsDocument[]> => {
-  return useQuery<TTarsDocumentsResponse, unknown, TTarsDocument[]>(
-    [QueryKeys.tarsKnowledgeBaseDocuments, knowledgeBaseId],
-    () => dataService.getTarsKnowledgeBaseDocuments(knowledgeBaseId ?? ''),
-    {
-      enabled: !!knowledgeBaseId,
-      select: (data) => data.documents ?? [],
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchInterval: (data) =>
-        (data ?? []).some((doc) => PROCESSING_STATUSES.has(doc.status)) ? 5000 : false,
       ...config,
     },
   );

@@ -26,8 +26,12 @@ jest.mock('~/utils', () => ({
 }));
 
 const mockGetTarsProviderApiKey = jest.fn();
+/**
+ * Only the sysconfig module: the whole `~/tars` barrel reaches `cacheConfig`, which calls the
+ * mocked `isEnabled` at load time, before `mockIsEnabled` is initialised.
+ */
 jest.mock('~/tars', () => ({
-  ...jest.requireActual('~/tars'),
+  ...jest.requireActual('~/tars/sysconfig'),
   getTarsProviderApiKey: (...args: unknown[]) => mockGetTarsProviderApiKey(...args),
 }));
 

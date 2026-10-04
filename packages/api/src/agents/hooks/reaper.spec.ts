@@ -21,11 +21,24 @@ function isGone(pid: number): boolean {
   } catch {
     return true;
   }
+  /** Without /proc (macOS) a zombie cannot be told apart, so a signalable pid counts as alive. */
+  if (!fs.existsSync('/proc')) {
+    return false;
+  }
   try {
     const stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8');
     return stat.slice(stat.lastIndexOf(')') + 2, stat.lastIndexOf(')') + 3) === 'Z';
   } catch {
     return true;
+  }
+}
+
+/** The redirect creates the file before `echo` writes to it, so wait for the pid itself. */
+function hasPid(file: string): boolean {
+  try {
+    return fs.readFileSync(file, 'utf8').trim() !== '';
+  } catch {
+    return false;
   }
 }
 
@@ -57,7 +70,7 @@ describe('createReaper', () => {
   test('escalates to SIGKILL when the tree ignores SIGTERM', async () => {
     const pidFile = path.join(base, 'stubborn.pid');
     const child = run(`trap '' TERM; echo $$ > "${pidFile}"; sleep 30`);
-    await waitFor(() => fs.existsSync(pidFile));
+    await waitFor(() => hasPid(pidFile));
     const rootPid = Number((await fs.promises.readFile(pidFile, 'utf8')).trim());
     createReaper(child, 200).reap();
     /** SIGTERM alone leaves the trap-protected root running. */
@@ -74,7 +87,7 @@ describe('createReaper', () => {
     const reaper = createReaper(child, 200);
     const closed = new Promise<void>((resolve) => child.once('close', () => resolve()));
     await closed;
-    await waitFor(() => fs.existsSync(pidFile));
+    await waitFor(() => hasPid(pidFile));
     const workerPid = Number((await fs.promises.readFile(pidFile, 'utf8')).trim());
     expect(isGone(workerPid)).toBe(false);
     reaper.sweep();

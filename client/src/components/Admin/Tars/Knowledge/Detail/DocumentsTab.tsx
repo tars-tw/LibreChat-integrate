@@ -15,6 +15,7 @@ import { formatDateTime } from '../../Users/helpers';
 import ConfirmDialog from './ConfirmDialog';
 import RenameDialog from './RenameDialog';
 import UploadDialog from './UploadDialog';
+import { relayedError } from '../helpers';
 import StatusBadge from './StatusBadge';
 import { useLocalize } from '~/hooks';
 import Toolbar from './Toolbar';
@@ -64,7 +65,11 @@ export default function DocumentsTab({
       showToast({ message: localize('com_ui_tars_kb_ds_deleted'), status: 'success' });
       setDeleting(null);
     },
-    onError: () => showToast({ message: localize('com_ui_tars_admin_error'), status: 'error' }),
+    onError: (error) =>
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+        status: 'error',
+      }),
   });
 
   const reprocessMutation = useReprocessTarsDocumentMutation(knowledgeBaseId, {
@@ -72,7 +77,11 @@ export default function DocumentsTab({
       showToast({ message: localize('com_ui_tars_kb_reprocess_started'), status: 'success' });
       setReprocessing(null);
     },
-    onError: () => showToast({ message: localize('com_ui_tars_admin_error'), status: 'error' }),
+    onError: (error) =>
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+        status: 'error',
+      }),
   });
 
   const retryStuckMutation = useRetryTarsStuckDocumentsMutation(knowledgeBaseId, {
@@ -81,7 +90,11 @@ export default function DocumentsTab({
         message: data.message || localize('com_ui_tars_kb_retry_stuck_success'),
         status: 'success',
       }),
-    onError: () => showToast({ message: localize('com_ui_tars_admin_error'), status: 'error' }),
+    onError: (error) =>
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+        status: 'error',
+      }),
   });
 
   const retryStuckOneMutation = useRetryTarsStuckDocumentMutation(knowledgeBaseId, {
@@ -90,7 +103,11 @@ export default function DocumentsTab({
         message: data.message || localize('com_ui_tars_kb_retry_stuck_success'),
         status: 'success',
       }),
-    onError: () => showToast({ message: localize('com_ui_tars_admin_error'), status: 'error' }),
+    onError: (error) =>
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+        status: 'error',
+      }),
   });
 
   const toggle = (id: string) =>

@@ -10,6 +10,7 @@ import {
 } from '@librechat/client';
 import type { TTarsDocument } from 'librechat-data-provider';
 import { useRenameTarsDocumentMutation } from '~/data-provider';
+import { relayedError } from '../helpers';
 import { useLocalize } from '~/hooks';
 
 /** Renames one document. pwc_tars keeps the extension, so only the stem matters. */
@@ -31,7 +32,11 @@ export default function RenameDialog({
       showToast({ message: localize('com_ui_tars_kb_ds_renamed'), status: 'success' });
       onClose();
     },
-    onError: () => showToast({ message: localize('com_ui_tars_admin_error'), status: 'error' }),
+    onError: (error) =>
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+        status: 'error',
+      }),
   });
 
   const trimmed = name.trim();

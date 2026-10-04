@@ -1,7 +1,6 @@
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const {
-  TarsRequestError,
   fetchTarsModelProfiles,
   createTarsModelProfile,
   updateTarsModelProfile,
@@ -9,23 +8,12 @@ const {
   getTarsModelProfileNames,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 
 router.use('/models', requireJwtAuth);
 router.use('/model-profiles', requireJwtAuth);
-
-/**
- * pwc_tars answers 4xx with its own message (missing field, malformed config,
- * 409 when no system default model can take over a disabled one); relay it
- * with its status so the page can tell those cases apart.
- */
-const relayTarsError = (res, error, fallback) => {
-  if (error instanceof TarsRequestError && error.status >= 400 && error.status < 500) {
-    return res.status(error.status).json({ error: error.serverMessage ?? fallback });
-  }
-  return res.status(500).json({ error: fallback });
-};
 
 /**
  * @route GET /api/tars/models
@@ -40,7 +28,7 @@ router.get('/models', async (req, res) => {
     return res.json({ models });
   } catch (error) {
     logger.error('[GET /api/tars/models] Failed', error);
-    return res.status(500).json({ error: 'Failed to fetch pwc_tars model profiles' });
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars model profiles');
   }
 });
 

@@ -14,7 +14,7 @@ import {
   useTarsKnowledgeBaseOverviewQuery,
   useDeleteTarsKnowledgeBaseMutation,
 } from '~/data-provider';
-import { filterByName } from './helpers';
+import { filterByName, relayedError } from './helpers';
 import BatchModal from './BatchModal';
 import { useLocalize } from '~/hooks';
 import KnowledgeModal from './Modal';
@@ -52,8 +52,11 @@ export default function KnowledgeManager() {
       showToast({ message: localize('com_ui_tars_kb_deleted'), status: 'success' });
       setDeleting(null);
     },
-    onError: () =>
-      showToast({ message: localize('com_ui_tars_kb_delete_failed'), status: 'error' }),
+    onError: (error) =>
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_kb_delete_failed'),
+        status: 'error',
+      }),
   });
 
   const open = (kb: TTarsKnowledgeBase) => navigate(`/knowledge-bases/${kb.id}`);
