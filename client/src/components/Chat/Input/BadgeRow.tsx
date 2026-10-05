@@ -20,6 +20,7 @@ import ToolDialogs from './ToolDialogs';
 import TarsPlugins from './TarsPlugins';
 import FileSearch from './FileSearch';
 import ChartAgent from './ChartAgent';
+import FileAgent from './FileAgent';
 import Artifacts from './Artifacts';
 import MCPSelect from './MCPSelect';
 import WebSearch from './WebSearch';
@@ -381,6 +382,7 @@ function BadgeRow({
             <SqlAgent />
             <RagAgent />
             <ChartAgent />
+            <FileAgent />
             <TarsPlugins />
             <CodeInterpreter />
             <FileSearch />

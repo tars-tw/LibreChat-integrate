@@ -297,6 +297,32 @@ describe('matchesMcpServer', () => {
   });
 });
 
+describe('selection — pwc_tars builtins ride agent.tools', () => {
+  const ragItem: AgentItem = {
+    kind: 'builtin',
+    id: 'rag_agent',
+    name: 'com_ui_tars_rag_agent',
+    description: 'com_agents_tars_rag_info',
+    iconKey: 'rag_agent',
+  };
+
+  test('selected iff agent.tools carries one of the switch tools', () => {
+    const selected = deriveSelectedItems(
+      { ...emptyFormState, tools: ['tars_knowledge_search'] },
+      [ragItem],
+      [],
+    );
+    expect(selected.map((i) => i.id)).toEqual(['rag_agent']);
+
+    const otherSwitch = deriveSelectedItems(
+      { ...emptyFormState, tools: ['tars_generate_file'] },
+      [ragItem],
+      [],
+    );
+    expect(otherSwitch).toEqual([]);
+  });
+});
+
 describe('selection — ask_user_question builtin rides agent.tools', () => {
   const catalogWithAsk: AgentItem[] = [
     ...sampleCatalog,

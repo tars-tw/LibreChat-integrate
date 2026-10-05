@@ -25,6 +25,7 @@ import { requiresFileManagerRemoval } from './items/capabilities';
 import { useRemoveMCPTool, useVisibleTools } from '~/hooks/MCP';
 import ToolsMarketplaceDialog from './ToolsMarketplaceDialog';
 import { computeToggleAction } from './items/mutations';
+import { toggleTarsSwitchTools } from './items/tars';
 import { useLocalize, useHasAccess } from '~/hooks';
 import { useAgentPanelContext } from '~/Providers';
 import ItemDialog from './ItemDialog/ItemDialog';
@@ -140,6 +141,13 @@ export default function ToolsSection({ agentId }: Props) {
             { shouldDirty: true },
           );
           uninstallToolCredentials(patch.id);
+          break;
+        }
+        case 'tars-switch': {
+          const current = (getValues('tools') ?? []) as string[];
+          setValue('tools', toggleTarsSwitchTools(current, patch.id, patch.enable), {
+            shouldDirty: true,
+          });
           break;
         }
         case 'skill-remove': {

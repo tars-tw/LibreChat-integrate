@@ -125,6 +125,7 @@ export async function loadAddedAgent(
       sql_agent?: boolean;
       rag_agent?: boolean;
       chart_agent?: boolean;
+      file_agent?: boolean;
       tars_plugins?: string[];
       artifacts?: unknown;
       memory?: boolean;
@@ -148,6 +149,7 @@ export async function loadAddedAgent(
         sql_agent?: boolean;
         rag_agent?: boolean;
         chart_agent?: boolean;
+        file_agent?: boolean;
         tars_plugins?: string[];
         artifacts?: unknown;
         memory?: boolean;

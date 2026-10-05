@@ -15,6 +15,12 @@ export type BuiltinId =
   | `${AgentCapabilities.artifacts}`
   | `${AgentCapabilities.memory}`
   | `${AgentCapabilities.context}`
+  /** pwc_tars switches: presented as builtins, persisted as `tars_*` entries in
+   *  `agent.tools` — see `tars.ts`. */
+  | `${AgentCapabilities.rag_agent}`
+  | `${AgentCapabilities.sql_agent}`
+  | `${AgentCapabilities.chart_agent}`
+  | `${AgentCapabilities.file_agent}`
   /**
    * Native tool, not a capability: PRESENTED with the builtins (it ships with
    * the app and pauses the run, like a first-class feature), but selection and

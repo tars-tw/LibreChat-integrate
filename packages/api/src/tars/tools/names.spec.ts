@@ -7,12 +7,17 @@ describe('tarsToolsForToggles', () => {
     expect(tarsToolsForToggles({ rag_agent: false })).toEqual([]);
   });
 
-  it('mounts each switch as its pwc_tars tools, with file generation riding along', () => {
-    expect(tarsToolsForToggles({ rag_agent: true })).toEqual([
-      'tars_knowledge_search',
-      'tars_generate_file',
-    ]);
-    expect(tarsToolsForToggles({ rag_agent: true, sql_agent: true, chart_agent: true })).toEqual([
+  it('mounts each switch as its own pwc_tars tools, file generation included only by its switch', () => {
+    expect(tarsToolsForToggles({ rag_agent: true })).toEqual(['tars_knowledge_search']);
+    expect(tarsToolsForToggles({ file_agent: true })).toEqual(['tars_generate_file']);
+    expect(
+      tarsToolsForToggles({
+        rag_agent: true,
+        sql_agent: true,
+        chart_agent: true,
+        file_agent: true,
+      }),
+    ).toEqual([
       'tars_knowledge_search',
       'tars_sql_schema',
       'tars_sql_query',
@@ -23,12 +28,11 @@ describe('tarsToolsForToggles', () => {
 });
 
 describe('withTarsSpreadsheetTools', () => {
-  it('adds the spreadsheet tools and file generation, keeping what is there', () => {
+  it('adds only the spreadsheet tools, keeping what is there', () => {
     expect(withTarsSpreadsheetTools(['web_search'])).toEqual([
       'web_search',
       'tars_data_schema',
       'tars_data_query',
-      'tars_generate_file',
     ]);
   });
 
@@ -50,7 +54,7 @@ describe('tarsBuiltinToolCapability', () => {
     expect(tarsBuiltinToolCapability('tars_sql_query')).toBe(AgentCapabilities.sql_agent);
     expect(tarsBuiltinToolCapability('tars_create_chart')).toBe(AgentCapabilities.chart_agent);
     expect(tarsBuiltinToolCapability('tars_data_query')).toBeUndefined();
-    expect(tarsBuiltinToolCapability('tars_generate_file')).toBeUndefined();
+    expect(tarsBuiltinToolCapability('tars_generate_file')).toBe(AgentCapabilities.file_agent);
     expect(tarsBuiltinToolCapability('web_search')).toBeUndefined();
   });
 });

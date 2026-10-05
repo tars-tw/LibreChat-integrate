@@ -24,6 +24,7 @@ interface BadgeRowContextType {
   sqlAgent: ReturnType<typeof useToolToggle>;
   ragAgent: ReturnType<typeof useToolToggle>;
   chartAgent: ReturnType<typeof useToolToggle>;
+  fileAgent: ReturnType<typeof useToolToggle>;
   artifacts: ReturnType<typeof useToolToggle>;
   fileSearch: ReturnType<typeof useToolToggle>;
   codeInterpreter: ReturnType<typeof useToolToggle>;
@@ -114,6 +115,7 @@ export default function BadgeRowProvider({
       const sqlAgentToggleKey = `${LocalStorageKeys.LAST_SQL_AGENT_TOGGLE_}${storageSuffix}`;
       const ragAgentToggleKey = `${LocalStorageKeys.LAST_RAG_AGENT_TOGGLE_}${storageSuffix}`;
       const chartAgentToggleKey = `${LocalStorageKeys.LAST_CHART_AGENT_TOGGLE_}${storageSuffix}`;
+      const fileAgentToggleKey = `${LocalStorageKeys.LAST_FILE_AGENT_TOGGLE_}${storageSuffix}`;
 
       const codeToggleValue = getTimestampedValue(codeToggleKey);
       const webSearchToggleValue = getTimestampedValue(webSearchToggleKey);
@@ -124,6 +126,7 @@ export default function BadgeRowProvider({
       const sqlAgentToggleValue = getTimestampedValue(sqlAgentToggleKey);
       const ragAgentToggleValue = getTimestampedValue(ragAgentToggleKey);
       const chartAgentToggleValue = getTimestampedValue(chartAgentToggleKey);
+      const fileAgentToggleValue = getTimestampedValue(fileAgentToggleKey);
 
       const initialValues: Record<string, boolean | string> = {};
 
@@ -196,6 +199,14 @@ export default function BadgeRowProvider({
           initialValues[Tools.chart_agent] = JSON.parse(chartAgentToggleValue);
         } catch (e) {
           console.error('Failed to parse chart agent toggle value:', e);
+        }
+      }
+
+      if (fileAgentToggleValue !== null) {
+        try {
+          initialValues[AgentCapabilities.file_agent] = JSON.parse(fileAgentToggleValue);
+        } catch (e) {
+          console.error('Failed to parse file agent toggle value:', e);
         }
       }
 
@@ -301,6 +312,15 @@ export default function BadgeRowProvider({
     isAuthenticated: true,
   });
 
+  /** pwc_tars file generation (產生檔案) — its own switch, never implied by the others. */
+  const fileAgent = useToolToggle({
+    conversationId,
+    storageContextKey,
+    toolKey: AgentCapabilities.file_agent,
+    localStorageKey: LocalStorageKeys.LAST_FILE_AGENT_TOGGLE_,
+    isAuthenticated: true,
+  });
+
   const fileSearch = useToolToggle({
     conversationId,
     storageContextKey,
@@ -364,6 +384,7 @@ export default function BadgeRowProvider({
     sqlAgent,
     ragAgent,
     chartAgent,
+    fileAgent,
   };
 
   return <BadgeRowContext.Provider value={value}>{children}</BadgeRowContext.Provider>;

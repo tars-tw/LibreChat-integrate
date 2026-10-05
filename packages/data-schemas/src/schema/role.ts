@@ -50,6 +50,9 @@ const rolePermissionsSchema = new Schema(
     [PermissionTypes.CHART_AGENT]: {
       [Permissions.USE]: { type: Boolean },
     },
+    [PermissionTypes.FILE_AGENT]: {
+      [Permissions.USE]: { type: Boolean },
+    },
     [PermissionTypes.PEOPLE_PICKER]: {
       [Permissions.VIEW_USERS]: { type: Boolean },
       [Permissions.VIEW_GROUPS]: { type: Boolean },

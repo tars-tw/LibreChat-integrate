@@ -1,10 +1,13 @@
 import { AgentCapabilities, ArtifactModes } from 'librechat-data-provider';
+import type { TTarsToolSwitch } from 'librechat-data-provider';
 import type { AgentItem } from './types';
+import { isTarsSwitchId } from './tars';
 
 export type TogglePatch =
   | { type: 'builtin'; field: AgentCapabilities; value: boolean | string }
   | { type: 'tool-add'; id: string }
   | { type: 'tool-remove'; id: string }
+  | { type: 'tars-switch'; id: TTarsToolSwitch; enable: boolean }
   | { type: 'skill-add'; id: string }
   | { type: 'skill-remove'; id: string }
   | { type: 'mcp-add'; serverName: string }
@@ -17,6 +20,9 @@ function builtinTogglePatch(id: string, selected: boolean): TogglePatch {
     // Native tool presented as a builtin — it has no capability field; the
     // toggle edits agent.tools exactly like a plugin.
     return selected ? { type: 'tool-remove', id } : { type: 'tool-add', id };
+  }
+  if (isTarsSwitchId(id)) {
+    return { type: 'tars-switch', id, enable: !selected };
   }
   // Every other BuiltinId string equals its AgentCapabilities enum value, so
   // the id is already the form field name.

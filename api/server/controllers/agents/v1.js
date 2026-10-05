@@ -48,6 +48,7 @@ const {
   resolveAgentWorkspaceRestoreConfiguration,
   shouldValidateAgentWorkspaceDefaultBinding,
   validateAgentWorkspaceDefaultBinding,
+  isPersistableTarsTool,
 } = require('@librechat/api');
 const {
   Time,
@@ -637,7 +638,12 @@ const filterAuthorizedTools = async ({
     const isMCPTool = tool?.includes(Constants.mcp_delimiter) && !isActionToolName;
 
     if (!isMCPTool) {
-      if (availableTools[tool] || systemTools[tool] || isActionToolName) {
+      if (
+        availableTools[tool] ||
+        systemTools[tool] ||
+        isActionToolName ||
+        isPersistableTarsTool(tool)
+      ) {
         filteredTools.push(tool);
       }
       continue;
