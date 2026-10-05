@@ -268,6 +268,19 @@ describe('composeAgentUpdatePayload', () => {
     expect(payload.git_identity).toEqual({ name: 'Coding Agent', email: '' });
   });
 
+  it('keeps the brain binding only while a pwc_tars tool is selected', () => {
+    const form = createForm();
+    form.tars_domain_id = '205';
+    form.tools = ['tars_knowledge_search'];
+    const compose = (agentId?: string) =>
+      composeAgentUpdatePayload(form, agentId, undefined, { instructionsPromptChanged: false });
+    expect(compose('agent_123').payload.tars_domain_id).toBe('205');
+
+    form.tools = ['web_search'];
+    expect(compose('agent_123').payload.tars_domain_id).toBeNull();
+    expect(compose().payload.tars_domain_id).toBeUndefined();
+  });
+
   it('omits an empty Git identity when creating an agent', () => {
     const form = createForm();
     form.git_identity = { name: '', email: '' };
