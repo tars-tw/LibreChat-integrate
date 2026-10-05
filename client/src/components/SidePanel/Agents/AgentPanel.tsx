@@ -12,6 +12,7 @@ import {
   removeCodeExecutionCaller,
   resolveStatefulCodeEnvironment,
   isAssistantsEndpoint,
+  isTarsBuiltinToolName,
 } from 'librechat-data-provider';
 import type { Agent, AgentUpdateParams } from 'librechat-data-provider';
 import type { FieldNamesMarkedBoolean } from 'react-hook-form';
@@ -116,6 +117,22 @@ export function isSavedAgentOption(
 }
 
 /**
+ * The 專用腦 binding to persist. Like a stale memory scope, a binding hidden behind
+ * removed TARS tools would still rescope every turn, so it only survives while a TARS
+ * tool is selected; an existing agent clears it with `null`.
+ */
+function resolveTarsDomainBinding(
+  domainId: string | undefined,
+  tools: AgentForm['tools'],
+  agentId?: string | null,
+): string | null | undefined {
+  if (domainId && tools?.some(isTarsBuiltinToolName)) {
+    return domainId;
+  }
+  return agentId ? null : undefined;
+}
+
+/**
  * Normalizes the payload sent to the agent update/create endpoints.
  * Handles avatar reset requests for persistent agents independently of avatar uploads.
  * @param {AgentForm} data - Form data from the agent configuration form.
@@ -167,6 +184,7 @@ export function composeAgentUpdatePayload(
     skill_authoring_enabled,
     skills_scope,
     memory_scope,
+    tars_domain_id,
     avatar_action: avatarActionState,
   } = data;
 
@@ -262,6 +280,7 @@ export function composeAgentUpdatePayload(
       /** A hidden stale 'agent' scope must not survive disabling memory —
        *  runtime partitioning keys off memory_scope alone. */
       memory_scope: data.memory === true ? memory_scope : MemoryScope.user,
+      tars_domain_id: resolveTarsDomainBinding(tars_domain_id, data.tools, agent_id),
       ...(shouldResetAvatar ? { avatar: null } : {}),
     },
     provider,
