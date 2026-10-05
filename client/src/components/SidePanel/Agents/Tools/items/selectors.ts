@@ -8,6 +8,7 @@ import type { Action, AgentSubagentsConfig, GraphEdge } from 'librechat-data-pro
 import type { AgentItem, AgentItemKind } from './types';
 import { isFileBackedCapabilityEnabled } from './capabilities';
 import { isHandoffEdge } from './orchestration';
+import { isTarsSwitchSelected } from './tars';
 
 export interface FormSelection {
   subagents?: AgentSubagentsConfig;
@@ -60,6 +61,11 @@ function isBuiltinSelected(item: AgentItem, form: FormSelection): boolean {
     case 'ask_user_question':
       // Native tool presented as a builtin — selection lives in agent.tools.
       return form.tools.includes('ask_user_question');
+    case 'rag_agent':
+    case 'sql_agent':
+    case 'chart_agent':
+    case 'file_agent':
+      return isTarsSwitchSelected(form.tools, item.id);
     default:
       return false;
   }
