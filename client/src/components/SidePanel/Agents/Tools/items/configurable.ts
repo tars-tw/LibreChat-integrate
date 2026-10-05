@@ -1,5 +1,6 @@
 import type { AgentItem } from './types';
 import { pluginNeedsAuth } from './auth';
+import { isTarsSwitchId } from './tars';
 
 /**
  * Whether an item's detail dialog exposes configurable controls (credentials,
@@ -18,6 +19,7 @@ export function hasConfigurableSettings(item: AgentItem): boolean {
         item.id === 'memory' ||
         item.id === 'subagents' ||
         item.id === 'handoffs' ||
+        isTarsSwitchId(item.id) ||
         (item.id === 'web_search' && item.userProvidedAuth === true)
       );
     case 'tool':
