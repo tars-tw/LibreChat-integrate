@@ -1096,6 +1096,7 @@ const updateAgentHandler = async (req, res) => {
       avatar: avatarField,
       code_environment_id: codeEnvironmentIdField,
       git_identity: gitIdentityField,
+      tars_domain_id: tarsDomainIdField,
       _id,
       ...rest
     } = validatedData;
@@ -1105,6 +1106,9 @@ const updateAgentHandler = async (req, res) => {
     }
     if (gitIdentityField !== undefined) {
       updateData.git_identity = gitIdentityField;
+    }
+    if (tarsDomainIdField !== undefined) {
+      updateData.tars_domain_id = tarsDomainIdField;
     }
     let existingAgent;
 
@@ -1375,6 +1379,10 @@ const updateAgentHandler = async (req, res) => {
     if (updateData.git_identity === null) {
       delete updateData.git_identity;
       updateData.$unset = { ...updateData.$unset, git_identity: 1 };
+    }
+    if (updateData.tars_domain_id === null) {
+      delete updateData.tars_domain_id;
+      updateData.$unset = { ...updateData.$unset, tars_domain_id: 1 };
     }
 
     let updatedAgent =
