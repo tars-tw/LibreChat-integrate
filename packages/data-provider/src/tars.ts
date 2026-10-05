@@ -143,6 +143,24 @@ export const tarsBuiltinToolOf = (
   isTarsBuiltinToolName(toolName) ? TARS_BUILTIN_TOOLS[toolName] : undefined;
 
 /**
+ * The switches that mount pwc_tars's built-in tools, named like their
+ * `ephemeralAgent` flags. The chat sets them per turn; a saved agent persists
+ * the tools themselves in `agent.tools`, so both read this one table. Each
+ * switch is independent: file generation is its own switch, not a companion.
+ */
+export type TTarsToolSwitch = 'rag_agent' | 'sql_agent' | 'chart_agent' | 'file_agent';
+
+export const TARS_SWITCH_TOOLS: Readonly<Record<TTarsToolSwitch, readonly TTarsBuiltinToolName[]>> =
+  {
+    rag_agent: ['tars_knowledge_search'],
+    sql_agent: ['tars_sql_schema', 'tars_sql_query'],
+    chart_agent: ['tars_create_chart'],
+    file_agent: ['tars_generate_file'],
+  };
+
+export const TARS_TOOL_SWITCHES = Object.keys(TARS_SWITCH_TOOLS) as TTarsToolSwitch[];
+
+/**
  * pwc_tars plugin tools (`tars_tool_sdk`). An admin switches each plugin on per
  * brain inside `sys_domain.domain_functions` under `plugin:<name>`, next to the
  * built-in features; the chat only offers what that block enables. The helpers

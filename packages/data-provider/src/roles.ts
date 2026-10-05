@@ -13,6 +13,7 @@ import {
   sqlAgentPermissionsSchema,
   ragAgentPermissionsSchema,
   chartAgentPermissionsSchema,
+  fileAgentPermissionsSchema,
   fileSearchPermissionsSchema,
   multiConvoPermissionsSchema,
   mcpServersPermissionsSchema,
@@ -90,6 +91,9 @@ const defaultRolesSchema = z.object({
         [Permissions.USE]: z.boolean().default(true),
       }),
       [PermissionTypes.CHART_AGENT]: chartAgentPermissionsSchema.extend({
+        [Permissions.USE]: z.boolean().default(true),
+      }),
+      [PermissionTypes.FILE_AGENT]: fileAgentPermissionsSchema.extend({
         [Permissions.USE]: z.boolean().default(true),
       }),
       [PermissionTypes.PEOPLE_PICKER]: peoplePickerPermissionsSchema.extend({
@@ -199,6 +203,9 @@ export const roleDefaults = defaultRolesSchema.parse({
       [PermissionTypes.CHART_AGENT]: {
         [Permissions.USE]: true,
       },
+      [PermissionTypes.FILE_AGENT]: {
+        [Permissions.USE]: true,
+      },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
         [Permissions.VIEW_GROUPS]: true,
@@ -267,6 +274,7 @@ export const roleDefaults = defaultRolesSchema.parse({
       [PermissionTypes.SQL_AGENT]: {},
       [PermissionTypes.RAG_AGENT]: {},
       [PermissionTypes.CHART_AGENT]: {},
+      [PermissionTypes.FILE_AGENT]: {},
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
         [Permissions.VIEW_GROUPS]: false,
