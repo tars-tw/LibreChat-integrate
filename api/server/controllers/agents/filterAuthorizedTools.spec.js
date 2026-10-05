@@ -148,6 +148,36 @@ describe('MCP Tool Authorization', () => {
       expect(result).not.toContain(`toolB${d}forbiddenServer`);
     });
 
+    test('should keep pwc_tars built-in tools only while TARS is configured', async () => {
+      const tools = ['tars_knowledge_search', 'tars_generate_file', 'tars_unknown', 'web_search'];
+      const previous = process.env.TARS_AUTH_URL;
+      try {
+        process.env.TARS_AUTH_URL = 'http://tars.test';
+        const enabled = await filterAuthorizedTools({
+          tools,
+          userId,
+          user: testUser,
+          availableTools,
+        });
+        expect(enabled).toEqual(['tars_knowledge_search', 'tars_generate_file', 'web_search']);
+
+        delete process.env.TARS_AUTH_URL;
+        const disabled = await filterAuthorizedTools({
+          tools,
+          userId,
+          user: testUser,
+          availableTools,
+        });
+        expect(disabled).toEqual(['web_search']);
+      } finally {
+        if (previous == null) {
+          delete process.env.TARS_AUTH_URL;
+        } else {
+          process.env.TARS_AUTH_URL = previous;
+        }
+      }
+    });
+
     test('should strip MCP tools when user lacks MCP server use permission', async () => {
       mockUserCanUseMCPServers.mockResolvedValue(false);
 
