@@ -40,6 +40,37 @@ describe('buildCatalog', () => {
     ]);
   });
 
+  test('emits the pwc_tars builtins only when TARS is linked and the role grants them', () => {
+    const tarsIds = (inputs: BuildCatalogInputs) =>
+      buildCatalog(inputs)
+        .filter((i) => i.kind === 'builtin')
+        .map((i) => i.id);
+    const base: BuildCatalogInputs = {
+      ...emptyInputs,
+      agentsConfig: {
+        capabilities: [
+          AgentCapabilities.rag_agent,
+          AgentCapabilities.sql_agent,
+          AgentCapabilities.chart_agent,
+          AgentCapabilities.file_agent,
+        ],
+      },
+      permissions: {
+        ...emptyInputs.permissions,
+        ragAgent: true,
+        sqlAgent: true,
+        chartAgent: false,
+        fileAgent: true,
+      },
+    };
+    expect(tarsIds(base)).toEqual([]);
+    expect(tarsIds({ ...base, tarsEnabled: true })).toEqual([
+      AgentCapabilities.rag_agent,
+      AgentCapabilities.sql_agent,
+      AgentCapabilities.file_agent,
+    ]);
+  });
+
   test('emits the memory builtin only when showMemory is set', () => {
     const memoryId = (i: { kind: string; id: string }) =>
       i.kind === 'builtin' && i.id === AgentCapabilities.memory;

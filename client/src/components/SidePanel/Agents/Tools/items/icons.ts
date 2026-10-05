@@ -11,6 +11,10 @@ import {
   Workflow,
   Zap,
   Layers,
+  BookOpen,
+  Database,
+  BarChart3,
+  FileOutput,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { AgentItem } from './types';
@@ -49,6 +53,22 @@ const BUILTIN_ICONS: Record<string, ItemIcon> = {
   ask_user_question: {
     Icon: MessageCircleQuestion,
     colorClass: 'bg-teal-500/15 text-teal-600 dark:text-teal-300',
+  },
+  rag_agent: {
+    Icon: BookOpen,
+    colorClass: 'bg-orange-500/15 text-orange-600 dark:text-orange-300',
+  },
+  sql_agent: {
+    Icon: Database,
+    colorClass: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-300',
+  },
+  chart_agent: {
+    Icon: BarChart3,
+    colorClass: 'bg-lime-500/15 text-lime-600 dark:text-lime-300',
+  },
+  file_agent: {
+    Icon: FileOutput,
+    colorClass: 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-300',
   },
 };
 

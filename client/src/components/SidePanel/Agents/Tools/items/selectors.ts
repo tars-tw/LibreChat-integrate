@@ -7,6 +7,7 @@ import {
 import type { Action } from 'librechat-data-provider';
 import type { AgentItem, AgentItemKind } from './types';
 import { isFileBackedCapabilityEnabled } from './capabilities';
+import { isTarsSwitchSelected } from './tars';
 
 export interface FormSelection {
   execute_code: boolean;
@@ -53,6 +54,11 @@ function isBuiltinSelected(item: AgentItem, form: FormSelection): boolean {
     case 'ask_user_question':
       // Native tool presented as a builtin — selection lives in agent.tools.
       return form.tools.includes('ask_user_question');
+    case 'rag_agent':
+    case 'sql_agent':
+    case 'chart_agent':
+    case 'file_agent':
+      return isTarsSwitchSelected(form.tools, item.id);
     default:
       return false;
   }

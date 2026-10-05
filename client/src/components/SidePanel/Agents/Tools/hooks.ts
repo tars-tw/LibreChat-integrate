@@ -15,7 +15,7 @@ import {
 import type { TSkillSummary } from 'librechat-data-provider';
 import type { AgentForm, ExtendedFile } from '~/common';
 import type { AgentItem } from './items/types';
-import { useVerifyAgentToolAuth, useGetAgentFiles } from '~/data-provider';
+import { useVerifyAgentToolAuth, useGetAgentFiles, useGetStartupConfig } from '~/data-provider';
 import { useLocalize, useHasAccess, useHasMemoryAccess } from '~/hooks';
 import { useFileMapContext, useAgentPanelContext } from '~/Providers';
 import { deriveSelectedItems } from './items/selectors';
@@ -175,6 +175,24 @@ export function useAgentItems({
     permissionType: PermissionTypes.FILE_SEARCH,
     permission: Permissions.USE,
   });
+  const hasRagAgentAccess = useHasAccess({
+    permissionType: PermissionTypes.RAG_AGENT,
+    permission: Permissions.USE,
+  });
+  const hasSqlAgentAccess = useHasAccess({
+    permissionType: PermissionTypes.SQL_AGENT,
+    permission: Permissions.USE,
+  });
+  const hasChartAgentAccess = useHasAccess({
+    permissionType: PermissionTypes.CHART_AGENT,
+    permission: Permissions.USE,
+  });
+  const hasFileAgentAccess = useHasAccess({
+    permissionType: PermissionTypes.FILE_AGENT,
+    permission: Permissions.USE,
+  });
+  const { data: startupConfig } = useGetStartupConfig();
+  const tarsEnabled = startupConfig?.tarsAuth === true;
   const showMemory = useShowMemory();
   const webSearchUserProvided = useWebSearchUserProvided();
   const builtinAuthMap = useBuiltinAuthMap();
@@ -209,7 +227,12 @@ export function useAgentItems({
           webSearch: hasWebSearchAccess,
           runCode: hasRunCodeAccess,
           fileSearch: hasFileSearchAccess,
+          ragAgent: hasRagAgentAccess,
+          sqlAgent: hasSqlAgentAccess,
+          chartAgent: hasChartAgentAccess,
+          fileAgent: hasFileAgentAccess,
         },
+        tarsEnabled,
         showMemory,
         webSearchUserProvided,
         builtinAuthMap,
@@ -224,6 +247,11 @@ export function useAgentItems({
       hasWebSearchAccess,
       hasRunCodeAccess,
       hasFileSearchAccess,
+      hasRagAgentAccess,
+      hasSqlAgentAccess,
+      hasChartAgentAccess,
+      hasFileAgentAccess,
+      tarsEnabled,
       skillsPermission,
       showMemory,
       webSearchUserProvided,

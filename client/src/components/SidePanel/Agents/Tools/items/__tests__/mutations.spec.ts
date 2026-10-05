@@ -131,6 +131,29 @@ describe('computeToggleAction', () => {
   });
 });
 
+describe('computeToggleAction — pwc_tars builtin', () => {
+  const item: AgentItem = {
+    kind: 'builtin',
+    id: 'sql_agent',
+    name: 'com_ui_tars_sql_agent',
+    description: 'com_agents_tars_sql_info',
+    iconKey: 'sql_agent',
+  };
+
+  test('toggles the switch instead of a capability field', () => {
+    expect(computeToggleAction(item, { selected: false })).toEqual({
+      type: 'tars-switch',
+      id: 'sql_agent',
+      enable: true,
+    });
+    expect(computeToggleAction(item, { selected: true })).toEqual({
+      type: 'tars-switch',
+      id: 'sql_agent',
+      enable: false,
+    });
+  });
+});
+
 describe('computeToggleAction — ask_user_question builtin', () => {
   const item = {
     kind: 'builtin',

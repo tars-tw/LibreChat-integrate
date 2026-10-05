@@ -136,7 +136,8 @@ export function buildTarsDataFilesContext(files: readonly TarsDataFile[]): strin
     '# Attached spreadsheets Runtime Context\n' +
     'Structured spreadsheet files attached to this conversation. All of them are loaded as ' +
     'tables for `tars_data_schema` (list the tables and columns) and `tars_data_query` (one ' +
-    'read-only DuckDB query); `tars_create_chart` and `tars_generate_file` can query them too:\n' +
+    'read-only DuckDB query); `tars_create_chart` and `tars_generate_file`, when equipped, can ' +
+    'query them too:\n' +
     lines.join('\n')
   );
 }

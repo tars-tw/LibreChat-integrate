@@ -134,6 +134,8 @@ export type TEphemeralAgent = {
   rag_agent?: boolean;
   /** pwc_tars chart agent (產生圖表). */
   chart_agent?: boolean;
+  /** pwc_tars file generation (產生檔案). */
+  file_agent?: boolean;
   /** pwc_tars plugin tools (`tars_tool_sdk`) switched on for this chat, by plugin name. */
   tars_plugins?: string[];
   file_search?: boolean;

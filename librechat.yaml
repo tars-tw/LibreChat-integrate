@@ -26,6 +26,7 @@ endpoints:
       - sql_agent
       - rag_agent
       - chart_agent
+      - file_agent
       - skills
       - context
 

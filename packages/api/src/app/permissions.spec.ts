@@ -89,6 +89,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -155,6 +156,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -285,6 +287,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -351,6 +354,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -467,6 +471,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -533,6 +538,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -662,6 +668,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -728,6 +735,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -844,6 +852,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -910,6 +919,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -1031,6 +1041,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -1085,6 +1096,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,
@@ -1223,6 +1235,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: false },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: false,
@@ -1281,6 +1294,7 @@ describe('updateInterfacePermissions - permissions', () => {
       [PermissionTypes.SQL_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.RAG_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.CHART_AGENT]: { [Permissions.USE]: true },
+      [PermissionTypes.FILE_AGENT]: { [Permissions.USE]: true },
       [PermissionTypes.MARKETPLACE]: { [Permissions.USE]: true },
       [PermissionTypes.PEOPLE_PICKER]: {
         [Permissions.VIEW_USERS]: true,

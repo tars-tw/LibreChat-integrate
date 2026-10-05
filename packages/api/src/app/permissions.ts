@@ -39,6 +39,8 @@ function hasExplicitConfig(
       return interfaceConfig?.ragAgent !== undefined;
     case PermissionTypes.CHART_AGENT:
       return interfaceConfig?.chartAgent !== undefined;
+    case PermissionTypes.FILE_AGENT:
+      return interfaceConfig?.fileAgent !== undefined;
     case PermissionTypes.PEOPLE_PICKER:
       return interfaceConfig?.peoplePicker !== undefined;
     case PermissionTypes.MARKETPLACE:
@@ -381,6 +383,13 @@ export async function updateInterfacePermissions({
           loadedInterface.chartAgent,
           defaultPerms[PermissionTypes.CHART_AGENT]?.[Permissions.USE],
           defaults.chartAgent,
+        ),
+      },
+      [PermissionTypes.FILE_AGENT]: {
+        [Permissions.USE]: getPermissionValue(
+          loadedInterface.fileAgent,
+          defaultPerms[PermissionTypes.FILE_AGENT]?.[Permissions.USE],
+          defaults.fileAgent,
         ),
       },
       [PermissionTypes.PEOPLE_PICKER]: {

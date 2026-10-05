@@ -49,6 +49,10 @@ export enum PermissionTypes {
    */
   CHART_AGENT = 'CHART_AGENT',
   /**
+   * Type for using the pwc_tars file generation ("產生檔案") feature
+   */
+  FILE_AGENT = 'FILE_AGENT',
+  /**
    * Type for People Picker Permissions
    */
   PEOPLE_PICKER = 'PEOPLE_PICKER',
@@ -103,6 +107,7 @@ export const PERMISSION_TYPE_INTERFACE_FIELDS: Record<PermissionTypes, string> =
   [PermissionTypes.SQL_AGENT]: 'sqlAgent',
   [PermissionTypes.RAG_AGENT]: 'ragAgent',
   [PermissionTypes.CHART_AGENT]: 'chartAgent',
+  [PermissionTypes.FILE_AGENT]: 'fileAgent',
   [PermissionTypes.FILE_SEARCH]: 'fileSearch',
   [PermissionTypes.FILE_CITATIONS]: 'fileCitations',
   [PermissionTypes.PEOPLE_PICKER]: 'peoplePicker',
@@ -242,6 +247,11 @@ export const chartAgentPermissionsSchema = z.object({
 });
 export type TChartAgentPermissions = z.infer<typeof chartAgentPermissionsSchema>;
 
+export const fileAgentPermissionsSchema = z.object({
+  [Permissions.USE]: z.boolean().default(true),
+});
+export type TFileAgentPermissions = z.infer<typeof fileAgentPermissionsSchema>;
+
 export const peoplePickerPermissionsSchema = z.object({
   [Permissions.VIEW_USERS]: z.boolean().default(true),
   [Permissions.VIEW_GROUPS]: z.boolean().default(true),
@@ -315,6 +325,7 @@ export const permissionsSchema = z.object({
   [PermissionTypes.SQL_AGENT]: sqlAgentPermissionsSchema,
   [PermissionTypes.RAG_AGENT]: ragAgentPermissionsSchema,
   [PermissionTypes.CHART_AGENT]: chartAgentPermissionsSchema,
+  [PermissionTypes.FILE_AGENT]: fileAgentPermissionsSchema,
   [PermissionTypes.PEOPLE_PICKER]: peoplePickerPermissionsSchema,
   [PermissionTypes.MARKETPLACE]: marketplacePermissionsSchema,
   [PermissionTypes.FILE_SEARCH]: fileSearchPermissionsSchema,

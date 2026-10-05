@@ -28,6 +28,7 @@ import AddMcpServerDialog from './ItemDialog/AddMcpServerDialog';
 import { computeToggleAction } from './items/mutations';
 import { useLocalize, useToolFavorites } from '~/hooks';
 import MarketplaceCatalog from './MarketplaceCatalog';
+import { toggleTarsSwitchTools } from './items/tars';
 import ItemDialog from './ItemDialog/ItemDialog';
 import { applyFilter } from './items/filtering';
 import { NEW_ACTION_ID } from './items/types';
@@ -148,6 +149,13 @@ export default function ToolsMarketplaceDialog({
             { shouldDirty: true },
           );
           uninstallToolCredentials(patch.id);
+          break;
+        }
+        case 'tars-switch': {
+          const current = (getValues('tools') ?? []) as string[];
+          setValue('tools', toggleTarsSwitchTools(current, patch.id, patch.enable), {
+            shouldDirty: true,
+          });
           break;
         }
         case 'mcp-add': {

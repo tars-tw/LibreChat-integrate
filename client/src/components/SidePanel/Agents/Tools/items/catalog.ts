@@ -3,6 +3,7 @@ import type { TPlugin, TSkillSummary, Action } from 'librechat-data-provider';
 import type { AgentItem, SkillItem, BuiltinId } from './types';
 import type { MCPServerInfo } from '~/common';
 import { pluginNeedsAuth } from './auth';
+import { isTarsSwitchId } from './tars';
 
 /** Maps skill summaries to catalog items, flagging the current user's own skills. */
 export function buildSkillItems(skills: TSkillSummary[], currentUserId?: string): SkillItem[] {
@@ -34,7 +35,16 @@ export interface BuildCatalogInputs {
     webSearch: boolean;
     runCode: boolean;
     fileSearch: boolean;
+    ragAgent?: boolean;
+    sqlAgent?: boolean;
+    chartAgent?: boolean;
+    fileAgent?: boolean;
   };
+  /**
+   * Whether the deployment is linked to pwc_tars (`startupConfig.tarsAuth`). The
+   * pwc_tars builtins need it on top of their capability and role grant.
+   */
+  tarsEnabled?: boolean;
   /**
    * Id of the signed-in user. When provided, skills authored by this user are
    * flagged `ownedByUser` so the "Made by you" view can surface them. Optional
@@ -96,16 +106,45 @@ const BUILTIN_DEFINITIONS: BuiltinDef[] = [
     nameKey: 'com_assistants_file_search',
     descriptionKey: 'com_agents_file_search_info',
   },
+  {
+    id: AgentCapabilities.rag_agent,
+    iconKey: 'rag_agent',
+    nameKey: 'com_ui_tars_rag_agent',
+    descriptionKey: 'com_agents_tars_rag_info',
+  },
+  {
+    id: AgentCapabilities.sql_agent,
+    iconKey: 'sql_agent',
+    nameKey: 'com_ui_tars_sql_agent',
+    descriptionKey: 'com_agents_tars_sql_info',
+  },
+  {
+    id: AgentCapabilities.chart_agent,
+    iconKey: 'chart_agent',
+    nameKey: 'com_ui_tars_chart_agent',
+    descriptionKey: 'com_agents_tars_chart_info',
+  },
+  {
+    id: AgentCapabilities.file_agent,
+    iconKey: 'file_agent',
+    nameKey: 'com_ui_tars_file_agent',
+    descriptionKey: 'com_agents_tars_file_info',
+  },
 ];
 
 /** Role grant each builtin needs on top of its capability. A builtin absent here
  *  (`artifacts`) carries no role permission and passes on the capability alone. */
-const BUILTIN_ROLE_PERMISSIONS: Partial<Record<BuiltinId, 'webSearch' | 'runCode' | 'fileSearch'>> =
-  {
-    [AgentCapabilities.execute_code]: 'runCode',
-    [AgentCapabilities.web_search]: 'webSearch',
-    [AgentCapabilities.file_search]: 'fileSearch',
-  };
+const BUILTIN_ROLE_PERMISSIONS: Partial<
+  Record<BuiltinId, Exclude<keyof BuildCatalogInputs['permissions'], 'mcp' | 'skills'>>
+> = {
+  [AgentCapabilities.execute_code]: 'runCode',
+  [AgentCapabilities.web_search]: 'webSearch',
+  [AgentCapabilities.file_search]: 'fileSearch',
+  [AgentCapabilities.rag_agent]: 'ragAgent',
+  [AgentCapabilities.sql_agent]: 'sqlAgent',
+  [AgentCapabilities.chart_agent]: 'chartAgent',
+  [AgentCapabilities.file_agent]: 'fileAgent',
+};
 
 function countEndpoints(settings: Action['settings']): number {
   if (settings == null) {
@@ -126,8 +165,11 @@ export function buildCatalog(inputs: BuildCatalogInputs): AgentItem[] {
     if (!enabled.has(def.id)) {
       continue;
     }
+    if (isTarsSwitchId(def.id) && inputs.tarsEnabled !== true) {
+      continue;
+    }
     const roleGrant = BUILTIN_ROLE_PERMISSIONS[def.id];
-    if (roleGrant != null && !inputs.permissions[roleGrant]) {
+    if (roleGrant != null && inputs.permissions[roleGrant] !== true) {
       continue;
     }
     items.push({
