@@ -162,6 +162,11 @@ const agentSchema: Schema<IAgent> = new Schema<IAgent>(
       enum: ['user', 'agent'],
       default: undefined,
     },
+    /** pwc_tars 專用腦 the agent's TARS tools are scoped to; unset follows the chat. */
+    tars_domain_id: {
+      type: String,
+      default: undefined,
+    },
     tenantId: {
       type: String,
       index: true,

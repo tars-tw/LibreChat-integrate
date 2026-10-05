@@ -1827,6 +1827,19 @@ describe('Agent Controllers - Mass Assignment Protection', () => {
       expect(agentInDb.git_identity).toBeUndefined();
     });
 
+    test('binds and clears a pwc_tars brain', async () => {
+      mockReq.user.id = existingAgentAuthorId.toString();
+      mockReq.params.id = existingAgentId;
+
+      mockReq.body = { tars_domain_id: '224' };
+      await updateAgentHandler(mockReq, mockRes);
+      expect((await Agent.findOne({ id: existingAgentId })).tars_domain_id).toBe('224');
+
+      mockReq.body = { tars_domain_id: null };
+      await updateAgentHandler(mockReq, mockRes);
+      expect((await Agent.findOne({ id: existingAgentId })).tars_domain_id).toBeUndefined();
+    });
+
     test('allows unrelated edits to an existing scope after policy is tightened', async () => {
       await Agent.updateOne(
         { id: existingAgentId },

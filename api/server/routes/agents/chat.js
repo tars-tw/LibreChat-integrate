@@ -9,6 +9,7 @@ const {
   applyResumeModelParameters,
   GenerationJobManager,
   getSafeErrorMetadata,
+  createBindTarsAgentDomain,
 } = require('@librechat/api');
 const { PermissionTypes, Permissions, PermissionBits } = require('librechat-data-provider');
 const {
@@ -24,7 +25,7 @@ const guardSubagentThreadTurn = require('~/server/middleware/validate/subagentTh
 const AgentController = require('~/server/controllers/agents/request');
 const ResumeController = require('~/server/controllers/agents/resume');
 const addTitle = require('~/server/services/Endpoints/agents/title');
-const { getFiles, getRoleByName } = require('~/models');
+const { getFiles, getAgent, getRoleByName } = require('~/models');
 
 const router = express.Router();
 
@@ -36,6 +37,10 @@ const checkAgentAccess = generateCheckAccess({
 });
 const checkAgentResourceAccess = canAccessAgentFromBody({
   requiredPermission: PermissionBits.VIEW,
+});
+const bindTarsAgentDomain = createBindTarsAgentDomain({
+  getAgentDomainId: async (agentId) =>
+    (await getAgent({ id: agentId }, { tars_domain_id: 1 }))?.tars_domain_id,
 });
 
 /**
@@ -85,6 +90,7 @@ router.use(checkAgentAccess);
 router.use(checkAgentResourceAccess);
 router.use(validateConvoAccess);
 router.use(guardSubagentThreadTurn);
+router.use(bindTarsAgentDomain);
 router.use(injectTarsDomain);
 router.use(buildEndpointOption);
 

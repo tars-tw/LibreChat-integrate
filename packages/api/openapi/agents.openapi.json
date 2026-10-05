@@ -2040,6 +2040,13 @@
               "agent"
             ]
           },
+          "tars_domain_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
           "agent_ids": {
             "type": "array",
             "items": {
@@ -2472,6 +2479,13 @@
               "user",
               "agent"
             ]
+          },
+          "tars_domain_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
           },
           "agent_ids": {
             "type": "array",
@@ -2935,6 +2949,13 @@
               "user",
               "agent"
             ]
+          },
+          "tars_domain_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
           },
           "agent_ids": {
             "type": "array",

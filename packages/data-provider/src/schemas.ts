@@ -421,6 +421,8 @@ export const defaultAgentFormValues = {
     | undefined,
   /** Memory partition: 'agent' isolates memories per (user, agent); default shared pool */
   memory_scope: undefined as MemoryScope | undefined,
+  /** pwc_tars 專用腦 the agent's TARS tools are scoped to; unset follows the chat. */
+  tars_domain_id: undefined as string | undefined,
 };
 
 export const ImageVisionTool: FunctionTool = {
