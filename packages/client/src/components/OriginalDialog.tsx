@@ -158,6 +158,7 @@ type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.
   showCloseButton?: boolean;
   disableScroll?: boolean;
   overlayClassName?: string;
+  closeButtonClassName?: string;
 };
 
 const DialogContent: React.ForwardRefExoticComponent<
@@ -165,12 +166,14 @@ const DialogContent: React.ForwardRefExoticComponent<
     showCloseButton?: boolean;
     disableScroll?: boolean;
     overlayClassName?: string;
+    closeButtonClassName?: string;
   } & React.RefAttributes<HTMLDivElement>
 > = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, DialogContentProps>(
   (
     {
       className,
       overlayClassName,
+      closeButtonClassName,
       showCloseButton = true,
       children,
       style,
@@ -324,7 +327,12 @@ const DialogContent: React.ForwardRefExoticComponent<
             aria-hidden="true"
           />
           {showCloseButton && (
-            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-ring-primary ring-offset-surface-dialog transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-text-primary focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-surface-hover data-[state=open]:text-text-secondary">
+            <DialogPrimitive.Close
+              className={cn(
+                'absolute right-4 top-4 rounded-sm opacity-70 ring-ring-primary ring-offset-surface-dialog transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-text-primary focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-surface-hover data-[state=open]:text-text-secondary',
+                closeButtonClassName,
+              )}
+            >
               <X className="h-6 w-6" aria-hidden="true" />
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>

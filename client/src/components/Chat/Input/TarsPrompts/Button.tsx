@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { NotebookPen } from 'lucide-react';
 import { TooltipAnchor } from '@librechat/client';
 import type { TTarsDomain } from 'librechat-data-provider';
+import useTarsPromptsDomainId from '~/hooks/Tars/useTarsPromptsDomainId';
 import { useTarsDomainsQuery } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
@@ -17,17 +18,15 @@ const resolveDefaultDomain = (domains: TTarsDomain[]): TTarsDomain | undefined =
 
 /**
  * "我的提示" entry point in the chat composer. Opens a panel listing the
- * three-tier pwc_tars prompts for the conversation's current specialized brain
- * and lets the user insert or quickly create one. Renders nothing for non-tars
- * users (no accessible brains). The panel is portaled to `document.body` so the
+ * three-tier pwc_tars prompts for the chat's specialized brain (a selected
+ * agent's bound brain, else the conversation's) and lets the user insert or
+ * quickly create one. Renders nothing for non-tars users (no accessible brains). The panel is portaled to `document.body` so the
  * composer's `overflow-hidden` doesn't clip it.
  */
 function PromptsButton({
-  domainId,
   insertPrompt,
   disabled,
 }: {
-  domainId?: string | null;
   insertPrompt: (text: string) => void;
   disabled?: boolean;
 }) {
@@ -37,6 +36,7 @@ function PromptsButton({
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const { data: domains = [] } = useTarsDomainsQuery();
+  const domainId = useTarsPromptsDomainId();
 
   const effectiveDomain = useMemo(() => {
     const target = domainId ? String(domainId) : null;

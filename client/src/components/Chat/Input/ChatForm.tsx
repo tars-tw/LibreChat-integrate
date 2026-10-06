@@ -863,7 +863,6 @@ const ChatForm = memo(function ChatForm({
                     setFilesLoading={setFilesLoading}
                   />
                   <TarsPromptsButton
-                    domainId={conversation?.domain_id}
                     insertPrompt={insertPrompt}
                     disabled={disableInputs || isNotAppendable}
                   />

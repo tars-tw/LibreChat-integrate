@@ -64,6 +64,7 @@ type DialogTemplateProps = {
   headerClassName?: string;
   mainClassName?: string;
   footerClassName?: string;
+  closeButtonClassName?: string;
   showCloseButton?: boolean;
   showCancelButton?: boolean;
   onClose?: () => void;
@@ -84,6 +85,7 @@ const OGDialogTemplate: ForwardRefExoticComponent<
     mainClassName,
     headerClassName,
     footerClassName,
+    closeButtonClassName,
     showCloseButton = false,
     overlayClassName,
     showCancelButton = true,
@@ -120,6 +122,7 @@ const OGDialogTemplate: ForwardRefExoticComponent<
     <OGDialogContent
       overlayClassName={overlayClassName}
       showCloseButton={showCloseButton}
+      closeButtonClassName={closeButtonClassName}
       ref={ref}
       className={cn(
         /** `border-none` clears the default edge; the contrast variant has to
