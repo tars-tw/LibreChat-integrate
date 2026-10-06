@@ -5,9 +5,9 @@ import { Plus, Cloud, User, FileText, BookText, ListFilter, ChevronDown } from '
 import type { TTarsPrompt, TTarsPromptScope } from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks';
 import type { Option } from '~/common';
+import useTarsPromptsDomainId from '~/hooks/Tars/useTarsPromptsDomainId';
 import AutoSendPrompt from '../buttons/AutoSendPrompt';
 import { useTarsPromptsQuery } from '~/data-provider';
-import { useChatContext } from '~/Providers';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 import Item from './Item';
@@ -44,8 +44,7 @@ const SCOPE_META: Record<
 export default function TarsPromptsPanel() {
   const location = useLocation();
   const localize = useLocalize();
-  const { conversation } = useChatContext();
-  const domainId = conversation?.domain_id ?? null;
+  const domainId = useTarsPromptsDomainId();
   const { data, isLoading } = useTarsPromptsQuery(domainId, { enabled: true });
   const prompts = useMemo(() => data?.prompts ?? [], [data]);
 
