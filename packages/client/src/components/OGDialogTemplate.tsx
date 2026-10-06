@@ -65,6 +65,7 @@ type DialogTemplateProps = {
   headerClassName?: string;
   mainClassName?: string;
   footerClassName?: string;
+  closeButtonClassName?: string;
   showCloseButton?: boolean;
   showCancelButton?: boolean;
   cancelDisabled?: boolean;
@@ -90,6 +91,7 @@ const OGDialogTemplate: ForwardRefExoticComponent<
     mainClassName,
     headerClassName,
     footerClassName,
+    closeButtonClassName,
     showCloseButton = false,
     overlayClassName,
     showCancelButton = true,
@@ -135,6 +137,7 @@ const OGDialogTemplate: ForwardRefExoticComponent<
       onCloseAutoFocus={onCloseAutoFocus}
       onEscapeKeyDown={onEscapeKeyDown}
       onInteractOutside={onInteractOutside}
+      closeButtonClassName={closeButtonClassName}
       ref={ref}
       className={cn('bg-surface-dialog text-text-primary w-11/12', className ?? '')}
       onClick={(e) => e.stopPropagation()}
