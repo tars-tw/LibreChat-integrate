@@ -1027,6 +1027,8 @@ const getAgentHandler = async (req, res, expandProperties = false) => {
         model_parameters: getSafeModelParameters(agent.model_parameters),
         isPublic: agent.isPublic,
         version: agent.version,
+        // The 專用腦 every turn runs against; the chat lists that brain's prompts
+        tars_domain_id: agent.tars_domain_id,
         // Safe metadata
         createdAt: agent.createdAt,
         updatedAt: agent.updatedAt,
