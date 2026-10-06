@@ -45,7 +45,18 @@ export default function TimelineDialog({
         title={target?.username ?? localize('com_ui_tars_ops_timeline_title')}
         description={target?.email ?? undefined}
         showCloseButton={true}
-        className="w-11/12 md:max-w-2xl"
+        className="w-11/12 md:max-w-5xl"
+        /**
+         * The dialog body is a grid item, and a grid item defaults to
+         * `min-width: auto` — one long description would otherwise stretch the
+         * track past the dialog and push the footer out of view.
+         */
+        mainClassName="min-w-0"
+        /**
+         * The X glyph sits 5px inside its 24px box, so 19px lands its stroke on
+         * the 24px padding line the footer's 取消 button ends on.
+         */
+        closeButtonClassName="right-[19px]"
         main={
           <div className="space-y-4">
             <div className="flex flex-wrap gap-6 rounded-lg bg-surface-secondary px-4 py-3 text-sm">
@@ -117,13 +128,10 @@ export default function TimelineDialog({
                             {formatDateTime(log.created_at, locale)}
                           </span>
                         </div>
-                        <p
-                          className="mt-0.5 truncate text-sm text-text-secondary"
-                          title={log.description ?? undefined}
-                        >
+                        <p className="mt-0.5 break-words text-sm text-text-secondary">
                           {log.description ?? '—'}
                         </p>
-                        <p className="mt-0.5 truncate text-xs text-text-secondary">
+                        <p className="mt-0.5 break-words text-xs text-text-secondary">
                           {moduleLabel(log.module, modules)}
                         </p>
                       </button>

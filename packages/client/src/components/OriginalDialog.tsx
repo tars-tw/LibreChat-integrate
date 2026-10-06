@@ -199,6 +199,7 @@ type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.
   /** Keep the portal mounted while closed so the caller can animate the exit itself. */
   forceMount?: true;
   focusOutline?: FocusOutline;
+  closeButtonClassName?: string;
 };
 
 /** Positioning and appearance a `bare` content opts out of. */
@@ -219,12 +220,14 @@ const DialogContent: React.ForwardRefExoticComponent<
     bare?: boolean;
     forceMount?: true;
     focusOutline?: FocusOutline;
+    closeButtonClassName?: string;
   } & React.RefAttributes<HTMLDivElement>
 > = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, DialogContentProps>(
   (
     {
       className,
       overlayClassName,
+      closeButtonClassName,
       showCloseButton = true,
       bare = false,
       forceMount,
@@ -381,7 +384,12 @@ const DialogContent: React.ForwardRefExoticComponent<
             aria-hidden="true"
           />
           {showCloseButton && (
-            <DialogPrimitive.Close className="ring-ring-primary ring-offset-surface-dialog focus:ring-focus-control data-[state=open]:bg-surface-hover data-[state=open]:text-text-secondary min-h-theme-target min-w-theme-target absolute inset-e-4 top-4 inline-flex items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+            <DialogPrimitive.Close
+              className={cn(
+                'ring-ring-primary ring-offset-surface-dialog focus:ring-focus-control data-[state=open]:bg-surface-hover data-[state=open]:text-text-secondary min-h-theme-target min-w-theme-target absolute inset-e-4 top-4 inline-flex items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none',
+                closeButtonClassName,
+              )}
+            >
               <X className="size-theme-icon-lg" aria-hidden="true" />
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
