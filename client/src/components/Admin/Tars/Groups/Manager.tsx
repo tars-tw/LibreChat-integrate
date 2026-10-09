@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { dataService } from 'librechat-data-provider';
 import {
   Plus,
   Info,
@@ -21,9 +22,13 @@ import {
   useToastContext,
 } from '@librechat/client';
 import type { TTarsUserGroupWithMembers } from 'librechat-data-provider';
-import { useTarsUserGroupsQuery, useDeleteTarsUserGroupMutation } from '~/data-provider';
-import { toNameMap, toCsvBlob, downloadBlob, formatDateTime } from '../Users/helpers';
-import { groupRoleNames, isGroupEnabled, memberCount } from './helpers';
+import {
+  useTarsUsersQuery,
+  useTarsUserGroupsQuery,
+  useDeleteTarsUserGroupMutation,
+} from '~/data-provider';
+import { toNameMap, toCsvBlob, downloadBlob, previewNames, formatDateTime } from '../Users/helpers';
+import { memberCount, groupRoleNames, isGroupEnabled, usersLosingAccess } from './helpers';
 import { StatusBadge, NameList } from '../Users/Fields';
 import GroupMembersModal from './Members';
 import GroupDetailsModal from './Details';
@@ -50,7 +55,8 @@ export default function GroupManager() {
   const { i18n } = useTranslation();
   const { showToast } = useToastContext();
 
-  const { data, isLoading } = useTarsUserGroupsQuery();
+  /** Member lists change from the user page and AD imports too, so every visit refetches. */
+  const { data, isLoading } = useTarsUserGroupsQuery({ refetchOnMount: true });
 
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
@@ -63,6 +69,21 @@ export default function GroupManager() {
   const [deleting, setDeleting] = useState<TTarsUserGroupWithMembers | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [membersId, setMembersId] = useState<string | null>(null);
+
+  /** Read only for the delete warning, so it is fetched once that dialog opens. */
+  const { data: users = [] } = useTarsUsersQuery({ enabled: deleting != null });
+  const usersById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
+  const deletingLosesAccess = useMemo(
+    () =>
+      deleting == null
+        ? []
+        : usersLosingAccess(
+            deleting.id,
+            (deleting.user_list ?? []).map((member) => member.id),
+            usersById,
+          ),
+    [deleting, usersById],
+  );
 
   const groups = useMemo(() => data?.groups ?? [], [data?.groups]);
   const roles = useMemo(() => data?.roles ?? [], [data?.roles]);
@@ -144,6 +165,12 @@ export default function GroupManager() {
       toCsvBlob(headers, csvRows),
       `TARS_groups_${new Date().toISOString().slice(0, 10)}.csv`,
     );
+
+    /**
+     * The CSV is built here, so pwc_tars only learns of the export from this
+     * call. It must never hold up the download, hence the detached catch.
+     */
+    dataService.recordTarsGroupExport(csvRows.length, window.location.href).catch(() => undefined);
   };
 
   const sortableHeader = (field: SortField, labelKey: Parameters<typeof localize>[0]) => (
@@ -151,7 +178,7 @@ export default function GroupManager() {
       <button
         type="button"
         onClick={() => toggleSort(field)}
-        className="flex items-center gap-1 hover:text-text-primary"
+        className="hover:text-text-primary flex items-center gap-1"
       >
         {localize(labelKey)}
         {field === sortField &&
@@ -165,7 +192,7 @@ export default function GroupManager() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="relative w-64 max-w-full">
-            <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+            <Search className="icon-sm text-text-secondary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
             <Input
               value={search}
               onChange={(e) => {
@@ -194,16 +221,16 @@ export default function GroupManager() {
       )}
 
       {!isLoading && filtered.length === 0 && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_tars_groups_empty')}
         </p>
       )}
 
       {!isLoading && filtered.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border-light">
+          <div className="border-border-light overflow-x-auto rounded-lg border">
             <table className="w-full min-w-[52rem] text-sm">
-              <thead className="bg-surface-secondary text-left text-text-secondary">
+              <thead className="bg-surface-secondary text-text-secondary text-left">
                 <tr>
                   {sortableHeader('name', 'com_ui_tars_groups_name')}
                   {sortableHeader('description', 'com_ui_description')}
@@ -217,11 +244,11 @@ export default function GroupManager() {
                 {rows.map((group) => (
                   <tr
                     key={group.id}
-                    className="border-t border-border-light hover:bg-surface-hover"
+                    className="border-border-light hover:bg-surface-hover border-t"
                   >
-                    <td className="px-3 py-2 text-text-primary">{group.name}</td>
-                    <td className="px-3 py-2 text-text-secondary">{group.description || '—'}</td>
-                    <td className="px-3 py-2 text-text-secondary">
+                    <td className="text-text-primary px-3 py-2">{group.name}</td>
+                    <td className="text-text-secondary px-3 py-2">{group.description || '—'}</td>
+                    <td className="text-text-secondary px-3 py-2">
                       <NameList
                         names={groupRoleNames(group, roleNames)}
                         empty={localize('com_ui_tars_users_unassigned')}
@@ -236,7 +263,7 @@ export default function GroupManager() {
                         onClick={() => setMembersId(group.id)}
                         aria-label={localize('com_ui_tars_groups_members')}
                         title={localize('com_ui_tars_groups_members')}
-                        className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))] hover:text-text-primary"
+                        className="hover:text-text-primary inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))]"
                       >
                         <Users className="icon-sm" />
                         {memberCount(group)}
@@ -249,7 +276,7 @@ export default function GroupManager() {
                           aria-label={localize('com_ui_tars_users_details')}
                           title={localize('com_ui_tars_users_details')}
                           onClick={() => setViewingId(group.id)}
-                          className="rounded p-1.5 text-pwc-info hover:bg-surface-tertiary hover:text-pwc-info"
+                          className="text-pwc-info hover:bg-surface-tertiary hover:text-pwc-info rounded p-1.5"
                         >
                           <Info className="icon-sm" />
                         </button>
@@ -258,7 +285,7 @@ export default function GroupManager() {
                           aria-label={localize('com_ui_edit')}
                           title={localize('com_ui_edit')}
                           onClick={() => setEditing(group)}
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                          className="text-text-secondary hover:bg-surface-tertiary hover:text-text-primary rounded p-1.5"
                         >
                           <Pencil className="icon-sm" />
                         </button>
@@ -267,7 +294,7 @@ export default function GroupManager() {
                           aria-label={localize('com_ui_delete')}
                           title={localize('com_ui_delete')}
                           onClick={() => setDeleting(group)}
-                          className="rounded p-1.5 text-red-500 hover:bg-surface-tertiary hover:text-red-500"
+                          className="hover:bg-surface-tertiary rounded p-1.5 text-red-500 hover:text-red-500"
                         >
                           <Trash2 className="icon-sm" />
                         </button>
@@ -279,7 +306,7 @@ export default function GroupManager() {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
+          <div className="text-text-secondary flex flex-wrap items-center justify-between gap-3 text-sm">
             <div className="flex items-center gap-2">
               <span id="tars-groups-page-size-label">
                 {localize('com_ui_tars_users_rows_per_page')}
@@ -357,14 +384,22 @@ export default function GroupManager() {
             showCloseButton={true}
             main={
               <div className="space-y-2">
-                <p className="text-sm text-text-secondary">
+                <p className="text-text-secondary text-sm">
                   {localize('com_ui_tars_groups_delete_confirm', { name: deleting.name })}
                 </p>
-                <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
+                <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
                   {localize('com_ui_tars_groups_delete_warning', {
                     count: memberCount(deleting),
                   })}
                 </p>
+                {deletingLosesAccess.length > 0 && (
+                  <p className="border-status-warning-border bg-status-warning-subtle text-status-warning rounded-lg border p-3 text-sm">
+                    {localize('com_ui_tars_groups_delete_no_access', {
+                      count: deletingLosesAccess.length,
+                      names: previewNames(deletingLosesAccess),
+                    })}
+                  </p>
+                )}
               </div>
             }
             buttons={

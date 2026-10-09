@@ -14,6 +14,7 @@ import {
   useAddTarsUserGroupMembersMutation,
   useRemoveTarsUserGroupMemberMutation,
 } from '~/data-provider';
+import { usersLosingAccess } from './helpers';
 import { useLocalize } from '~/hooks';
 
 const errorMessage = (error: unknown): string | undefined =>
@@ -39,7 +40,9 @@ export default function GroupMembersModal({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [removing, setRemoving] = useState<TTarsGroupMember | null>(null);
 
-  const { data: users = [], isLoading: usersLoading } = useTarsUsersQuery({ enabled: adding });
+  /** Feeds both the add candidates and the remove warning, so it loads with the dialog. */
+  const { data: users = [], isLoading: usersLoading } = useTarsUsersQuery();
+  const usersById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
 
   const members = useMemo(() => group.user_list ?? [], [group.user_list]);
   const memberIds = useMemo(() => new Set(members.map((member) => member.id)), [members]);
@@ -93,6 +96,8 @@ export default function GroupMembersModal({
     });
 
   if (removing != null) {
+    /** pwc_tars refuses to leave an account with no role and no group, so this blocks. */
+    const removingLosesAccess = usersLosingAccess(group.id, [removing.id], usersById).length > 0;
     return (
       <OGDialog open={true} onOpenChange={(open) => !open && setRemoving(null)}>
         <OGDialogTemplate
@@ -100,18 +105,27 @@ export default function GroupMembersModal({
           showCloseButton={true}
           className="w-11/12 max-w-md"
           main={
-            <p className="text-sm text-text-secondary">
-              {localize('com_ui_tars_groups_remove_member_confirm', {
-                name: removing.username,
-                group: group.name,
-              })}
-            </p>
+            <div className="space-y-2">
+              <p className="text-text-secondary text-sm">
+                {localize('com_ui_tars_groups_remove_member_confirm', {
+                  name: removing.username,
+                  group: group.name,
+                })}
+              </p>
+              {removingLosesAccess && (
+                <p className="border-status-warning-border bg-status-warning-subtle text-status-warning rounded-lg border p-3 text-sm">
+                  {localize('com_ui_tars_groups_remove_member_no_access', {
+                    name: removing.username,
+                  })}
+                </p>
+              )}
+            </div>
           }
           buttons={
             <Button
               variant="destructive"
               onClick={() => removeMutation.mutate({ id: group.id, userId: removing.id })}
-              disabled={removeMutation.isLoading}
+              disabled={removeMutation.isLoading || usersLoading || removingLosesAccess}
             >
               {removeMutation.isLoading ? <Spinner /> : localize('com_ui_delete')}
             </Button>
@@ -136,14 +150,14 @@ export default function GroupMembersModal({
                   {localize('com_ui_tars_groups_add_members')}
                 </Button>
                 {members.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 py-10 text-text-secondary">
+                  <div className="text-text-secondary flex flex-col items-center gap-2 py-10">
                     <UserX className="h-6 w-6" aria-hidden="true" />
                     <p className="text-sm">{localize('com_ui_tars_groups_members_empty')}</p>
                   </div>
                 ) : (
-                  <div className="overflow-hidden rounded-lg border border-border-light">
+                  <div className="border-border-light overflow-hidden rounded-lg border">
                     <table className="w-full text-sm">
-                      <thead className="bg-surface-secondary text-left text-text-secondary">
+                      <thead className="bg-surface-secondary text-text-secondary text-left">
                         <tr>
                           <th className="px-3 py-2 font-medium">
                             {localize('com_ui_tars_users_username')}
@@ -159,10 +173,10 @@ export default function GroupMembersModal({
                       </thead>
                       <tbody>
                         {members.map((member) => (
-                          <tr key={member.id} className="border-t border-border-light">
-                            <td className="px-3 py-2 text-text-primary">{member.username}</td>
-                            <td className="px-3 py-2 text-text-secondary">{member.email || '—'}</td>
-                            <td className="px-3 py-2 text-text-secondary">
+                          <tr key={member.id} className="border-border-light border-t">
+                            <td className="text-text-primary px-3 py-2">{member.username}</td>
+                            <td className="text-text-secondary px-3 py-2">{member.email || '—'}</td>
+                            <td className="text-text-secondary px-3 py-2">
                               {member.status === 'active'
                                 ? localize('com_ui_tars_users_enabled')
                                 : localize('com_ui_tars_users_disabled')}
@@ -174,7 +188,7 @@ export default function GroupMembersModal({
                                   aria-label={localize('com_ui_tars_groups_remove_member')}
                                   title={localize('com_ui_tars_groups_remove_member')}
                                   onClick={() => setRemoving(member)}
-                                  className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                                  className="text-text-secondary hover:bg-surface-tertiary rounded p-1.5 hover:text-red-500"
                                 >
                                   <Trash2 className="icon-sm" />
                                 </button>
@@ -192,7 +206,7 @@ export default function GroupMembersModal({
             {adding && (
               <>
                 <div className="relative">
-                  <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                  <Search className="icon-sm text-text-secondary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -206,12 +220,12 @@ export default function GroupMembersModal({
                   </div>
                 )}
                 {!usersLoading && candidates.length === 0 && (
-                  <p className="py-8 text-center text-sm text-text-secondary">
+                  <p className="text-text-secondary py-8 text-center text-sm">
                     {localize('com_ui_tars_groups_no_candidates')}
                   </p>
                 )}
                 {!usersLoading && candidates.length > 0 && (
-                  <div className="max-h-64 overflow-y-auto rounded-lg border border-border-light p-2">
+                  <div className="border-border-light max-h-64 overflow-y-auto rounded-lg border p-2">
                     {candidates.map((user) => (
                       <label
                         key={user.id}
@@ -223,8 +237,8 @@ export default function GroupMembersModal({
                           checked={selectedIds.has(user.id)}
                           onChange={() => toggleCandidate(user.id)}
                         />
-                        <span className="truncate text-text-primary">{user.username}</span>
-                        <span className="truncate text-xs text-text-secondary">
+                        <span className="text-text-primary truncate">{user.username}</span>
+                        <span className="text-text-secondary truncate text-xs">
                           {user.email ?? ''}
                         </span>
                       </label>

@@ -11,15 +11,13 @@ import {
 import type { TTarsUser, TTarsBulkUserUpdate } from 'librechat-data-provider';
 import type { RoleOption, GroupOption } from './helpers';
 import { useBulkUpdateTarsUsersMutation, useBulkDeleteTarsUsersMutation } from '~/data-provider';
-import { ACTIVE, INACTIVE, csvToIds, idsToCsv } from './helpers';
+import { ACTIVE, INACTIVE, csvToIds, idsToCsv, previewNames } from './helpers';
 import { RoleSelect, GroupSelect } from './Fields';
 import { useLocalize } from '~/hooks';
 
 const toastError = (localize: ReturnType<typeof useLocalize>, error: unknown): string =>
   (error as { response?: { data?: { error?: string } } })?.response?.data?.error ??
   localize('com_ui_tars_admin_error');
-
-const NAME_PREVIEW_LIMIT = 5;
 
 /**
  * The accounts a bulk change would leave with neither a role nor a group.
@@ -36,11 +34,6 @@ const findUsersWithoutPermission = (
       change.groupIds != null ? change.groupIds.size > 0 : csvToIds(user.user_group_id).length > 0;
     return !hasRole && !hasGroup;
   });
-
-const previewNames = (users: TTarsUser[]): string => {
-  const names = users.slice(0, NAME_PREVIEW_LIMIT).map((user) => user.username);
-  return users.length > NAME_PREVIEW_LIMIT ? `${names.join(', ')}, …` : names.join(', ');
-};
 
 /** Applies role / group / status to every selected account in one pwc_tars call. */
 export function BulkEditModal({
@@ -136,13 +129,13 @@ export function BulkEditModal({
         className="w-11/12 md:max-w-3xl"
         main={
           <div className="max-h-[65vh] space-y-4 overflow-y-auto pr-1">
-            <p className="text-sm text-text-secondary">
+            <p className="text-text-secondary text-sm">
               {localize('com_ui_tars_users_selected_count', { count: users.length })}
             </p>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-4">
-                <div className="space-y-2 rounded-lg border border-border-light p-3">
+                <div className="border-border-light space-y-2 rounded-lg border p-3">
                   <div className="flex items-center gap-2">
                     <Switch
                       id="tars-bulk-apply-role"
@@ -163,7 +156,7 @@ export function BulkEditModal({
                   />
                 </div>
 
-                <div className="space-y-2 rounded-lg border border-border-light p-3">
+                <div className="border-border-light space-y-2 rounded-lg border p-3">
                   <div className="flex items-center gap-2">
                     <Switch
                       id="tars-bulk-apply-status"
@@ -191,11 +184,11 @@ export function BulkEditModal({
                   </div>
                 </div>
 
-                <details className="rounded-lg border border-border-light p-3">
-                  <summary className="cursor-pointer text-sm text-text-secondary">
+                <details className="border-border-light rounded-lg border p-3">
+                  <summary className="text-text-secondary cursor-pointer text-sm">
                     {localize('com_ui_tars_users_expand_list')}
                   </summary>
-                  <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto text-sm text-text-primary">
+                  <ul className="text-text-primary mt-2 max-h-48 space-y-1 overflow-y-auto text-sm">
                     {users.map((user) => (
                       <li key={user.id} className="truncate">
                         {user.username} — {user.email ?? '—'}
@@ -205,7 +198,7 @@ export function BulkEditModal({
                 </details>
               </div>
 
-              <div className="flex flex-col gap-2 rounded-lg border border-border-light p-3">
+              <div className="border-border-light flex flex-col gap-2 rounded-lg border p-3">
                 <div className="flex items-center gap-2">
                   <Switch
                     id="tars-bulk-apply-group"
@@ -268,10 +261,10 @@ export function BulkDeleteModal({
         className="w-11/12 max-w-md"
         main={
           <div className="space-y-3">
-            <p className="text-sm text-text-secondary">
+            <p className="text-text-secondary text-sm">
               {localize('com_ui_tars_users_bulk_delete_warning', { count: users.length })}
             </p>
-            <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border-light p-2 text-sm text-text-primary">
+            <ul className="border-border-light text-text-primary max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2 text-sm">
               {users.map((user) => (
                 <li key={user.id} className="truncate">
                   {user.username} — {user.email ?? '—'}
