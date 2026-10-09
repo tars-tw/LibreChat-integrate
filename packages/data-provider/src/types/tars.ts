@@ -920,6 +920,8 @@ export type TTarsUser = {
   sso_config_id?: string | null;
   is_online?: boolean;
   roles_names?: string | null;
+  /** Marks the signed-in admin's own row on the user admin listing. */
+  is_self?: boolean;
 };
 
 export type TTarsUsersResponse = {
