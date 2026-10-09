@@ -81,10 +81,13 @@ export const groupPickerOptions = (groups: TTarsKnowledgeBaseGroup[]): PickerOpt
     .map((group) => ({ value: group.id, label: pickerLabel(group.name, group.id) }))
     .sort(byLabel);
 
-/** pwc_tars stores an empty allow-list to mean "no restriction". */
+/**
+ * pwc_tars grants a base only to the users and groups it lists, so an empty
+ * pair is not "open to everyone" — only admins, who bypass the lists, reach it.
+ */
 export const accessSummaryKey = (kb: TTarsKnowledgeBase): TranslationKeys =>
   (kb.allowed_user_ids?.length ?? 0) + (kb.allowed_user_group_ids?.length ?? 0) === 0
-    ? 'com_ui_tars_kb_access_everyone'
+    ? 'com_ui_tars_kb_access_unset'
     : 'com_ui_tars_kb_access_restricted';
 
 /** The reason pwc_tars gave for refusing a call, relayed by the `/api/tars` routes. */
