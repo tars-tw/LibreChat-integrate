@@ -17,7 +17,7 @@ import {
   useCreateTarsUserMutation,
   useUpdateTarsUserMutation,
 } from '~/data-provider';
-import { ACTIVE, INACTIVE, csvToIds, idsToCsv, isActive } from './helpers';
+import { ACTIVE, INACTIVE, csvToIds, idsToCsv, isActive, isAdAccount } from './helpers';
 import { RoleSelect, GroupSelect } from './Fields';
 import { useLocalize } from '~/hooks';
 
@@ -68,6 +68,9 @@ export default function UserModal({
   const localize = useLocalize();
   const { showToast } = useToastContext();
   const isEdit = user != null;
+  const isAd = user != null && isAdAccount(user);
+  /** The signed-in admin may not change their own role or disable themselves. */
+  const isSelf = user?.is_self === true;
 
   const [form, setForm] = useState<FormState>(() => toFormState(user));
   const [adMode, setAdMode] = useState(false);
@@ -138,7 +141,9 @@ export default function UserModal({
       return fail('com_ui_tars_users_role_or_group_required');
     }
     if (isEdit) {
-      return true;
+      return isAd || EMAIL_PATTERN.test(form.email.trim())
+        ? true
+        : fail('com_ui_tars_users_email_invalid');
     }
     const username = form.username.trim();
     if (username.length < MIN_USERNAME_LENGTH || !USERNAME_PATTERN.test(username)) {
@@ -163,12 +168,14 @@ export default function UserModal({
 
     if (isEdit) {
       const update: TTarsUserUpdate = {
-        email: form.email.trim(),
         display_name: form.displayName.trim(),
         role_id: form.roleId === '' ? null : form.roleId,
         user_group_id: idsToCsv([...form.groupIds]),
         status: form.enabled ? ACTIVE : INACTIVE,
       };
+      if (!isAd) {
+        update.email = form.email.trim();
+      }
       updateMutation.mutate({ id: user.id, data: update });
       return;
     }
@@ -239,7 +246,7 @@ export default function UserModal({
             </div>
 
             {adMode && showAdList && (
-              <div className="rounded-lg border border-border-light p-3">
+              <div className="border-border-light rounded-lg border p-3">
                 <Label htmlFor="tars-user-ad-filter">
                   {localize('com_ui_tars_users_ad_select')}
                 </Label>
@@ -252,7 +259,7 @@ export default function UserModal({
                 <div className="mt-2 max-h-40 overflow-y-auto">
                   {adLoading && <Spinner className="icon-sm" />}
                   {!adLoading && adCandidates.length === 0 && (
-                    <p className="py-2 text-sm text-text-secondary">
+                    <p className="text-text-secondary py-2 text-sm">
                       {localize('com_ui_tars_users_ad_empty')}
                     </p>
                   )}
@@ -265,7 +272,7 @@ export default function UserModal({
                           set('username', name);
                           setShowAdList(false);
                         }}
-                        className="block w-full rounded px-2 py-1 text-left text-sm text-text-primary hover:bg-surface-hover"
+                        className="text-text-primary hover:bg-surface-hover block w-full rounded px-2 py-1 text-left text-sm"
                       >
                         {name}
                       </button>
@@ -283,8 +290,14 @@ export default function UserModal({
                     type="email"
                     className="mt-1"
                     value={form.email}
+                    disabled={isAd}
                     onChange={(e) => set('email', e.target.value)}
                   />
+                  {isAd && (
+                    <p className="text-text-secondary mt-1 text-xs">
+                      {localize('com_ui_tars_users_ad_email_locked')}
+                    </p>
+                  )}
                 </div>
                 {!isEdit && (
                   <div>
@@ -308,6 +321,7 @@ export default function UserModal({
                 id="tars-user-role"
                 value={form.roleId}
                 roles={roles}
+                disabled={isSelf}
                 onChange={(value) => set('roleId', value)}
               />
               <GroupSelect groups={groups} selected={form.groupIds} onToggle={toggleGroup} />
@@ -321,9 +335,15 @@ export default function UserModal({
                     id="tars-user-enabled"
                     aria-label={localize('com_ui_tars_users_enabled')}
                     checked={form.enabled}
+                    disabled={isSelf}
                     onCheckedChange={(checked) => set('enabled', checked)}
                   />
                 </div>
+              )}
+              {isSelf && (
+                <p className="text-text-secondary text-xs">
+                  {localize('com_ui_tars_users_self_locked')}
+                </p>
               )}
               {ldapAvailable && (
                 <div className="flex items-center gap-2">

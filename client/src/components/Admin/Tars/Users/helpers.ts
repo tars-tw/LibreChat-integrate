@@ -5,6 +5,12 @@ export const INACTIVE = 'inactive';
 
 export const isActive = (user: TTarsUser): boolean => user.status === ACTIVE;
 
+/**
+ * pwc_tars's AD accounts are exactly those with `is_sso_user`; `is_syncbyad` only
+ * records how the row arrived. Their email comes from AD, so pwc_tars refuses edits to it.
+ */
+export const isAdAccount = (user: TTarsUser): boolean => user.is_sso_user === true;
+
 /** pwc_tars stores multi-valued id columns as a trimmed comma-separated string. */
 export const csvToIds = (raw: string | null | undefined): string[] =>
   (raw ?? '')

@@ -11,10 +11,14 @@ import {
   fetchTarsUsers,
   createTarsUser,
   deleteTarsUser,
+  updateTarsUser,
+  resetTarsUserPassword,
   bulkUpdateTarsUsers,
   bulkDeleteTarsUsers,
   fetchTarsAdWhitelist,
   searchTarsPrincipals,
+  fetchTarsUsersForAdmin,
+  TarsSelfProtectionError,
   fetchTarsUserPrepareData,
 } from './users';
 import type { TarsAccount } from './users';
@@ -178,6 +182,83 @@ describe('user mutations', () => {
 
     await expect(bulkDeleteTarsUsers('admin', ['u1', 'u2'], BASE_URL)).resolves.toBe(2);
     expect(parseBody(fetchMock, 3)).toEqual({ ids: ['u1', 'u2'], deleted_by: 'admin' });
+
+    await resetTarsUserPassword('admin', 'u1', 'new-secret', BASE_URL);
+    expect(parseBody(fetchMock, 4)).toEqual({
+      user_id: 'u1',
+      new_password: 'new-secret',
+      operator_id: 'admin',
+    });
+  });
+});
+
+describe('fetchTarsUsersForAdmin', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("marks only the caller's own row", async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        buildResponse(200, { users: [account('admin', 'root'), account('u2', 'bob')] }),
+      );
+
+    const users = await fetchTarsUsersForAdmin('admin', BASE_URL);
+    expect(users.map((user) => user.is_self)).toEqual([true, undefined]);
+  });
+});
+
+describe('self-protection', () => {
+  let fetchMock: jest.SpyInstance;
+
+  beforeEach(() => {
+    fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { user: account('u1', 'alice'), users: [] }));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('refuses deleting the own account, alone or in bulk, without calling pwc_tars', async () => {
+    await expect(deleteTarsUser('admin', 'admin', BASE_URL)).rejects.toBeInstanceOf(
+      TarsSelfProtectionError,
+    );
+    await expect(bulkDeleteTarsUsers('admin', ['u1', 'admin'], BASE_URL)).rejects.toThrow(
+      '不可刪除當前登入的帳號',
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses disabling or demoting the own account', async () => {
+    await expect(
+      updateTarsUser('admin', 'admin', { status: 'inactive' }, BASE_URL),
+    ).rejects.toThrow('不可停用當前登入的帳號');
+    await expect(updateTarsUser('admin', 'admin', { role_id: '2' }, BASE_URL)).rejects.toThrow(
+      '不可移除當前登入帳號的管理員權限',
+    );
+    await expect(
+      bulkUpdateTarsUsers('admin', ['u1', 'admin'], { role_id: '' }, BASE_URL),
+    ).rejects.toThrow('不可移除當前登入帳號的管理員權限');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('lets the admin edit their own account while keeping an admin role', async () => {
+    await updateTarsUser(
+      'admin',
+      'admin',
+      { role_id: '1', status: 'active', user_group_id: 'g2' },
+      BASE_URL,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the admin demote or disable another admin', async () => {
+    await updateTarsUser('admin', 'other-admin', { role_id: '2' }, BASE_URL);
+    await bulkUpdateTarsUsers('admin', ['other-admin'], { status: 'inactive' }, BASE_URL);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 
