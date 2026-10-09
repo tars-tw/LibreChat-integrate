@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Label } from '@librechat/client';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
+import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { useLocalize } from '~/hooks';
 
 export interface PickerOption {
@@ -40,6 +41,7 @@ export default function Picker({
   onChange,
   placeholder,
   disabled,
+  chips = false,
 }: {
   id: string;
   label: string;
@@ -48,6 +50,8 @@ export default function Picker({
   onChange: (values: string[]) => void;
   placeholder: string;
   disabled?: boolean;
+  /** Show every pick as a removable chip instead of a one-line summary. */
+  chips?: boolean;
 }) {
   const localize = useLocalize();
   const [open, setOpen] = useState(false);
@@ -88,6 +92,10 @@ export default function Picker({
   }, [options, filter]);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const labelByValue = useMemo(
+    () => new Map(options.map((option) => [option.value, option.label])),
+    [options],
+  );
 
   const toggle = (value: string) =>
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
@@ -98,11 +106,71 @@ export default function Picker({
       return placeholder;
     }
     if (selected.length === 1) {
-      return options.find((option) => option.value === selected[0])?.label ?? placeholder;
+      return labelByValue.get(selected[0]) ?? placeholder;
     }
     return localize('com_ui_tars_audit_selected_count', { 0: String(selected.length) });
   };
   const summary = summarize();
+
+  /**
+   * Props for a control nested in the trigger button. It must not also toggle
+   * the list, and a `<button>` cannot nest, so it is a keyboard-reachable span.
+   */
+  const nestedAction = (label: string, action: () => void) => ({
+    role: 'button',
+    tabIndex: 0,
+    'aria-label': label,
+    onClick: (event: ReactMouseEvent) => {
+      event.stopPropagation();
+      action();
+    },
+    onKeyDown: (event: ReactKeyboardEvent) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.stopPropagation();
+        event.preventDefault();
+        action();
+      }
+    },
+  });
+
+  const renderValue = () => {
+    if (!chips || selected.length === 0) {
+      return (
+        <span
+          className={`truncate ${selected.length === 0 ? 'text-text-secondary' : ''}`}
+          title={selected.length > 0 ? summary : undefined}
+        >
+          {summary}
+        </span>
+      );
+    }
+    return (
+      <span className="flex min-w-0 flex-wrap gap-1">
+        {selected.map((value) => {
+          /** A pick whose option is gone (a removed user) still shows, so it can be removed. */
+          const label = labelByValue.get(value) ?? value;
+          return (
+            <span
+              key={value}
+              className="inline-flex max-w-full items-center gap-1 rounded-full bg-surface-tertiary py-0.5 pl-2 pr-1 text-xs text-text-primary"
+            >
+              <span className="truncate" title={label}>
+                {label}
+              </span>
+              <span
+                {...nestedAction(localize('com_ui_tars_audit_remove_option', { 0: label }), () =>
+                  toggle(value),
+                )}
+                className="rounded-full p-0.5 text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+              >
+                <X className="size-3" aria-hidden />
+              </span>
+            </span>
+          );
+        })}
+      </span>
+    );
+  };
 
   return (
     <div className="space-y-1.5" ref={containerRef}>
@@ -115,31 +183,15 @@ export default function Picker({
           onClick={() => setOpen((current) => !current)}
           aria-haspopup="listbox"
           aria-expanded={open}
-          className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-border-light bg-surface-primary px-3 text-sm text-text-primary disabled:opacity-50"
+          className={`flex w-full items-center justify-between gap-2 rounded-md border border-border-light bg-surface-primary px-3 text-left text-sm text-text-primary disabled:opacity-50 ${
+            chips ? 'min-h-10 py-1.5' : 'h-10'
+          }`}
         >
-          <span
-            className={`truncate ${selected.length === 0 ? 'text-text-secondary' : ''}`}
-            title={selected.length > 0 ? summary : undefined}
-          >
-            {summary}
-          </span>
+          {renderValue()}
           <span className="flex shrink-0 items-center gap-1">
             {selected.length > 0 && (
               <span
-                role="button"
-                tabIndex={0}
-                aria-label={localize('com_ui_clear')}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onChange([]);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.stopPropagation();
-                    event.preventDefault();
-                    onChange([]);
-                  }
-                }}
+                {...nestedAction(localize('com_ui_clear'), () => onChange([]))}
                 className="rounded p-0.5 text-text-secondary hover:bg-surface-tertiary"
               >
                 <X className="size-3.5" aria-hidden />
