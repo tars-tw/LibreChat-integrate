@@ -11,15 +11,13 @@ import {
 import type { TTarsUser, TTarsBulkUserUpdate } from 'librechat-data-provider';
 import type { RoleOption, GroupOption } from './helpers';
 import { useBulkUpdateTarsUsersMutation, useBulkDeleteTarsUsersMutation } from '~/data-provider';
-import { ACTIVE, INACTIVE, csvToIds, idsToCsv } from './helpers';
+import { ACTIVE, INACTIVE, csvToIds, idsToCsv, previewNames } from './helpers';
 import { RoleSelect, GroupSelect } from './Fields';
 import { useLocalize } from '~/hooks';
 
 const toastError = (localize: ReturnType<typeof useLocalize>, error: unknown): string =>
   (error as { response?: { data?: { error?: string } } })?.response?.data?.error ??
   localize('com_ui_tars_admin_error');
-
-const NAME_PREVIEW_LIMIT = 5;
 
 /**
  * The accounts a bulk change would leave with neither a role nor a group.
@@ -36,11 +34,6 @@ const findUsersWithoutPermission = (
       change.groupIds != null ? change.groupIds.size > 0 : csvToIds(user.user_group_id).length > 0;
     return !hasRole && !hasGroup;
   });
-
-const previewNames = (users: TTarsUser[]): string => {
-  const names = users.slice(0, NAME_PREVIEW_LIMIT).map((user) => user.username);
-  return users.length > NAME_PREVIEW_LIMIT ? `${names.join(', ')}, …` : names.join(', ');
-};
 
 /** Applies role / group / status to every selected account in one pwc_tars call. */
 export function BulkEditModal({

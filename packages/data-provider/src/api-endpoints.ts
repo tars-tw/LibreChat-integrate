@@ -497,6 +497,7 @@ export const tarsUserGroup = (id: string) =>
 export const tarsUserGroupMembers = (id: string) => `${tarsUserGroup(id)}/members`;
 export const tarsUserGroupMember = (id: string, userId: string) =>
   `${tarsUserGroupMembers(id)}/${encodeURIComponent(userId)}`;
+export const tarsUserGroupsExportLog = () => `${tarsUserGroups()}/export-log`;
 export const tarsUsers = () => `${BASE_URL}/api/tars/users`;
 export const tarsUser = (id: string) => `${BASE_URL}/api/tars/users/${encodeURIComponent(id)}`;
 export const tarsUserPrepareData = () => `${BASE_URL}/api/tars/users/prepare-data`;

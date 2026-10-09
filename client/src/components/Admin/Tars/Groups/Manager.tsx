@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { dataService } from 'librechat-data-provider';
 import {
   Plus,
   Info,
@@ -21,9 +22,13 @@ import {
   useToastContext,
 } from '@librechat/client';
 import type { TTarsUserGroupWithMembers } from 'librechat-data-provider';
-import { useTarsUserGroupsQuery, useDeleteTarsUserGroupMutation } from '~/data-provider';
-import { toNameMap, toCsvBlob, downloadBlob, formatDateTime } from '../Users/helpers';
-import { groupRoleNames, isGroupEnabled, memberCount } from './helpers';
+import {
+  useTarsUsersQuery,
+  useTarsUserGroupsQuery,
+  useDeleteTarsUserGroupMutation,
+} from '~/data-provider';
+import { toNameMap, toCsvBlob, downloadBlob, previewNames, formatDateTime } from '../Users/helpers';
+import { memberCount, groupRoleNames, isGroupEnabled, usersLosingAccess } from './helpers';
 import { StatusBadge, NameList } from '../Users/Fields';
 import GroupMembersModal from './Members';
 import GroupDetailsModal from './Details';
@@ -50,7 +55,8 @@ export default function GroupManager() {
   const { i18n } = useTranslation();
   const { showToast } = useToastContext();
 
-  const { data, isLoading } = useTarsUserGroupsQuery();
+  /** Member lists change from the user page and AD imports too, so every visit refetches. */
+  const { data, isLoading } = useTarsUserGroupsQuery({ refetchOnMount: true });
 
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
@@ -63,6 +69,21 @@ export default function GroupManager() {
   const [deleting, setDeleting] = useState<TTarsUserGroupWithMembers | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [membersId, setMembersId] = useState<string | null>(null);
+
+  /** Read only for the delete warning, so it is fetched once that dialog opens. */
+  const { data: users = [] } = useTarsUsersQuery({ enabled: deleting != null });
+  const usersById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
+  const deletingLosesAccess = useMemo(
+    () =>
+      deleting == null
+        ? []
+        : usersLosingAccess(
+            deleting.id,
+            (deleting.user_list ?? []).map((member) => member.id),
+            usersById,
+          ),
+    [deleting, usersById],
+  );
 
   const groups = useMemo(() => data?.groups ?? [], [data?.groups]);
   const roles = useMemo(() => data?.roles ?? [], [data?.roles]);
@@ -144,6 +165,12 @@ export default function GroupManager() {
       toCsvBlob(headers, csvRows),
       `TARS_groups_${new Date().toISOString().slice(0, 10)}.csv`,
     );
+
+    /**
+     * The CSV is built here, so pwc_tars only learns of the export from this
+     * call. It must never hold up the download, hence the detached catch.
+     */
+    dataService.recordTarsGroupExport(csvRows.length, window.location.href).catch(() => undefined);
   };
 
   const sortableHeader = (field: SortField, labelKey: Parameters<typeof localize>[0]) => (
@@ -365,6 +392,14 @@ export default function GroupManager() {
                     count: memberCount(deleting),
                   })}
                 </p>
+                {deletingLosesAccess.length > 0 && (
+                  <p className="rounded-lg border border-status-warning-border bg-status-warning-subtle p-3 text-sm text-status-warning">
+                    {localize('com_ui_tars_groups_delete_no_access', {
+                      count: deletingLosesAccess.length,
+                      names: previewNames(deletingLosesAccess),
+                    })}
+                  </p>
+                )}
               </div>
             }
             buttons={

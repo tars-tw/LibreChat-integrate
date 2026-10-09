@@ -1198,6 +1198,14 @@ export const getTarsUserGroups = (): Promise<t.TTarsGroupPrepareData> => {
   return request.get(endpoints.tarsUserGroups());
 };
 
+/** Puts a browser-side group-list export on the pwc_tars audit trail. */
+export const recordTarsGroupExport = (
+  count: number,
+  pageUrl: string,
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsUserGroupsExportLog(), { count, page_url: pageUrl });
+};
+
 export const createTarsUserGroup = (
   data: t.TTarsUserGroupInput,
 ): Promise<{ group: t.TTarsUserGroupWithMembers }> => {
