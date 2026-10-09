@@ -43,51 +43,61 @@ export function RoleSelect({
         aria-labelledby={`${id}-label`}
         className="mt-1 w-full"
       />
-      <p className="mt-1 text-xs text-text-secondary">
+      <p className="text-text-secondary mt-1 text-xs">
         {localize('com_ui_tars_users_role_follows_group')}
       </p>
     </div>
   );
 }
 
-/** Multi-group picker. Groups are a scrollable checkbox list, as in the domain editor. */
+/**
+ * Multi-group picker. Groups are a scrollable checkbox list, as in the domain editor.
+ * `fill` stretches the list to its flex parent's height instead of capping it, so it
+ * lines up with a taller neighbouring column; the list is taken out of flow there so
+ * a long group list never grows the parent itself.
+ */
 export function GroupSelect({
   groups,
   selected,
   disabled,
+  fill,
   onToggle,
 }: {
   groups: GroupOption[];
   selected: Set<string>;
   disabled?: boolean;
+  fill?: boolean;
   onToggle: (id: string) => void;
 }) {
   const localize = useLocalize();
+  const listClassName = 'overflow-y-auto rounded-lg border border-border-light p-2';
   return (
-    <div>
+    <div className={fill ? 'flex min-h-0 flex-1 flex-col' : undefined}>
       <Label>{localize('com_ui_tars_users_group')}</Label>
       {groups.length === 0 ? (
-        <p className="mt-1 text-sm text-text-secondary">
+        <p className="text-text-secondary mt-1 text-sm">
           {localize('com_ui_tars_users_groups_empty')}
         </p>
       ) : (
-        <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-border-light p-2">
-          {groups.map((group) => (
-            <label
-              key={group.id}
-              className="flex cursor-pointer items-center gap-2 py-1 text-sm aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
-              aria-disabled={disabled}
-            >
-              <input
-                type="checkbox"
-                className="h-4 w-4"
-                disabled={disabled}
-                checked={selected.has(group.id)}
-                onChange={() => onToggle(group.id)}
-              />
-              <span className="truncate text-text-primary">{group.name}</span>
-            </label>
-          ))}
+        <div className={fill ? 'relative mt-1 min-h-40 flex-1' : 'mt-1'}>
+          <div className={fill ? `absolute inset-0 ${listClassName}` : `max-h-40 ${listClassName}`}>
+            {groups.map((group) => (
+              <label
+                key={group.id}
+                className="flex cursor-pointer items-center gap-2 py-1 text-sm aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                aria-disabled={disabled}
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  disabled={disabled}
+                  checked={selected.has(group.id)}
+                  onChange={() => onToggle(group.id)}
+                />
+                <span className="text-text-primary truncate">{group.name}</span>
+              </label>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -100,7 +110,7 @@ export function StatusBadge({ active }: { active: boolean }) {
 
   return (
     <span
-      className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${
+      className={`inline-block rounded-full px-2 py-0.5 text-xs whitespace-nowrap ${
         active
           ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
           : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
