@@ -5,6 +5,7 @@ const {
   updateTarsUserGroup,
   deleteTarsUserGroup,
   assignTarsUsersToGroup,
+  recordTarsGroupExport,
   removeTarsUserFromGroup,
   fetchTarsGroupPrepareData,
 } = require('@librechat/api');
@@ -41,6 +42,29 @@ router.post('/groups', requireTarsAdmin, async (req, res) => {
   } catch (error) {
     logger.error('[POST /api/tars/groups] Failed to create pwc_tars group', error);
     return relayTarsError(res, error, 'Failed to create pwc_tars group');
+  }
+});
+
+/**
+ * @route POST /api/tars/groups/export-log
+ * @desc Record the group-list export in the pwc_tars audit trail. The rows are
+ *       turned into a CSV in the browser, so pwc_tars never sees the export and
+ *       this is the only thing that puts it on the record.
+ * @access Admin (pwc_tars)
+ */
+router.post('/groups/export-log', requireTarsAdmin, async (req, res) => {
+  const count = Number.parseInt(req.body?.count, 10);
+  if (!Number.isFinite(count) || count < 1) {
+    return res.status(400).json({ error: 'A positive row count is required' });
+  }
+
+  try {
+    const pageUrl = typeof req.body?.page_url === 'string' ? req.body.page_url : undefined;
+    await recordTarsGroupExport(req.user.tarsId, count, pageUrl);
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error('[POST /api/tars/groups/export-log] Failed', error);
+    return relayTarsError(res, error, 'Failed to record the pwc_tars export');
   }
 });
 
