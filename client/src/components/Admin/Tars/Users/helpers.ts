@@ -20,6 +20,14 @@ export const csvToIds = (raw: string | null | undefined): string[] =>
 
 export const idsToCsv = (ids: string[]): string | null => (ids.length > 0 ? ids.join(',') : null);
 
+const NAME_PREVIEW_LIMIT = 5;
+
+/** The first few usernames for a toast or warning, with an ellipsis when there are more. */
+export const previewNames = (users: Array<Pick<TTarsUser, 'username'>>): string => {
+  const names = users.slice(0, NAME_PREVIEW_LIMIT).map((user) => user.username);
+  return users.length > NAME_PREVIEW_LIMIT ? `${names.join(', ')}, …` : names.join(', ');
+};
+
 export const toNameMap = <T extends { id: string | number; name: string }>(
   items: T[],
 ): Map<string, string> => new Map(items.map((item) => [String(item.id), item.name]));

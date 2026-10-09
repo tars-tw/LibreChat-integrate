@@ -11,6 +11,7 @@ import {
   createTarsUserGroup,
   updateTarsUserGroup,
   deleteTarsUserGroup,
+  recordTarsGroupExport,
   assignTarsUsersToGroup,
   removeTarsUserFromGroup,
   fetchTarsGroupPrepareData,
@@ -141,6 +142,34 @@ describe('group membership', () => {
       user_id: 'u1',
       group_id: 'g1',
       operator_id: 'admin',
+    });
+  });
+});
+
+describe('recordTarsGroupExport', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('writes an EXPORT row under the group module, stamped with the operator', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { success: true }));
+
+    await recordTarsGroupExport('admin', 3, 'http://localhost/admin/groups', BASE_URL);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${BASE_URL}/api/system_action_log/record`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(parseBody(fetchMock)).toEqual({
+      action_type: 'EXPORT',
+      module: 'group-settings',
+      target_type: 'csv',
+      target_name: '群組清單',
+      description: '匯出 3 筆群組資料',
+      page_url: 'http://localhost/admin/groups',
+      user_id: 'admin',
     });
   });
 });
