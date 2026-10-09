@@ -26,20 +26,21 @@ import {
 } from 'lucide-react';
 import type { TTarsUser } from 'librechat-data-provider';
 import {
-  useTarsUsersQuery,
-  useDeleteTarsUserMutation,
-  useImportTarsUsersMutation,
-  useTarsUserPrepareDataQuery,
-} from '~/data-provider';
-import {
   isActive,
   toNameMap,
+  isAdAccount,
   toCsvBlob,
   downloadBlob,
   formatDateTime,
   resolveRoleNames,
   resolveGroupNames,
 } from './helpers';
+import {
+  useTarsUsersQuery,
+  useDeleteTarsUserMutation,
+  useImportTarsUsersMutation,
+  useTarsUserPrepareDataQuery,
+} from '~/data-provider';
 import { BulkEditModal, BulkDeleteModal } from './Bulk';
 import { StatusBadge, NameList } from './Fields';
 import ResetPasswordModal from './Password';
@@ -50,10 +51,14 @@ import UserModal from './Modal';
 const PAGE_SIZES = [10, 25, 50, 100];
 const PAGE_SIZE_OPTIONS = PAGE_SIZES.map(String);
 
-type SortField = 'display_name' | 'username' | 'email' | 'status' | 'last_login_at';
+type SortField = 'display_name' | 'username' | 'email' | 'status' | 'is_sso_user' | 'last_login_at';
 
-const sortValue = (user: TTarsUser, field: SortField): string =>
-  (user[field] ?? '').toString().toLowerCase();
+const sortValue = (user: TTarsUser, field: SortField): string => {
+  if (field === 'is_sso_user') {
+    return isAdAccount(user) ? '1' : '0';
+  }
+  return (user[field] ?? '').toString().toLowerCase();
+};
 
 const errorMessage = (error: unknown): string | undefined =>
   (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
@@ -64,8 +69,9 @@ export default function UserManager() {
   const { showToast } = useToastContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: users = [], isLoading } = useTarsUsersQuery();
-  const { data: prepareData } = useTarsUserPrepareDataQuery();
+  /** Online state, last login and other admins' edits go stale, so every visit refetches. */
+  const { data: users = [], isLoading } = useTarsUsersQuery({ refetchOnMount: true });
+  const { data: prepareData } = useTarsUserPrepareDataQuery({ refetchOnMount: true });
 
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<SortField>('username');
@@ -113,6 +119,9 @@ export default function UserManager() {
     () => users.filter((user) => selectedIds.has(user.id)),
     [users, selectedIds],
   );
+  /** Counted from the loaded list, so an account deleted while ticked drops out of the total. */
+  const selectedCount = selectedUsers.length;
+  const clearSelection = () => setSelectedIds(new Set());
   const allRowsSelected = rows.length > 0 && rows.every((user) => selectedIds.has(user.id));
 
   const deleteMutation = useDeleteTarsUserMutation({
@@ -143,6 +152,14 @@ export default function UserManager() {
       });
     },
   });
+
+  const handleBulkDeleteClick = () => {
+    if (selectedUsers.some((user) => user.is_self)) {
+      showToast({ message: localize('com_ui_tars_users_self_delete_blocked'), status: 'error' });
+      return;
+    }
+    setBulkDeleting(true);
+  };
 
   const toggleSort = (field: SortField) => {
     if (field === sortField) {
@@ -237,14 +254,14 @@ export default function UserManager() {
     event.target.value = '';
   };
 
-  const sortableHeader = (field: SortField, labelKey: Parameters<typeof localize>[0]) => (
+  const sortableHeader = (field: SortField, label: string) => (
     <th className="px-3 py-2 font-medium">
       <button
         type="button"
         onClick={() => toggleSort(field)}
         className="flex items-center gap-1 hover:text-text-primary"
       >
-        {localize(labelKey)}
+        {label}
         {field === sortField &&
           (sortAsc ? <ChevronUp className="icon-xs" /> : <ChevronDown className="icon-xs" />)}
       </button>
@@ -298,27 +315,27 @@ export default function UserManager() {
             <FileSpreadsheet className="icon-sm mr-1" />
             {localize('com_ui_tars_users_template')}
           </Button>
-          <Button variant="outline" onClick={handleExport} disabled={selectedIds.size === 0}>
+          <Button variant="outline" onClick={handleExport} disabled={selectedCount === 0}>
             <Download className="icon-sm mr-1" />
             {localize('com_ui_tars_users_export_csv')}
           </Button>
           <Button
             variant="outline"
             onClick={() => setBulkEditing(true)}
-            disabled={selectedIds.size === 0}
+            disabled={selectedCount === 0}
           >
             {localize('com_ui_tars_users_bulk_edit')}
           </Button>
           <Button
             variant="destructive"
-            onClick={() => setBulkDeleting(true)}
-            disabled={selectedIds.size === 0}
+            onClick={handleBulkDeleteClick}
+            disabled={selectedCount === 0}
           >
             {localize('com_ui_tars_users_bulk_delete')}
           </Button>
-          {selectedIds.size > 0 && (
-            <Button variant="ghost" onClick={() => setSelectedIds(new Set())}>
-              {localize('com_ui_tars_users_clear_selection', { count: selectedIds.size })}
+          {selectedCount > 0 && (
+            <Button variant="ghost" onClick={clearSelection}>
+              {localize('com_ui_tars_users_clear_selection', { count: selectedCount })}
             </Button>
           )}
         </div>
@@ -349,15 +366,15 @@ export default function UserManager() {
                       onCheckedChange={toggleAllRows}
                     />
                   </th>
-                  {sortableHeader('display_name', 'com_ui_tars_users_display_name')}
-                  {sortableHeader('username', 'com_ui_tars_users_username')}
-                  {sortableHeader('email', 'com_auth_email')}
+                  {sortableHeader('display_name', localize('com_ui_tars_users_display_name'))}
+                  {sortableHeader('username', localize('com_ui_tars_users_username'))}
+                  {sortableHeader('email', localize('com_auth_email'))}
                   <th className="px-3 py-2 font-medium">{localize('com_ui_tars_users_role')}</th>
                   <th className="px-3 py-2 font-medium">{localize('com_ui_tars_users_group')}</th>
-                  {sortableHeader('status', 'com_ui_tars_users_status')}
+                  {sortableHeader('status', localize('com_ui_tars_users_status'))}
                   {/* "AD" is the product name in every locale — nothing to translate. */}
-                  <th className="px-3 py-2 font-medium">AD</th>
-                  {sortableHeader('last_login_at', 'com_ui_tars_users_online_status')}
+                  {sortableHeader('is_sso_user', 'AD')}
+                  {sortableHeader('last_login_at', localize('com_ui_tars_users_online_status'))}
                   <th className="px-3 py-2 text-right font-medium">{localize('com_ui_actions')}</th>
                 </tr>
               </thead>
@@ -391,7 +408,9 @@ export default function UserManager() {
                     <td className="px-3 py-2">
                       <StatusBadge active={isActive(user)} />
                     </td>
-                    <td className="px-3 py-2 text-text-secondary">{user.is_syncbyad ? '✓' : ''}</td>
+                    <td className="px-3 py-2 text-text-secondary">
+                      {isAdAccount(user) ? '✓' : ''}
+                    </td>
                     <td className="px-3 py-2">
                       <span
                         title={
@@ -444,9 +463,14 @@ export default function UserManager() {
                         <button
                           type="button"
                           aria-label={localize('com_ui_delete')}
-                          title={localize('com_ui_delete')}
+                          title={
+                            user.is_self
+                              ? localize('com_ui_tars_users_self_delete_blocked')
+                              : localize('com_ui_delete')
+                          }
+                          disabled={user.is_self}
                           onClick={() => setDeleting(user)}
-                          className="rounded p-1.5 text-red-500 hover:text-red-500"
+                          className="rounded p-1.5 text-red-500 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <Trash2 className="icon-sm" />
                         </button>
@@ -561,24 +585,16 @@ export default function UserManager() {
           users={selectedUsers}
           roles={roles}
           groups={groups}
-          onOpenChange={(open) => {
-            if (!open) {
-              setBulkEditing(false);
-              setSelectedIds(new Set());
-            }
-          }}
+          onSaved={clearSelection}
+          onOpenChange={(open) => !open && setBulkEditing(false)}
         />
       )}
 
       {bulkDeleting && (
         <BulkDeleteModal
           users={selectedUsers}
-          onOpenChange={(open) => {
-            if (!open) {
-              setBulkDeleting(false);
-              setSelectedIds(new Set());
-            }
-          }}
+          onSaved={clearSelection}
+          onOpenChange={(open) => !open && setBulkDeleting(false)}
         />
       )}
     </div>

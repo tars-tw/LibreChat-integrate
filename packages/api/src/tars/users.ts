@@ -1,7 +1,8 @@
 import { PrincipalType } from 'librechat-data-provider';
 import type { TPrincipalSearchResult } from 'librechat-data-provider';
 import type { TarsRole } from './domains';
-import { tarsFetch, getTarsBaseUrl } from './client';
+import { tarsFetch, getTarsBaseUrl, TarsRequestError } from './client';
+import { isTarsAdminRole } from '~/auth/tars';
 
 /**
  * A pwc_tars account row. Mirrors `SysUser.to_dict()` plus the two fields
@@ -32,6 +33,8 @@ export interface TarsAccount {
   sso_config_id?: string | null;
   is_online?: boolean;
   roles_names?: string | null;
+  /** Set by {@link fetchTarsUsersForAdmin} on the row that is the calling admin's own account. */
+  is_self?: boolean;
 }
 
 /** A pwc_tars user group (`SysUserGroup.to_dict()`). */
@@ -88,6 +91,66 @@ interface UsersResponse {
 export async function fetchTarsUsers(baseUrl?: string): Promise<TarsAccount[]> {
   const data = await tarsFetch<UsersResponse>('/api/user_settings/get_users', { baseUrl });
   return data?.users ?? [];
+}
+
+/** The user admin listing, with the calling admin's own row marked so the page can lock it. */
+export async function fetchTarsUsersForAdmin(
+  tarsId: string,
+  baseUrl?: string,
+): Promise<TarsAccount[]> {
+  const users = await fetchTarsUsers(baseUrl);
+  return users.map((user) => (user.id === tarsId ? { ...user, is_self: true } : user));
+}
+
+/**
+ * Refuses an edit that would lock the calling admin out of the admin page.
+ * Raised as a 4xx so the route relays the reason the same way it relays pwc_tars's own.
+ */
+export class TarsSelfProtectionError extends TarsRequestError {
+  constructor(reason: string) {
+    super(400, 'self-protection', reason);
+    this.name = 'TarsSelfProtectionError';
+    this.message = reason;
+  }
+}
+
+const SELF_DELETE_REASON = '不可刪除當前登入的帳號';
+const SELF_DISABLE_REASON = '不可停用當前登入的帳號';
+const SELF_DEMOTE_REASON = '不可移除當前登入帳號的管理員權限';
+
+const toRoleId = (value: string | number | null | undefined): number | null => {
+  if (value == null || value === '') {
+    return null;
+  }
+  const id = Number(value);
+  return Number.isInteger(id) ? id : null;
+};
+
+/**
+ * An admin may change another admin's role, but not disable themselves or
+ * move their own account off an admin role — either would cut off the very
+ * session making the change.
+ */
+function assertNoSelfLockout(
+  tarsId: string,
+  userIds: string[],
+  changes: Pick<TarsUserUpdate, 'role_id' | 'status'>,
+): void {
+  if (!userIds.includes(tarsId)) {
+    return;
+  }
+  if (changes.status != null && changes.status !== 'active') {
+    throw new TarsSelfProtectionError(SELF_DISABLE_REASON);
+  }
+  if ('role_id' in changes && !isTarsAdminRole(toRoleId(changes.role_id))) {
+    throw new TarsSelfProtectionError(SELF_DEMOTE_REASON);
+  }
+}
+
+function assertNoSelfDelete(tarsId: string, userIds: string[]): void {
+  if (userIds.includes(tarsId)) {
+    throw new TarsSelfProtectionError(SELF_DELETE_REASON);
+  }
 }
 
 function matchesTarsSearchQuery(account: TarsAccount, needle: string): boolean {
@@ -212,6 +275,7 @@ export async function updateTarsUser(
   input: TarsUserUpdate,
   baseUrl?: string,
 ): Promise<TarsAccount> {
+  assertNoSelfLockout(tarsId, [userId], input);
   const data = await tarsFetch<{ user: TarsAccount }>(
     `/api/user_settings/update_user/${encodeURIComponent(userId)}`,
     {
@@ -228,6 +292,7 @@ export async function deleteTarsUser(
   userId: string,
   baseUrl?: string,
 ): Promise<void> {
+  assertNoSelfDelete(tarsId, [userId]);
   await tarsFetch(`/api/user_settings/delete_user/${encodeURIComponent(userId)}`, {
     method: 'DELETE',
     body: { deleted_by: tarsId },
@@ -242,6 +307,7 @@ export async function bulkUpdateTarsUsers(
   updates: TarsBulkUserUpdate,
   baseUrl?: string,
 ): Promise<TarsAccount[]> {
+  assertNoSelfLockout(tarsId, ids, updates);
   const data = await tarsFetch<UsersResponse>('/api/user_settings/bulk_update_users', {
     method: 'PUT',
     body: { ids, updates, updated_by: tarsId },
@@ -250,12 +316,13 @@ export async function bulkUpdateTarsUsers(
   return data?.users ?? [];
 }
 
-/** pwc_tars refuses to delete the operator's own account and returns a 400. */
+/** The operator's own account is refused here before pwc_tars, which refuses it too. */
 export async function bulkDeleteTarsUsers(
   tarsId: string,
   ids: string[],
   baseUrl?: string,
 ): Promise<number> {
+  assertNoSelfDelete(tarsId, ids);
   const data = await tarsFetch<{ deleted_count?: number }>('/api/user_settings/bulk_delete_users', {
     method: 'POST',
     body: { ids, deleted_by: tarsId },
@@ -264,14 +331,16 @@ export async function bulkDeleteTarsUsers(
   return data?.deleted_count ?? ids.length;
 }
 
+/** `operator_id` puts the admin, not the account being reset, on the pwc_tars audit trail. */
 export async function resetTarsUserPassword(
+  tarsId: string,
   userId: string,
   newPassword: string,
   baseUrl?: string,
 ): Promise<void> {
   await tarsFetch('/api/auth/reset_password', {
     method: 'POST',
-    body: { user_id: userId, new_password: newPassword },
+    body: { user_id: userId, new_password: newPassword, operator_id: tarsId },
     baseUrl,
   });
 }

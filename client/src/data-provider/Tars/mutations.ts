@@ -1038,8 +1038,14 @@ export const useSaveTarsDomainMcpMutation = (
 
 type UserResponse = { user: TTarsUser };
 
+/**
+ * Account edits also change the group member lists and, since pwc_tars copies a
+ * user's groups onto their token quota rows, the quota listings.
+ */
 const invalidateUsers = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsUsers]);
+  queryClient.invalidateQueries([QueryKeys.tarsUserGroups]);
+  queryClient.invalidateQueries([QueryKeys.tarsTokenQuotas]);
 };
 
 export const useCreateTarsUserMutation = (
@@ -1128,6 +1134,8 @@ export const useImportTarsUsersMutation = (
     ...options,
     onSuccess: (...args) => {
       invalidateUsers(queryClient);
+      /** pwc_tars creates any group a row names that does not exist yet. */
+      queryClient.invalidateQueries([QueryKeys.tarsUserPrepareData]);
       options?.onSuccess?.(...args);
     },
   });
