@@ -1179,6 +1179,14 @@ export const getTarsRoles = (): Promise<t.TTarsRolePrepareData> => {
   return request.get(endpoints.tarsRoles());
 };
 
+/** Puts a browser-side role-list export on the pwc_tars audit trail. */
+export const recordTarsRoleExport = (
+  count: number,
+  pageUrl: string,
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsRolesExportLog(), { count, page_url: pageUrl });
+};
+
 export const createTarsRole = (data: t.TTarsRoleInput): Promise<{ role: t.TTarsRoleDetail }> => {
   return request.post(endpoints.tarsRoles(), data);
 };

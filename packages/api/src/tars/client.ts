@@ -38,6 +38,19 @@ export class TarsRequestError extends Error {
   }
 }
 
+/**
+ * Refuses a request before it reaches pwc_tars — an admin locking themselves
+ * out, deleting a role the deployment depends on. Raised as a 400 so the route
+ * relays the reason the same way it relays pwc_tars's own.
+ */
+export class TarsGuardError extends TarsRequestError {
+  constructor(reason: string) {
+    super(400, 'guard', reason);
+    this.name = 'TarsGuardError';
+    this.message = reason;
+  }
+}
+
 export interface TarsErrorReply {
   status: number;
   error: string;

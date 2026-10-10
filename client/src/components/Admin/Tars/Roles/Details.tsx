@@ -4,11 +4,7 @@ import { OGDialog, OGDialogTemplate } from '@librechat/client';
 import type { TTarsDomain, TTarsRoleDetail } from 'librechat-data-provider';
 import type { AdminMenuNode } from '~/components/Nav/Tars/AdminMenu';
 import type { RoleUsage } from './helpers';
-import {
-  ADMIN_MENU_TREE,
-  adminMenuLeafKeys,
-  adminMenuNodeKeys,
-} from '~/components/Nav/Tars/AdminMenu';
+import { ADMIN_MENU_TREE, adminMenuNodeKeys } from '~/components/Nav/Tars/AdminMenu';
 import { isRoleEnabled, roleDomainIds, roleMenuKeys } from './helpers';
 import { formatDateTime, toNameMap } from '../Users/helpers';
 import { StatusBadge, NameList } from '../Users/Fields';
@@ -60,8 +56,7 @@ export default function RoleDetailsModal({
 }) {
   const localize = useLocalize();
   const domainNames = useMemo(() => toNameMap(domains), [domains]);
-  const storedKeys = roleMenuKeys(role);
-  const granted = useMemo(() => new Set(storedKeys ?? adminMenuLeafKeys()), [storedKeys]);
+  const granted = useMemo(() => new Set(roleMenuKeys(role)), [role]);
 
   return (
     <OGDialog open={true} onOpenChange={onOpenChange}>
@@ -102,11 +97,6 @@ export default function RoleDetailsModal({
               <p className="mb-1 text-xs font-medium text-text-secondary">
                 {localize('com_ui_tars_roles_menus')}
               </p>
-              {storedKeys == null && (
-                <p className="mb-2 text-xs text-text-secondary">
-                  {localize('com_ui_tars_roles_menus_unset')}
-                </p>
-              )}
               <div className="rounded-lg border border-border-light p-3">
                 {ADMIN_MENU_TREE.map((node) => (
                   <GrantedBranch key={node.labelKey} node={node} granted={granted} />

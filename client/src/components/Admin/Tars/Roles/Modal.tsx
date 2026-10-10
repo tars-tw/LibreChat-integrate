@@ -12,7 +12,6 @@ import {
 import type { TTarsDomain, TTarsRoleInput, TTarsRoleDetail } from 'librechat-data-provider';
 import { useCreateTarsRoleMutation, useUpdateTarsRoleMutation } from '~/data-provider';
 import { isRoleEnabled, roleDomainIds, roleMenuKeys } from './helpers';
-import { adminMenuLeafKeys } from '~/components/Nav/Tars/AdminMenu';
 import { idsToCsv } from '../Users/helpers';
 import { useLocalize } from '~/hooks';
 import MenuTree from './MenuTree';
@@ -29,12 +28,12 @@ type FormState = {
   isDefault: boolean;
 };
 
-/** A role with no stored key set predates the feature and is treated as "all menus". */
+/** A new role starts with no menus, matching what pwc_tars grants an unconfigured role. */
 const toFormState = (role?: TTarsRoleDetail): FormState => ({
   name: role?.name ?? '',
   description: role?.description ?? '',
   domainIds: new Set(role ? roleDomainIds(role) : []),
-  menuKeys: new Set(role ? (roleMenuKeys(role) ?? adminMenuLeafKeys()) : adminMenuLeafKeys()),
+  menuKeys: new Set(role ? roleMenuKeys(role) : []),
   enabled: role ? isRoleEnabled(role) : true,
   isDefault: role?.is_default_role ?? false,
 });

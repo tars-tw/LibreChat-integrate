@@ -15,12 +15,10 @@ export const isRoleEnabled = (role: TTarsRoleDetail): boolean =>
 export const roleDomainIds = (role: TTarsRoleDetail): string[] => csvToIds(role.domain_ids);
 
 /**
- * The LibreChat menu keys a role grants. A `null` column means the role predates
- * this feature and is treated as "every menu" — returning `null` lets callers
- * tell that apart from an explicit empty selection.
+ * The LibreChat menu keys a role grants. pwc_tars's login grants nothing for a
+ * `null` column, so an unconfigured role reads as an empty selection here too.
  */
-export const roleMenuKeys = (role: TTarsRoleDetail): string[] | null =>
-  role.librechat_menu_keys == null ? null : csvToIds(role.librechat_menu_keys);
+export const roleMenuKeys = (role: TTarsRoleDetail): string[] => csvToIds(role.librechat_menu_keys);
 
 export type RoleUsage = { users: number; groups: number };
 

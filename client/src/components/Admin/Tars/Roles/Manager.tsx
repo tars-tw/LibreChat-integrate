@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { dataService } from 'librechat-data-provider';
 import {
   Input,
   Button,
@@ -38,7 +39,7 @@ import {
   useTarsUserGroupsQuery,
   useDeleteTarsRoleMutation,
 } from '~/data-provider';
-import { toNameMap, toCsvBlob, downloadBlob, formatDateTime } from '../Users/helpers';
+import { toNameMap, toCsvBlob, downloadBlob, previewNames, formatDateTime } from '../Users/helpers';
 import { adminMenuLeafKeys } from '~/components/Nav/Tars/AdminMenu';
 import { StatusBadge, NameList } from '../Users/Fields';
 import RoleUsageModal from './UsageModal';
@@ -59,10 +60,13 @@ export default function RoleManager() {
   const { i18n } = useTranslation();
   const { showToast } = useToastContext();
 
-  const { data, isLoading } = useTarsRolesQuery();
-  /** Usage counts are derived from the listings the sibling admin pages cache. */
-  const { data: users = [] } = useTarsUsersQuery();
-  const { data: groupData } = useTarsUserGroupsQuery();
+  /**
+   * Usage counts come from the user and group listings, and brain edits rewrite
+   * a role's brains, so every visit refetches all three.
+   */
+  const { data, isLoading } = useTarsRolesQuery({ refetchOnMount: true });
+  const { data: users = [] } = useTarsUsersQuery({ refetchOnMount: true });
+  const { data: groupData } = useTarsUserGroupsQuery({ refetchOnMount: true });
 
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
@@ -141,12 +145,18 @@ export default function RoleManager() {
     setSortAsc(true);
   };
 
-  const menuSummary = (role: TTarsRoleDetail): string => {
-    const keys = roleMenuKeys(role);
-    if (keys == null) {
-      return localize('com_ui_tars_roles_menus_unset_short');
+  const menuSummary = (role: TTarsRoleDetail): string =>
+    `${roleMenuKeys(role).length}/${menuTotal}`;
+
+  /** Admin and default roles are refused by the server; the button says why up front. */
+  const deleteBlockedReason = (role: TTarsRoleDetail): string | null => {
+    if (role.is_admin_role) {
+      return localize('com_ui_tars_roles_delete_admin_blocked');
     }
-    return `${keys.length}/${menuTotal}`;
+    if (role.is_default_role) {
+      return localize('com_ui_tars_roles_delete_default_blocked');
+    }
+    return null;
   };
 
   const handleExport = () => {
@@ -184,6 +194,12 @@ export default function RoleManager() {
       toCsvBlob(headers, csvRows),
       `TARS_roles_${new Date().toISOString().slice(0, 10)}.csv`,
     );
+
+    /**
+     * The CSV is built here, so pwc_tars only learns of the export from this
+     * call. It must never hold up the download, hence the detached catch.
+     */
+    dataService.recordTarsRoleExport(csvRows.length, window.location.href).catch(() => undefined);
   };
 
   const sortableHeader = (field: SortField, labelKey: Parameters<typeof localize>[0]) => (
@@ -336,9 +352,10 @@ export default function RoleManager() {
                           <button
                             type="button"
                             aria-label={localize('com_ui_delete')}
-                            title={localize('com_ui_delete')}
+                            title={deleteBlockedReason(role) ?? localize('com_ui_delete')}
+                            disabled={deleteBlockedReason(role) != null}
                             onClick={() => setDeleting(role)}
-                            className="rounded p-1.5 text-red-500 hover:bg-surface-tertiary hover:text-red-500"
+                            className="rounded p-1.5 text-red-500 hover:bg-surface-tertiary hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                           >
                             <Trash2 className="icon-sm" />
                           </button>
@@ -448,13 +465,23 @@ export default function RoleManager() {
                   if (counts.users === 0 && counts.groups === 0) {
                     return null;
                   }
+                  const holders = usersForRole(String(deleting.id), users);
                   return (
-                    <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
-                      {localize('com_ui_tars_roles_delete_warning', {
-                        users: counts.users,
-                        groups: counts.groups,
-                      })}
-                    </p>
+                    <div className="space-y-1 rounded-lg border border-status-warning-border bg-status-warning-subtle p-3 text-sm text-status-warning">
+                      <p>
+                        {localize('com_ui_tars_roles_delete_warning', {
+                          users: counts.users,
+                          groups: counts.groups,
+                        })}
+                      </p>
+                      {holders.length > 0 && (
+                        <p>
+                          {localize('com_ui_tars_roles_delete_users', {
+                            names: previewNames(holders),
+                          })}
+                        </p>
+                      )}
+                    </div>
                   );
                 })()}
               </div>

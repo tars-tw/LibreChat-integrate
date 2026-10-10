@@ -18,10 +18,10 @@ import {
   fetchTarsAdWhitelist,
   searchTarsPrincipals,
   fetchTarsUsersForAdmin,
-  TarsSelfProtectionError,
   fetchTarsUserPrepareData,
 } from './users';
 import type { TarsAccount } from './users';
+import { TarsGuardError } from './client';
 
 const BASE_URL = 'http://tars.test';
 
@@ -223,9 +223,7 @@ describe('self-protection', () => {
   });
 
   it('refuses deleting the own account, alone or in bulk, without calling pwc_tars', async () => {
-    await expect(deleteTarsUser('admin', 'admin', BASE_URL)).rejects.toBeInstanceOf(
-      TarsSelfProtectionError,
-    );
+    await expect(deleteTarsUser('admin', 'admin', BASE_URL)).rejects.toBeInstanceOf(TarsGuardError);
     await expect(bulkDeleteTarsUsers('admin', ['u1', 'admin'], BASE_URL)).rejects.toThrow(
       '不可刪除當前登入的帳號',
     );
