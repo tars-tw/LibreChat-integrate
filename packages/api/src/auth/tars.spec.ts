@@ -14,6 +14,7 @@ import {
   notifyTarsLogout,
   getTarsSsoStatus,
   hasTarsMenuAccess,
+  canUseTarsAdminPage,
   flattenTarsMenuKeys,
   parseTarsAdminRoleIds,
 } from './tars';
@@ -278,6 +279,27 @@ describe('hasTarsMenuAccess', () => {
     expect(hasTarsMenuAccess(['/dashboard', 'agent'], 'agent')).toBe(true);
     expect(hasTarsMenuAccess(['/dashboard'], '/knowledge/list')).toBe(false);
     expect(hasTarsMenuAccess(undefined, 'agent')).toBe(false);
+  });
+});
+
+describe('canUseTarsAdminPage', () => {
+  it('lets a tars admin through without any grant', () => {
+    expect(canUseTarsAdminPage({ tarsId: 't-1', tarsRoleId: 1 }, ['kb.list'], [1])).toBe(true);
+  });
+
+  it('lets anyone else through only with one of the page keys', () => {
+    const user = { tarsId: 't-1', tarsRoleId: 113, tarsAdminMenuKeys: ['kb.list'] };
+    expect(canUseTarsAdminPage(user, ['kb.list'], [1])).toBe(true);
+    expect(canUseTarsAdminPage(user, ['kb.schedules', 'kb.list'], [1])).toBe(true);
+    expect(canUseTarsAdminPage(user, ['kb.schedules'], [1])).toBe(false);
+    expect(canUseTarsAdminPage({ ...user, tarsAdminMenuKeys: null }, ['kb.list'], [1])).toBe(false);
+  });
+
+  it('refuses an account that is not linked to pwc_tars', () => {
+    expect(
+      canUseTarsAdminPage({ tarsRoleId: 1, tarsAdminMenuKeys: ['kb.list'] }, ['kb.list'], [1]),
+    ).toBe(false);
+    expect(canUseTarsAdminPage(undefined, ['kb.list'], [1])).toBe(false);
   });
 });
 

@@ -69,12 +69,18 @@ export default function KnowledgeModal({
   knowledgeBase,
   users,
   groups,
+  canManageAccess,
   onClose,
 }: {
   /** `null` opens the create form. */
   knowledgeBase: TTarsKnowledgeBase | null;
   users: TTarsKnowledgeBaseUser[];
   groups: TTarsKnowledgeBaseGroup[];
+  /**
+   * Only admins see and send the access lists, as on pwc_tars's own page; the
+   * proxy refuses them from anyone else.
+   */
+  canManageAccess: boolean;
   onClose: () => void;
 }) {
   const localize = useLocalize();
@@ -168,8 +174,12 @@ export default function KnowledgeModal({
           name: trimmedName,
           description: form.description,
           new_max_retrieve_count: retrieveCount,
-          allowed_user_ids: form.allowedUserIds,
-          allowed_user_group_ids: form.allowedUserGroupIds,
+          ...(canManageAccess
+            ? {
+                allowed_user_ids: form.allowedUserIds,
+                allowed_user_group_ids: form.allowedUserGroupIds,
+              }
+            : {}),
         },
       });
       return;
@@ -205,7 +215,7 @@ export default function KnowledgeModal({
     <div className="space-y-1.5">
       <Label id={`${id}-label`}>{label}</Label>
       {!modelsQuery.isFetching && options.length === 0 ? (
-        <p className="flex h-10 items-center rounded-md border border-border-light px-3 text-sm text-text-secondary">
+        <p className="border-border-light text-text-secondary flex h-10 items-center rounded-md border px-3 text-sm">
           {localize('com_ui_tars_kb_no_models')}
         </p>
       ) : (
@@ -236,17 +246,19 @@ export default function KnowledgeModal({
          * clips them. Where the whole form fits, nothing scrolls and the lists
          * may hang past the dialog's edge; shorter screens keep the scroll area.
          */
-        className="w-11/12 md:max-w-4xl [@media(min-height:640px)]:overflow-visible"
+        className={`w-11/12 [@media(min-height:640px)]:overflow-visible ${
+          canManageAccess ? 'md:max-w-4xl' : 'md:max-w-xl'
+        }`}
         /** The pickers are wide; without this the footer is pushed off the dialog. */
         mainClassName="min-w-0"
         main={
           <div className="max-h-[70vh] min-w-0 space-y-4 overflow-y-auto pr-1 [@media(min-height:640px)]:max-h-none [@media(min-height:640px)]:overflow-visible">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className={`grid gap-4 ${canManageAccess ? 'md:grid-cols-2' : ''}`}>
               <div className="min-w-0 space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="tars-kb-name">
                     {localize('com_ui_tars_kb_name')}
-                    <span className="ml-0.5 text-pwc-danger">*</span>
+                    <span className="text-pwc-danger ml-0.5">*</span>
                   </Label>
                   <Input
                     id="tars-kb-name"
@@ -255,7 +267,7 @@ export default function KnowledgeModal({
                     placeholder={localize('com_ui_tars_kb_name_placeholder')}
                   />
                   {form.name !== '' && nameInvalid && (
-                    <p className="text-xs text-pwc-danger">
+                    <p className="text-pwc-danger text-xs">
                       {localize('com_ui_tars_kb_name_invalid', {
                         0: String(NAME_MIN),
                         1: String(NAME_MAX),
@@ -267,7 +279,7 @@ export default function KnowledgeModal({
                 <div className="space-y-1.5">
                   <Label htmlFor="tars-kb-retrieve">
                     {localize('com_ui_tars_kb_max_retrieve')}
-                    <span className="ml-0.5 text-pwc-danger">*</span>
+                    <span className="text-pwc-danger ml-0.5">*</span>
                   </Label>
                   <Input
                     id="tars-kb-retrieve"
@@ -278,7 +290,7 @@ export default function KnowledgeModal({
                     onChange={(event) => set('maxRetrieveCount', event.target.value)}
                   />
                   {retrieveInvalid && (
-                    <p className="text-xs text-pwc-danger">
+                    <p className="text-pwc-danger text-xs">
                       {localize('com_ui_tars_kb_max_retrieve_invalid', {
                         0: String(RETRIEVE_MIN),
                         1: String(RETRIEVE_MAX),
@@ -295,38 +307,40 @@ export default function KnowledgeModal({
                     value={form.description}
                     onChange={(event) => set('description', event.target.value)}
                     placeholder={localize('com_ui_tars_kb_description_placeholder')}
-                    className="w-full rounded-md border border-border-light bg-surface-primary px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-border-heavy"
+                    className="border-border-light bg-surface-primary text-text-primary focus:ring-border-heavy w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="min-w-0 space-y-3 self-start rounded-lg border border-border-light p-3">
-                <p className="text-sm font-medium text-text-primary">
-                  {localize('com_ui_tars_kb_access')}
-                </p>
-                {/* pwc_tars grants only who is listed; an empty pair leaves the base to admins. */}
-                <p className="text-xs text-text-secondary">
-                  {localize('com_ui_tars_kb_access_hint')}
-                </p>
-                <Picker
-                  id="tars-kb-users"
-                  label={localize('com_ui_tars_kb_allowed_users')}
-                  options={userOptions}
-                  selected={form.allowedUserIds}
-                  onChange={(values) => set('allowedUserIds', values)}
-                  placeholder={localize('com_ui_tars_kb_select_users')}
-                  chips
-                />
-                <Picker
-                  id="tars-kb-groups"
-                  label={localize('com_ui_tars_kb_allowed_groups')}
-                  options={groupOptions}
-                  selected={form.allowedUserGroupIds}
-                  onChange={(values) => set('allowedUserGroupIds', values)}
-                  placeholder={localize('com_ui_tars_kb_select_groups')}
-                  chips
-                />
-              </div>
+              {canManageAccess && (
+                <div className="border-border-light min-w-0 space-y-3 self-start rounded-lg border p-3">
+                  <p className="text-text-primary text-sm font-medium">
+                    {localize('com_ui_tars_kb_access')}
+                  </p>
+                  {/* pwc_tars grants only who is listed; an empty pair leaves the base to admins. */}
+                  <p className="text-text-secondary text-xs">
+                    {localize('com_ui_tars_kb_access_hint')}
+                  </p>
+                  <Picker
+                    id="tars-kb-users"
+                    label={localize('com_ui_tars_kb_allowed_users')}
+                    options={userOptions}
+                    selected={form.allowedUserIds}
+                    onChange={(values) => set('allowedUserIds', values)}
+                    placeholder={localize('com_ui_tars_kb_select_users')}
+                    chips
+                  />
+                  <Picker
+                    id="tars-kb-groups"
+                    label={localize('com_ui_tars_kb_allowed_groups')}
+                    options={groupOptions}
+                    selected={form.allowedUserGroupIds}
+                    onChange={(values) => set('allowedUserGroupIds', values)}
+                    placeholder={localize('com_ui_tars_kb_select_groups')}
+                    chips
+                  />
+                </div>
+              )}
             </div>
 
             {!isEdit && (

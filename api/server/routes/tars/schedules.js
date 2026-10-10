@@ -11,18 +11,19 @@ const {
   updateTarsScheduleSyncAll,
   TARS_SCHEDULE_DATASET_TYPES,
 } = require('@librechat/api');
-const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { requireJwtAuth, requireTarsMenuAccess } = require('~/server/middleware');
 const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 
-router.use('/schedules', requireJwtAuth, requireTarsAdmin);
+/** The knowledge-base detail page schedules its own datasets, so 知識庫清單 opens these too. */
+router.use('/schedules', requireJwtAuth, requireTarsMenuAccess('kb.list'));
 
 /**
  * @route GET /api/tars/schedules
  * @desc Recurring dataset refreshes. Without `knowledgeBaseId`, every schedule
  *       in the knowledge bases the caller may see.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.get('/schedules', async (req, res) => {
   try {
@@ -37,7 +38,7 @@ router.get('/schedules', async (req, res) => {
 /**
  * @route POST /api/tars/schedules
  * @desc Schedule a dataset. pwc_tars arms the job as part of this call.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/schedules', async (req, res) => {
   const { datasetId, datasetType, knowledgeBaseId, frequency, frequencyUnit, startTime, endTime } =
@@ -76,7 +77,7 @@ router.post('/schedules', async (req, res) => {
 /**
  * @route PUT /api/tars/schedules/:id
  * @desc Change a schedule's cadence.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.put('/schedules/:id', async (req, res) => {
   const { frequency, frequencyUnit, startTime, endTime } = req.body ?? {};
@@ -95,7 +96,7 @@ router.put('/schedules/:id', async (req, res) => {
 
 /**
  * @route DELETE /api/tars/schedules/:id
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.delete('/schedules/:id', async (req, res) => {
   try {
@@ -122,7 +123,7 @@ for (const [action, call, fallback] of JOB_ACTIONS) {
    * @route POST /api/tars/schedules/:id/{run|stop|restart}
    * @desc pwc_tars exposes run and stop as GETs even though they act; these
    *       are POSTs so a prefetch or a crawler cannot trigger them.
-   * @access Admin (pwc_tars)
+   * @access 知識庫清單 (kb.list) or pwc_tars admin
    */
   router.post(`/schedules/:id/${action}`, async (req, res) => {
     try {
@@ -139,7 +140,7 @@ for (const [action, call, fallback] of JOB_ACTIONS) {
  * @route PUT /api/tars/schedules/:id/sync-all
  * @desc Whether the run pulls every file under the path. Document groups only —
  *       the flag lives on the group link, not on the schedule.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.put('/schedules/:id/sync-all', async (req, res) => {
   const { isSyncAll } = req.body ?? {};

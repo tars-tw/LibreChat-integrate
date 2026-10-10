@@ -25,7 +25,8 @@ export default function DocumentRowActions({
   onViewChunks: () => void;
   onRename: () => void;
   onReprocess: () => void;
-  onRetryStuck: () => void;
+  /** Admin-only, as in pwc_tars; omitted for anyone else, which hides the button. */
+  onRetryStuck?: () => void;
   onDelete: () => void;
 }) {
   const localize = useLocalize();
@@ -72,7 +73,7 @@ export default function DocumentRowActions({
       >
         <RefreshCw className="size-4" aria-hidden />
       </Button>
-      {processing && (
+      {processing && onRetryStuck != null && (
         <Button
           variant="ghost"
           size="icon-xs"

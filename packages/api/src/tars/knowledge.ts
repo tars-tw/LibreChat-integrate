@@ -24,7 +24,7 @@ export interface TarsKnowledgeBase {
   total_chunk_count?: number;
   total_token_count?: number;
   has_sql_database?: boolean;
-  /** Ids allowed to use the KB. Empty means "everyone", matching pwc_tars. */
+  /** Ids allowed to use the KB. With both lists empty only admins reach it, as in pwc_tars. */
   allowed_user_ids?: string[];
   allowed_user_group_ids?: string[];
 }
@@ -54,6 +54,17 @@ export interface TarsKnowledgeBaseUpdate {
    */
   allowed_user_ids?: string[];
   allowed_user_group_ids?: string[];
+}
+
+/**
+ * Update fields only a pwc_tars admin may send. pwc_tars's own list page hides
+ * them from everyone else, but its API does not check, so the proxy does.
+ */
+const ADMIN_ONLY_UPDATE_FIELDS = ['allowed_user_ids', 'allowed_user_group_ids', 'domain_ids'];
+
+/** The admin-only fields present on an update; always empty for an admin. */
+export function forbiddenTarsKnowledgeBaseFields(isAdmin: boolean, update: object): string[] {
+  return isAdmin ? [] : ADMIN_ONLY_UPDATE_FIELDS.filter((field) => field in update);
 }
 
 /** A file forwarded from the LibreChat upload route to pwc_tars. */

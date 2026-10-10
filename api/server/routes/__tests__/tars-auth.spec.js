@@ -40,8 +40,16 @@ jest.mock('~/server/middleware', () => ({
   requireTarsAdmin: jest.fn((req, res, next) =>
     req.user?.admin ? next() : res.status(403).json({ error: 'pwc_tars admin access required' }),
   ),
+  requireTarsMenuAccess: jest.fn(
+    (...keys) =>
+      (req, res, next) =>
+        req.user?.admin || keys.some((key) => req.user?.menuKeys?.includes(key))
+          ? next()
+          : res.status(403).json({ error: 'pwc_tars menu access required' }),
+  ),
 }));
 
+const api = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 const tarsRouter = require('../tars');
 
@@ -116,10 +124,6 @@ describe('/api/tars auth gates', () => {
     ['get', '/data-sources/databases'],
     ['get', '/data-sources/file-systems'],
     ['get', '/data-sources/websites'],
-    ['get', '/knowledge-bases/1/datasets'],
-    ['get', '/knowledge-bases'],
-    ['get', '/documents/1/chunks'],
-    ['get', '/schedules'],
     ['get', '/sys-configs'],
     ['get', '/token/configs'],
     ['get', '/usage/openai'],
@@ -129,5 +133,69 @@ describe('/api/tars auth gates', () => {
       .set('x-test-user', user({ admin: false }));
     expect(res.status).toBe(403);
     expect(requireJwtAuth).toHaveBeenCalledTimes(1);
+  });
+
+  describe('knowledge bases follow the 知識庫清單 grant', () => {
+    const KB_LIST_ROUTES = [
+      ['get', '/knowledge-bases'],
+      ['get', '/knowledge-bases/1/datasets'],
+      ['get', '/knowledge-bases/1/documents'],
+      ['get', '/knowledge-bases/1/model-bindings'],
+      ['get', '/documents/1/chunks'],
+      ['get', '/schedules'],
+    ];
+
+    it.each(KB_LIST_ROUTES)('refuses %s %s without the grant', async (method, path) => {
+      const res = await request(app)
+        [method](toUrl(path))
+        .set('x-test-user', user({ menuKeys: ['audit.messages'] }));
+      expect(res.status).toBe(403);
+    });
+
+    it.each(KB_LIST_ROUTES)('opens %s %s to the grant', async (method, path) => {
+      const res = await request(app)
+        [method](toUrl(path))
+        .set('x-test-user', user({ menuKeys: ['kb.list'] }));
+      expect([401, 403]).not.toContain(res.status);
+      expect(requireJwtAuth).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['get', '/knowledge-bases/models'],
+      ['post', '/knowledge-bases'],
+      ['post', '/knowledge-bases/upload'],
+      ['delete', '/knowledge-bases/1'],
+      ['post', '/knowledge-bases/1/documents/retry-stuck'],
+      ['post', '/knowledge-bases/1/documents/1/retry-stuck'],
+    ])('keeps %s %s admin-only even with the grant', async (method, path) => {
+      const res = await request(app)
+        [method](toUrl(path))
+        .set('x-test-user', user({ menuKeys: ['kb.list'] }));
+      expect(res.status).toBe(403);
+      expect(requireTarsAdmin).toHaveBeenCalledTimes(1);
+    });
+
+    it('refuses an admin-only field on an edit before reaching pwc_tars', async () => {
+      api.forbiddenTarsKnowledgeBaseFields.mockReturnValueOnce(['allowed_user_ids']);
+      const res = await request(app)
+        .put(toUrl('/knowledge-bases/1'))
+        .set('x-test-user', user({ menuKeys: ['kb.list'] }))
+        .send({ name: 'Renamed', allowed_user_ids: [] });
+      expect(res.status).toBe(403);
+      expect(api.updateTarsKnowledgeBase).not.toHaveBeenCalled();
+    });
+
+    it('passes an edit without admin-only fields through', async () => {
+      api.forbiddenTarsKnowledgeBaseFields.mockReturnValueOnce([]);
+      const res = await request(app)
+        .put(toUrl('/knowledge-bases/1'))
+        .set('x-test-user', user({ menuKeys: ['kb.list'] }))
+        .send({ name: 'Renamed', new_max_retrieve_count: 10 });
+      expect(res.status).toBe(200);
+      expect(api.updateTarsKnowledgeBase).toHaveBeenCalledWith(7, '1', {
+        name: 'Renamed',
+        new_max_retrieve_count: 10,
+      });
+    });
   });
 });
