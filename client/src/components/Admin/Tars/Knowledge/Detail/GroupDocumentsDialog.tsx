@@ -11,12 +11,12 @@ import { DOC_STATUS, docStatusMeta, fileSystemLabel, formatCount, matchesName } 
 import DocumentDetailsDialog from './DocumentDetailsDialog';
 import Pagination, { usePagination } from '../Pagination';
 import GroupScheduleSection from './GroupScheduleSection';
+import { useLocalize, useTarsAdminAccess } from '~/hooks';
 import DocumentRowActions from './DocumentRowActions';
 import { formatDateTime } from '../../Users/helpers';
 import ConfirmDialog from './ConfirmDialog';
 import RenameDialog from './RenameDialog';
 import StatusBadge from './StatusBadge';
-import { useLocalize } from '~/hooks';
 
 /** Every filterable status, worst-first so the files most worth a look sort to the top. */
 const STATUS_FILTERS = [
@@ -62,6 +62,7 @@ export default function GroupDocumentsDialog({
   onClose: () => void;
 }) {
   const localize = useLocalize();
+  const { isTarsAdmin } = useTarsAdminAccess();
   const { showToast } = useToastContext();
 
   const [search, setSearch] = useState('');
@@ -293,7 +294,9 @@ export default function GroupDocumentsDialog({
                               onViewChunks={() => onViewChunks(doc)}
                               onRename={() => setRenaming(doc)}
                               onReprocess={() => setReprocessing(doc)}
-                              onRetryStuck={() => retryStuckOneMutation.mutate(doc.id)}
+                              onRetryStuck={
+                                isTarsAdmin ? () => retryStuckOneMutation.mutate(doc.id) : undefined
+                              }
                               onDelete={() => setDeleting(doc)}
                             />
                           </td>

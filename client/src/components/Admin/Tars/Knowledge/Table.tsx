@@ -14,28 +14,29 @@ import DatasetStats from './Stats';
  */
 export default function KnowledgeTable({
   knowledgeBases,
-  selected,
-  onSelectedChange,
+  selection,
   onOpen,
   onEdit,
   onDelete,
   onManagePrompts,
 }: {
   knowledgeBases: TTarsKnowledgeBase[];
-  selected: string[];
-  onSelectedChange: (ids: string[]) => void;
+  /** Omitted for someone who may not use batch settings, which drops the checkbox column. */
+  selection?: { selected: string[]; onChange: (ids: string[]) => void };
   onOpen: (kb: TTarsKnowledgeBase) => void;
   onEdit: (kb: TTarsKnowledgeBase) => void;
-  onDelete: (kb: TTarsKnowledgeBase) => void;
+  /** Omitted for someone who may not delete, which hides the button. */
+  onDelete?: (kb: TTarsKnowledgeBase) => void;
   onManagePrompts: (kb: TTarsKnowledgeBase) => void;
 }) {
   const localize = useLocalize();
   const paged = usePagination(knowledgeBases);
+  const selected = selection?.selected ?? [];
 
   const allSelected = paged.rows.length > 0 && paged.rows.every((row) => selected.includes(row.id));
 
   const toggle = (id: string) =>
-    onSelectedChange(
+    selection?.onChange(
       selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id],
     );
 
@@ -45,15 +46,17 @@ export default function KnowledgeTable({
         <table className="w-full min-w-[64rem] border-collapse text-sm">
           <thead className="bg-surface-secondary">
             <tr className="text-left text-text-secondary">
-              <th className="w-10 px-3 py-2">
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={(checked) =>
-                    onSelectedChange(checked === true ? paged.rows.map((kb) => kb.id) : [])
-                  }
-                  aria-label={localize('com_ui_tars_kb_batch_select_all')}
-                />
-              </th>
+              {selection != null && (
+                <th className="w-10 px-3 py-2">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(checked) =>
+                      selection.onChange(checked === true ? paged.rows.map((kb) => kb.id) : [])
+                    }
+                    aria-label={localize('com_ui_tars_kb_batch_select_all')}
+                  />
+                </th>
+              )}
               <th className="w-[18%] px-3 py-2 font-medium">{localize('com_ui_tars_kb_name')}</th>
               <th className="w-[24%] px-3 py-2 font-medium">{localize('com_ui_description')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_llm_model')}</th>
@@ -66,13 +69,15 @@ export default function KnowledgeTable({
           <tbody>
             {paged.rows.map((kb) => (
               <tr key={kb.id} className="border-t border-border-light hover:bg-surface-hover">
-                <td className="px-3 py-1.5">
-                  <Checkbox
-                    checked={selected.includes(kb.id)}
-                    onCheckedChange={() => toggle(kb.id)}
-                    aria-label={localize('com_ui_tars_kb_batch_select_one', { 0: kb.name })}
-                  />
-                </td>
+                {selection != null && (
+                  <td className="px-3 py-1.5">
+                    <Checkbox
+                      checked={selected.includes(kb.id)}
+                      onCheckedChange={() => toggle(kb.id)}
+                      aria-label={localize('com_ui_tars_kb_batch_select_one', { 0: kb.name })}
+                    />
+                  </td>
+                )}
                 <td className="max-w-0 px-3 py-1.5">
                   <button
                     type="button"
@@ -120,16 +125,18 @@ export default function KnowledgeTable({
                     >
                       <Pencil className="size-4" aria-hidden />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => onDelete(kb)}
-                      aria-label={localize('com_ui_delete')}
-                      title={localize('com_ui_delete')}
-                      className="text-pwc-danger hover:text-pwc-danger"
-                    >
-                      <Trash2 className="size-4" aria-hidden />
-                    </Button>
+                    {onDelete != null && (
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => onDelete(kb)}
+                        aria-label={localize('com_ui_delete')}
+                        title={localize('com_ui_delete')}
+                        className="text-pwc-danger hover:text-pwc-danger"
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </Button>
+                    )}
                   </div>
                 </td>
               </tr>

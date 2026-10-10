@@ -65,8 +65,13 @@ export const filterByName = (
  * Traditional-Chinese collation, so 知識庫 names sort the way an operator reads
  * them rather than by code point.
  */
-const byLabel = (a: PickerOption, b: PickerOption): number =>
-  a.label.localeCompare(b.label, 'zh-Hant');
+const zhHant = (a: string, b: string): number => a.localeCompare(b, 'zh-Hant');
+
+const byLabel = (a: PickerOption, b: PickerOption): number => zhHant(a.label, b.label);
+
+/** The listing in name order, as pwc_tars's own page shows it; pwc_tars sends it newest first. */
+export const sortByName = (knowledgeBases: TTarsKnowledgeBase[]): TTarsKnowledgeBase[] =>
+  [...knowledgeBases].sort((a, b) => zhHant(a.name, b.name));
 
 export const userPickerOptions = (users: TTarsKnowledgeBaseUser[]): PickerOption[] =>
   users

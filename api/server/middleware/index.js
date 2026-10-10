@@ -17,6 +17,7 @@ const canDeleteAccount = require('./canDeleteAccount');
 const accessResources = require('./accessResources');
 const requireTarsAuth = require('./requireTarsAuth');
 const requireTarsAdmin = require('./requireTarsAdmin');
+const requireTarsMenuAccess = require('./requireTarsMenuAccess');
 const injectTarsDomain = require('./injectTarsDomain');
 const requireLdapAuth = require('./requireLdapAuth');
 const abortMiddleware = require('./abortMiddleware');
@@ -55,6 +56,7 @@ module.exports = {
   checkInviteUser,
   requireTarsAuth,
   requireTarsAdmin,
+  requireTarsMenuAccess,
   injectTarsDomain,
   requireLdapAuth,
   requireLocalAuth,
