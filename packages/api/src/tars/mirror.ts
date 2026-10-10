@@ -1,3 +1,6 @@
+import { Tools, ContentTypes, TARS_SWITCH_TOOLS } from 'librechat-data-provider';
+import type { TMessageContentParts, TextData, TMessage, TFile } from 'librechat-data-provider';
+import type { UsageMetadata } from '~/stream/interfaces/IJobStore';
 import { tarsFetch } from './client';
 
 export interface TarsConversationInput {
@@ -7,13 +10,115 @@ export interface TarsConversationInput {
   systemInstruction?: string | null;
 }
 
-export interface TarsMessageInput {
-  conversationId: string;
-  query: string;
+/** pwc_tars `SysConst` message statuses. */
+export const TARS_MESSAGE_STATUS = { success: 1, failed: 2, interrupted: 3 } as const;
+
+/** The per-turn columns of a pwc_tars `message` row that LibreChat can supply. */
+export interface TarsTurnFields {
   response: string;
+  /** This turn's attachments, comma-separated like pwc_tars's own uploads. */
+  uploadFilename: string | null;
+  isWebSearch: boolean;
+  isSqlAgent: boolean;
+  messageTokens: number;
+  responseTokens: number;
+  status: number;
+  errorMessage: string | null;
+}
+
+export interface TarsMessageInput extends Partial<TarsTurnFields> {
+  conversationId: string;
+  /**
+   * LibreChat's response messageId, reused as the pwc_tars message id so feedback
+   * sent under the same id joins this row in the audit report. Resending an id
+   * (a continued response) updates the row instead of adding one.
+   */
+  messageId?: string | null;
+  query: string;
   modelName?: string | null;
-  messageTokens?: number;
-  responseTokens?: number;
+  ipAddr?: string | null;
+}
+
+/** What LibreChat knows about a finished, stopped or failed turn. */
+export interface TarsTurnSource {
+  response?: Partial<Pick<TMessage, 'text' | 'content'>> | null;
+  files?: Partial<Pick<TFile, 'filename'>>[] | null;
+  usage?: UsageMetadata[] | null;
+  unfinished?: boolean;
+  errorText?: string | null;
+}
+
+type TarsToolCall = Extract<TMessageContentParts, { type: ContentTypes.TOOL_CALL }>['tool_call'];
+
+/** The tools that stand for pwc_tars's 資料庫查詢 switch. */
+const SQL_TOOL_NAMES = new Set<string>([Tools.sql_agent, ...TARS_SWITCH_TOOLS.sql_agent]);
+
+const partText = (text: string | TextData): string =>
+  typeof text === 'string' ? text : (text?.value ?? '');
+
+const toolCallName = (toolCall: TarsToolCall | undefined): string | undefined => {
+  if (toolCall == null) {
+    return undefined;
+  }
+  if ('name' in toolCall && typeof toolCall.name === 'string') {
+    return toolCall.name;
+  }
+  return 'function' in toolCall ? toolCall.function?.name : undefined;
+};
+
+/**
+ * Derives the pwc_tars message columns from a LibreChat turn in one pass over its content.
+ * Web search and database query are marked by the tools the turn actually called; tokens
+ * add up every model call of the turn, as pwc_tars's agent runtime counts them.
+ */
+export function buildTarsTurnFields(source: TarsTurnSource): TarsTurnFields {
+  const texts: string[] = [];
+  let isWebSearch = false;
+  let isSqlAgent = false;
+  for (const part of source.response?.content ?? []) {
+    if (part?.type === ContentTypes.TEXT) {
+      const text = part.text != null ? partText(part.text) : '';
+      if (text) {
+        texts.push(text);
+      }
+      continue;
+    }
+    if (part?.type !== ContentTypes.TOOL_CALL) {
+      continue;
+    }
+    const name = toolCallName(part.tool_call);
+    isWebSearch = isWebSearch || name === Tools.web_search;
+    isSqlAgent = isSqlAgent || (name != null && SQL_TOOL_NAMES.has(name));
+  }
+
+  let messageTokens = 0;
+  let responseTokens = 0;
+  for (const usage of source.usage ?? []) {
+    messageTokens += usage?.input_tokens ?? 0;
+    responseTokens += usage?.output_tokens ?? 0;
+  }
+
+  const filenames = (source.files ?? [])
+    .map((file) => file?.filename)
+    .filter((filename): filename is string => !!filename);
+
+  let status: number = TARS_MESSAGE_STATUS.success;
+  if (source.errorText != null) {
+    status = TARS_MESSAGE_STATUS.failed;
+  } else if (source.unfinished === true) {
+    status = TARS_MESSAGE_STATUS.interrupted;
+  }
+
+  return {
+    response: source.response?.text || texts.join('\n'),
+    uploadFilename: filenames.length > 0 ? filenames.join(',') : null,
+    isWebSearch,
+    isSqlAgent,
+    messageTokens,
+    responseTokens,
+    status,
+    errorMessage: source.errorText ?? null,
+  };
 }
 
 /**
@@ -91,6 +196,7 @@ export async function syncTarsConversationName(
  * Mirrors one LibreChat query/response turn into a pwc_tars message
  * (`POST /api/message/create_message`). `message` stores the raw turn as JSON
  * (pwc_tars uses it for the request payload); `response` holds the answer text.
+ * `ipAddr` is the user's address; Node reports IPv4 clients as `::ffff:a.b.c.d`.
  */
 export async function createTarsMessage(
   tarsId: string,
@@ -100,18 +206,24 @@ export async function createTarsMessage(
   await tarsFetch('/api/message/create_message', {
     method: 'POST',
     body: {
+      ...(input.messageId ? { id: input.messageId } : {}),
       conversation_id: input.conversationId,
       query: input.query,
-      response: input.response,
+      response: input.response ?? '',
       message: JSON.stringify({
         source: 'librechat',
         query: input.query,
-        response: input.response,
+        response: input.response ?? '',
       }),
       model_name: input.modelName ?? null,
       message_tokens: input.messageTokens ?? 0,
       response_tokens: input.responseTokens ?? 0,
-      status: 1,
+      status: input.status ?? TARS_MESSAGE_STATUS.success,
+      error_message: input.errorMessage ?? null,
+      upload_filename: input.uploadFilename ?? null,
+      is_web_search: input.isWebSearch ?? false,
+      is_sql_agent: input.isSqlAgent ?? false,
+      ip_addr: input.ipAddr?.replace(/^::ffff:/, '') || null,
       created_by: tarsId,
     },
     baseUrl,

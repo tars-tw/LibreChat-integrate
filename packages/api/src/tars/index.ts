@@ -4,6 +4,7 @@ export * from './agent';
 export * from './audit';
 export * from './client';
 export * from './domains';
+export * from './feedback';
 export * from './files';
 export * from './groups';
 export * from './databases';

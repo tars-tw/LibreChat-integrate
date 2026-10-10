@@ -27,6 +27,11 @@ jest.mock('~/server/services/Config', () => ({ getAppConfig: jest.fn() }));
 
 jest.mock('~/server/services/Endpoints/agents/subagentThreadStore', () => ({}));
 
+jest.mock('~/server/services/Tars/mirror', () => ({
+  mirrorFeedbackToTars: jest.fn().mockResolvedValue(undefined),
+  getTarsFeedbackBaseline: jest.fn().mockResolvedValue(null),
+}));
+
 jest.mock('@librechat/data-schemas', () => ({
   ...jest.requireActual('@librechat/data-schemas'),
   logger: {
@@ -77,6 +82,10 @@ jest.mock('~/db/models', () => ({
 describe('PUT /:conversationId/:messageId/feedback', () => {
   let app;
   const { sendFeedbackScore, requireFeedbackEnabled } = require('@librechat/api');
+  const {
+    mirrorFeedbackToTars,
+    getTarsFeedbackBaseline,
+  } = require('~/server/services/Tars/mirror');
   const { updateMessage } = require('~/models');
 
   beforeAll(() => {
@@ -163,6 +172,28 @@ describe('PUT /:conversationId/:messageId/feedback', () => {
     expect(sendFeedbackScore).toHaveBeenCalledWith(expect.objectContaining({ isTemporary: true }));
   });
 
+  it('mirrors the change to pwc_tars with the feedback it replaced', async () => {
+    const previous = { rating: 'thumbsDown', tag: 'other' };
+    getTarsFeedbackBaseline.mockResolvedValueOnce(previous);
+    const feedback = { rating: 'thumbsDown', tag: 'other', text: 'Missing the 2025 figures' };
+
+    const response = await request(app)
+      .put('/api/messages/conversation-1/message-1/feedback')
+      .send({ feedback });
+
+    expect(response.status).toBe(200);
+    expect(getTarsFeedbackBaseline).toHaveBeenCalledWith(
+      expect.objectContaining({ user: { id: 'user-1' } }),
+      'message-1',
+    );
+    expect(mirrorFeedbackToTars).toHaveBeenCalledWith(expect.anything(), {
+      conversationId: 'conversation-1',
+      messageId: 'message-1',
+      previous,
+      feedback,
+    });
+  });
+
   it('scores the trace of the run a failed turn stands for', async () => {
     updateMessage.mockImplementationOnce((userId, { messageId, feedback }) =>
       Promise.resolve({
@@ -202,6 +233,7 @@ describe('PUT /:conversationId/:messageId/feedback', () => {
     expect(response.body).toEqual({ error: 'Invalid feedback' });
     expect(updateMessage).not.toHaveBeenCalled();
     expect(sendFeedbackScore).not.toHaveBeenCalled();
+    expect(mirrorFeedbackToTars).not.toHaveBeenCalled();
   });
 
   it('gates the route on the shared feedback-enabled middleware', async () => {
