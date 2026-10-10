@@ -1,7 +1,7 @@
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const { fetchTarsReleaseNotes } = require('@librechat/api');
-const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { requireJwtAuth, requireTarsMenuAccess } = require('~/server/middleware');
 const { relayTarsError } = require('./relay');
 
 const router = express.Router();
@@ -11,9 +11,9 @@ router.use('/home', requireJwtAuth);
 /**
  * @route GET /api/tars/home
  * @desc Published release notes from pwc_tars.
- * @access Admin
+ * @access Admin, or a role granted 關於 (`admin.about`)
  */
-router.get('/home', requireTarsAdmin, async (req, res) => {
+router.get('/home', requireTarsMenuAccess('admin.about'), async (req, res) => {
   try {
     const releaseNotes = await fetchTarsReleaseNotes();
     return res.json({ releaseNotes });
