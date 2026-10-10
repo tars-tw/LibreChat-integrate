@@ -51,12 +51,42 @@ describe('LangSelector', () => {
 
     await clickDropdown(dropdownButton);
 
-    const italianOption = getByRole('option', { name: 'Italiano' });
-    await clickDropdown(italianOption);
+    const traditionalChineseOption = getByRole('option', { name: '繁體中文' });
+    await clickDropdown(traditionalChineseOption);
 
     await waitFor(() => {
-      expect(mockOnChange).toHaveBeenCalledWith('it-IT');
+      expect(mockOnChange).toHaveBeenCalledWith('zh-Hant');
     });
+  });
+
+  it('offers only Traditional Chinese and English', async () => {
+    global.ResizeObserver = class MockedResizeObserver {
+      observe = jest.fn();
+      unobserve = jest.fn();
+      disconnect = jest.fn();
+    };
+    const { getByTestId, getAllByRole } = render(
+      <RecoilRoot>
+        <LangSelector langcode="en-US" onChange={mockOnChange} />
+      </RecoilRoot>,
+    );
+
+    await clickDropdown(getByTestId('dropdown-menu'));
+
+    const names = getAllByRole('option').map((option) => option.textContent);
+    expect(names).toEqual(['English', '繁體中文']);
+  });
+
+  it('shows a regional code by the language it resolves to', async () => {
+    const { getByRole } = render(
+      <RecoilRoot>
+        <LangSelector langcode="zh-TW" onChange={mockOnChange} />
+      </RecoilRoot>,
+    );
+
+    expect(getByRole('combobox')).toHaveTextContent('繁體中文');
+
+    await flushDropdownEffects();
   });
 
   it('shows a loading indicator while language resources load', () => {

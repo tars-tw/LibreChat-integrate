@@ -1,10 +1,14 @@
 import { useRecoilValue } from 'recoil';
 import { Dropdown, Spinner } from '@librechat/client';
+import { normalizeLocale } from '~/locales/i18n';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 import store from '~/store';
 
 type PortalElement = ((element: HTMLElement) => HTMLElement | null) | HTMLElement | null;
+
+/** Languages the picker offers; the full list stays below so re-enabling one is a one-word change. */
+const ENABLED_LANGUAGES = new Set(['zh-Hant', 'en-US']);
 
 export const ThemeSelector = ({
   theme,
@@ -108,7 +112,12 @@ export const LangSelector = ({
     { value: 'sl', label: localize('com_nav_lang_slovenian') },
     { value: 'bo', label: localize('com_nav_lang_tibetan') },
     { value: 'uk-UA', label: localize('com_nav_lang_ukrainian') },
-  ];
+  ].filter((option) => ENABLED_LANGUAGES.has(option.value));
+
+  const resolvedLocale = normalizeLocale(langcode);
+  const selectedValue =
+    languageOptions.find((option) => normalizeLocale(option.value) === resolvedLocale)?.value ??
+    langcode;
 
   const labelId = 'language-selector-label';
 
@@ -127,7 +136,7 @@ export const LangSelector = ({
           </span>
         )}
         <Dropdown
-          value={langcode}
+          value={selectedValue}
           onChange={onChange}
           sizeClasses={cn('z-50 w-[220px]', popoverClassName)}
           options={languageOptions}
