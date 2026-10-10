@@ -12,7 +12,6 @@ import {
 import type { TTarsDomain, TTarsRoleInput, TTarsRoleDetail } from 'librechat-data-provider';
 import { useCreateTarsRoleMutation, useUpdateTarsRoleMutation } from '~/data-provider';
 import { isRoleEnabled, roleDomainIds, roleMenuKeys } from './helpers';
-import { adminMenuLeafKeys } from '~/components/Nav/Tars/AdminMenu';
 import { idsToCsv } from '../Users/helpers';
 import { useLocalize } from '~/hooks';
 import MenuTree from './MenuTree';
@@ -29,12 +28,12 @@ type FormState = {
   isDefault: boolean;
 };
 
-/** A role with no stored key set predates the feature and is treated as "all menus". */
+/** A new role starts with no menus, matching what pwc_tars grants an unconfigured role. */
 const toFormState = (role?: TTarsRoleDetail): FormState => ({
   name: role?.name ?? '',
   description: role?.description ?? '',
   domainIds: new Set(role ? roleDomainIds(role) : []),
-  menuKeys: new Set(role ? (roleMenuKeys(role) ?? adminMenuLeafKeys()) : adminMenuLeafKeys()),
+  menuKeys: new Set(role ? roleMenuKeys(role) : []),
   enabled: role ? isRoleEnabled(role) : true,
   isDefault: role?.is_default_role ?? false,
 });
@@ -143,11 +142,11 @@ export default function RoleModal({
                 <div>
                   <Label>{localize('com_ui_tars_roles_domains')}</Label>
                   {domains.length === 0 ? (
-                    <p className="mt-1 text-sm text-text-secondary">
+                    <p className="text-text-secondary mt-1 text-sm">
                       {localize('com_ui_tars_roles_domains_empty')}
                     </p>
                   ) : (
-                    <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-border-light p-2">
+                    <div className="border-border-light mt-1 max-h-40 overflow-y-auto rounded-lg border p-2">
                       {domains.map((domain) => (
                         <label
                           key={domain.id}
@@ -159,7 +158,7 @@ export default function RoleModal({
                             checked={form.domainIds.has(String(domain.id))}
                             onChange={() => toggleDomain(String(domain.id))}
                           />
-                          <span className="truncate text-text-primary">{domain.name}</span>
+                          <span className="text-text-primary truncate">{domain.name}</span>
                         </label>
                       ))}
                     </div>
@@ -194,7 +193,7 @@ export default function RoleModal({
                   </div>
                 </div>
                 {form.isDefault && (
-                  <p className="text-xs text-text-secondary">
+                  <p className="text-text-secondary text-xs">
                     {localize('com_ui_tars_roles_default_hint')}
                   </p>
                 )}
