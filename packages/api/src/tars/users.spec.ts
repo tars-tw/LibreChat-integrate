@@ -12,6 +12,7 @@ import {
   createTarsUser,
   deleteTarsUser,
   updateTarsUser,
+  sendTarsHeartbeat,
   resetTarsUserPassword,
   bulkUpdateTarsUsers,
   bulkDeleteTarsUsers,
@@ -64,6 +65,36 @@ describe('fetchTarsUsers', () => {
   it('defaults to [] when the response omits users', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, {}));
     await expect(fetchTarsUsers(BASE_URL)).resolves.toEqual([]);
+  });
+});
+
+describe('sendTarsHeartbeat', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('posts the account id to the pwc_tars heartbeat', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { status: 'ok' }));
+
+    await sendTarsHeartbeat('u1', BASE_URL);
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${BASE_URL}/api/user_settings/heartbeat`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(parseBody(fetchMock)).toEqual({ user_id: 'u1' });
+  });
+
+  it('skips accounts that are not linked to pwc_tars', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+    await sendTarsHeartbeat(undefined, BASE_URL);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects when pwc_tars does not know the account', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(404, { error: 'User not found' }));
+    await expect(sendTarsHeartbeat('ghost', BASE_URL)).rejects.toMatchObject({ status: 404 });
   });
 });
 
