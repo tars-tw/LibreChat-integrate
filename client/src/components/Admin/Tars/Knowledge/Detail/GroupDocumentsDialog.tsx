@@ -1,13 +1,26 @@
 import { useMemo, useState } from 'react';
 import { RefreshCcw, RotateCcw, RotateCw, Search, Unlink } from 'lucide-react';
 import { Button, Input, OGDialog, OGDialogTemplate, useToastContext } from '@librechat/client';
-import type { TTarsDatasetFileSystemLink, TTarsDocument } from 'librechat-data-provider';
+import type {
+  TTarsDocument,
+  TTarsFileSystemSource,
+  TTarsDatasetFileSystemLink,
+} from 'librechat-data-provider';
+import type { TranslationKeys } from '~/hooks';
+import {
+  DOC_STATUS,
+  formatCount,
+  matchesName,
+  docStatusMeta,
+  fileSystemLabel,
+  boundFolderLabel,
+  recordedChunkLabel,
+} from './helpers';
 import {
   useDeleteTarsDocumentMutation,
   useReprocessTarsDocumentMutation,
   useRetryTarsStuckDocumentMutation,
 } from '~/data-provider';
-import { DOC_STATUS, docStatusMeta, fileSystemLabel, formatCount, matchesName } from './helpers';
 import DocumentDetailsDialog from './DocumentDetailsDialog';
 import Pagination, { usePagination } from '../Pagination';
 import GroupScheduleSection from './GroupScheduleSection';
@@ -39,6 +52,7 @@ const STATUS_PRIORITY: Record<number, number> = Object.fromEntries(
 export default function GroupDocumentsDialog({
   knowledgeBaseId,
   link,
+  source,
   documents,
   locale,
   isGroupBusy,
@@ -51,6 +65,8 @@ export default function GroupDocumentsDialog({
 }: {
   knowledgeBaseId: string;
   link: TTarsDatasetFileSystemLink;
+  /** The file server behind the group; `null` once this knowledge base may no longer use it. */
+  source: TTarsFileSystemSource | null;
   documents: TTarsDocument[];
   locale: string;
   isGroupBusy: boolean;
@@ -122,6 +138,38 @@ export default function GroupDocumentsDialog({
     onError,
   });
 
+  /** What pwc_tars' detail view shows for a group: where it reads from and how it imports. */
+  const binding: { labelKey: TranslationKeys; value: string }[] = [
+    {
+      labelKey: 'com_ui_tars_kb_ds_file_server',
+      value: source?.name ?? '—',
+    },
+    { labelKey: 'com_ui_tars_fs_protocol', value: source?.mount_type ?? '—' },
+    { labelKey: 'com_ui_tars_fs_host', value: source?.host ?? '—' },
+    { labelKey: 'com_ui_tars_fs_port', value: source?.port != null ? String(source.port) : '—' },
+    {
+      labelKey: 'com_ui_tars_kb_ds_bind_folder',
+      value: boundFolderLabel(link, source?.path, localize),
+    },
+    {
+      labelKey: 'com_ui_tars_kb_ds_sync_mode',
+      value: [
+        localize(
+          link.is_sync_all === true
+            ? 'com_ui_tars_kb_ds_sync_all'
+            : 'com_ui_tars_kb_ds_sync_selected',
+        ),
+        link.is_upload_only === true ? localize('com_ui_tars_kb_ds_upload_only') : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    },
+    {
+      labelKey: 'com_ui_tars_kb_ds_chunk_settings',
+      value: recordedChunkLabel(link, localize),
+    },
+  ];
+
   const statusBadge = (status: number | null, label: string, count: number) => {
     const active = statusFilter === status;
     const className =
@@ -149,6 +197,21 @@ export default function GroupDocumentsDialog({
           mainClassName="min-w-0"
           main={
             <div className="max-h-[75vh] min-w-0 space-y-4 overflow-y-auto pr-1">
+              <section
+                aria-label={localize('com_ui_tars_kb_ds_binding')}
+                className="rounded-lg border border-border-light p-3"
+              >
+                <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                  {binding.map(({ labelKey, value }) => (
+                    <div key={labelKey} className="min-w-0">
+                      <dt className="text-xs text-text-secondary">{localize(labelKey)}</dt>
+                      <dd className="truncate text-text-primary" title={value}>
+                        {value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative min-w-[14rem]">

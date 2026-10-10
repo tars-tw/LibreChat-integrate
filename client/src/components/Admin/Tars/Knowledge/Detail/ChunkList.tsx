@@ -1,20 +1,10 @@
 import { useMemo, useState } from 'react';
-import {
-  ChevronLeft,
-  ChevronRight,
-  LayoutGrid,
-  List,
-  Pencil,
-  Search,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, LayoutGrid, List, Search, X } from 'lucide-react';
 import {
   Input,
   Button,
   Switch,
   Spinner,
-  Textarea,
   OGDialog,
   OGDialogTemplate,
   useToastContext,
@@ -24,8 +14,6 @@ import type { ViewerChunk } from './chunks';
 import {
   useTarsWebsiteChunksQuery,
   useTarsDocumentChunksQuery,
-  useUpdateTarsChunkMutation,
-  useDeleteTarsChunkMutation,
   useSetTarsChunkEnabledMutation,
 } from '~/data-provider';
 import { documentChunk, looksLikeMarkdown, preview, websiteChunk } from './chunks';
@@ -47,12 +35,13 @@ export type ChunkSource =
   | { kind: 'website'; knowledgeBaseId: string; website: TTarsDatasetWebsite };
 
 /**
- * A view of one dataset's chunks; a document chunk can be edited, deleted, or switched in or out
- * of retrieval. Website chunks are read-only: pwc_tars rebuilds them from the page on every sync.
+ * A view of one dataset's chunks; a document chunk can be switched in or out of retrieval.
+ * Website chunks are read-only: pwc_tars rebuilds them from the page on every sync.
+ * Editing and deleting a chunk are left out until the deployed pwc_tars carries those routes.
  *
  * Reading a chunk swaps the dialog body rather than opening a second dialog:
  * a nested dialog inside an already-large one is hard to escape from, and the
- * reader needs the full width anyway. The delete confirmation stays inline for the same reason.
+ * reader needs the full width anyway.
  *
  * pwc_tars pages neither chunk endpoint, so the whole set arrives at once and
  * the filtering and paging below are what keep it off the DOM.
@@ -71,16 +60,6 @@ export default function ChunkList({
   const [view, setView] = useState<ViewMode>('list');
   /** Index into the filtered list, so prev/next walks what is on screen. */
   const [reading, setReading] = useState<number | null>(null);
-  /** The edited text while the open chunk is being edited. */
-  const [draft, setDraft] = useState<string | null>(null);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  /** Every move between chunks drops an unfinished edit or delete prompt. */
-  const openChunk = (index: number | null) => {
-    setReading(index);
-    setDraft(null);
-    setConfirmingDelete(false);
-  };
 
   const documentQuery = useTarsDocumentChunksQuery(
     source.kind === 'document' ? source.document.id : null,
@@ -101,22 +80,6 @@ export default function ChunkList({
 
   const enabledMutation = useSetTarsChunkEnabledMutation(documentId, {
     onSuccess: () => showToast({ message: localize('com_ui_saved'), status: 'success' }),
-    onError: showError,
-  });
-
-  const updateMutation = useUpdateTarsChunkMutation(documentId, {
-    onSuccess: () => {
-      showToast({ message: localize('com_ui_saved'), status: 'success' });
-      setDraft(null);
-    },
-    onError: showError,
-  });
-
-  const deleteMutation = useDeleteTarsChunkMutation(documentId, {
-    onSuccess: () => {
-      showToast({ message: localize('com_ui_deleted'), status: 'success' });
-      openChunk(null);
-    },
     onError: showError,
   });
 
@@ -155,50 +118,19 @@ export default function ChunkList({
       return null;
     }
     const isMarkdown = looksLikeMarkdown(readingChunk.content);
-    const editable = source.kind === 'document';
-    const editing = draft != null;
-    const unchanged = draft == null || draft.trim() === '' || draft === readingChunk.content;
     return (
       <div className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button
-            variant="outline"
-            disabled={editing}
-            onClick={() => openChunk(null)}
-            className="gap-1.5"
-          >
+          <Button variant="outline" onClick={() => setReading(null)} className="gap-1.5">
             <ChevronLeft className="size-4" aria-hidden />
             {localize('com_ui_back')}
           </Button>
           <div className="flex items-center gap-2">
-            {editable && !editing && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setConfirmingDelete(false);
-                    setDraft(readingChunk.content);
-                  }}
-                  className="gap-1.5"
-                >
-                  <Pencil className="size-4" aria-hidden />
-                  {localize('com_ui_edit')}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setConfirmingDelete(true)}
-                  className="gap-1.5 text-text-destructive"
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                  {localize('com_ui_delete')}
-                </Button>
-              </>
-            )}
             <Button
               variant="ghost"
               size="icon"
-              disabled={editing || reading === 0}
-              onClick={() => openChunk((reading ?? 0) - 1)}
+              disabled={reading === 0}
+              onClick={() => setReading((reading ?? 0) - 1)}
               aria-label={localize('com_ui_tars_kb_chunk_prev')}
               title={localize('com_ui_tars_kb_chunk_prev')}
             >
@@ -210,8 +142,8 @@ export default function ChunkList({
             <Button
               variant="ghost"
               size="icon"
-              disabled={editing || (reading != null && reading >= filtered.length - 1)}
-              onClick={() => openChunk((reading ?? 0) + 1)}
+              disabled={reading != null && reading >= filtered.length - 1}
+              onClick={() => setReading((reading ?? 0) + 1)}
               aria-label={localize('com_ui_tars_kb_chunk_next')}
               title={localize('com_ui_tars_kb_chunk_next')}
             >
@@ -263,87 +195,22 @@ export default function ChunkList({
           )}
         </div>
 
-        {confirmingDelete && (
-          <div
-            role="alert"
-            className="flex flex-wrap items-center gap-2 rounded-lg border border-status-error-border bg-status-error-subtle px-3 py-2 text-sm text-text-primary"
-          >
-            <span className="min-w-0 flex-1">
-              {localize('com_ui_tars_kb_chunk_delete_confirm')}
-            </span>
-            <Button
-              variant="outline"
-              disabled={deleteMutation.isLoading}
-              onClick={() => setConfirmingDelete(false)}
-            >
-              {localize('com_ui_cancel')}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={deleteMutation.isLoading}
-              onClick={() => deleteMutation.mutate(readingChunk.id)}
-            >
-              {deleteMutation.isLoading ? (
-                <Spinner className="size-4" />
-              ) : (
-                localize('com_ui_delete')
-              )}
-            </Button>
-          </div>
-        )}
-
-        {editing ? (
-          <div className="space-y-2">
-            <Textarea
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              aria-label={localize('com_ui_tars_kb_chunk_content')}
-              className="max-h-[55vh] min-h-[16rem] font-mono text-sm"
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="min-w-0 flex-1 text-xs text-text-secondary">
-                {localize('com_ui_tars_kb_chunk_edit_hint')}
-              </span>
-              <Button
-                variant="outline"
-                disabled={updateMutation.isLoading}
-                onClick={() => setDraft(null)}
-              >
-                {localize('com_ui_cancel')}
-              </Button>
-              <Button
-                variant="submit"
-                disabled={unchanged || updateMutation.isLoading}
-                onClick={() =>
-                  updateMutation.mutate({ chunkId: readingChunk.id, data: { content: draft } })
-                }
-              >
-                {updateMutation.isLoading ? (
-                  <Spinner className="size-4" />
-                ) : (
-                  localize('com_ui_save')
-                )}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="data-table-scroll max-h-[55vh] min-w-0 overflow-auto rounded-lg border border-border-light p-4">
-            {/*
+        <div className="data-table-scroll max-h-[55vh] min-w-0 overflow-auto rounded-lg border border-border-light p-4">
+          {/*
             Markdown goes through the app's own renderer rather than the
             original page's regex-to-innerHTML: chunk content is whatever was in
             the uploaded file, so it is never trusted markup. Highlighting is
             therefore only applied to the plain-text branch, where the text stays
             React nodes all the way down.
           */}
-            {isMarkdown ? (
-              <MarkdownLite content={readingChunk.content} />
-            ) : (
-              <p className="whitespace-pre-wrap break-words text-sm text-text-primary">
-                <Highlight text={readingChunk.content} query={search} />
-              </p>
-            )}
-          </div>
-        )}
+          {isMarkdown ? (
+            <MarkdownLite content={readingChunk.content} />
+          ) : (
+            <p className="whitespace-pre-wrap break-words text-sm text-text-primary">
+              <Highlight text={readingChunk.content} query={search} />
+            </p>
+          )}
+        </div>
       </div>
     );
   };
@@ -430,7 +297,7 @@ export default function ChunkList({
                 <button
                   key={chunk.id}
                   type="button"
-                  onClick={() => openChunk(index)}
+                  onClick={() => setReading(index)}
                   className={`min-w-0 rounded-lg border border-border-light p-3 text-left transition-colors hover:border-border-heavy hover:bg-surface-hover ${
                     view === 'grid' ? 'flex flex-col gap-2' : 'flex items-start gap-3'
                   } ${chunk.enabled ? '' : 'opacity-60'}`}
