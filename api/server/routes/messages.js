@@ -29,6 +29,7 @@ const {
   withoutTraceRefs,
 } = require('@librechat/api');
 const subagentThreadTaskStore = require('~/server/services/Endpoints/agents/subagentThreadStore');
+const { mirrorFeedbackToTars, getTarsFeedbackBaseline } = require('~/server/services/Tars/mirror');
 const { findAllArtifacts, replaceArtifactContent } = require('~/server/services/Artifacts/update');
 const {
   requireJwtAuth,
@@ -706,6 +707,7 @@ router.put(
         return res.status(400).json({ error: 'Invalid feedback' });
       }
 
+      const previousFeedback = await getTarsFeedbackBaseline(req, messageId);
       const updatedMessage = await db.updateMessage(
         req?.user?.id,
         {
@@ -714,6 +716,13 @@ router.put(
         },
         { context: 'updateFeedback' },
       );
+
+      mirrorFeedbackToTars(req, {
+        conversationId,
+        messageId,
+        previous: previousFeedback,
+        feedback: updatedMessage.feedback,
+      });
 
       // Best-effort: Assistants messages do not have deterministic AgentRun traces.
       if (!isAssistantsEndpoint(updatedMessage.endpoint)) {

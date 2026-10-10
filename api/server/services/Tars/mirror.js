@@ -4,28 +4,31 @@ const {
   isTarsConfigured,
   createTarsConversation,
   createTarsMessage,
+  buildTarsTurnFields,
   syncTarsConversationName,
   deleteTarsConversation,
   deleteTarsConversations,
+  mirrorTarsMessageFeedback,
 } = require('@librechat/api');
-const { getConvo, saveConvo } = require('~/models');
+const { getConvo, saveConvo, getMessage } = require('~/models');
 
 /**
- * Best-effort, one-way mirror of a finished LibreChat chat turn into the pwc_tars
- * DB (LibreChat → pwc_tars). Lazily creates the linked pwc_tars conversation on
- * the first turn and stores the mapping (`tarsConversationId`) on the LibreChat
+ * Best-effort, one-way mirror of a finished, stopped or failed LibreChat chat turn into
+ * the pwc_tars DB (LibreChat → pwc_tars). Lazily creates the linked pwc_tars conversation
+ * on the first turn and stores the mapping (`tarsConversationId`) on the LibreChat
  * conversation, then appends the query/response as a pwc_tars message. Keeps the
  * pwc_tars-side conversation name in step with LibreChat's generated title.
+ * `turn` is a `TarsTurnSource` (response, files, usage, unfinished / errorText).
  *
  * Never throws — any failure is logged and swallowed so chat is unaffected.
  */
 async function mirrorChatToTars(
   req,
-  { conversationId, existingTarsConversationId, title, model, domainId, query, response },
+  { conversationId, existingTarsConversationId, title, model, domainId, query, messageId, turn },
 ) {
   try {
     const tarsId = req?.user?.tarsId;
-    if (!isTarsConfigured() || !tarsId || !conversationId || !query || !response) {
+    if (!isTarsConfigured() || !tarsId || !conversationId || !query) {
       return;
     }
 
@@ -62,9 +65,11 @@ async function mirrorChatToTars(
 
     await createTarsMessage(tarsId, {
       conversationId: tarsConversationId,
+      messageId,
       query,
-      response,
       modelName: model,
+      ipAddr: req.ip,
+      ...buildTarsTurnFields(turn ?? {}),
     });
   } catch (error) {
     logger.error('[mirrorChatToTars] Failed to mirror conversation to pwc_tars', error);
@@ -126,8 +131,41 @@ async function mirrorDeleteManyToTars(req, tarsConversationIds) {
   }
 }
 
+/**
+ * The message's feedback before a change, which the pwc_tars feedback mirror compares
+ * against. Read only for pwc_tars-linked users; never throws.
+ */
+async function getTarsFeedbackBaseline(req, messageId) {
+  if (!isTarsConfigured() || !req?.user?.tarsId) {
+    return null;
+  }
+  try {
+    return (await getMessage({ user: req.user.id, messageId }))?.feedback ?? null;
+  } catch (error) {
+    logger.error('[getTarsFeedbackBaseline] Failed to read the previous feedback', error);
+    return null;
+  }
+}
+
+/**
+ * Best-effort mirror of a LibreChat like/dislike (and the chosen tag / comment) into pwc_tars
+ * `message_feedback`, keyed by the linked pwc_tars conversation. Never throws.
+ */
+async function mirrorFeedbackToTars(req, { conversationId, messageId, previous, feedback }) {
+  try {
+    await mirrorTarsMessageFeedback(
+      { tarsId: req?.user?.tarsId, messageId, previous, feedback },
+      async () => (await getConvo(req.user.id, conversationId))?.tarsConversationId,
+    );
+  } catch (error) {
+    logger.error('[mirrorFeedbackToTars] Failed to send feedback to pwc_tars', error);
+  }
+}
+
 module.exports = {
   mirrorChatToTars,
+  mirrorFeedbackToTars,
+  getTarsFeedbackBaseline,
   mirrorDeleteToTars,
   mirrorDeleteManyToTars,
   collectTarsConversationIds,
