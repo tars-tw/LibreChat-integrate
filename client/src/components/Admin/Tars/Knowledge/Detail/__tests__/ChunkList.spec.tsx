@@ -6,10 +6,9 @@ import ChunkList from '../ChunkList';
 
 type MutationOptions = { onSuccess?: () => void; onError?: (error: unknown) => void };
 
-const mockUpdate = jest.fn();
-const mockDelete = jest.fn();
+const mockSetEnabled = jest.fn();
 const mockShowToast = jest.fn();
-const options: { update?: MutationOptions; delete?: MutationOptions } = {};
+const options: { enabled?: MutationOptions } = {};
 
 const chunks: TTarsChunk[] = [
   { id: 'c1', document_id: 'd1', position: 1, content: '申請期限為 30 天', enabled: true },
@@ -26,14 +25,9 @@ jest.mock('~/data-provider', () => ({
     },
     isLoading: false,
   }),
-  useSetTarsChunkEnabledMutation: () => ({ mutate: jest.fn(), isLoading: false }),
-  useUpdateTarsChunkMutation: (_docId: string, opts: MutationOptions) => {
-    options.update = opts;
-    return { mutate: mockUpdate, isLoading: false };
-  },
-  useDeleteTarsChunkMutation: (_docId: string, opts: MutationOptions) => {
-    options.delete = opts;
-    return { mutate: mockDelete, isLoading: false };
+  useSetTarsChunkEnabledMutation: (_docId: string, opts: MutationOptions) => {
+    options.enabled = opts;
+    return { mutate: mockSetEnabled, isLoading: false };
   },
 }));
 
@@ -62,85 +56,45 @@ const openFirstChunk = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 beforeEach(() => {
-  mockUpdate.mockClear();
-  mockDelete.mockClear();
+  mockSetEnabled.mockClear();
   mockShowToast.mockClear();
 });
 
-describe('ChunkList editing', () => {
-  it('saves only a changed, non-empty edit and locks navigation while editing', async () => {
+describe('ChunkList document chunks', () => {
+  /** Editing and deleting stay out until the deployed pwc_tars carries those routes. */
+  it('offers no edit or delete', async () => {
     const user = userEvent.setup();
     await openFirstChunk(user);
-    await user.click(screen.getByRole('button', { name: /com_ui_edit/ }));
-
-    const box = screen.getByLabelText('com_ui_tars_kb_chunk_content') as HTMLTextAreaElement;
-    expect(box.value).toBe('申請期限為 30 天');
-    const save = screen.getByRole('button', { name: 'com_ui_save' });
-    expect(save).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'com_ui_tars_kb_chunk_next' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /com_ui_back/ })).toBeDisabled();
-
-    await user.clear(box);
-    await user.type(box, '   ');
-    expect(save).toBeDisabled();
-
-    await user.clear(box);
-    await user.type(box, '申請期限改為 45 天');
-    await user.click(save);
-    expect(mockUpdate).toHaveBeenCalledWith({
-      chunkId: 'c1',
-      data: { content: '申請期限改為 45 天' },
-    });
+    expect(screen.queryByRole('button', { name: /com_ui_edit/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /com_ui_delete/ })).toBeNull();
   });
 
-  it('leaves edit mode once the save succeeds', async () => {
+  it('switches a chunk out of retrieval', async () => {
     const user = userEvent.setup();
     await openFirstChunk(user);
-    await user.click(screen.getByRole('button', { name: /com_ui_edit/ }));
-    act(() => options.update?.onSuccess?.());
-    expect(screen.queryByLabelText('com_ui_tars_kb_chunk_content')).toBeNull();
-    expect(mockShowToast).toHaveBeenCalledWith({ message: 'com_ui_saved', status: 'success' });
+    await user.click(screen.getByRole('switch', { name: 'com_ui_tars_kb_chunk_enabled_toggle' }));
+    expect(mockSetEnabled).toHaveBeenCalledWith({ chunkId: 'c1', enabled: false });
   });
 
-  it("shows pwc_tars's reason when a save is refused", async () => {
+  it("shows pwc_tars's reason when the switch is refused", async () => {
     const user = userEvent.setup();
     await openFirstChunk(user);
-    act(() => options.update?.onError?.({ response: { data: { error: '向量索引更新失敗' } } }));
+    act(() => options.enabled?.onError?.({ response: { data: { error: '向量索引更新失敗' } } }));
     expect(mockShowToast).toHaveBeenCalledWith({ message: '向量索引更新失敗', status: 'error' });
   });
-});
 
-describe('ChunkList deleting', () => {
-  it('asks inline before deleting, then returns to the list', async () => {
+  it('walks to the next chunk and back to the list', async () => {
     const user = userEvent.setup();
     await openFirstChunk(user);
-    await user.click(screen.getByRole('button', { name: /com_ui_delete/ }));
-
-    const prompt = screen.getByRole('alert');
-    expect(prompt).toHaveTextContent('com_ui_tars_kb_chunk_delete_confirm');
-    expect(mockDelete).not.toHaveBeenCalled();
-
-    const confirm = screen.getAllByRole('button', { name: 'com_ui_delete' }).at(-1) as HTMLElement;
-    await user.click(confirm);
-    expect(mockDelete).toHaveBeenCalledWith('c1');
-
-    act(() => options.delete?.onSuccess?.());
+    await user.click(screen.getByRole('button', { name: 'com_ui_tars_kb_chunk_next' }));
     expect(screen.getByText('聯絡窗口為研發處')).toBeInTheDocument();
-    expect(screen.queryByRole('alert')).toBeNull();
-  });
-
-  it('cancelling the prompt deletes nothing', async () => {
-    const user = userEvent.setup();
-    await openFirstChunk(user);
-    await user.click(screen.getByRole('button', { name: /com_ui_delete/ }));
-    await user.click(screen.getByRole('button', { name: 'com_ui_cancel' }));
-    expect(screen.queryByRole('alert')).toBeNull();
-    expect(mockDelete).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: /com_ui_back/ }));
+    expect(screen.getByText('申請期限為 30 天')).toBeInTheDocument();
   });
 });
 
 describe('ChunkList website chunks', () => {
-  it('offers no edit or delete', async () => {
+  it('offers no edit, delete or retrieval switch', async () => {
     const user = userEvent.setup();
     render(
       <ChunkList
@@ -155,5 +109,6 @@ describe('ChunkList website chunks', () => {
     await user.click(screen.getByText('網站內容'));
     expect(screen.queryByRole('button', { name: /com_ui_edit/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /com_ui_delete/ })).toBeNull();
+    expect(screen.queryByRole('switch')).toBeNull();
   });
 });

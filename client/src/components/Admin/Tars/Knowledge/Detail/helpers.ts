@@ -1,5 +1,9 @@
-import type { TTarsDatasetFileSystemLink, TTarsDatasetWebsite } from 'librechat-data-provider';
-import type { TranslationKeys } from '~/hooks';
+import type {
+  TTarsDatasetFileSystemLink,
+  TTarsDatasetWebsite,
+  TTarsDatasetLimits,
+} from 'librechat-data-provider';
+import type { TranslationKeys, useLocalize } from '~/hooks';
 
 /** pwc_tars `Document.status` codes (backend `sys_const.py`). */
 export const DOC_STATUS = {
@@ -73,6 +77,57 @@ export const websiteLabel = (website: TTarsDatasetWebsite): string =>
 
 export const fileSystemLabel = (link: TTarsDatasetFileSystemLink): string =>
   link.name ?? link.dataset_file_system_id;
+
+/** What pwc_tars chunks a group's new files with when its binding recorded nothing (`schedule_job`). */
+export const FILE_SYSTEM_DEFAULT_CHUNK = { chunkSize: 1000, overlap: 100 } as const;
+
+/** The chunking a binding recorded at import, falling back to pwc_tars' default for older bindings. */
+export const recordedChunk = (link: TTarsDatasetFileSystemLink) => ({
+  chunkSize: link.chunk_size ?? FILE_SYSTEM_DEFAULT_CHUNK.chunkSize,
+  overlap: link.overlap_size ?? FILE_SYSTEM_DEFAULT_CHUNK.overlap,
+  recorded: link.chunk_size != null,
+});
+
+type Localize = ReturnType<typeof useLocalize>;
+
+/**
+ * The folder a binding reads from. A binding without one takes the file
+ * server's whole path, which is named when the server is still listed here.
+ */
+export const boundFolderLabel = (
+  link: TTarsDatasetFileSystemLink,
+  sourcePath: string | null | undefined,
+  localize: Localize,
+): string => {
+  if (link.directory_path != null && link.directory_path !== '') {
+    return link.directory_path;
+  }
+  if (sourcePath != null && sourcePath !== '') {
+    return localize('com_ui_tars_kb_ds_whole_source_path', { 0: sourcePath });
+  }
+  return localize('com_ui_tars_kb_ds_whole_source');
+};
+
+export const recordedChunkLabel = (
+  link: TTarsDatasetFileSystemLink,
+  localize: Localize,
+): string => {
+  const { chunkSize, overlap, recorded } = recordedChunk(link);
+  const values = `${chunkSize} / ${overlap}`;
+  return recorded ? values : localize('com_ui_tars_kb_ds_chunk_default', { 0: values });
+};
+
+/** The chunking bounds every upload form enforces, from pwc_tars' `sys_config` limits. */
+export const chunkSettingsInvalid = (
+  chunkSize: number,
+  overlap: number,
+  limits: TTarsDatasetLimits,
+): boolean =>
+  chunkSize < 1 ||
+  chunkSize > limits.max_chunk_size ||
+  overlap < 0 ||
+  overlap > limits.max_overlap ||
+  overlap >= chunkSize;
 
 /** `Intl` handles the units; this only keeps the call sites short. */
 export const formatCount = (value: number | null | undefined): string =>
