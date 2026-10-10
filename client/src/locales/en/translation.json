@@ -3926,7 +3926,7 @@
   "com_ui_tars_domain_add": "Add brain",
   "com_ui_tars_domain_edit": "Edit brain",
   "com_ui_tars_domain_delete": "Delete brain",
-  "com_ui_tars_domain_delete_warning": "This brain will also be unbound from every role that grants it.",
+  "com_ui_tars_domain_delete_warning": "This also unbinds it from every role and deletes its prompts, token limit settings and MCP grants. Token usage records and conversations are kept.",
   "com_ui_tars_domain_name": "Brain name",
   "com_ui_tars_domain_name_rule": "Brain name must be 2 to 20 characters.",
   "com_ui_tars_domain_created": "Specialized brain created.",

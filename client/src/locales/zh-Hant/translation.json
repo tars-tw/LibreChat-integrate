@@ -3112,7 +3112,7 @@
   "com_ui_tars_domain_add": "新增專用腦",
   "com_ui_tars_domain_created": "專用腦已新增。",
   "com_ui_tars_domain_delete": "刪除專用腦",
-  "com_ui_tars_domain_delete_warning": "同時會將此專用腦從所有授予它的權限中解除綁定。",
+  "com_ui_tars_domain_delete_warning": "同時會解除所有權限的綁定，並刪除此專用腦的提示詞、Token 額度設定與 MCP 授權；Token 使用紀錄與對話會保留。",
   "com_ui_tars_domain_edit": "編輯專用腦",
   "com_ui_tars_domain_iframe": "嵌入網站",
   "com_ui_tars_domain_iframe_hint": "嵌入網站的專用腦會直接顯示該網頁而非對話，因此功能、模型與知識庫設定都會被清空。",

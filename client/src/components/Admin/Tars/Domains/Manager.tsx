@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { dataService } from 'librechat-data-provider';
 import {
   Input,
   Button,
@@ -47,7 +48,8 @@ export default function DomainManager() {
   const { i18n } = useTranslation();
   const { showToast } = useToastContext();
 
-  const { data, isLoading } = useTarsDomainPrepareDataQuery();
+  /** Role and knowledge-base pages rewrite what this listing shows, so every visit refetches. */
+  const { data, isLoading } = useTarsDomainPrepareDataQuery({ refetchOnMount: true });
 
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -150,6 +152,12 @@ export default function DomainManager() {
       toCsvBlob(headers, csvRows),
       `TARS_domains_${new Date().toISOString().slice(0, 10)}.csv`,
     );
+
+    /**
+     * The CSV is built here, so pwc_tars only learns of the export from this
+     * call. It must never hold up the download, hence the detached catch.
+     */
+    dataService.recordTarsDomainExport(csvRows.length, window.location.href).catch(() => undefined);
   };
 
   const actionButtons = (domain: TTarsDomain) => (

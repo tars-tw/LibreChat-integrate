@@ -350,6 +350,7 @@ export const agentQueuedTurn = (queuedTurnId: string) =>
 export const tarsDomains = () => `${BASE_URL}/api/tars/domains`;
 export const tarsDomain = (id: string | number) => `${BASE_URL}/api/tars/domains/${id}`;
 export const tarsDomainPrepareData = () => `${BASE_URL}/api/tars/domains/admin/prepare-data`;
+export const tarsDomainsExportLog = () => `${BASE_URL}/api/tars/domains/admin/export-log`;
 export const tarsPluginTools = () => `${BASE_URL}/api/tars/domains/admin/plugin-tools`;
 export const tarsPluginToolsReload = () => `${BASE_URL}/api/tars/domains/admin/plugin-tools/reload`;
 export const tarsKnowledgeBases = () => `${BASE_URL}/api/tars/knowledge-bases`;

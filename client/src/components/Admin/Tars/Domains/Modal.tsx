@@ -318,7 +318,7 @@ export default function DomainModal({
     const payload: TTarsDomainInput = {
       name,
       description: form.description.trim(),
-      role_ids: form.iframeEnabled ? '' : (idsToCsv([...form.roleIds]) ?? ''),
+      role_ids: idsToCsv([...form.roleIds]) ?? '',
       knowledge_base_ids: form.iframeEnabled ? '' : (idsToCsv([...form.kbIds]) ?? ''),
       prompt_instruction: form.iframeEnabled ? '' : form.promptInstruction,
       iframe_url: form.iframeEnabled ? form.iframeUrl.trim() : '',
@@ -337,6 +337,21 @@ export default function DomainModal({
     }
     createMutation.mutate(payload);
   };
+
+  /** Shown for embedded-site brains too: the bound roles decide who sees the brain at all. */
+  const rolesField = (
+    <div>
+      <Label>{localize('com_ui_tars_domain_roles')}</Label>
+      <div className="mt-1">
+        <CheckboxList
+          items={roleItems}
+          selected={form.roleIds}
+          emptyLabel={localize('com_ui_none')}
+          onToggle={toggleIn('roleIds')}
+        />
+      </div>
+    </div>
+  );
 
   return (
     <OGDialog open={open} onOpenChange={onOpenChange}>
@@ -391,21 +406,24 @@ export default function DomainModal({
             </div>
 
             {form.iframeEnabled ? (
-              <div>
-                <Label htmlFor="tars-domain-iframe-url">
-                  {localize('com_ui_tars_domain_iframe_url')}
-                </Label>
-                <Input
-                  id="tars-domain-iframe-url"
-                  type="url"
-                  className="mt-1"
-                  placeholder="https://example.com"
-                  value={form.iframeUrl}
-                  onChange={(e) => setForm((prev) => ({ ...prev, iframeUrl: e.target.value }))}
-                />
-                <p className="mt-1 text-xs text-text-secondary">
-                  {localize('com_ui_tars_domain_iframe_hint')}
-                </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="tars-domain-iframe-url">
+                    {localize('com_ui_tars_domain_iframe_url')}
+                  </Label>
+                  <Input
+                    id="tars-domain-iframe-url"
+                    type="url"
+                    className="mt-1"
+                    placeholder="https://example.com"
+                    value={form.iframeUrl}
+                    onChange={(e) => setForm((prev) => ({ ...prev, iframeUrl: e.target.value }))}
+                  />
+                  <p className="mt-1 text-xs text-text-secondary">
+                    {localize('com_ui_tars_domain_iframe_hint')}
+                  </p>
+                </div>
+                {rolesField}
               </div>
             ) : (
               <>
@@ -421,17 +439,7 @@ export default function DomainModal({
                       />
                     </div>
                   </div>
-                  <div>
-                    <Label>{localize('com_ui_tars_domain_roles')}</Label>
-                    <div className="mt-1">
-                      <CheckboxList
-                        items={roleItems}
-                        selected={form.roleIds}
-                        emptyLabel={localize('com_ui_none')}
-                        onToggle={toggleIn('roleIds')}
-                      />
-                    </div>
-                  </div>
+                  {rolesField}
                 </div>
 
                 <div>

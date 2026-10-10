@@ -12,6 +12,7 @@ import {
   deleteTarsDomain,
   updateTarsDomain,
   fetchTarsDomainById,
+  recordTarsDomainExport,
   fetchTarsDomainsForUser,
 } from './domains';
 import type { TarsDomain } from './domains';
@@ -120,6 +121,34 @@ describe('deleteTarsDomain', () => {
       `${BASE_URL}/api/domain_settings/delete_domain/7?operator_id=admin`,
       expect.objectContaining({ method: 'DELETE' }),
     );
+  });
+});
+
+describe('recordTarsDomainExport', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('writes an EXPORT row under the domain module, stamped with the operator', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { success: true }));
+
+    await recordTarsDomainExport('admin', 2, 'http://localhost/admin/domains', BASE_URL);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${BASE_URL}/api/system_action_log/record`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual({
+      action_type: 'EXPORT',
+      module: 'domain-settings',
+      target_type: 'csv',
+      target_name: '專用腦清單',
+      description: '匯出 2 筆專用腦資料',
+      page_url: 'http://localhost/admin/domains',
+      user_id: 'admin',
+    });
   });
 });
 

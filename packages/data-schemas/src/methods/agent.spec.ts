@@ -65,6 +65,7 @@ let revertAgentVersion: AgentMethods['revertAgentVersion'];
 let addAgentResourceFile: AgentMethods['addAgentResourceFile'];
 let removeAgentResourceFiles: AgentMethods['removeAgentResourceFiles'];
 let removeAgentResourceFilesFromAllAgents: AgentMethods['removeAgentResourceFilesFromAllAgents'];
+let unbindAgentsFromTarsDomain: AgentMethods['unbindAgentsFromTarsDomain'];
 let getSharedResourceFileIds: AgentMethods['getSharedResourceFileIds'];
 let getListAgentsByAccess: AgentMethods['getListAgentsByAccess'];
 let getAgentManagementListByAccess: AgentMethods['getAgentManagementListByAccess'];
@@ -118,6 +119,7 @@ beforeAll(async () => {
   addAgentResourceFile = methods.addAgentResourceFile;
   removeAgentResourceFiles = methods.removeAgentResourceFiles;
   removeAgentResourceFilesFromAllAgents = methods.removeAgentResourceFilesFromAllAgents;
+  unbindAgentsFromTarsDomain = methods.unbindAgentsFromTarsDomain;
   getSharedResourceFileIds = methods.getSharedResourceFileIds;
   getListAgentsByAccess = methods.getListAgentsByAccess;
   getAgentManagementListByAccess = methods.getAgentManagementListByAccess;
@@ -4377,6 +4379,33 @@ describe('Agent Methods', () => {
 
       test('answers without querying when given no file_ids', async () => {
         expect(await getSharedResourceFileIds({ file_ids: [] })).toEqual([]);
+      });
+    });
+
+    describe('unbindAgentsFromTarsDomain', () => {
+      beforeEach(async () => {
+        await Agent.deleteMany({});
+      });
+
+      test('clears the binding only on agents bound to the deleted brain', async () => {
+        const bound = await createBasicAgent({ tars_domain_id: '225' });
+        const otherBrain = await createBasicAgent({ tars_domain_id: '2250' });
+        const unbound = await createBasicAgent();
+
+        const result = await unbindAgentsFromTarsDomain('225');
+
+        expect(result).toEqual({ matchedCount: 1, modifiedCount: 1 });
+        expect((await getAgent({ id: bound.id }))?.tars_domain_id).toBeUndefined();
+        expect((await getAgent({ id: otherBrain.id }))?.tars_domain_id).toBe('2250');
+        expect((await getAgent({ id: unbound.id }))?.tars_domain_id).toBeUndefined();
+      });
+
+      test('is a no-op without a brain id', async () => {
+        await createBasicAgent({ tars_domain_id: '225' });
+        await expect(unbindAgentsFromTarsDomain('')).resolves.toEqual({
+          matchedCount: 0,
+          modifiedCount: 0,
+        });
       });
     });
 
