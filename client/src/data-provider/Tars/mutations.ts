@@ -74,11 +74,13 @@ type McpServerResponse = { server: TTarsMcpServer };
  * and its observer is unmounted while the admin page is open — a plain
  * invalidation would leave that inactive query stale until a full reload, so the
  * chat would keep offering plugins the admin just switched off. `refetchType:
- * 'all'` refetches inactive queries too.
+ * 'all'` refetches inactive queries too. A brain save also rewrites the
+ * `domain_ids` of every role it binds or unbinds, so the role listing goes too.
  */
 const invalidateDomains = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsDomainPrepareData]);
   queryClient.invalidateQueries([QueryKeys.tarsDomains], { refetchType: 'all' });
+  queryClient.invalidateQueries([QueryKeys.tarsRoles]);
 };
 
 export const useCreateTarsDomainMutation = (
@@ -1292,15 +1294,17 @@ export const useDeleteTarsModelProfileMutation = (
 type RoleResponse = { role: TTarsRoleDetail };
 
 /**
- * Roles feed the user and group editors, and marking one the default role makes
- * pwc_tars clear the flag on every other role — so the whole listing plus both
- * dependent pages are refreshed after any role change.
+ * Roles feed the user and group editors, marking one the default role makes
+ * pwc_tars clear the flag on every other role, and pwc_tars mirrors a role's
+ * brains onto each brain's `role_ids` — so the whole listing, both dependent
+ * pages and the brain listings (which include the roles) are refreshed.
  */
 const invalidateRoles = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsRoles]);
   queryClient.invalidateQueries([QueryKeys.tarsUserPrepareData]);
   queryClient.invalidateQueries([QueryKeys.tarsUserGroups]);
   queryClient.invalidateQueries([QueryKeys.tarsUsers]);
+  invalidateDomains(queryClient);
 };
 
 export const useCreateTarsRoleMutation = (

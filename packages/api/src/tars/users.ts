@@ -1,7 +1,7 @@
 import { PrincipalType } from 'librechat-data-provider';
 import type { TPrincipalSearchResult } from 'librechat-data-provider';
 import type { TarsRole } from './domains';
-import { tarsFetch, getTarsBaseUrl, TarsRequestError } from './client';
+import { tarsFetch, getTarsBaseUrl, TarsGuardError } from './client';
 import { isTarsAdminRole } from '~/auth/tars';
 
 /**
@@ -102,18 +102,6 @@ export async function fetchTarsUsersForAdmin(
   return users.map((user) => (user.id === tarsId ? { ...user, is_self: true } : user));
 }
 
-/**
- * Refuses an edit that would lock the calling admin out of the admin page.
- * Raised as a 4xx so the route relays the reason the same way it relays pwc_tars's own.
- */
-export class TarsSelfProtectionError extends TarsRequestError {
-  constructor(reason: string) {
-    super(400, 'self-protection', reason);
-    this.name = 'TarsSelfProtectionError';
-    this.message = reason;
-  }
-}
-
 const SELF_DELETE_REASON = '不可刪除當前登入的帳號';
 const SELF_DISABLE_REASON = '不可停用當前登入的帳號';
 const SELF_DEMOTE_REASON = '不可移除當前登入帳號的管理員權限';
@@ -140,16 +128,16 @@ function assertNoSelfLockout(
     return;
   }
   if (changes.status != null && changes.status !== 'active') {
-    throw new TarsSelfProtectionError(SELF_DISABLE_REASON);
+    throw new TarsGuardError(SELF_DISABLE_REASON);
   }
   if ('role_id' in changes && !isTarsAdminRole(toRoleId(changes.role_id))) {
-    throw new TarsSelfProtectionError(SELF_DEMOTE_REASON);
+    throw new TarsGuardError(SELF_DEMOTE_REASON);
   }
 }
 
 function assertNoSelfDelete(tarsId: string, userIds: string[]): void {
   if (userIds.includes(tarsId)) {
-    throw new TarsSelfProtectionError(SELF_DELETE_REASON);
+    throw new TarsGuardError(SELF_DELETE_REASON);
   }
 }
 

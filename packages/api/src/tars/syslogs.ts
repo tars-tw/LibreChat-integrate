@@ -224,6 +224,31 @@ export async function recordTarsActionLog(
 }
 
 /**
+ * Records a browser-built CSV export of an admin listing. pwc_tars never sees
+ * the rows, so this row is its only trace of the export.
+ */
+export async function recordTarsCsvExport(
+  tarsId: string,
+  listing: { module: string; targetName: string; rowNoun: string },
+  count: number,
+  pageUrl?: string,
+  baseUrl?: string,
+): Promise<void> {
+  await recordTarsActionLog(
+    tarsId,
+    {
+      action_type: 'EXPORT',
+      module: listing.module,
+      target_type: 'csv',
+      target_name: listing.targetName,
+      description: `匯出 ${count} 筆${listing.rowNoun}資料`,
+      page_url: pageUrl,
+    },
+    baseUrl,
+  );
+}
+
+/**
  * One recorded operation in full (`GET /api/system_action_log/audit_logs/<id>`).
  *
  * The list endpoint already returns every column, but pwc_tars is free to widen

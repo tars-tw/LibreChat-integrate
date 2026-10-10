@@ -4,11 +4,7 @@ import { OGDialog, OGDialogTemplate } from '@librechat/client';
 import type { TTarsDomain, TTarsRoleDetail } from 'librechat-data-provider';
 import type { AdminMenuNode } from '~/components/Nav/Tars/AdminMenu';
 import type { RoleUsage } from './helpers';
-import {
-  ADMIN_MENU_TREE,
-  adminMenuLeafKeys,
-  adminMenuNodeKeys,
-} from '~/components/Nav/Tars/AdminMenu';
+import { ADMIN_MENU_TREE, adminMenuNodeKeys } from '~/components/Nav/Tars/AdminMenu';
 import { isRoleEnabled, roleDomainIds, roleMenuKeys } from './helpers';
 import { formatDateTime, toNameMap } from '../Users/helpers';
 import { StatusBadge, NameList } from '../Users/Fields';
@@ -17,8 +13,8 @@ import { useLocalize } from '~/hooks';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-medium text-text-secondary">{label}</p>
-      <div className="mt-0.5 text-sm text-text-primary">{children}</div>
+      <p className="text-text-secondary text-xs font-medium">{label}</p>
+      <div className="text-text-primary mt-0.5 text-sm">{children}</div>
     </div>
   );
 }
@@ -33,7 +29,7 @@ function GrantedBranch({ node, granted }: { node: AdminMenuNode; granted: Set<st
 
   return (
     <div className="py-0.5">
-      <p className="text-sm font-medium text-text-primary">{localize(node.labelKey)}</p>
+      <p className="text-text-primary text-sm font-medium">{localize(node.labelKey)}</p>
       {node.children?.length != null && node.children.length > 0 && (
         <div className="pl-4">
           {node.children.map((child) => (
@@ -60,8 +56,7 @@ export default function RoleDetailsModal({
 }) {
   const localize = useLocalize();
   const domainNames = useMemo(() => toNameMap(domains), [domains]);
-  const storedKeys = roleMenuKeys(role);
-  const granted = useMemo(() => new Set(storedKeys ?? adminMenuLeafKeys()), [storedKeys]);
+  const granted = useMemo(() => new Set(roleMenuKeys(role)), [role]);
 
   return (
     <OGDialog open={true} onOpenChange={onOpenChange}>
@@ -99,20 +94,15 @@ export default function RoleDetailsModal({
             </div>
 
             <div>
-              <p className="mb-1 text-xs font-medium text-text-secondary">
+              <p className="text-text-secondary mb-1 text-xs font-medium">
                 {localize('com_ui_tars_roles_menus')}
               </p>
-              {storedKeys == null && (
-                <p className="mb-2 text-xs text-text-secondary">
-                  {localize('com_ui_tars_roles_menus_unset')}
-                </p>
-              )}
-              <div className="rounded-lg border border-border-light p-3">
+              <div className="border-border-light rounded-lg border p-3">
                 {ADMIN_MENU_TREE.map((node) => (
                   <GrantedBranch key={node.labelKey} node={node} granted={granted} />
                 ))}
                 {granted.size === 0 && (
-                  <p className="text-sm text-text-secondary">
+                  <p className="text-text-secondary text-sm">
                     {localize('com_ui_tars_roles_menus_none')}
                   </p>
                 )}
