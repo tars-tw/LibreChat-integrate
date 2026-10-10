@@ -20,6 +20,7 @@ import {
   fetchTarsDocumentChunks,
   setTarsChunkEnabled,
   deleteTarsKnowledgeBase,
+  forbiddenTarsKnowledgeBaseFields,
 } from './knowledge';
 import type { TarsDocument } from './knowledge';
 import { TarsRequestError, tarsErrorReply } from './client';
@@ -399,5 +400,32 @@ describe('deleteTarsKnowledgeBase', () => {
       `${BASE_URL}/api/knowledge_base/delete_knowledge_base/kb-1?operator_id=admin`,
       expect.objectContaining({ method: 'DELETE' }),
     );
+  });
+});
+
+describe('forbiddenTarsKnowledgeBaseFields', () => {
+  it('names the access and brain fields a non-admin sent', () => {
+    expect(
+      forbiddenTarsKnowledgeBaseFields(false, {
+        name: 'KB',
+        allowed_user_ids: [],
+        allowed_user_group_ids: ['g-1'],
+        domain_ids: 'd-1',
+      }),
+    ).toEqual(['allowed_user_ids', 'allowed_user_group_ids', 'domain_ids']);
+  });
+
+  it('allows a non-admin to change the name, description and retrieval count', () => {
+    expect(
+      forbiddenTarsKnowledgeBaseFields(false, {
+        name: 'KB',
+        description: 'about',
+        new_max_retrieve_count: 10,
+      }),
+    ).toEqual([]);
+  });
+
+  it('allows an admin to send anything', () => {
+    expect(forbiddenTarsKnowledgeBaseFields(true, { allowed_user_ids: ['u-1'] })).toEqual([]);
   });
 });

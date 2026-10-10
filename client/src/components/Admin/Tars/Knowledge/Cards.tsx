@@ -16,7 +16,8 @@ export default function KnowledgeCards({
   knowledgeBases: TTarsKnowledgeBase[];
   onOpen: (kb: TTarsKnowledgeBase) => void;
   onEdit: (kb: TTarsKnowledgeBase) => void;
-  onDelete: (kb: TTarsKnowledgeBase) => void;
+  /** Omitted for someone who may not delete, which hides the button. */
+  onDelete?: (kb: TTarsKnowledgeBase) => void;
   onManagePrompts: (kb: TTarsKnowledgeBase) => void;
 }) {
   const localize = useLocalize();
@@ -26,7 +27,7 @@ export default function KnowledgeCards({
       {knowledgeBases.map((kb) => (
         <div
           key={kb.id}
-          className="flex flex-col gap-3 rounded-xl border border-border-light p-4 transition-colors hover:border-border-heavy"
+          className="border-border-light hover:border-border-heavy flex flex-col gap-3 rounded-xl border p-4 transition-colors"
         >
           <div className="flex items-start justify-between gap-2">
             {/*
@@ -39,12 +40,12 @@ export default function KnowledgeCards({
               onClick={() => onOpen(kb)}
               className="flex min-w-0 flex-1 items-start gap-2 text-left"
             >
-              <Library className="mt-0.5 size-5 shrink-0 text-brand-primary" aria-hidden />
+              <Library className="text-brand-primary mt-0.5 size-5 shrink-0" aria-hidden />
               <span className="min-w-0">
-                <span className="block truncate font-medium text-text-primary" title={kb.name}>
+                <span className="text-text-primary block truncate font-medium" title={kb.name}>
                   {kb.name}
                 </span>
-                <span className="mt-0.5 flex items-center gap-2 text-xs text-text-secondary">
+                <span className="text-text-secondary mt-0.5 flex items-center gap-2 text-xs">
                   <span className="truncate" title={kb.llm_model ?? undefined}>
                     {kb.llm_model ?? '—'}
                   </span>
@@ -79,29 +80,31 @@ export default function KnowledgeCards({
               >
                 <Pencil className="size-4" aria-hidden />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDelete(kb)}
-                aria-label={localize('com_ui_delete')}
-                title={localize('com_ui_delete')}
-                className="text-pwc-danger hover:text-pwc-danger"
-              >
-                <Trash2 className="size-4" aria-hidden />
-              </Button>
+              {onDelete != null && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onDelete(kb)}
+                  aria-label={localize('com_ui_delete')}
+                  title={localize('com_ui_delete')}
+                  className="text-pwc-danger hover:text-pwc-danger"
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </Button>
+              )}
             </div>
           </div>
 
           <p
-            className="line-clamp-2 min-h-[2.5rem] text-sm text-text-secondary"
+            className="text-text-secondary line-clamp-2 min-h-[2.5rem] text-sm"
             title={kb.description ?? undefined}
           >
             {kb.description ?? ''}
           </p>
 
-          <div className="mt-auto flex items-center justify-between gap-2 border-t border-border-light pt-3">
+          <div className="border-border-light mt-auto flex items-center justify-between gap-2 border-t pt-3">
             <DatasetStats knowledgeBase={kb} />
-            <span className="shrink-0 text-xs text-text-tertiary">
+            <span className="text-text-tertiary shrink-0 text-xs">
               {localize(accessSummaryKey(kb))}
             </span>
           </div>

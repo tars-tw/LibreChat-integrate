@@ -10,6 +10,7 @@ import {
 import { docStatusMeta, formatCount, matchesName } from './helpers';
 import DocumentDetailsDialog from './DocumentDetailsDialog';
 import Pagination, { usePagination } from '../Pagination';
+import { useLocalize, useTarsAdminAccess } from '~/hooks';
 import DocumentRowActions from './DocumentRowActions';
 import { formatDateTime } from '../../Users/helpers';
 import ConfirmDialog from './ConfirmDialog';
@@ -17,7 +18,6 @@ import RenameDialog from './RenameDialog';
 import UploadDialog from './UploadDialog';
 import { relayedError } from '../helpers';
 import StatusBadge from './StatusBadge';
-import { useLocalize } from '~/hooks';
 import Toolbar from './Toolbar';
 
 /** The file datasets of a knowledge base. */
@@ -41,6 +41,7 @@ export default function DocumentsTab({
   onBatchDelete: (documentIds: string[]) => void;
 }) {
   const localize = useLocalize();
+  const { isTarsAdmin } = useTarsAdminAccess();
   const { showToast } = useToastContext();
 
   const [search, setSearch] = useState('');
@@ -127,23 +128,23 @@ export default function DocumentsTab({
           onBatchDelete(selected);
           setSelected([]);
         }}
-        onRetryStuck={() => retryStuckMutation.mutate()}
+        onRetryStuck={isTarsAdmin ? () => retryStuckMutation.mutate() : undefined}
         isRetryingStuck={retryStuckMutation.isLoading}
         addLabel={localize('com_ui_tars_kb_upload_documents')}
         onAdd={() => setShowUpload(true)}
       />
 
       {visible.length === 0 ? (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize(
             documents.length === 0 ? 'com_ui_tars_kb_no_documents' : 'com_ui_tars_kb_ds_no_match',
           )}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border-light">
+        <div className="border-border-light overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[56rem] border-collapse text-sm">
             <thead className="bg-surface-secondary">
-              <tr className="text-left text-text-secondary">
+              <tr className="text-text-secondary text-left">
                 <th className="w-10 px-3 py-2">
                   <Checkbox
                     checked={allSelected}
@@ -167,7 +168,7 @@ export default function DocumentsTab({
             </thead>
             <tbody>
               {paged.rows.map((doc) => (
-                <tr key={doc.id} className="border-t border-border-light hover:bg-surface-hover">
+                <tr key={doc.id} className="border-border-light hover:bg-surface-hover border-t">
                   <td className="px-3 py-1.5">
                     <Checkbox
                       checked={selected.includes(doc.id)}
@@ -176,20 +177,20 @@ export default function DocumentsTab({
                     />
                   </td>
                   <td className="max-w-0 px-3 py-1.5">
-                    <span className="block truncate text-text-primary" title={doc.filename}>
+                    <span className="text-text-primary block truncate" title={doc.filename}>
                       {doc.filename}
                     </span>
                   </td>
                   <td className="px-3 py-1.5">
                     <StatusBadge meta={docStatusMeta(doc.status)} />
                   </td>
-                  <td className="px-3 py-1.5 tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-1.5 tabular-nums">
                     {formatCount(doc.word_count)}
                   </td>
-                  <td className="px-3 py-1.5 tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-1.5 tabular-nums">
                     {formatCount(doc.tokens)}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1.5 text-text-secondary">
+                  <td className="text-text-secondary px-3 py-1.5 whitespace-nowrap">
                     {formatDateTime(doc.created_at, locale)}
                   </td>
                   <td className="px-3 py-1.5">
@@ -200,7 +201,9 @@ export default function DocumentsTab({
                       onViewChunks={() => onViewChunks(doc)}
                       onRename={() => setRenaming(doc)}
                       onReprocess={() => setReprocessing(doc)}
-                      onRetryStuck={() => retryStuckOneMutation.mutate(doc.id)}
+                      onRetryStuck={
+                        isTarsAdmin ? () => retryStuckOneMutation.mutate(doc.id) : undefined
+                      }
                       onDelete={() => setDeleting(doc)}
                     />
                   </td>

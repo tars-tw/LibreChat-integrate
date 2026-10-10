@@ -124,6 +124,34 @@ export function hasTarsMenuAccess(menuKeys: string[] | undefined, key: string): 
   return !!menuKeys && menuKeys.includes(key);
 }
 
+/** The parts of a LibreChat user that decide access to a pwc_tars admin page. */
+export interface TarsAccessUser {
+  tarsId?: string | null;
+  tarsRoleId?: number | null;
+  tarsAdminMenuKeys?: string[] | null;
+}
+
+/**
+ * Whether a user may use a pwc_tars admin page whose LibreChat menu key is one
+ * of `keys`. A tars admin always may; anyone else needs one of those keys in
+ * `tarsAdminMenuKeys` — the grants resolved from their role(s) at login, the
+ * same set that decides whether the client shows the page at all.
+ */
+export function canUseTarsAdminPage(
+  user: TarsAccessUser | null | undefined,
+  keys: string[],
+  adminRoleIds: number[] = parseTarsAdminRoleIds(),
+): boolean {
+  if (!user?.tarsId) {
+    return false;
+  }
+  if (isTarsAdminRole(user.tarsRoleId ?? null, adminRoleIds)) {
+    return true;
+  }
+  const granted = user.tarsAdminMenuKeys ?? [];
+  return keys.some((key) => granted.includes(key));
+}
+
 /** pwc_tars's own codes for "no usable licence at all" — answered with the same 401 as bad credentials. */
 const LICENSE_ERROR_CODES = new Set(['LICENSE_NOT_FOUND', 'LICENSE_VALIDATION_FAILED']);
 
