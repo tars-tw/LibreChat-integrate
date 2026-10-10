@@ -7,7 +7,14 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
-import { createTarsRole, deleteTarsRole, fetchTarsRolePrepareData, updateTarsRole } from './roles';
+import {
+  createTarsRole,
+  deleteTarsRole,
+  updateTarsRole,
+  recordTarsRoleExport,
+  fetchTarsRolePrepareData,
+} from './roles';
+import { TarsGuardError } from './client';
 import type { TarsRoleDetail } from './roles';
 
 const BASE_URL = 'http://tars.test';
@@ -39,16 +46,20 @@ describe('fetchTarsRolePrepareData', () => {
   });
 
   it('returns roles and domains, ignoring the legacy pwc_tars menu tree', async () => {
+    const editor = { ...role, id: 5, name: 'Editor' };
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
       buildResponse(200, {
-        sys_roles: [role],
+        sys_roles: [role, editor],
         sys_domains: [{ id: 1, name: 'Finance' }],
         sys_menus: [{ id: 10, title: 'legacy' }],
       }),
     );
 
     await expect(fetchTarsRolePrepareData(BASE_URL)).resolves.toEqual({
-      roles: [role],
+      roles: [
+        { ...role, is_admin_role: true },
+        { ...editor, is_admin_role: false },
+      ],
       domains: [{ id: 1, name: 'Finance' }],
     });
     expect(fetchMock).toHaveBeenCalledWith(
@@ -134,11 +145,43 @@ describe('role mutations', () => {
       .spyOn(global, 'fetch')
       .mockResolvedValue(buildResponse(200, { message: 'ok' }));
 
-    await deleteTarsRole('admin', 1, BASE_URL);
+    await deleteTarsRole('admin', 5, BASE_URL);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      `${BASE_URL}/api/role_settings/delete_role/1?operator_id=admin`,
+      `${BASE_URL}/api/role_settings/delete_role/5?operator_id=admin`,
       expect.objectContaining({ method: 'DELETE' }),
     );
+  });
+
+  it('refuses an admin role without calling pwc_tars', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+
+    await expect(deleteTarsRole('admin', 1, BASE_URL)).rejects.toBeInstanceOf(TarsGuardError);
+    await expect(deleteTarsRole('admin', '1', BASE_URL)).rejects.toThrow('不可刪除管理員權限');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('recordTarsRoleExport', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('writes an EXPORT row under the role module, stamped with the operator', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { success: true }));
+
+    await recordTarsRoleExport('admin', 4, 'http://localhost/admin/permissions', BASE_URL);
+
+    expect(parseBody(fetchMock)).toEqual({
+      action_type: 'EXPORT',
+      module: 'role-settings',
+      target_type: 'csv',
+      target_name: '權限清單',
+      description: '匯出 4 筆權限資料',
+      page_url: 'http://localhost/admin/permissions',
+      user_id: 'admin',
+    });
   });
 });

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { dataService } from 'librechat-data-provider';
 import {
   Input,
   Button,
@@ -38,7 +39,7 @@ import {
   useTarsUserGroupsQuery,
   useDeleteTarsRoleMutation,
 } from '~/data-provider';
-import { toNameMap, toCsvBlob, downloadBlob, formatDateTime } from '../Users/helpers';
+import { toNameMap, toCsvBlob, downloadBlob, previewNames, formatDateTime } from '../Users/helpers';
 import { adminMenuLeafKeys } from '~/components/Nav/Tars/AdminMenu';
 import { StatusBadge, NameList } from '../Users/Fields';
 import RoleUsageModal from './UsageModal';
@@ -59,10 +60,13 @@ export default function RoleManager() {
   const { i18n } = useTranslation();
   const { showToast } = useToastContext();
 
-  const { data, isLoading } = useTarsRolesQuery();
-  /** Usage counts are derived from the listings the sibling admin pages cache. */
-  const { data: users = [] } = useTarsUsersQuery();
-  const { data: groupData } = useTarsUserGroupsQuery();
+  /**
+   * Usage counts come from the user and group listings, and brain edits rewrite
+   * a role's brains, so every visit refetches all three.
+   */
+  const { data, isLoading } = useTarsRolesQuery({ refetchOnMount: true });
+  const { data: users = [] } = useTarsUsersQuery({ refetchOnMount: true });
+  const { data: groupData } = useTarsUserGroupsQuery({ refetchOnMount: true });
 
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
@@ -141,12 +145,18 @@ export default function RoleManager() {
     setSortAsc(true);
   };
 
-  const menuSummary = (role: TTarsRoleDetail): string => {
-    const keys = roleMenuKeys(role);
-    if (keys == null) {
-      return localize('com_ui_tars_roles_menus_unset_short');
+  const menuSummary = (role: TTarsRoleDetail): string =>
+    `${roleMenuKeys(role).length}/${menuTotal}`;
+
+  /** Admin and default roles are refused by the server; the button says why up front. */
+  const deleteBlockedReason = (role: TTarsRoleDetail): string | null => {
+    if (role.is_admin_role) {
+      return localize('com_ui_tars_roles_delete_admin_blocked');
     }
-    return `${keys.length}/${menuTotal}`;
+    if (role.is_default_role) {
+      return localize('com_ui_tars_roles_delete_default_blocked');
+    }
+    return null;
   };
 
   const handleExport = () => {
@@ -184,6 +194,12 @@ export default function RoleManager() {
       toCsvBlob(headers, csvRows),
       `TARS_roles_${new Date().toISOString().slice(0, 10)}.csv`,
     );
+
+    /**
+     * The CSV is built here, so pwc_tars only learns of the export from this
+     * call. It must never hold up the download, hence the detached catch.
+     */
+    dataService.recordTarsRoleExport(csvRows.length, window.location.href).catch(() => undefined);
   };
 
   const sortableHeader = (field: SortField, labelKey: Parameters<typeof localize>[0]) => (
@@ -191,7 +207,7 @@ export default function RoleManager() {
       <button
         type="button"
         onClick={() => toggleSort(field)}
-        className="flex items-center gap-1 hover:text-text-primary"
+        className="hover:text-text-primary flex items-center gap-1"
       >
         {localize(labelKey)}
         {field === sortField &&
@@ -205,7 +221,7 @@ export default function RoleManager() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="relative w-64 max-w-full">
-            <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+            <Search className="icon-sm text-text-secondary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
             <Input
               value={search}
               onChange={(e) => {
@@ -234,16 +250,16 @@ export default function RoleManager() {
       )}
 
       {!isLoading && filtered.length === 0 && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_tars_roles_empty')}
         </p>
       )}
 
       {!isLoading && filtered.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border-light">
+          <div className="border-border-light overflow-x-auto rounded-lg border">
             <table className="w-full min-w-[60rem] text-sm">
-              <thead className="bg-surface-secondary text-left text-text-secondary">
+              <thead className="bg-surface-secondary text-text-secondary text-left">
                 <tr>
                   {sortableHeader('name', 'com_ui_tars_roles_name')}
                   {sortableHeader('description', 'com_ui_description')}
@@ -263,11 +279,11 @@ export default function RoleManager() {
                   return (
                     <tr
                       key={role.id}
-                      className="border-t border-border-light hover:bg-surface-hover"
+                      className="border-border-light hover:bg-surface-hover border-t"
                     >
-                      <td className="px-3 py-2 text-text-primary">{role.name}</td>
-                      <td className="px-3 py-2 text-text-secondary">{role.description || '—'}</td>
-                      <td className="px-3 py-2 text-text-secondary">
+                      <td className="text-text-primary px-3 py-2">{role.name}</td>
+                      <td className="text-text-secondary px-3 py-2">{role.description || '—'}</td>
+                      <td className="text-text-secondary px-3 py-2">
                         <NameList
                           names={roleDomainIds(role)
                             .map((id) => domainNames.get(id))
@@ -275,7 +291,7 @@ export default function RoleManager() {
                           empty={localize('com_ui_tars_roles_domains_none')}
                         />
                       </td>
-                      <td className="px-3 py-2 text-text-secondary">{menuSummary(role)}</td>
+                      <td className="text-text-secondary px-3 py-2">{menuSummary(role)}</td>
                       <td className="px-3 py-2">
                         <StatusBadge active={isRoleEnabled(role)} />
                       </td>
@@ -295,7 +311,7 @@ export default function RoleManager() {
                             disabled={counts.users === 0}
                             aria-label={localize('com_ui_tars_roles_usage_users')}
                             title={localize('com_ui_tars_roles_usage_users')}
-                            className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))] hover:text-text-primary disabled:cursor-default disabled:opacity-40 disabled:hover:text-[rgb(var(--gray-600))]"
+                            className="hover:text-text-primary inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))] disabled:cursor-default disabled:opacity-40 disabled:hover:text-[rgb(var(--gray-600))]"
                           >
                             <User className="icon-sm" />
                             {counts.users}
@@ -306,7 +322,7 @@ export default function RoleManager() {
                             disabled={counts.groups === 0}
                             aria-label={localize('com_ui_tars_roles_usage_groups')}
                             title={localize('com_ui_tars_roles_usage_groups')}
-                            className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))] hover:text-text-primary disabled:cursor-default disabled:opacity-40 disabled:hover:text-[rgb(var(--gray-600))]"
+                            className="hover:text-text-primary inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))] disabled:cursor-default disabled:opacity-40 disabled:hover:text-[rgb(var(--gray-600))]"
                           >
                             <UsersRound className="icon-sm" />
                             {counts.groups}
@@ -320,7 +336,7 @@ export default function RoleManager() {
                             aria-label={localize('com_ui_tars_users_details')}
                             title={localize('com_ui_tars_users_details')}
                             onClick={() => setViewingId(String(role.id))}
-                            className="rounded p-1.5 text-pwc-info hover:bg-surface-tertiary hover:text-pwc-info"
+                            className="text-pwc-info hover:bg-surface-tertiary hover:text-pwc-info rounded p-1.5"
                           >
                             <Info className="icon-sm" />
                           </button>
@@ -329,16 +345,17 @@ export default function RoleManager() {
                             aria-label={localize('com_ui_edit')}
                             title={localize('com_ui_edit')}
                             onClick={() => setEditing(role)}
-                            className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                            className="text-text-secondary hover:bg-surface-tertiary hover:text-text-primary rounded p-1.5"
                           >
                             <Pencil className="icon-sm" />
                           </button>
                           <button
                             type="button"
                             aria-label={localize('com_ui_delete')}
-                            title={localize('com_ui_delete')}
+                            title={deleteBlockedReason(role) ?? localize('com_ui_delete')}
+                            disabled={deleteBlockedReason(role) != null}
                             onClick={() => setDeleting(role)}
-                            className="rounded p-1.5 text-red-500 hover:bg-surface-tertiary hover:text-red-500"
+                            className="hover:bg-surface-tertiary rounded p-1.5 text-red-500 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                           >
                             <Trash2 className="icon-sm" />
                           </button>
@@ -351,7 +368,7 @@ export default function RoleManager() {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
+          <div className="text-text-secondary flex flex-wrap items-center justify-between gap-3 text-sm">
             <div className="flex items-center gap-2">
               <span id="tars-roles-page-size-label">
                 {localize('com_ui_tars_users_rows_per_page')}
@@ -440,7 +457,7 @@ export default function RoleManager() {
             showCloseButton={true}
             main={
               <div className="space-y-2">
-                <p className="text-sm text-text-secondary">
+                <p className="text-text-secondary text-sm">
                   {localize('com_ui_tars_roles_delete_confirm', { name: deleting.name })}
                 </p>
                 {(() => {
@@ -448,13 +465,23 @@ export default function RoleManager() {
                   if (counts.users === 0 && counts.groups === 0) {
                     return null;
                   }
+                  const holders = usersForRole(String(deleting.id), users);
                   return (
-                    <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
-                      {localize('com_ui_tars_roles_delete_warning', {
-                        users: counts.users,
-                        groups: counts.groups,
-                      })}
-                    </p>
+                    <div className="border-status-warning-border bg-status-warning-subtle text-status-warning space-y-1 rounded-lg border p-3 text-sm">
+                      <p>
+                        {localize('com_ui_tars_roles_delete_warning', {
+                          users: counts.users,
+                          groups: counts.groups,
+                        })}
+                      </p>
+                      {holders.length > 0 && (
+                        <p>
+                          {localize('com_ui_tars_roles_delete_users', {
+                            names: previewNames(holders),
+                          })}
+                        </p>
+                      )}
+                    </div>
                   );
                 })()}
               </div>

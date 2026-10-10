@@ -1,6 +1,6 @@
 import type { TarsUserGroup } from './users';
 import type { TarsRole } from './domains';
-import { recordTarsActionLog } from './syslogs';
+import { recordTarsCsvExport } from './syslogs';
 import { tarsFetch } from './client';
 
 /** A member row of the `user_list` pwc_tars attaches to each group. */
@@ -129,27 +129,18 @@ export async function deleteTarsUserGroup(
   });
 }
 
-/**
- * Records a group-list export on the pwc_tars audit trail. The CSV is built in
- * the browser, so this is the only trace pwc_tars gets of it — the same shape
- * the user page's export writes, under the group page's module.
- */
+/** Records a group-list export on the pwc_tars audit trail. */
 export async function recordTarsGroupExport(
   tarsId: string,
   count: number,
   pageUrl?: string,
   baseUrl?: string,
 ): Promise<void> {
-  await recordTarsActionLog(
+  await recordTarsCsvExport(
     tarsId,
-    {
-      action_type: 'EXPORT',
-      module: 'group-settings',
-      target_type: 'csv',
-      target_name: '群組清單',
-      description: `匯出 ${count} 筆群組資料`,
-      page_url: pageUrl,
-    },
+    { module: 'group-settings', targetName: '群組清單', rowNoun: '群組' },
+    count,
+    pageUrl,
     baseUrl,
   );
 }

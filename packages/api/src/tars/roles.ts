@@ -1,11 +1,13 @@
 import type { TarsDomain, TarsRole } from './domains';
-import { tarsFetch } from './client';
+import { tarsFetch, TarsGuardError } from './client';
+import { recordTarsCsvExport } from './syslogs';
+import { isTarsAdminRole } from '~/auth/tars';
 
 /**
  * A pwc_tars role as the permission admin page sees it. `domain_ids` / `menu_ids`
  * are comma-separated id strings; `status` is numeric 1/0 like the group table.
  * `librechat_menu_keys` is the LibreChat-side menu permission set — comma
- * separated stable keys, `null` meaning "not configured" (every menu visible).
+ * separated stable keys. pwc_tars's login grants nothing for `null` or `''`.
  */
 export interface TarsRoleDetail extends TarsRole {
   description: string | null;
@@ -18,6 +20,8 @@ export interface TarsRoleDetail extends TarsRole {
   updated_by?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  /** Set by {@link fetchTarsRolePrepareData} for `TARS_ADMIN_ROLE_IDS`; such roles cannot be deleted. */
+  is_admin_role?: boolean;
 }
 
 export interface TarsRolePrepareData {
@@ -49,7 +53,10 @@ interface PrepareDataResponse {
 export async function fetchTarsRolePrepareData(baseUrl?: string): Promise<TarsRolePrepareData> {
   const data = await tarsFetch<PrepareDataResponse>('/api/role_settings/prepare_data', { baseUrl });
   return {
-    roles: data?.sys_roles ?? [],
+    roles: (data?.sys_roles ?? []).map((role) => ({
+      ...role,
+      is_admin_role: isTarsAdminRole(Number(role.id)),
+    })),
     domains: data?.sys_domains ?? [],
   };
 }
@@ -102,14 +109,38 @@ export async function updateTarsRole(
   return data.role;
 }
 
+/**
+ * Deletes a role. An admin role would strip every holder of the admin pages, so
+ * it is refused here; pwc_tars also refuses its own admin role and the default
+ * role, and clears the deleted id off every user, group and brain.
+ */
 export async function deleteTarsRole(
   tarsId: string,
   roleId: number | string,
   baseUrl?: string,
 ): Promise<void> {
+  if (isTarsAdminRole(Number(roleId))) {
+    throw new TarsGuardError('不可刪除管理員權限');
+  }
   await tarsFetch(`/api/role_settings/delete_role/${encodeURIComponent(String(roleId))}`, {
     method: 'DELETE',
     query: { operator_id: tarsId },
     baseUrl,
   });
+}
+
+/** Records a role-list export on the pwc_tars audit trail. */
+export async function recordTarsRoleExport(
+  tarsId: string,
+  count: number,
+  pageUrl?: string,
+  baseUrl?: string,
+): Promise<void> {
+  await recordTarsCsvExport(
+    tarsId,
+    { module: 'role-settings', targetName: '權限清單', rowNoun: '權限' },
+    count,
+    pageUrl,
+    baseUrl,
+  );
 }
