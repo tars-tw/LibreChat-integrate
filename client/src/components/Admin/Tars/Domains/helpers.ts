@@ -99,8 +99,9 @@ export const domainKnowledgeBaseIds = (domain: TTarsDomain): string[] =>
 
 /**
  * The roles bound to a brain. pwc_tars keeps this on both sides — `sys_domain.role_ids`
- * and each role's `domain_ids` — and rewrites the role side on every update, so
- * the role list is the authoritative view and is what the editor seeds from.
+ * and each role's `domain_ids` — and its listing returns each role's `domain_ids`
+ * merged with the brain side, so the role list is the effective binding the editor
+ * seeds from; saving then writes both sides to match.
  */
 export const domainRoleIds = (domain: TTarsDomain, roles: TTarsRole[]): string[] =>
   roles

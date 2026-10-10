@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { dataService } from 'librechat-data-provider';
 import {
   Input,
   Button,
@@ -47,7 +48,8 @@ export default function DomainManager() {
   const { i18n } = useTranslation();
   const { showToast } = useToastContext();
 
-  const { data, isLoading } = useTarsDomainPrepareDataQuery();
+  /** Role and knowledge-base pages rewrite what this listing shows, so every visit refetches. */
+  const { data, isLoading } = useTarsDomainPrepareDataQuery({ refetchOnMount: true });
 
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -150,6 +152,12 @@ export default function DomainManager() {
       toCsvBlob(headers, csvRows),
       `TARS_domains_${new Date().toISOString().slice(0, 10)}.csv`,
     );
+
+    /**
+     * The CSV is built here, so pwc_tars only learns of the export from this
+     * call. It must never hold up the download, hence the detached catch.
+     */
+    dataService.recordTarsDomainExport(csvRows.length, window.location.href).catch(() => undefined);
   };
 
   const actionButtons = (domain: TTarsDomain) => (
@@ -160,7 +168,7 @@ export default function DomainManager() {
           aria-label={localize('com_ui_tars_domain_prompts')}
           title={localize('com_ui_tars_domain_prompts')}
           onClick={() => navigate(`/prompts/domain/${domain.id}/new`)}
-          className="rounded p-1.5 text-pwc-info hover:bg-surface-tertiary"
+          className="text-pwc-info hover:bg-surface-tertiary rounded p-1.5"
         >
           <Book className="icon-sm" />
         </button>
@@ -171,7 +179,7 @@ export default function DomainManager() {
         aria-label={localize('com_ui_edit')}
         title={localize('com_ui_edit')}
         onClick={() => setEditing(domain)}
-        className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+        className="text-text-secondary hover:bg-surface-tertiary hover:text-text-primary rounded p-1.5"
       >
         <Pencil className="icon-sm" />
       </button>
@@ -181,7 +189,7 @@ export default function DomainManager() {
         aria-label={localize('com_ui_delete')}
         title={localize('com_ui_delete')}
         onClick={() => setDeleting(domain)}
-        className="rounded p-1.5 text-red-500 hover:bg-surface-tertiary hover:text-red-600"
+        className="hover:bg-surface-tertiary rounded p-1.5 text-red-500 hover:text-red-600"
       >
         <Trash2 className="icon-sm" />
       </button>
@@ -193,7 +201,7 @@ export default function DomainManager() {
       <button
         type="button"
         onClick={() => toggleSort(field)}
-        className="flex items-center gap-1 hover:text-text-primary"
+        className="hover:text-text-primary flex items-center gap-1"
       >
         {localize(labelKey)}
         {field === sortField &&
@@ -207,7 +215,7 @@ export default function DomainManager() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="relative w-64 max-w-full">
-            <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+            <Search className="icon-sm text-text-secondary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
             <Input
               value={search}
               onChange={(e) => {
@@ -232,7 +240,7 @@ export default function DomainManager() {
           <div
             role="group"
             aria-label={localize('com_ui_tars_domain_view_mode')}
-            className="flex rounded-lg border border-border-light"
+            className="border-border-light flex rounded-lg border"
           >
             <button
               type="button"
@@ -273,7 +281,7 @@ export default function DomainManager() {
       )}
 
       {!isLoading && filtered.length === 0 && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_tars_domain_empty')}
         </p>
       )}
@@ -283,34 +291,34 @@ export default function DomainManager() {
           {rows.map((domain) => (
             <div
               key={domain.id}
-              className="flex flex-col gap-2 rounded-xl border border-border-light p-4"
+              className="border-border-light flex flex-col gap-2 rounded-xl border p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     {isIframeDomain(domain) ? (
                       <Globe
-                        className="icon-sm -translate-y-0.5 text-pwc-orange-500"
+                        className="icon-sm text-pwc-orange-500 -translate-y-0.5"
                         aria-hidden="true"
                       />
                     ) : (
                       <LifeBuoy
-                        className="icon-sm -translate-y-0.5 text-pwc-orange-500"
+                        className="icon-sm text-pwc-orange-500 -translate-y-0.5"
                         aria-hidden="true"
                       />
                     )}
 
-                    <span className="truncate font-medium text-text-primary" title={domain.name}>
+                    <span className="text-text-primary truncate font-medium" title={domain.name}>
                       {domain.name}
                     </span>
                   </div>
-                  <p className="truncate text-sm text-text-secondary">
+                  <p className="text-text-secondary truncate text-sm">
                     {domain.description || '—'}
                   </p>
                 </div>
                 <StatusBadge active={!!domain.status} />
               </div>
-              <div className="text-xs text-text-secondary">
+              <div className="text-text-secondary text-xs">
                 {isIframeDomain(domain) ? (
                   <span className="block truncate" title={domain.iframe_url ?? ''}>
                     {domain.iframe_url}
@@ -330,9 +338,9 @@ export default function DomainManager() {
 
       {!isLoading && filtered.length > 0 && viewMode === 'table' && (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border-light">
+          <div className="border-border-light overflow-x-auto rounded-lg border">
             <table className="w-full min-w-[56rem] text-sm">
-              <thead className="bg-surface-secondary text-left text-text-secondary">
+              <thead className="bg-surface-secondary text-text-secondary text-left">
                 <tr>
                   {sortableHeader('name', 'com_ui_tars_domain_name')}
                   {sortableHeader('description', 'com_ui_description')}
@@ -348,11 +356,11 @@ export default function DomainManager() {
                 {rows.map((domain) => (
                   <tr
                     key={domain.id}
-                    className="border-t border-border-light hover:bg-surface-hover"
+                    className="border-border-light hover:bg-surface-hover border-t"
                   >
-                    <td className="px-3 py-2 text-text-primary">{domain.name}</td>
-                    <td className="px-3 py-2 text-text-secondary">{domain.description || '—'}</td>
-                    <td className="px-3 py-2 text-text-secondary">
+                    <td className="text-text-primary px-3 py-2">{domain.name}</td>
+                    <td className="text-text-secondary px-3 py-2">{domain.description || '—'}</td>
+                    <td className="text-text-secondary px-3 py-2">
                       {isIframeDomain(domain) ? (
                         <span className="block max-w-xs truncate" title={domain.iframe_url ?? ''}>
                           {domain.iframe_url}
@@ -364,7 +372,7 @@ export default function DomainManager() {
                         />
                       )}
                     </td>
-                    <td className="px-3 py-2 text-text-secondary">
+                    <td className="text-text-secondary px-3 py-2">
                       <NameList
                         names={roleLabels(domain)}
                         empty={localize('com_ui_tars_users_unassigned')}
@@ -382,7 +390,7 @@ export default function DomainManager() {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
+          <div className="text-text-secondary flex flex-wrap items-center justify-between gap-3 text-sm">
             <div className="flex items-center gap-2">
               <span id="tars-domains-page-size-label">
                 {localize('com_ui_tars_users_rows_per_page')}
@@ -448,10 +456,10 @@ export default function DomainManager() {
             showCloseButton={true}
             main={
               <div className="space-y-2">
-                <p className="text-sm text-text-secondary">
+                <p className="text-text-secondary text-sm">
                   {localize('com_ui_tars_domain_delete_confirm', { name: deleting.name })}
                 </p>
-                <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
+                <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
                   {localize('com_ui_tars_domain_delete_warning')}
                 </p>
               </div>
