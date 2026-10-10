@@ -8,6 +8,7 @@ const {
   bulkUpdateTarsUsers,
   bulkDeleteTarsUsers,
   bulkImportTarsUsers,
+  sendTarsHeartbeat,
   fetchTarsAdWhitelist,
   resetTarsUserPassword,
   fetchTarsUserPrepareData,
@@ -111,6 +112,22 @@ router.post('/users/export-log', requireTarsAdmin, async (req, res) => {
   } catch (error) {
     logger.error('[POST /api/tars/users/export-log] Failed', error);
     return relayTarsError(res, error, 'Failed to record the pwc_tars export');
+  }
+});
+
+/**
+ * @route POST /api/tars/users/heartbeat
+ * @desc Mark the caller's pwc_tars account active, which the user list shows as online.
+ *       Every signed-in tab beats on an interval, so this is open to any account.
+ * @access Authenticated
+ */
+router.post('/users/heartbeat', async (req, res) => {
+  try {
+    await sendTarsHeartbeat(req.user.tarsId);
+    return res.sendStatus(204);
+  } catch (error) {
+    logger.error('[POST /api/tars/users/heartbeat] Failed', error);
+    return relayTarsError(res, error, 'Failed to send the pwc_tars heartbeat');
   }
 });
 
