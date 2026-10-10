@@ -1,20 +1,10 @@
 import { useMemo, useState } from 'react';
-import {
-  ChevronLeft,
-  ChevronRight,
-  LayoutGrid,
-  List,
-  Pencil,
-  Search,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, LayoutGrid, List, Search, X } from 'lucide-react';
 import {
   Input,
   Button,
   Switch,
   Spinner,
-  Textarea,
   OGDialog,
   OGDialogTemplate,
   useToastContext,
@@ -24,8 +14,6 @@ import type { ViewerChunk } from './chunks';
 import {
   useTarsWebsiteChunksQuery,
   useTarsDocumentChunksQuery,
-  useUpdateTarsChunkMutation,
-  useDeleteTarsChunkMutation,
   useSetTarsChunkEnabledMutation,
 } from '~/data-provider';
 import { documentChunk, looksLikeMarkdown, preview, websiteChunk } from './chunks';
@@ -47,12 +35,13 @@ export type ChunkSource =
   | { kind: 'website'; knowledgeBaseId: string; website: TTarsDatasetWebsite };
 
 /**
- * A view of one dataset's chunks; a document chunk can be edited, deleted, or switched in or out
- * of retrieval. Website chunks are read-only: pwc_tars rebuilds them from the page on every sync.
+ * A view of one dataset's chunks; a document chunk can be switched in or out of retrieval.
+ * Website chunks are read-only: pwc_tars rebuilds them from the page on every sync.
+ * Editing and deleting a chunk are left out until the deployed pwc_tars carries those routes.
  *
  * Reading a chunk swaps the dialog body rather than opening a second dialog:
  * a nested dialog inside an already-large one is hard to escape from, and the
- * reader needs the full width anyway. The delete confirmation stays inline for the same reason.
+ * reader needs the full width anyway.
  *
  * pwc_tars pages neither chunk endpoint, so the whole set arrives at once and
  * the filtering and paging below are what keep it off the DOM.
@@ -71,16 +60,6 @@ export default function ChunkList({
   const [view, setView] = useState<ViewMode>('list');
   /** Index into the filtered list, so prev/next walks what is on screen. */
   const [reading, setReading] = useState<number | null>(null);
-  /** The edited text while the open chunk is being edited. */
-  const [draft, setDraft] = useState<string | null>(null);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  /** Every move between chunks drops an unfinished edit or delete prompt. */
-  const openChunk = (index: number | null) => {
-    setReading(index);
-    setDraft(null);
-    setConfirmingDelete(false);
-  };
 
   const documentQuery = useTarsDocumentChunksQuery(
     source.kind === 'document' ? source.document.id : null,
@@ -101,22 +80,6 @@ export default function ChunkList({
 
   const enabledMutation = useSetTarsChunkEnabledMutation(documentId, {
     onSuccess: () => showToast({ message: localize('com_ui_saved'), status: 'success' }),
-    onError: showError,
-  });
-
-  const updateMutation = useUpdateTarsChunkMutation(documentId, {
-    onSuccess: () => {
-      showToast({ message: localize('com_ui_saved'), status: 'success' });
-      setDraft(null);
-    },
-    onError: showError,
-  });
-
-  const deleteMutation = useDeleteTarsChunkMutation(documentId, {
-    onSuccess: () => {
-      showToast({ message: localize('com_ui_deleted'), status: 'success' });
-      openChunk(null);
-    },
     onError: showError,
   });
 
@@ -144,7 +107,7 @@ export default function ChunkList({
   const readingChunk = reading != null ? filtered[reading] : undefined;
 
   const meta = (chunk: ViewerChunk) => (
-    <span className="whitespace-nowrap text-xs tabular-nums text-text-secondary">
+    <span className="text-text-secondary text-xs whitespace-nowrap tabular-nums">
       {localize('com_ui_tars_kb_ds_words')}: {formatCount(chunk.word_count)} ·{' '}
       {localize('com_ui_tars_kb_tokens')}: {formatCount(chunk.tokens)}
     </span>
@@ -155,63 +118,32 @@ export default function ChunkList({
       return null;
     }
     const isMarkdown = looksLikeMarkdown(readingChunk.content);
-    const editable = source.kind === 'document';
-    const editing = draft != null;
-    const unchanged = draft == null || draft.trim() === '' || draft === readingChunk.content;
     return (
       <div className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button
-            variant="outline"
-            disabled={editing}
-            onClick={() => openChunk(null)}
-            className="gap-1.5"
-          >
+          <Button variant="outline" onClick={() => setReading(null)} className="gap-1.5">
             <ChevronLeft className="size-4" aria-hidden />
             {localize('com_ui_back')}
           </Button>
           <div className="flex items-center gap-2">
-            {editable && !editing && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setConfirmingDelete(false);
-                    setDraft(readingChunk.content);
-                  }}
-                  className="gap-1.5"
-                >
-                  <Pencil className="size-4" aria-hidden />
-                  {localize('com_ui_edit')}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setConfirmingDelete(true)}
-                  className="gap-1.5 text-text-destructive"
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                  {localize('com_ui_delete')}
-                </Button>
-              </>
-            )}
             <Button
               variant="ghost"
               size="icon"
-              disabled={editing || reading === 0}
-              onClick={() => openChunk((reading ?? 0) - 1)}
+              disabled={reading === 0}
+              onClick={() => setReading((reading ?? 0) - 1)}
               aria-label={localize('com_ui_tars_kb_chunk_prev')}
               title={localize('com_ui_tars_kb_chunk_prev')}
             >
               <ChevronLeft className="size-4" aria-hidden />
             </Button>
-            <span className="text-sm tabular-nums text-text-secondary">
+            <span className="text-text-secondary text-sm tabular-nums">
               {(reading ?? 0) + 1} / {filtered.length}
             </span>
             <Button
               variant="ghost"
               size="icon"
-              disabled={editing || (reading != null && reading >= filtered.length - 1)}
-              onClick={() => openChunk((reading ?? 0) + 1)}
+              disabled={reading != null && reading >= filtered.length - 1}
+              onClick={() => setReading((reading ?? 0) + 1)}
               aria-label={localize('com_ui_tars_kb_chunk_next')}
               title={localize('com_ui_tars_kb_chunk_next')}
             >
@@ -220,28 +152,28 @@ export default function ChunkList({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-surface-secondary px-3 py-2 text-xs text-text-secondary">
+        <div className="bg-surface-secondary text-text-secondary flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg px-3 py-2 text-xs">
           <span>
             {localize('com_ui_tars_kb_chunk_position')}:{' '}
-            <span className="font-medium tabular-nums text-text-primary">
+            <span className="text-text-primary font-medium tabular-nums">
               {readingChunk.position}
             </span>
           </span>
           <span>
             {localize('com_ui_tars_kb_ds_words')}:{' '}
-            <span className="font-medium tabular-nums text-text-primary">
+            <span className="text-text-primary font-medium tabular-nums">
               {formatCount(readingChunk.word_count)}
             </span>
           </span>
           <span>
             {localize('com_ui_tars_kb_tokens')}:{' '}
-            <span className="font-medium tabular-nums text-text-primary">
+            <span className="text-text-primary font-medium tabular-nums">
               {formatCount(readingChunk.tokens)}
             </span>
           </span>
           <span>
             {localize('com_ui_tars_kb_chunk_chars')}:{' '}
-            <span className="font-medium tabular-nums text-text-primary">
+            <span className="text-text-primary font-medium tabular-nums">
               {formatCount(readingChunk.content.length)}
             </span>
           </span>
@@ -263,87 +195,22 @@ export default function ChunkList({
           )}
         </div>
 
-        {confirmingDelete && (
-          <div
-            role="alert"
-            className="flex flex-wrap items-center gap-2 rounded-lg border border-status-error-border bg-status-error-subtle px-3 py-2 text-sm text-text-primary"
-          >
-            <span className="min-w-0 flex-1">
-              {localize('com_ui_tars_kb_chunk_delete_confirm')}
-            </span>
-            <Button
-              variant="outline"
-              disabled={deleteMutation.isLoading}
-              onClick={() => setConfirmingDelete(false)}
-            >
-              {localize('com_ui_cancel')}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={deleteMutation.isLoading}
-              onClick={() => deleteMutation.mutate(readingChunk.id)}
-            >
-              {deleteMutation.isLoading ? (
-                <Spinner className="size-4" />
-              ) : (
-                localize('com_ui_delete')
-              )}
-            </Button>
-          </div>
-        )}
-
-        {editing ? (
-          <div className="space-y-2">
-            <Textarea
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              aria-label={localize('com_ui_tars_kb_chunk_content')}
-              className="max-h-[55vh] min-h-[16rem] font-mono text-sm"
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="min-w-0 flex-1 text-xs text-text-secondary">
-                {localize('com_ui_tars_kb_chunk_edit_hint')}
-              </span>
-              <Button
-                variant="outline"
-                disabled={updateMutation.isLoading}
-                onClick={() => setDraft(null)}
-              >
-                {localize('com_ui_cancel')}
-              </Button>
-              <Button
-                variant="submit"
-                disabled={unchanged || updateMutation.isLoading}
-                onClick={() =>
-                  updateMutation.mutate({ chunkId: readingChunk.id, data: { content: draft } })
-                }
-              >
-                {updateMutation.isLoading ? (
-                  <Spinner className="size-4" />
-                ) : (
-                  localize('com_ui_save')
-                )}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="data-table-scroll max-h-[55vh] min-w-0 overflow-auto rounded-lg border border-border-light p-4">
-            {/*
+        <div className="data-table-scroll border-border-light max-h-[55vh] min-w-0 overflow-auto rounded-lg border p-4">
+          {/*
             Markdown goes through the app's own renderer rather than the
             original page's regex-to-innerHTML: chunk content is whatever was in
             the uploaded file, so it is never trusted markup. Highlighting is
             therefore only applied to the plain-text branch, where the text stays
             React nodes all the way down.
           */}
-            {isMarkdown ? (
-              <MarkdownLite content={readingChunk.content} />
-            ) : (
-              <p className="whitespace-pre-wrap break-words text-sm text-text-primary">
-                <Highlight text={readingChunk.content} query={search} />
-              </p>
-            )}
-          </div>
-        )}
+          {isMarkdown ? (
+            <MarkdownLite content={readingChunk.content} />
+          ) : (
+            <p className="text-text-primary text-sm break-words whitespace-pre-wrap">
+              <Highlight text={readingChunk.content} query={search} />
+            </p>
+          )}
+        </div>
       </div>
     );
   };
@@ -353,7 +220,7 @@ export default function ChunkList({
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[14rem] flex-1 sm:max-w-sm">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary"
+            className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
             aria-hidden
           />
           <Input
@@ -370,14 +237,14 @@ export default function ChunkList({
               onClick={() => setSearch('')}
               aria-label={localize('com_ui_clear')}
               title={localize('com_ui_clear')}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2"
+              className="absolute top-1/2 right-1.5 -translate-y-1/2"
             >
               <X className="size-3.5" aria-hidden />
             </Button>
           )}
         </div>
 
-        <span className="text-sm text-text-secondary">
+        <span className="text-text-secondary text-sm">
           {search.trim() === ''
             ? localize('com_ui_tars_kb_chunk_count', { count: chunks.length })
             : localize('com_ui_tars_kb_chunk_found', {
@@ -386,7 +253,7 @@ export default function ChunkList({
               })}
         </span>
 
-        <div className="ml-auto flex items-center rounded-lg border border-border-light p-0.5">
+        <div className="border-border-light ml-auto flex items-center rounded-lg border p-0.5">
           {(
             [
               ['list', List, 'com_ui_tars_kb_view_table'],
@@ -412,7 +279,7 @@ export default function ChunkList({
       </div>
 
       {filtered.length === 0 ? (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize(
             chunks.length === 0 ? 'com_ui_tars_kb_no_chunks' : 'com_ui_tars_kb_ds_no_match',
           )}
@@ -430,21 +297,21 @@ export default function ChunkList({
                 <button
                   key={chunk.id}
                   type="button"
-                  onClick={() => openChunk(index)}
-                  className={`min-w-0 rounded-lg border border-border-light p-3 text-left transition-colors hover:border-border-heavy hover:bg-surface-hover ${
+                  onClick={() => setReading(index)}
+                  className={`border-border-light hover:border-border-heavy hover:bg-surface-hover min-w-0 rounded-lg border p-3 text-left transition-colors ${
                     view === 'grid' ? 'flex flex-col gap-2' : 'flex items-start gap-3'
                   } ${chunk.enabled ? '' : 'opacity-60'}`}
                 >
-                  <span className="shrink-0 rounded-md bg-brand-primary-subtle px-2 py-0.5 text-xs font-medium tabular-nums text-brand-primary">
+                  <span className="bg-brand-primary-subtle text-brand-primary shrink-0 rounded-md px-2 py-0.5 text-xs font-medium tabular-nums">
                     #{chunk.position}
                   </span>
                   {!chunk.enabled && (
-                    <span className="shrink-0 rounded-md bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
+                    <span className="bg-surface-tertiary text-text-secondary shrink-0 rounded-md px-2 py-0.5 text-xs">
                       {localize('com_ui_disabled')}
                     </span>
                   )}
                   <span
-                    className={`min-w-0 flex-1 break-words text-sm text-text-primary ${
+                    className={`text-text-primary min-w-0 flex-1 text-sm break-words ${
                       view === 'grid' ? 'line-clamp-4' : 'line-clamp-2'
                     }`}
                   >
@@ -454,7 +321,7 @@ export default function ChunkList({
                     />
                   </span>
                   {view === 'grid' ? (
-                    <span className="mt-auto border-t border-border-light pt-2">{meta(chunk)}</span>
+                    <span className="border-border-light mt-auto border-t pt-2">{meta(chunk)}</span>
                   ) : (
                     <span className="shrink-0">{meta(chunk)}</span>
                   )}

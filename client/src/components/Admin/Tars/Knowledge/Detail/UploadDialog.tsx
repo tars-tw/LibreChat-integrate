@@ -12,6 +12,7 @@ import {
 } from '@librechat/client';
 import type { TTarsDatasetLimits } from 'librechat-data-provider';
 import { useUploadTarsDocumentsMutation } from '~/data-provider';
+import { chunkSettingsInvalid } from './helpers';
 import { relayedError } from '../helpers';
 import { useLocalize } from '~/hooks';
 
@@ -84,13 +85,7 @@ export default function UploadDialog({
       new Set(
         files
           .map((entry, index) =>
-            entry.chunkSize < 1 ||
-            entry.chunkSize > limits.max_chunk_size ||
-            entry.overlap < 0 ||
-            entry.overlap > limits.max_overlap ||
-            entry.overlap >= entry.chunkSize
-              ? index
-              : -1,
+            chunkSettingsInvalid(entry.chunkSize, entry.overlap, limits) ? index : -1,
           )
           .filter((index) => index >= 0),
       ),
@@ -145,7 +140,7 @@ export default function UploadDialog({
               </p>
             </div>
 
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-border-light p-3">
+            <div className="border-border-light flex items-center justify-between gap-3 rounded-lg border p-3">
               <Label htmlFor="tars-doc-vlm" className="text-sm">
                 {localize('com_ui_tars_kb_process_images')}
               </Label>
@@ -158,10 +153,10 @@ export default function UploadDialog({
             </div>
 
             {files.length > 0 && (
-              <div className="data-table-scroll max-h-64 overflow-auto rounded-lg border border-border-light">
+              <div className="data-table-scroll border-border-light max-h-64 overflow-auto rounded-lg border">
                 <table className="w-max min-w-full border-collapse text-sm">
-                  <thead className="sticky top-0 z-10 bg-surface-secondary">
-                    <tr className="text-left text-text-secondary">
+                  <thead className="bg-surface-secondary sticky top-0 z-10">
+                    <tr className="text-text-secondary text-left">
                       <th className="px-3 py-2 font-medium">
                         {localize('com_ui_tars_kb_ds_name')}
                       </th>
@@ -178,7 +173,7 @@ export default function UploadDialog({
                     {files.map((entry, index) => (
                       <tr
                         key={`${entry.file.name}-${index}`}
-                        className="border-t border-border-light"
+                        className="border-border-light border-t"
                       >
                         <td className="max-w-[18rem] px-3 py-1.5">
                           <span className="block truncate" title={entry.file.name}>
@@ -232,7 +227,7 @@ export default function UploadDialog({
             )}
 
             {invalidIndexes.size > 0 && (
-              <p className="text-xs text-pwc-danger">
+              <p className="text-pwc-danger text-xs">
                 {localize('com_ui_tars_kb_ds_chunk_invalid', {
                   0: String(limits.max_chunk_size),
                   1: String(limits.max_overlap),
