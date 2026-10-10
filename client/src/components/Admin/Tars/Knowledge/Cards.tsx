@@ -16,7 +16,8 @@ export default function KnowledgeCards({
   knowledgeBases: TTarsKnowledgeBase[];
   onOpen: (kb: TTarsKnowledgeBase) => void;
   onEdit: (kb: TTarsKnowledgeBase) => void;
-  onDelete: (kb: TTarsKnowledgeBase) => void;
+  /** Omitted for someone who may not delete, which hides the button. */
+  onDelete?: (kb: TTarsKnowledgeBase) => void;
   onManagePrompts: (kb: TTarsKnowledgeBase) => void;
 }) {
   const localize = useLocalize();
@@ -79,16 +80,18 @@ export default function KnowledgeCards({
               >
                 <Pencil className="size-4" aria-hidden />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDelete(kb)}
-                aria-label={localize('com_ui_delete')}
-                title={localize('com_ui_delete')}
-                className="text-pwc-danger hover:text-pwc-danger"
-              >
-                <Trash2 className="size-4" aria-hidden />
-              </Button>
+              {onDelete != null && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onDelete(kb)}
+                  aria-label={localize('com_ui_delete')}
+                  title={localize('com_ui_delete')}
+                  className="text-pwc-danger hover:text-pwc-danger"
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </Button>
+              )}
             </div>
           </div>
 

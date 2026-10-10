@@ -4,7 +4,7 @@ const {
   createTarsUser,
   updateTarsUser,
   deleteTarsUser,
-  fetchTarsUsers,
+  fetchTarsUsersForAdmin,
   bulkUpdateTarsUsers,
   bulkDeleteTarsUsers,
   bulkImportTarsUsers,
@@ -30,7 +30,7 @@ const upload = createTarsUpload();
  */
 router.get('/users', requireTarsAdmin, async (req, res) => {
   try {
-    const users = await fetchTarsUsers();
+    const users = await fetchTarsUsersForAdmin(req.user.tarsId);
     return res.json({ users });
   } catch (error) {
     logger.error('[GET /api/tars/users] Failed to fetch pwc_tars users', error);
@@ -204,7 +204,7 @@ router.post('/users/:id/reset-password', requireTarsAdmin, async (req, res) => {
   }
 
   try {
-    await resetTarsUserPassword(req.params.id, password);
+    await resetTarsUserPassword(req.user.tarsId, req.params.id, password);
     return res.json({ success: true });
   } catch (error) {
     logger.error('[POST /api/tars/users/:id/reset-password] Failed', error);

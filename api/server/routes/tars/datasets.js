@@ -21,7 +21,7 @@ const {
   unlinkTarsFileSystemDataset,
   batchDeleteTarsDatasets,
 } = require('@librechat/api');
-const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { requireJwtAuth, requireTarsMenuAccess } = require('~/server/middleware');
 const { relayTarsError } = require('./relay');
 
 const router = express.Router();
@@ -31,12 +31,13 @@ const KNOWLEDGE_BASE_SOURCES = ['databases', 'datasets', 'file-systems', 'websit
   (source) => `/knowledge-bases/:id/${source}`,
 );
 
-router.use(KNOWLEDGE_BASE_SOURCES, requireJwtAuth, requireTarsAdmin);
+/** The detail page behind 知識庫清單, so the same grant opens it. */
+router.use(KNOWLEDGE_BASE_SOURCES, requireJwtAuth, requireTarsMenuAccess('kb.list'));
 
 /**
  * @route GET /api/tars/knowledge-bases/:id/datasets
  * @desc Every dataset in a knowledge base, with the system upload limits.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.get('/knowledge-bases/:id/datasets', async (req, res) => {
   try {
@@ -51,7 +52,7 @@ router.get('/knowledge-bases/:id/datasets', async (req, res) => {
 /**
  * @route POST /api/tars/knowledge-bases/:id/websites
  * @desc Crawl a site and import it as a dataset.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/websites', async (req, res) => {
   const { name, url, description, enabled, chunkSize } = req.body ?? {};
@@ -78,7 +79,7 @@ router.post('/knowledge-bases/:id/websites', async (req, res) => {
 /**
  * @route PUT /api/tars/knowledge-bases/:id/websites/:websiteId
  * @desc Rename or re-describe a website dataset. The URL is fixed at import.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.put('/knowledge-bases/:id/websites/:websiteId', async (req, res) => {
   const { name, description } = req.body ?? {};
@@ -100,7 +101,7 @@ router.put('/knowledge-bases/:id/websites/:websiteId', async (req, res) => {
 
 /**
  * @route DELETE /api/tars/knowledge-bases/:id/websites/:websiteId
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.delete('/knowledge-bases/:id/websites/:websiteId', async (req, res) => {
   try {
@@ -115,7 +116,7 @@ router.delete('/knowledge-bases/:id/websites/:websiteId', async (req, res) => {
 /**
  * @route GET /api/tars/knowledge-bases/:id/websites/:websiteId/chunks
  * @desc Every crawled chunk of one website dataset.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.get('/knowledge-bases/:id/websites/:websiteId/chunks', async (req, res) => {
   try {
@@ -130,7 +131,7 @@ router.get('/knowledge-bases/:id/websites/:websiteId/chunks', async (req, res) =
 /**
  * @route GET /api/tars/knowledge-bases/:id/databases/:databaseId/tables
  * @desc The connection's tables and views, plus the ones already bound.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.get('/knowledge-bases/:id/databases/:databaseId/tables', async (req, res) => {
   try {
@@ -148,7 +149,7 @@ router.get('/knowledge-bases/:id/databases/:databaseId/tables', async (req, res)
 /**
  * @route PUT /api/tars/knowledge-bases/:id/databases/:databaseId
  * @desc Bind the chosen tables. Re-sending a different list adjusts a binding.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.put('/knowledge-bases/:id/databases/:databaseId', async (req, res) => {
   const { tables } = req.body ?? {};
@@ -168,7 +169,7 @@ router.put('/knowledge-bases/:id/databases/:databaseId', async (req, res) => {
 /**
  * @route DELETE /api/tars/knowledge-bases/:id/databases/:databaseId
  * @desc Unbind. The connection itself is left in place.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.delete('/knowledge-bases/:id/databases/:databaseId', async (req, res) => {
   try {
@@ -183,7 +184,7 @@ router.delete('/knowledge-bases/:id/databases/:databaseId', async (req, res) => 
 /**
  * @route GET /api/tars/knowledge-bases/:id/databases/:databaseId/prompt
  * @desc The schema description the text-to-SQL prompt is built from.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.get('/knowledge-bases/:id/databases/:databaseId/prompt', async (req, res) => {
   try {
@@ -197,7 +198,7 @@ router.get('/knowledge-bases/:id/databases/:databaseId/prompt', async (req, res)
 
 /**
  * @route PUT /api/tars/knowledge-bases/:id/databases/:databaseId/prompt
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.put('/knowledge-bases/:id/databases/:databaseId/prompt', async (req, res) => {
   const { bindingId, tableInfo } = req.body ?? {};
@@ -217,7 +218,7 @@ router.put('/knowledge-bases/:id/databases/:databaseId/prompt', async (req, res)
 /**
  * @route GET /api/tars/knowledge-bases/:id/file-systems
  * @desc The file servers this knowledge base may import a document group from.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.get('/knowledge-bases/:id/file-systems', async (req, res) => {
   try {
@@ -232,7 +233,7 @@ router.get('/knowledge-bases/:id/file-systems', async (req, res) => {
 /**
  * @route GET /api/tars/knowledge-bases/:id/file-systems/:fsId/files
  * @desc What the file server currently holds, for the import picker.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.get('/knowledge-bases/:id/file-systems/:fsId/files', async (req, res) => {
   try {
@@ -247,10 +248,11 @@ router.get('/knowledge-bases/:id/file-systems/:fsId/files', async (req, res) => 
 /**
  * @route POST /api/tars/knowledge-bases/:id/file-systems/:fsId
  * @desc Import a document group from a file server.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
-  const { name, syncAll, uploadOnly, fileSettings, tags } = req.body ?? {};
+  const { name, syncAll, uploadOnly, files, chunkSize, overlap, selectedFolder, tags } =
+    req.body ?? {};
   if (!name) {
     return res.status(400).json({ error: 'name is required' });
   }
@@ -262,7 +264,10 @@ router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
       name,
       syncAll,
       uploadOnly,
-      fileSettings,
+      files: Array.isArray(files) ? files : undefined,
+      chunkSize: chunkSize != null ? Number(chunkSize) : undefined,
+      overlap: overlap != null ? Number(overlap) : undefined,
+      selectedFolder: typeof selectedFolder === 'string' ? selectedFolder : undefined,
       tags,
     });
     return res.status(201).json({ success: true });
@@ -275,7 +280,7 @@ router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
 /**
  * @route POST /api/tars/knowledge-bases/:id/file-systems/:fsId/refresh
  * @desc Pull anything new or newer from the file server.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/file-systems/:fsId/refresh', async (req, res) => {
   const { chunkSize, overlap } = req.body ?? {};
@@ -296,7 +301,7 @@ router.post('/knowledge-bases/:id/file-systems/:fsId/refresh', async (req, res) 
  * @desc Delete every existing document in the group and re-import everything
  *       from the source file server. Destructive; pwc_tars rejects it with
  *       409 while a document in the group is still processing.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/file-systems/:fsId/rebuild', async (req, res) => {
   const { chunkSize, overlap } = req.body ?? {};
@@ -315,7 +320,7 @@ router.post('/knowledge-bases/:id/file-systems/:fsId/rebuild', async (req, res) 
 /**
  * @route POST /api/tars/knowledge-bases/:id/file-systems/:fsId/reprocess
  * @desc Reprocess every document in the group that did not finish.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/file-systems/:fsId/reprocess', async (req, res) => {
   try {
@@ -330,7 +335,7 @@ router.post('/knowledge-bases/:id/file-systems/:fsId/reprocess', async (req, res
 /**
  * @route DELETE /api/tars/knowledge-bases/:id/file-systems/:fsId
  * @desc Unlink the group, deleting the documents it brought in.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.delete('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
   try {
@@ -346,11 +351,15 @@ router.delete('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
  * @route POST /api/tars/knowledge-bases/:id/datasets/batch-delete
  * @desc Delete several datasets at once. pwc_tars answers before the work is
  *       done, so the client must refetch rather than assume completion.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/datasets/batch-delete', async (req, res) => {
-  const { documentIds, websiteIds, databaseIds } = req.body ?? {};
-  const total = (documentIds?.length ?? 0) + (websiteIds?.length ?? 0) + (databaseIds?.length ?? 0);
+  const { documentIds, websiteIds, databaseIds, fileSystemIds } = req.body ?? {};
+  const total =
+    (documentIds?.length ?? 0) +
+    (websiteIds?.length ?? 0) +
+    (databaseIds?.length ?? 0) +
+    (fileSystemIds?.length ?? 0);
   if (total === 0) {
     return res.status(400).json({ error: 'At least one id is required' });
   }
@@ -360,6 +369,7 @@ router.post('/knowledge-bases/:id/datasets/batch-delete', async (req, res) => {
       documentIds,
       websiteIds,
       databaseIds,
+      fileSystemIds,
     });
     return res.status(202).json({ accepted: total });
   } catch (error) {

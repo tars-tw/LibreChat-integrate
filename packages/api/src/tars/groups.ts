@@ -1,5 +1,6 @@
 import type { TarsUserGroup } from './users';
 import type { TarsRole } from './domains';
+import { recordTarsCsvExport } from './syslogs';
 import { tarsFetch } from './client';
 
 /** A member row of the `user_list` pwc_tars attaches to each group. */
@@ -126,6 +127,22 @@ export async function deleteTarsUserGroup(
     query: { user_id: tarsId },
     baseUrl,
   });
+}
+
+/** Records a group-list export on the pwc_tars audit trail. */
+export async function recordTarsGroupExport(
+  tarsId: string,
+  count: number,
+  pageUrl?: string,
+  baseUrl?: string,
+): Promise<void> {
+  await recordTarsCsvExport(
+    tarsId,
+    { module: 'group-settings', targetName: '群組清單', rowNoun: '群組' },
+    count,
+    pageUrl,
+    baseUrl,
+  );
 }
 
 /** Adds users to a group, keeping whatever other groups they already belong to. */

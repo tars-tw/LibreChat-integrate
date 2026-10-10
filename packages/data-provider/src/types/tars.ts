@@ -320,6 +320,14 @@ export type TTarsDatasetFileSystemLink = {
   schedule_id: string | null;
   is_sync_all: boolean | null;
   is_upload_only: boolean | null;
+  /**
+   * The directory this knowledge base bound when it imported the group, which
+   * scheduled syncs stay inside. `null` binds the file server's whole path.
+   */
+  directory_path: string | null;
+  /** Chunking chosen at import, which syncs apply to files they find new. `null` predates the setting. */
+  chunk_size: number | null;
+  overlap_size: number | null;
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -337,6 +345,11 @@ export type TTarsFileSystemSource = {
   host_name: string | null;
   status: number | null;
   allowed_km_ids: string[];
+  /**
+   * Only filled when listed for one knowledge base: the directory that base
+   * bound, or `null` when it binds the whole path or has not imported the group.
+   */
+  directory_path?: string | null;
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -469,19 +482,36 @@ export type TTarsDatabasePrompt = {
   llm_model: string | null;
 };
 
+/** One file to import from a document group, by the path its file listing reported. */
+export type TTarsFileSystemImportFile = {
+  path: string;
+  chunkSize?: number;
+  overlap?: number;
+};
+
 export type TTarsFileSystemImportInput = {
   name: string;
   syncAll?: boolean;
   uploadOnly?: boolean;
-  fileSettings?: Record<string, { chunkSize?: number; overlap?: number }>;
+  /**
+   * A list rather than a path-keyed map: the server's request sanitizer drops
+   * every object key containing `.`, which is every file name.
+   */
+  files?: TTarsFileSystemImportFile[];
+  /** The group's chunking, recorded on the binding for files later syncs find new. */
+  chunkSize?: number;
+  overlap?: number;
+  /** A folder as the file listing reported it; binds the group to it. Blank binds the whole path. */
+  selectedFolder?: string;
   tags?: string;
 };
 
-/** Document groups are unlinked one at a time, so they have no id list. */
 export type TTarsDatasetBatchDelete = {
   documentIds?: string[];
   websiteIds?: string[];
   databaseIds?: string[];
+  /** Document groups to unlink, by `dataset_file_system_id`; their documents go with them. */
+  fileSystemIds?: string[];
 };
 
 /** The dataset kinds pwc_tars can schedule. */
@@ -920,6 +950,8 @@ export type TTarsUser = {
   sso_config_id?: string | null;
   is_online?: boolean;
   roles_names?: string | null;
+  /** Marks the signed-in admin's own row on the user admin listing. */
+  is_self?: boolean;
 };
 
 export type TTarsUsersResponse = {
@@ -1026,7 +1058,7 @@ export type TTarsUserGroupInput = {
  * A pwc_tars role as the permission admin page sees it. `domain_ids` / `menu_ids`
  * are comma-separated id strings and `status` is numeric 1/0 like the group
  * table. `librechat_menu_keys` holds the LibreChat menu permission set — comma
- * separated stable keys, `null` meaning "not configured" (every menu visible).
+ * separated stable keys; pwc_tars's login grants nothing for `null` or `''`.
  */
 export type TTarsRoleDetail = TTarsRole & {
   description: string | null;
@@ -1039,6 +1071,8 @@ export type TTarsRoleDetail = TTarsRole & {
   updated_by?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  /** One of `TARS_ADMIN_ROLE_IDS`, which the permission page may not delete. */
+  is_admin_role?: boolean;
 };
 
 export type TTarsRolePrepareData = {

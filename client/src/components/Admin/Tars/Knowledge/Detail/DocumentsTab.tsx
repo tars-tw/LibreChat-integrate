@@ -10,6 +10,7 @@ import {
 import { docStatusMeta, formatCount, matchesName } from './helpers';
 import DocumentDetailsDialog from './DocumentDetailsDialog';
 import Pagination, { usePagination } from '../Pagination';
+import { useLocalize, useTarsAdminAccess } from '~/hooks';
 import DocumentRowActions from './DocumentRowActions';
 import { formatDateTime } from '../../Users/helpers';
 import ConfirmDialog from './ConfirmDialog';
@@ -17,7 +18,6 @@ import RenameDialog from './RenameDialog';
 import UploadDialog from './UploadDialog';
 import { relayedError } from '../helpers';
 import StatusBadge from './StatusBadge';
-import { useLocalize } from '~/hooks';
 import Toolbar from './Toolbar';
 
 /** The file datasets of a knowledge base. */
@@ -41,6 +41,7 @@ export default function DocumentsTab({
   onBatchDelete: (documentIds: string[]) => void;
 }) {
   const localize = useLocalize();
+  const { isTarsAdmin } = useTarsAdminAccess();
   const { showToast } = useToastContext();
 
   const [search, setSearch] = useState('');
@@ -127,7 +128,7 @@ export default function DocumentsTab({
           onBatchDelete(selected);
           setSelected([]);
         }}
-        onRetryStuck={() => retryStuckMutation.mutate()}
+        onRetryStuck={isTarsAdmin ? () => retryStuckMutation.mutate() : undefined}
         isRetryingStuck={retryStuckMutation.isLoading}
         addLabel={localize('com_ui_tars_kb_upload_documents')}
         onAdd={() => setShowUpload(true)}
@@ -200,7 +201,9 @@ export default function DocumentsTab({
                       onViewChunks={() => onViewChunks(doc)}
                       onRename={() => setRenaming(doc)}
                       onReprocess={() => setReprocessing(doc)}
-                      onRetryStuck={() => retryStuckOneMutation.mutate(doc.id)}
+                      onRetryStuck={
+                        isTarsAdmin ? () => retryStuckOneMutation.mutate(doc.id) : undefined
+                      }
                       onDelete={() => setDeleting(doc)}
                     />
                   </td>

@@ -69,12 +69,18 @@ export default function KnowledgeModal({
   knowledgeBase,
   users,
   groups,
+  canManageAccess,
   onClose,
 }: {
   /** `null` opens the create form. */
   knowledgeBase: TTarsKnowledgeBase | null;
   users: TTarsKnowledgeBaseUser[];
   groups: TTarsKnowledgeBaseGroup[];
+  /**
+   * Only admins see and send the access lists, as on pwc_tars's own page; the
+   * proxy refuses them from anyone else.
+   */
+  canManageAccess: boolean;
   onClose: () => void;
 }) {
   const localize = useLocalize();
@@ -168,8 +174,12 @@ export default function KnowledgeModal({
           name: trimmedName,
           description: form.description,
           new_max_retrieve_count: retrieveCount,
-          allowed_user_ids: form.allowedUserIds,
-          allowed_user_group_ids: form.allowedUserGroupIds,
+          ...(canManageAccess
+            ? {
+                allowed_user_ids: form.allowedUserIds,
+                allowed_user_group_ids: form.allowedUserGroupIds,
+              }
+            : {}),
         },
       });
       return;
@@ -218,6 +228,7 @@ export default function KnowledgeModal({
           searchPlaceholder={localize('com_ui_tars_audit_search_placeholder')}
           searchEmptyText={localize('com_ui_no_results_found')}
           disabled={modelsQuery.isFetching}
+          variant="field"
           sizeClasses="w-full"
           className="w-full"
         />
@@ -230,67 +241,106 @@ export default function KnowledgeModal({
       <OGDialogTemplate
         title={localize(isEdit ? 'com_ui_tars_kb_edit' : 'com_ui_tars_kb_new')}
         showCloseButton={true}
-        className="w-11/12 md:max-w-3xl"
+        /**
+         * The access pickers open their lists inline, so any scrolling ancestor
+         * clips them. Where the whole form fits, nothing scrolls and the lists
+         * may hang past the dialog's edge; shorter screens keep the scroll area.
+         */
+        className={`w-11/12 [@media(min-height:640px)]:overflow-visible ${
+          canManageAccess ? 'md:max-w-4xl' : 'md:max-w-xl'
+        }`}
         /** The pickers are wide; without this the footer is pushed off the dialog. */
         mainClassName="min-w-0"
         main={
-          <div className="max-h-[70vh] min-w-0 space-y-4 overflow-y-auto pr-1">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="tars-kb-name">
-                  {localize('com_ui_tars_kb_name')}
-                  <span className="ml-0.5 text-pwc-danger">*</span>
-                </Label>
-                <Input
-                  id="tars-kb-name"
-                  value={form.name}
-                  onChange={(event) => set('name', event.target.value)}
-                  placeholder={localize('com_ui_tars_kb_name_placeholder')}
-                />
-                {form.name !== '' && nameInvalid && (
-                  <p className="text-xs text-pwc-danger">
-                    {localize('com_ui_tars_kb_name_invalid', {
-                      0: String(NAME_MIN),
-                      1: String(NAME_MAX),
-                    })}
-                  </p>
-                )}
+          <div className="max-h-[70vh] min-w-0 space-y-4 overflow-y-auto pr-1 [@media(min-height:640px)]:max-h-none [@media(min-height:640px)]:overflow-visible">
+            <div className={`grid gap-4 ${canManageAccess ? 'md:grid-cols-2' : ''}`}>
+              <div className="min-w-0 space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="tars-kb-name">
+                    {localize('com_ui_tars_kb_name')}
+                    <span className="ml-0.5 text-pwc-danger">*</span>
+                  </Label>
+                  <Input
+                    id="tars-kb-name"
+                    value={form.name}
+                    onChange={(event) => set('name', event.target.value)}
+                    placeholder={localize('com_ui_tars_kb_name_placeholder')}
+                  />
+                  {form.name !== '' && nameInvalid && (
+                    <p className="text-xs text-pwc-danger">
+                      {localize('com_ui_tars_kb_name_invalid', {
+                        0: String(NAME_MIN),
+                        1: String(NAME_MAX),
+                      })}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="tars-kb-retrieve">
+                    {localize('com_ui_tars_kb_max_retrieve')}
+                    <span className="ml-0.5 text-pwc-danger">*</span>
+                  </Label>
+                  <Input
+                    id="tars-kb-retrieve"
+                    type="number"
+                    min={RETRIEVE_MIN}
+                    max={RETRIEVE_MAX}
+                    value={form.maxRetrieveCount}
+                    onChange={(event) => set('maxRetrieveCount', event.target.value)}
+                  />
+                  {retrieveInvalid && (
+                    <p className="text-xs text-pwc-danger">
+                      {localize('com_ui_tars_kb_max_retrieve_invalid', {
+                        0: String(RETRIEVE_MIN),
+                        1: String(RETRIEVE_MAX),
+                      })}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="tars-kb-description">{localize('com_ui_description')}</Label>
+                  <textarea
+                    id="tars-kb-description"
+                    rows={2}
+                    value={form.description}
+                    onChange={(event) => set('description', event.target.value)}
+                    placeholder={localize('com_ui_tars_kb_description_placeholder')}
+                    className="w-full rounded-md border border-border-light bg-surface-primary px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-border-heavy"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="tars-kb-retrieve">
-                  {localize('com_ui_tars_kb_max_retrieve')}
-                  <span className="ml-0.5 text-pwc-danger">*</span>
-                </Label>
-                <Input
-                  id="tars-kb-retrieve"
-                  type="number"
-                  min={RETRIEVE_MIN}
-                  max={RETRIEVE_MAX}
-                  value={form.maxRetrieveCount}
-                  onChange={(event) => set('maxRetrieveCount', event.target.value)}
-                />
-                {retrieveInvalid && (
-                  <p className="text-xs text-pwc-danger">
-                    {localize('com_ui_tars_kb_max_retrieve_invalid', {
-                      0: String(RETRIEVE_MIN),
-                      1: String(RETRIEVE_MAX),
-                    })}
+              {canManageAccess && (
+                <div className="min-w-0 space-y-3 self-start rounded-lg border border-border-light p-3">
+                  <p className="text-sm font-medium text-text-primary">
+                    {localize('com_ui_tars_kb_access')}
                   </p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="tars-kb-description">{localize('com_ui_description')}</Label>
-              <textarea
-                id="tars-kb-description"
-                rows={2}
-                value={form.description}
-                onChange={(event) => set('description', event.target.value)}
-                placeholder={localize('com_ui_tars_kb_description_placeholder')}
-                className="w-full rounded-md border border-border-light bg-surface-primary px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-border-heavy"
-              />
+                  {/* pwc_tars grants only who is listed; an empty pair leaves the base to admins. */}
+                  <p className="text-xs text-text-secondary">
+                    {localize('com_ui_tars_kb_access_hint')}
+                  </p>
+                  <Picker
+                    id="tars-kb-users"
+                    label={localize('com_ui_tars_kb_allowed_users')}
+                    options={userOptions}
+                    selected={form.allowedUserIds}
+                    onChange={(values) => set('allowedUserIds', values)}
+                    placeholder={localize('com_ui_tars_kb_select_users')}
+                    chips
+                  />
+                  <Picker
+                    id="tars-kb-groups"
+                    label={localize('com_ui_tars_kb_allowed_groups')}
+                    options={groupOptions}
+                    selected={form.allowedUserGroupIds}
+                    onChange={(values) => set('allowedUserGroupIds', values)}
+                    placeholder={localize('com_ui_tars_kb_select_groups')}
+                    chips
+                  />
+                </div>
+              )}
             </div>
 
             {!isEdit && (
@@ -315,7 +365,6 @@ export default function KnowledgeModal({
                     modelsQuery.data?.rerank ?? [],
                   )}
                 </div>
-
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="tars-kb-tags">{localize('com_ui_tars_kb_tags')}</Label>
@@ -337,32 +386,6 @@ export default function KnowledgeModal({
                 </div>
               </>
             )}
-
-            <div className="space-y-3 rounded-lg border border-border-light p-3">
-              <p className="text-sm font-medium text-text-primary">
-                {localize('com_ui_tars_kb_access')}
-              </p>
-              {/* An empty selection is pwc_tars' way of saying "no restriction". */}
-              <p className="text-xs text-text-secondary">
-                {localize('com_ui_tars_kb_access_hint')}
-              </p>
-              <Picker
-                id="tars-kb-users"
-                label={localize('com_ui_tars_kb_allowed_users')}
-                options={userOptions}
-                selected={form.allowedUserIds}
-                onChange={(values) => set('allowedUserIds', values)}
-                placeholder={localize('com_ui_tars_kb_access_everyone')}
-              />
-              <Picker
-                id="tars-kb-groups"
-                label={localize('com_ui_tars_kb_allowed_groups')}
-                options={groupOptions}
-                selected={form.allowedUserGroupIds}
-                onChange={(values) => set('allowedUserGroupIds', values)}
-                placeholder={localize('com_ui_tars_kb_access_everyone')}
-              />
-            </div>
           </div>
         }
         buttons={

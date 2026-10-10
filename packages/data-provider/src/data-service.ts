@@ -768,6 +768,14 @@ export const getTarsDomains = (): Promise<t.TTarsDomainsResponse> => {
   return request.get(endpoints.tarsDomains());
 };
 
+/** Puts a browser-side brain-list export on the pwc_tars audit trail. */
+export const recordTarsDomainExport = (
+  count: number,
+  pageUrl: string,
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsDomainsExportLog(), { count, page_url: pageUrl });
+};
+
 export const getTarsDomainPrepareData = (): Promise<t.TTarsDomainPrepareData> => {
   return request.get(endpoints.tarsDomainPrepareData());
 };
@@ -1179,6 +1187,14 @@ export const getTarsRoles = (): Promise<t.TTarsRolePrepareData> => {
   return request.get(endpoints.tarsRoles());
 };
 
+/** Puts a browser-side role-list export on the pwc_tars audit trail. */
+export const recordTarsRoleExport = (
+  count: number,
+  pageUrl: string,
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsRolesExportLog(), { count, page_url: pageUrl });
+};
+
 export const createTarsRole = (data: t.TTarsRoleInput): Promise<{ role: t.TTarsRoleDetail }> => {
   return request.post(endpoints.tarsRoles(), data);
 };
@@ -1196,6 +1212,14 @@ export const deleteTarsRole = (id: string | number): Promise<{ success: boolean 
 
 export const getTarsUserGroups = (): Promise<t.TTarsGroupPrepareData> => {
   return request.get(endpoints.tarsUserGroups());
+};
+
+/** Puts a browser-side group-list export on the pwc_tars audit trail. */
+export const recordTarsGroupExport = (
+  count: number,
+  pageUrl: string,
+): Promise<{ success: boolean }> => {
+  return request.post(endpoints.tarsUserGroupsExportLog(), { count, page_url: pageUrl });
 };
 
 export const createTarsUserGroup = (

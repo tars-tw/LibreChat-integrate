@@ -350,6 +350,7 @@ export const agentQueuedTurn = (queuedTurnId: string) =>
 export const tarsDomains = () => `${BASE_URL}/api/tars/domains`;
 export const tarsDomain = (id: string | number) => `${BASE_URL}/api/tars/domains/${id}`;
 export const tarsDomainPrepareData = () => `${BASE_URL}/api/tars/domains/admin/prepare-data`;
+export const tarsDomainsExportLog = () => `${BASE_URL}/api/tars/domains/admin/export-log`;
 export const tarsPluginTools = () => `${BASE_URL}/api/tars/domains/admin/plugin-tools`;
 export const tarsPluginToolsReload = () => `${BASE_URL}/api/tars/domains/admin/plugin-tools/reload`;
 export const tarsKnowledgeBases = () => `${BASE_URL}/api/tars/knowledge-bases`;
@@ -489,6 +490,7 @@ export const tarsTicket = (id: string) => `${BASE_URL}/api/tars/tickets/${encode
 export const tarsTicketComments = (id: string) => `${tarsTicket(id)}/comments`;
 export const tarsReleaseNotes = () => `${BASE_URL}/api/tars/home`;
 export const tarsRoles = () => `${BASE_URL}/api/tars/roles`;
+export const tarsRolesExportLog = () => `${tarsRoles()}/export-log`;
 export const tarsRole = (id: string | number) =>
   `${BASE_URL}/api/tars/roles/${encodeURIComponent(String(id))}`;
 export const tarsUserGroups = () => `${BASE_URL}/api/tars/groups`;
@@ -497,6 +499,7 @@ export const tarsUserGroup = (id: string) =>
 export const tarsUserGroupMembers = (id: string) => `${tarsUserGroup(id)}/members`;
 export const tarsUserGroupMember = (id: string, userId: string) =>
   `${tarsUserGroupMembers(id)}/${encodeURIComponent(userId)}`;
+export const tarsUserGroupsExportLog = () => `${tarsUserGroups()}/export-log`;
 export const tarsUsers = () => `${BASE_URL}/api/tars/users`;
 export const tarsUser = (id: string) => `${BASE_URL}/api/tars/users/${encodeURIComponent(id)}`;
 export const tarsUserPrepareData = () => `${BASE_URL}/api/tars/users/prepare-data`;

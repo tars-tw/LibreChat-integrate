@@ -14,6 +14,7 @@ import {
   useAddTarsUserGroupMembersMutation,
   useRemoveTarsUserGroupMemberMutation,
 } from '~/data-provider';
+import { usersLosingAccess } from './helpers';
 import { useLocalize } from '~/hooks';
 
 const errorMessage = (error: unknown): string | undefined =>
@@ -39,7 +40,9 @@ export default function GroupMembersModal({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [removing, setRemoving] = useState<TTarsGroupMember | null>(null);
 
-  const { data: users = [], isLoading: usersLoading } = useTarsUsersQuery({ enabled: adding });
+  /** Feeds both the add candidates and the remove warning, so it loads with the dialog. */
+  const { data: users = [], isLoading: usersLoading } = useTarsUsersQuery();
+  const usersById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
 
   const members = useMemo(() => group.user_list ?? [], [group.user_list]);
   const memberIds = useMemo(() => new Set(members.map((member) => member.id)), [members]);
@@ -93,6 +96,8 @@ export default function GroupMembersModal({
     });
 
   if (removing != null) {
+    /** pwc_tars refuses to leave an account with no role and no group, so this blocks. */
+    const removingLosesAccess = usersLosingAccess(group.id, [removing.id], usersById).length > 0;
     return (
       <OGDialog open={true} onOpenChange={(open) => !open && setRemoving(null)}>
         <OGDialogTemplate
@@ -100,18 +105,27 @@ export default function GroupMembersModal({
           showCloseButton={true}
           className="w-11/12 max-w-md"
           main={
-            <p className="text-sm text-text-secondary">
-              {localize('com_ui_tars_groups_remove_member_confirm', {
-                name: removing.username,
-                group: group.name,
-              })}
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-text-secondary">
+                {localize('com_ui_tars_groups_remove_member_confirm', {
+                  name: removing.username,
+                  group: group.name,
+                })}
+              </p>
+              {removingLosesAccess && (
+                <p className="rounded-lg border border-status-warning-border bg-status-warning-subtle p-3 text-sm text-status-warning">
+                  {localize('com_ui_tars_groups_remove_member_no_access', {
+                    name: removing.username,
+                  })}
+                </p>
+              )}
+            </div>
           }
           buttons={
             <Button
               variant="destructive"
               onClick={() => removeMutation.mutate({ id: group.id, userId: removing.id })}
-              disabled={removeMutation.isLoading}
+              disabled={removeMutation.isLoading || usersLoading || removingLosesAccess}
             >
               {removeMutation.isLoading ? <Spinner /> : localize('com_ui_delete')}
             </Button>

@@ -5,6 +5,12 @@ export const INACTIVE = 'inactive';
 
 export const isActive = (user: TTarsUser): boolean => user.status === ACTIVE;
 
+/**
+ * pwc_tars's AD accounts are exactly those with `is_sso_user`; `is_syncbyad` only
+ * records how the row arrived. Their email comes from AD, so pwc_tars refuses edits to it.
+ */
+export const isAdAccount = (user: TTarsUser): boolean => user.is_sso_user === true;
+
 /** pwc_tars stores multi-valued id columns as a trimmed comma-separated string. */
 export const csvToIds = (raw: string | null | undefined): string[] =>
   (raw ?? '')
@@ -13,6 +19,14 @@ export const csvToIds = (raw: string | null | undefined): string[] =>
     .filter(Boolean);
 
 export const idsToCsv = (ids: string[]): string | null => (ids.length > 0 ? ids.join(',') : null);
+
+const NAME_PREVIEW_LIMIT = 5;
+
+/** The first few usernames for a toast or warning, with an ellipsis when there are more. */
+export const previewNames = (users: Array<Pick<TTarsUser, 'username'>>): string => {
+  const names = users.slice(0, NAME_PREVIEW_LIMIT).map((user) => user.username);
+  return users.length > NAME_PREVIEW_LIMIT ? `${names.join(', ')}, …` : names.join(', ');
+};
 
 export const toNameMap = <T extends { id: string | number; name: string }>(
   items: T[],

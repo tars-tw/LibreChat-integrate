@@ -1,5 +1,5 @@
 const express = require('express');
-const { logger } = require('@librechat/data-schemas');
+const { logger, runAsSystem } = require('@librechat/data-schemas');
 const {
   isTarsConfigured,
   createTarsDomain,
@@ -7,10 +7,12 @@ const {
   deleteTarsDomain,
   fetchTarsPluginTools,
   reloadTarsPluginTools,
+  recordTarsDomainExport,
   fetchTarsDomainsForUser,
   fetchTarsDomainPrepareData,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { unbindAgentsFromTarsDomain } = require('~/models');
 const { relayTarsError } = require('./relay');
 
 const router = express.Router();
@@ -47,6 +49,29 @@ router.get('/domains/admin/prepare-data', requireTarsAdmin, async (req, res) => 
   } catch (error) {
     logger.error('[GET /api/tars/domains/admin/prepare-data] Failed', error);
     return relayTarsError(res, error, 'Failed to fetch pwc_tars domain data');
+  }
+});
+
+/**
+ * @route POST /api/tars/domains/admin/export-log
+ * @desc Record the brain-list export in the pwc_tars audit trail. The rows are
+ *       turned into a CSV in the browser, so pwc_tars never sees the export and
+ *       this is the only thing that puts it on the record.
+ * @access Admin (pwc_tars)
+ */
+router.post('/domains/admin/export-log', requireTarsAdmin, async (req, res) => {
+  const count = Number.parseInt(req.body?.count, 10);
+  if (!Number.isFinite(count) || count < 1) {
+    return res.status(400).json({ error: 'A positive row count is required' });
+  }
+
+  try {
+    const pageUrl = typeof req.body?.page_url === 'string' ? req.body.page_url : undefined;
+    await recordTarsDomainExport(req.user.tarsId, count, pageUrl);
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error('[POST /api/tars/domains/admin/export-log] Failed', error);
+    return relayTarsError(res, error, 'Failed to record the pwc_tars export');
   }
 });
 
@@ -114,17 +139,32 @@ router.put('/domains/:id', requireTarsAdmin, async (req, res) => {
 
 /**
  * @route DELETE /api/tars/domains/:id
- * @desc Delete a specialized brain.
+ * @desc Delete a specialized brain. pwc_tars also removes its role bindings,
+ *       prompts, token limit settings and MCP grants; token usage is kept.
+ *       Saved agents bound to it are unbound so they follow the chat's brain.
  * @access Admin (pwc_tars)
  */
 router.delete('/domains/:id', requireTarsAdmin, async (req, res) => {
   try {
     await deleteTarsDomain(req.user.tarsId, req.params.id);
-    return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/domains/:id] Failed to delete pwc_tars domain', error);
     return relayTarsError(res, error, 'Failed to delete pwc_tars domain');
   }
+
+  /** The brain is gone either way; a failed unbind only leaves those agents to be re-pointed by hand. */
+  try {
+    const domainId = String(req.params.id);
+    const { modifiedCount } = await runAsSystem(() => unbindAgentsFromTarsDomain(domainId));
+    if (modifiedCount > 0) {
+      logger.info(
+        `[DELETE /api/tars/domains/:id] Unbound ${modifiedCount} agent(s) from ${domainId}`,
+      );
+    }
+  } catch (error) {
+    logger.error('[DELETE /api/tars/domains/:id] Failed to unbind agents', error);
+  }
+  return res.json({ success: true });
 });
 
 module.exports = router;

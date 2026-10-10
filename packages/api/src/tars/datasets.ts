@@ -8,6 +8,12 @@ import { tarsFetch } from './client';
  */
 const INGEST_TIMEOUT_MS = 300000;
 
+/**
+ * Importing a document group downloads every chosen file and reads its
+ * metadata before pwc_tars answers; its own form waits 600s for that.
+ */
+const FILE_SERVER_IMPORT_TIMEOUT_MS = 600000;
+
 /** Listing a database's tables opens a real connection, which can be slow. */
 const CONNECT_TIMEOUT_MS = 60000;
 
@@ -69,6 +75,14 @@ export interface TarsDatasetFileSystemLink {
   schedule_id: string | null;
   is_sync_all: boolean | null;
   is_upload_only: boolean | null;
+  /**
+   * The directory this knowledge base bound when it imported the group, which
+   * scheduled syncs stay inside. `null` binds the file server's whole path.
+   */
+  directory_path: string | null;
+  /** Chunking chosen at import, which syncs apply to files they find new. `null` predates the setting. */
+  chunk_size: number | null;
+  overlap_size: number | null;
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -86,6 +100,11 @@ export interface TarsFileSystemSource {
   host_name: string | null;
   status: number | null;
   allowed_km_ids: string[];
+  /**
+   * Only filled when listed for one knowledge base: the directory that base
+   * bound, or `null` when it binds the whole path or has not imported the group.
+   */
+  directory_path?: string | null;
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -185,6 +204,7 @@ export const toSafeFileSystem = (row: TarsRawFileSystem): TarsFileSystemSource =
   host_name: row.host_name ?? null,
   status: row.status ?? null,
   allowed_km_ids: row.allowed_km_ids ?? [],
+  directory_path: row.directory_path ?? null,
   created_by: row.created_by ?? null,
   created_at: row.created_at ?? null,
   updated_at: row.updated_at ?? null,
@@ -507,7 +527,13 @@ export async function fetchTarsFileSystemFiles(
   return data?.files ?? [];
 }
 
-/** Per-file chunk overrides, keyed by the path the file server reported. */
+/** One file to import, by the path the file server reported, with its chunk overrides. */
+export interface TarsFileSystemImportFile {
+  path: string;
+  chunkSize?: number;
+  overlap?: number;
+}
+
 export interface TarsFileSystemImportInput {
   knowledgeBaseId: string;
   fileSystemId: string;
@@ -516,7 +542,24 @@ export interface TarsFileSystemImportInput {
   syncAll?: boolean;
   /** Store the files without chunking or embedding them. */
   uploadOnly?: boolean;
-  fileSettings?: Record<string, { chunkSize?: number; overlap?: number }>;
+  /**
+   * Travels as a list and becomes pwc_tars' path-keyed `file_settings` only
+   * here: the server's request sanitizer drops every object key containing
+   * `.`, which is every file name.
+   */
+  files?: TarsFileSystemImportFile[];
+  /**
+   * The group's own chunking, recorded on the binding: pwc_tars applies it to
+   * files a sync-all import or a scheduled sync picks up beyond `files`.
+   */
+  chunkSize?: number;
+  overlap?: number;
+  /**
+   * A folder as the file listing reported it, relative to the server's path.
+   * Binds the group to it, so imports and scheduled syncs stay inside; blank
+   * binds the whole path.
+   */
+  selectedFolder?: string;
   tags?: string;
 }
 
@@ -528,7 +571,7 @@ export async function importTarsFileSystemDataset(
 ): Promise<void> {
   await tarsFetch('/api/knowledge_detail/upload_file_server_files', {
     method: 'POST',
-    timeoutMs: INGEST_TIMEOUT_MS,
+    timeoutMs: FILE_SERVER_IMPORT_TIMEOUT_MS,
     baseUrl,
     body: {
       user_id: tarsId,
@@ -537,7 +580,13 @@ export async function importTarsFileSystemDataset(
       name: input.name,
       is_sync_all: input.syncAll === true,
       is_upload_only: input.uploadOnly === true,
-      file_settings: input.fileSettings ?? {},
+      file_settings: Object.fromEntries(
+        (input.files ?? []).map(({ path, chunkSize, overlap }) => [path, { chunkSize, overlap }]),
+      ),
+      /** Left out unless given, so pwc_tars records no setting and keeps its 1000/100 default. */
+      ...(input.chunkSize != null ? { chunk_size: input.chunkSize } : {}),
+      ...(input.overlap != null ? { overlap: input.overlap } : {}),
+      selected_folder: input.selectedFolder ?? '',
       tags: input.tags ?? '',
     },
   });
@@ -642,13 +691,19 @@ export async function unlinkTarsFileSystemDataset(
  * (`POST /api/knowledge_detail/batch_delete_datasets`).
  *
  * pwc_tars answers 202 and does the work on a background thread, so a caller
- * must refetch rather than treat the response as "deleted". Document groups
- * have no id list here — they are unlinked one group at a time instead.
+ * must refetch rather than treat the response as "deleted". A document group
+ * that still has a file processing is skipped there and only logged, so it
+ * stays linked until it is unlinked again.
  */
 export async function batchDeleteTarsDatasets(
   tarsId: string,
   knowledgeBaseId: string,
-  ids: { documentIds?: string[]; websiteIds?: string[]; databaseIds?: string[] },
+  ids: {
+    documentIds?: string[];
+    websiteIds?: string[];
+    databaseIds?: string[];
+    fileSystemIds?: string[];
+  },
   baseUrl?: string,
 ): Promise<void> {
   await tarsFetch('/api/knowledge_detail/batch_delete_datasets', {
@@ -661,6 +716,7 @@ export async function batchDeleteTarsDatasets(
       dataset_website_ids: ids.websiteIds ?? [],
       dataset_sql_ids: ids.databaseIds ?? [],
       dataset_api_ids: [],
+      dataset_file_system_ids: ids.fileSystemIds ?? [],
     },
   });
 }

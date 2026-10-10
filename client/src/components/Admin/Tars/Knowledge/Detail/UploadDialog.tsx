@@ -12,6 +12,7 @@ import {
 } from '@librechat/client';
 import type { TTarsDatasetLimits } from 'librechat-data-provider';
 import { useUploadTarsDocumentsMutation } from '~/data-provider';
+import { chunkSettingsInvalid } from './helpers';
 import { relayedError } from '../helpers';
 import { useLocalize } from '~/hooks';
 
@@ -84,13 +85,7 @@ export default function UploadDialog({
       new Set(
         files
           .map((entry, index) =>
-            entry.chunkSize < 1 ||
-            entry.chunkSize > limits.max_chunk_size ||
-            entry.overlap < 0 ||
-            entry.overlap > limits.max_overlap ||
-            entry.overlap >= entry.chunkSize
-              ? index
-              : -1,
+            chunkSettingsInvalid(entry.chunkSize, entry.overlap, limits) ? index : -1,
           )
           .filter((index) => index >= 0),
       ),

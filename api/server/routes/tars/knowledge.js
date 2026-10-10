@@ -19,8 +19,10 @@ const {
   updateTarsChunk,
   setTarsChunkEnabled,
   deleteTarsChunk,
+  isTarsAdminRole,
+  forbiddenTarsKnowledgeBaseFields,
 } = require('@librechat/api');
-const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { requireJwtAuth, requireTarsAdmin, requireTarsMenuAccess } = require('~/server/middleware');
 const { relayTarsError } = require('./relay');
 const { createTarsUpload } = require('./upload');
 
@@ -48,13 +50,18 @@ const parseIdList = (value) => {
   }
 };
 
-router.use(['/knowledge-bases', '/documents'], requireJwtAuth, requireTarsAdmin);
+/**
+ * Anyone granted 知識庫清單 may list, edit and work inside a knowledge base, as
+ * on pwc_tars's own page; creating, deleting, batch settings and retrying stuck
+ * documents stay with admins, which is where pwc_tars's page draws the line.
+ */
+router.use(['/knowledge-bases', '/documents'], requireJwtAuth, requireTarsMenuAccess('kb.list'));
 
 /**
  * @route GET /api/tars/knowledge-bases
  * @desc List pwc_tars knowledge bases with per-type dataset counts, plus the
  *       users and groups the access pickers offer.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.get('/knowledge-bases', async (req, res) => {
   try {
@@ -75,7 +82,7 @@ router.get('/knowledge-bases', async (req, res) => {
  * @desc LLM / embedding / rerank model options for the upload form.
  * @access Admin (pwc_tars)
  */
-router.get('/knowledge-bases/models', async (req, res) => {
+router.get('/knowledge-bases/models', requireTarsAdmin, async (req, res) => {
   try {
     const models = await fetchTarsModelOptions();
     return res.json(models);
@@ -90,7 +97,7 @@ router.get('/knowledge-bases/models', async (req, res) => {
  * @desc Create an empty knowledge base.
  * @access Admin (pwc_tars)
  */
-router.post('/knowledge-bases', async (req, res) => {
+router.post('/knowledge-bases', requireTarsAdmin, async (req, res) => {
   try {
     const knowledgeBase = await createTarsKnowledgeBase(req.user.tarsId, req.body ?? {});
     return res.status(201).json({ knowledgeBase });
@@ -106,53 +113,58 @@ router.post('/knowledge-bases', async (req, res) => {
  *       file. pwc_tars creates the KB and SysRAGModel even without a file.
  * @access Admin (pwc_tars)
  */
-router.post('/knowledge-bases/upload', upload.single('file'), async (req, res) => {
-  const {
-    knowledgeName,
-    description,
-    tags,
-    llmModel,
-    embeddingModel,
-    rerankModel,
-    maxRetrieveCount,
-    allowedUserIds,
-    allowedUserGroupIds,
-  } = req.body ?? {};
-  if (!knowledgeName || !llmModel) {
-    return res.status(400).json({ error: 'knowledgeName and llmModel are required' });
-  }
-
-  try {
-    const result = await createTarsKnowledgeBaseWithFile(req.user.tarsId, {
+router.post(
+  '/knowledge-bases/upload',
+  requireTarsAdmin,
+  upload.single('file'),
+  async (req, res) => {
+    const {
       knowledgeName,
       description,
       tags,
       llmModel,
       embeddingModel,
       rerankModel,
-      maxRetrieveCount: maxRetrieveCount != null ? Number(maxRetrieveCount) : undefined,
-      /** Sent as JSON text by the multipart form, so it arrives as a string. */
-      allowedUserIds: parseIdList(allowedUserIds),
-      allowedUserGroupIds: parseIdList(allowedUserGroupIds),
-      file: req.file
-        ? {
-            buffer: req.file.buffer,
-            filename: req.file.originalname,
-            mimetype: req.file.mimetype,
-          }
-        : undefined,
-    });
-    return res.status(201).json(result);
-  } catch (error) {
-    logger.error('[POST /api/tars/knowledge-bases/upload] Failed', error);
-    return relayTarsError(res, error, 'Failed to create pwc_tars knowledge base');
-  }
-});
+      maxRetrieveCount,
+      allowedUserIds,
+      allowedUserGroupIds,
+    } = req.body ?? {};
+    if (!knowledgeName || !llmModel) {
+      return res.status(400).json({ error: 'knowledgeName and llmModel are required' });
+    }
+
+    try {
+      const result = await createTarsKnowledgeBaseWithFile(req.user.tarsId, {
+        knowledgeName,
+        description,
+        tags,
+        llmModel,
+        embeddingModel,
+        rerankModel,
+        maxRetrieveCount: maxRetrieveCount != null ? Number(maxRetrieveCount) : undefined,
+        /** Sent as JSON text by the multipart form, so it arrives as a string. */
+        allowedUserIds: parseIdList(allowedUserIds),
+        allowedUserGroupIds: parseIdList(allowedUserGroupIds),
+        file: req.file
+          ? {
+              buffer: req.file.buffer,
+              filename: req.file.originalname,
+              mimetype: req.file.mimetype,
+            }
+          : undefined,
+      });
+      return res.status(201).json(result);
+    } catch (error) {
+      logger.error('[POST /api/tars/knowledge-bases/upload] Failed', error);
+      return relayTarsError(res, error, 'Failed to create pwc_tars knowledge base');
+    }
+  },
+);
 
 /**
  * @route GET /api/tars/knowledge-bases/:id/model-bindings
  * @desc The rerank / LLM models this knowledge base may be bound to.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.get('/knowledge-bases/:id/model-bindings', async (req, res) => {
   try {
@@ -167,7 +179,7 @@ router.get('/knowledge-bases/:id/model-bindings', async (req, res) => {
 /**
  * @route PUT /api/tars/knowledge-bases/:id/model-bindings
  * @desc Rebind the knowledge base's rerank and/or LLM model.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.put('/knowledge-bases/:id/model-bindings', async (req, res) => {
   const { rerankModelId, llmModelId } = req.body ?? {};
@@ -191,7 +203,7 @@ router.put('/knowledge-bases/:id/model-bindings', async (req, res) => {
 /**
  * @route GET /api/tars/knowledge-bases/:id/documents
  * @desc List documents in a knowledge base.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.get('/knowledge-bases/:id/documents', async (req, res) => {
   try {
@@ -206,7 +218,7 @@ router.get('/knowledge-bases/:id/documents', async (req, res) => {
 /**
  * @route POST /api/tars/knowledge-bases/:id/documents
  * @desc Upload one or more documents into a knowledge base.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/documents', upload.array('files'), async (req, res) => {
   const files = req.files ?? [];
@@ -248,7 +260,7 @@ router.post('/knowledge-bases/:id/documents', upload.array('files'), async (req,
 /**
  * @route PUT /api/tars/knowledge-bases/:id/documents/:docId/rename
  * @desc Rename a document.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.put('/knowledge-bases/:id/documents/:docId/rename', async (req, res) => {
   const { newFilename } = req.body ?? {};
@@ -271,7 +283,7 @@ router.put('/knowledge-bases/:id/documents/:docId/rename', async (req, res) => {
 /**
  * @route DELETE /api/tars/knowledge-bases/:id/documents/:docId
  * @desc Delete a document (pwc_tars cascades chunks / vectors).
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.delete('/knowledge-bases/:id/documents/:docId', async (req, res) => {
   try {
@@ -289,7 +301,7 @@ router.delete('/knowledge-bases/:id/documents/:docId', async (req, res) => {
 /**
  * @route POST /api/tars/knowledge-bases/:id/documents/:docId/reprocess
  * @desc Re-chunk and re-embed an existing document.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/documents/:docId/reprocess', async (req, res) => {
   const { chunkSize, overlap } = req.body ?? {};
@@ -314,7 +326,7 @@ router.post('/knowledge-bases/:id/documents/:docId/reprocess', async (req, res) 
  *   working), across the whole knowledge base.
  * @access Admin (pwc_tars)
  */
-router.post('/knowledge-bases/:id/documents/retry-stuck', async (req, res) => {
+router.post('/knowledge-bases/:id/documents/retry-stuck', requireTarsAdmin, async (req, res) => {
   try {
     const result = await retryTarsStuckDocuments(req.user.tarsId, {
       knowledgeBaseId: req.params.id,
@@ -332,23 +344,30 @@ router.post('/knowledge-bases/:id/documents/retry-stuck', async (req, res) => {
  *   background task actually still running for it.
  * @access Admin (pwc_tars)
  */
-router.post('/knowledge-bases/:id/documents/:docId/retry-stuck', async (req, res) => {
-  try {
-    const result = await retryTarsStuckDocuments(req.user.tarsId, {
-      knowledgeBaseId: req.params.id,
-      documentId: req.params.docId,
-    });
-    return res.json(result);
-  } catch (error) {
-    logger.error('[POST /api/tars/knowledge-bases/:id/documents/:docId/retry-stuck] Failed', error);
-    return relayTarsError(res, error, 'Failed to retry stuck pwc_tars document');
-  }
-});
+router.post(
+  '/knowledge-bases/:id/documents/:docId/retry-stuck',
+  requireTarsAdmin,
+  async (req, res) => {
+    try {
+      const result = await retryTarsStuckDocuments(req.user.tarsId, {
+        knowledgeBaseId: req.params.id,
+        documentId: req.params.docId,
+      });
+      return res.json(result);
+    } catch (error) {
+      logger.error(
+        '[POST /api/tars/knowledge-bases/:id/documents/:docId/retry-stuck] Failed',
+        error,
+      );
+      return relayTarsError(res, error, 'Failed to retry stuck pwc_tars document');
+    }
+  },
+);
 
 /**
  * @route GET /api/tars/documents/:docId/chunks
  * @desc List chunks of a document.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.get('/documents/:docId/chunks', async (req, res) => {
   try {
@@ -363,7 +382,7 @@ router.get('/documents/:docId/chunks', async (req, res) => {
 /**
  * @route PUT /api/tars/documents/:docId/chunks/:chunkId
  * @desc Edit one chunk's content.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.put('/documents/:docId/chunks/:chunkId', async (req, res) => {
   const { content } = req.body ?? {};
@@ -382,7 +401,7 @@ router.put('/documents/:docId/chunks/:chunkId', async (req, res) => {
 /**
  * @route PUT /api/tars/documents/:docId/chunks/:chunkId/enabled
  * @desc Turn one chunk on or off for retrieval.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.put('/documents/:docId/chunks/:chunkId/enabled', async (req, res) => {
   const { enabled } = req.body ?? {};
@@ -401,7 +420,7 @@ router.put('/documents/:docId/chunks/:chunkId/enabled', async (req, res) => {
 /**
  * @route DELETE /api/tars/documents/:docId/chunks/:chunkId
  * @desc Remove one chunk.
- * @access Admin (pwc_tars)
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.delete('/documents/:docId/chunks/:chunkId', async (req, res) => {
   try {
@@ -416,15 +435,20 @@ router.delete('/documents/:docId/chunks/:chunkId', async (req, res) => {
 /**
  * @route PUT /api/tars/knowledge-bases/:id
  * @desc Update a knowledge base (name/description/retrieve count/domain binding).
- * @access Admin (pwc_tars)
+ *       The access lists and the domain binding are admin-only.
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.put('/knowledge-bases/:id', async (req, res) => {
+  const update = req.body ?? {};
+  const forbidden = forbiddenTarsKnowledgeBaseFields(isTarsAdminRole(req.user.tarsRoleId), update);
+  if (forbidden.length > 0) {
+    return res
+      .status(403)
+      .json({ error: `pwc_tars admin access required to change ${forbidden.join(', ')}` });
+  }
+
   try {
-    const knowledgeBase = await updateTarsKnowledgeBase(
-      req.user.tarsId,
-      req.params.id,
-      req.body ?? {},
-    );
+    const knowledgeBase = await updateTarsKnowledgeBase(req.user.tarsId, req.params.id, update);
     return res.json({ knowledgeBase });
   } catch (error) {
     logger.error('[PUT /api/tars/knowledge-bases/:id] Failed', error);
@@ -437,7 +461,7 @@ router.put('/knowledge-bases/:id', async (req, res) => {
  * @desc Delete a knowledge base (pwc_tars cascades Milvus / chunks / documents).
  * @access Admin (pwc_tars)
  */
-router.delete('/knowledge-bases/:id', async (req, res) => {
+router.delete('/knowledge-bases/:id', requireTarsAdmin, async (req, res) => {
   try {
     await deleteTarsKnowledgeBase(req.user.tarsId, req.params.id);
     return res.json({ success: true });

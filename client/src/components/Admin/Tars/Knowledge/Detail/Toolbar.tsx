@@ -13,6 +13,7 @@ export default function Toolbar({
   isRefreshing,
   selectedCount,
   onBatchDelete,
+  batchDeleteLabel,
   onRetryStuck,
   isRetryingStuck,
   addLabel,
@@ -26,6 +27,8 @@ export default function Toolbar({
   /** Omit `onBatchDelete` on tabs pwc_tars cannot batch-delete. */
   selectedCount?: number;
   onBatchDelete?: () => void;
+  /** Overrides 「刪除所選」 where the batch action unlinks rather than deletes. */
+  batchDeleteLabel?: string;
   /** Documents only: resubmit every document orphaned at status=1 in this knowledge base. */
   onRetryStuck?: () => void;
   isRetryingStuck?: boolean;
@@ -69,7 +72,7 @@ export default function Toolbar({
       {onBatchDelete != null && (selectedCount ?? 0) > 0 && (
         <Button variant="destructive" onClick={onBatchDelete} className="gap-1.5">
           <Trash2 className="size-4" aria-hidden />
-          {localize('com_ui_tars_kb_ds_batch_delete')}
+          {batchDeleteLabel ?? localize('com_ui_tars_kb_ds_batch_delete')}
           <span className="rounded-full bg-surface-primary/20 px-1.5 text-xs tabular-nums">
             {selectedCount}
           </span>
