@@ -386,6 +386,7 @@ async function saveErrorTurn(
     runCreated = false,
     sender,
     initialAgentId,
+    existingTarsConversationId,
   },
 ) {
   try {
@@ -602,6 +603,19 @@ async function saveErrorTurn(
         context: 'AgentController - persisted error turn',
       },
     );
+
+    /** pwc_tars records failed turns too, with the error kept on the row. */
+    if (!reqCtx.isTemporary && req.body?.compact !== true) {
+      mirrorChatToTars(req, {
+        conversationId,
+        existingTarsConversationId,
+        model,
+        domainId: req.body?.domain_id,
+        query: userMessage?.text ?? liveUserMessage?.text ?? req.body?.text,
+        messageId: errorMessageId,
+        turn: { files: userMessage?.files, errorText },
+      });
+    }
   } catch (err) {
     logger.error('[AgentController] Failed to persist error turn', err);
     throw err;
@@ -2991,6 +3005,30 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         let conversation = { ...convoData };
         conversation.title =
           conversation && !conversation.title ? null : conversation?.title || 'New Chat';
+
+        /** Best-effort, non-blocking mirror of this turn into pwc_tars (LibreChat → pwc_tars).
+         *  A stopped or truncated turn is recorded as interrupted, as pwc_tars records its own. */
+        const mirrorTurnToTars = (unfinished) => {
+          if (req.body?.isTemporary) {
+            return;
+          }
+          mirrorChatToTars(req, {
+            conversationId,
+            existingTarsConversationId,
+            title: conversation?.title,
+            model: conversation?.model ?? req.body?.model,
+            domainId: req.body?.domain_id ?? conversation?.domain_id,
+            query: text,
+            messageId: response?.messageId,
+            turn: {
+              response,
+              files: userMessage?.files,
+              usage: client?.collectedUsage,
+              unfinished,
+            },
+          });
+        };
+
         if (!terminalClaim) {
           /** Stop/replacement won before the response persistence hook. The
            * BaseClient contract skipped its completed response write; cancel
@@ -3013,6 +3051,11 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
               '[event-actor] Failed to preserve replaced-claim reconciliation',
               reconciliationError,
             );
+          }
+          /** Stop won the claim and saves the partial response itself; the turn still
+           *  happened, so pwc_tars records it. A replacement turn mirrors on its own. */
+          if (job.abortController.signal.aborted) {
+            mirrorTurnToTars(true);
           }
           /** This controller lost terminal persistence ownership, so it cannot
            * prove the winning Stop/replacement has written the unfinished
@@ -3198,27 +3241,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           ).catch((err) => logger.error('[AgentController] Failed to persist domain_id', err));
         }
 
-        // Best-effort, non-blocking mirror of this turn into pwc_tars (LibreChat → pwc_tars).
-        // Agent responses live in `content` (array of parts); `text` is usually empty.
-        if (!responseIsUnfinished && !req.body?.isTemporary) {
-          const responseText =
-            response?.text ||
-            (Array.isArray(response?.content)
-              ? response.content
-                  .filter((part) => part?.type === 'text' && part.text)
-                  .map((part) => part.text)
-                  .join('\n')
-              : '');
-          mirrorChatToTars(req, {
-            conversationId,
-            existingTarsConversationId,
-            title: conversation?.title,
-            model: conversation?.model ?? req.body?.model,
-            domainId: selectedDomainId ?? conversation?.domain_id,
-            query: text,
-            response: responseText,
-          });
-        }
+        mirrorTurnToTars(responseIsUnfinished);
 
         // If the user stopped this turn — or an empty preempt boundary truncated
         // it, which persists under the same honest `unfinished` contract — cancel
@@ -3446,6 +3469,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
                       runCreated: client?.run != null,
                       sender: client?.sender,
                       initialAgentId: verifiedInitialAgentId,
+                      existingTarsConversationId,
                     }),
                   ),
               })) === true;
@@ -3661,6 +3685,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
                   isNewConvo,
                   errorText: initializationError,
                   initialAgentId: verifiedInitialAgentId,
+                  existingTarsConversationId,
                 }),
               ),
           })

@@ -46,6 +46,11 @@ jest.mock('@librechat/data-schemas', () => ({
 
 jest.mock('~/server/services/Config', () => ({ getAppConfig: jest.fn() }));
 
+jest.mock('~/server/services/Tars/mirror', () => ({
+  mirrorFeedbackToTars: jest.fn().mockResolvedValue(undefined),
+  getTarsFeedbackBaseline: jest.fn().mockResolvedValue(null),
+}));
+
 jest.mock('~/server/services/Endpoints/agents/subagentThreadStore', () => ({}));
 
 jest.mock('~/models', () => ({
