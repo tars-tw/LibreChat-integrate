@@ -11,6 +11,7 @@ import {
   fetchTarsKnowledgeBaseDatasets,
   fetchTarsDatabaseTables,
   fetchTarsFileSystemSources,
+  importTarsFileSystemDataset,
   importTarsWebsiteDataset,
   batchDeleteTarsDatasets,
   unbindTarsDatabase,
@@ -161,6 +162,96 @@ describe('fetchTarsFileSystemSources', () => {
     expect(sources[0]).not.toHaveProperty('account');
     expect(sources[0].mount_type).toBe('SFTP');
   });
+
+  it('keeps the directory this knowledge base bound', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(200, {
+        dataset_file_systems: [
+          { id: 'fs-1', name: 'reports', mount_type: 'SMB', directory_path: 'public/2026' },
+          { id: 'fs-2', name: 'archive', mount_type: 'FTP' },
+        ],
+      }),
+    );
+
+    const sources = await fetchTarsFileSystemSources('user-1', 'kb-1', BASE_URL);
+
+    expect(sources.map((source) => source.directory_path)).toEqual(['public/2026', null]);
+  });
+});
+
+describe('importTarsFileSystemDataset', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('records the chunking and bound folder on the binding', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { message: 'ok' }));
+
+    await importTarsFileSystemDataset(
+      'user-1',
+      {
+        knowledgeBaseId: 'kb-1',
+        fileSystemId: 'fs-1',
+        name: 'Reports',
+        syncAll: true,
+        chunkSize: 800,
+        overlap: 80,
+        selectedFolder: 'finance/2026',
+      },
+      BASE_URL,
+    );
+
+    expect(bodyOf(fetchMock)).toMatchObject({
+      dataset_file_system_id: 'fs-1',
+      is_sync_all: true,
+      chunk_size: 800,
+      overlap: 80,
+      selected_folder: 'finance/2026',
+    });
+  });
+
+  it("keys pwc_tars' file_settings by each file's reported path", async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { message: 'ok' }));
+
+    await importTarsFileSystemDataset(
+      'user-1',
+      {
+        knowledgeBaseId: 'kb-1',
+        fileSystemId: 'fs-1',
+        name: 'Reports',
+        files: [
+          { path: 'test2/demo_ftp.txt', chunkSize: 1000, overlap: 100 },
+          { path: 'sample_ftp.docx', chunkSize: 500, overlap: 50 },
+        ],
+      },
+      BASE_URL,
+    );
+
+    expect(bodyOf(fetchMock).file_settings).toEqual({
+      'test2/demo_ftp.txt': { chunkSize: 1000, overlap: 100 },
+      'sample_ftp.docx': { chunkSize: 500, overlap: 50 },
+    });
+  });
+
+  /** Omitting them lets pwc_tars record no setting and fall back to its 1000/100 default. */
+  it('binds the whole path and leaves chunking out when none was chosen', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { message: 'ok' }));
+
+    await importTarsFileSystemDataset(
+      'user-1',
+      { knowledgeBaseId: 'kb-1', fileSystemId: 'fs-1', name: 'Reports' },
+      BASE_URL,
+    );
+
+    const body = bodyOf(fetchMock);
+    expect(body.selected_folder).toBe('');
+    expect(body).not.toHaveProperty('chunk_size');
+    expect(body).not.toHaveProperty('overlap');
+  });
 });
 
 describe('importTarsWebsiteDataset', () => {
@@ -200,7 +291,7 @@ describe('batchDeleteTarsDatasets', () => {
   afterEach(() => jest.restoreAllMocks());
 
   /** pwc_tars rejects the call outright unless every list is present. */
-  it('always sends all four id lists', async () => {
+  it('always sends every id list', async () => {
     const fetchMock = jest
       .spyOn(global, 'fetch')
       .mockResolvedValue(buildResponse(202, { message: 'started' }));
@@ -214,6 +305,20 @@ describe('batchDeleteTarsDatasets', () => {
       dataset_website_ids: [],
       dataset_sql_ids: [],
       dataset_api_ids: [],
+      dataset_file_system_ids: [],
+    });
+  });
+
+  it('unlinks document groups by their file-system id', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(202, { message: 'started' }));
+
+    await batchDeleteTarsDatasets('user-1', 'kb-1', { fileSystemIds: ['fs-1', 'fs-2'] }, BASE_URL);
+
+    expect(bodyOf(fetchMock)).toMatchObject({
+      document_ids: [],
+      dataset_file_system_ids: ['fs-1', 'fs-2'],
     });
   });
 });

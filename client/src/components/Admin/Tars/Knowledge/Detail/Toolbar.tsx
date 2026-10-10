@@ -13,6 +13,7 @@ export default function Toolbar({
   isRefreshing,
   selectedCount,
   onBatchDelete,
+  batchDeleteLabel,
   onRetryStuck,
   isRetryingStuck,
   addLabel,
@@ -26,6 +27,8 @@ export default function Toolbar({
   /** Omit `onBatchDelete` on tabs pwc_tars cannot batch-delete. */
   selectedCount?: number;
   onBatchDelete?: () => void;
+  /** Overrides 「刪除所選」 where the batch action unlinks rather than deletes. */
+  batchDeleteLabel?: string;
   /** Documents only: resubmit every document orphaned at status=1 in this knowledge base. */
   onRetryStuck?: () => void;
   isRetryingStuck?: boolean;
@@ -39,7 +42,7 @@ export default function Toolbar({
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-[14rem] flex-1 sm:max-w-xs">
         <Search
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary"
+          className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
           aria-hidden
         />
         <Input
@@ -69,8 +72,8 @@ export default function Toolbar({
       {onBatchDelete != null && (selectedCount ?? 0) > 0 && (
         <Button variant="destructive" onClick={onBatchDelete} className="gap-1.5">
           <Trash2 className="size-4" aria-hidden />
-          {localize('com_ui_tars_kb_ds_batch_delete')}
-          <span className="rounded-full bg-surface-primary/20 px-1.5 text-xs tabular-nums">
+          {batchDeleteLabel ?? localize('com_ui_tars_kb_ds_batch_delete')}
+          <span className="bg-surface-primary/20 rounded-full px-1.5 text-xs tabular-nums">
             {selectedCount}
           </span>
         </Button>

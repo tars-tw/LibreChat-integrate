@@ -251,7 +251,8 @@ router.get('/knowledge-bases/:id/file-systems/:fsId/files', async (req, res) => 
  * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
-  const { name, syncAll, uploadOnly, fileSettings, tags } = req.body ?? {};
+  const { name, syncAll, uploadOnly, files, chunkSize, overlap, selectedFolder, tags } =
+    req.body ?? {};
   if (!name) {
     return res.status(400).json({ error: 'name is required' });
   }
@@ -263,7 +264,10 @@ router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
       name,
       syncAll,
       uploadOnly,
-      fileSettings,
+      files: Array.isArray(files) ? files : undefined,
+      chunkSize: chunkSize != null ? Number(chunkSize) : undefined,
+      overlap: overlap != null ? Number(overlap) : undefined,
+      selectedFolder: typeof selectedFolder === 'string' ? selectedFolder : undefined,
       tags,
     });
     return res.status(201).json({ success: true });
@@ -350,8 +354,12 @@ router.delete('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
  * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/datasets/batch-delete', async (req, res) => {
-  const { documentIds, websiteIds, databaseIds } = req.body ?? {};
-  const total = (documentIds?.length ?? 0) + (websiteIds?.length ?? 0) + (databaseIds?.length ?? 0);
+  const { documentIds, websiteIds, databaseIds, fileSystemIds } = req.body ?? {};
+  const total =
+    (documentIds?.length ?? 0) +
+    (websiteIds?.length ?? 0) +
+    (databaseIds?.length ?? 0) +
+    (fileSystemIds?.length ?? 0);
   if (total === 0) {
     return res.status(400).json({ error: 'At least one id is required' });
   }
@@ -361,6 +369,7 @@ router.post('/knowledge-bases/:id/datasets/batch-delete', async (req, res) => {
       documentIds,
       websiteIds,
       databaseIds,
+      fileSystemIds,
     });
     return res.status(202).json({ accepted: total });
   } catch (error) {

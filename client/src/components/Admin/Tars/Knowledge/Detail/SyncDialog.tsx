@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { Button, Input, Label, OGDialog, OGDialogTemplate, Spinner } from '@librechat/client';
 import type { TTarsDatasetFileSystemLink, TTarsDatasetLimits } from 'librechat-data-provider';
-import { fileSystemLabel } from './helpers';
+import { chunkSettingsInvalid, fileSystemLabel, recordedChunk } from './helpers';
 import { useLocalize } from '~/hooks';
-
-const DEFAULT_CHUNK = 1000;
-const DEFAULT_OVERLAP = 100;
 
 /**
  * Confirms a document-group sync and collects the chunk size/overlap it
  * should use for files the sync finds new — files pwc_tars already has keep
  * whatever they were chunked with, so these only ever apply going forward.
+ * Both start from what the binding recorded at import, which is what its
+ * scheduled syncs use, so a manual sync chunks new files the same way.
  */
 export default function SyncDialog({
   link,
@@ -26,15 +25,10 @@ export default function SyncDialog({
   onClose: () => void;
 }) {
   const localize = useLocalize();
-  const [chunkSize, setChunkSize] = useState(DEFAULT_CHUNK);
-  const [overlap, setOverlap] = useState(DEFAULT_OVERLAP);
+  const [chunkSize, setChunkSize] = useState(() => recordedChunk(link).chunkSize);
+  const [overlap, setOverlap] = useState(() => recordedChunk(link).overlap);
 
-  const invalid =
-    chunkSize < 1 ||
-    chunkSize > limits.max_chunk_size ||
-    overlap < 0 ||
-    overlap > limits.max_overlap ||
-    overlap >= chunkSize;
+  const invalid = chunkSettingsInvalid(chunkSize, overlap, limits);
 
   return (
     <OGDialog open={true} onOpenChange={(open) => !open && !isBusy && onClose()}>
@@ -44,10 +38,10 @@ export default function SyncDialog({
         showCloseButton={true}
         main={
           <div className="space-y-3">
-            <p className="text-sm text-text-secondary">
+            <p className="text-text-secondary text-sm">
               {localize('com_ui_tars_kb_ds_sync_description', { 0: fileSystemLabel(link) })}
             </p>
-            <p className="text-xs text-text-secondary">
+            <p className="text-text-secondary text-xs">
               {localize('com_ui_tars_kb_ds_sync_params_hint')}
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -77,7 +71,7 @@ export default function SyncDialog({
               </div>
             </div>
             {invalid && (
-              <p className="text-xs text-pwc-danger">
+              <p className="text-pwc-danger text-xs">
                 {localize('com_ui_tars_kb_ds_chunk_invalid', {
                   0: String(limits.max_chunk_size),
                   1: String(limits.max_overlap),
