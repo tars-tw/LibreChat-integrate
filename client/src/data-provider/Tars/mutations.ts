@@ -125,6 +125,12 @@ export const useDeleteTarsDomainMutation = (
     ...options,
     onSuccess: (...args) => {
       invalidateDomains(queryClient);
+      /** pwc_tars deletes the brain's prompts, token limit settings and MCP grants with it. */
+      queryClient.invalidateQueries([QueryKeys.tarsPrompts]);
+      queryClient.invalidateQueries([QueryKeys.tarsTokenConfigs]);
+      queryClient.invalidateQueries([QueryKeys.tarsMcpDomainServers]);
+      queryClient.invalidateQueries([QueryKeys.tarsMcpDomainTools]);
+      queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
       options?.onSuccess?.(...args);
     },
   });

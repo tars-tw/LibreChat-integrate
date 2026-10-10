@@ -102,7 +102,7 @@ function PluginToolRows({
   const renderPluginRows = () => {
     if (tools.length === 0) {
       return (
-        <p className="text-sm text-text-secondary">
+        <p className="text-text-secondary text-sm">
           {localize('com_ui_tars_plugin_none')}
           {pluginDirs.length > 0 && (
             <span className="block text-xs">
@@ -113,8 +113,8 @@ function PluginToolRows({
       );
     }
     return (
-      <div className="rounded-lg border border-border-light">
-        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 border-b border-border-light px-3 py-2 text-xs text-text-secondary">
+      <div className="border-border-light rounded-lg border">
+        <div className="border-border-light text-text-secondary grid grid-cols-[1fr_auto_auto] items-center gap-x-6 border-b px-3 py-2 text-xs">
           <span />
           <span>{localize('com_ui_tars_plugin_visible')}</span>
           <span>{localize('com_ui_tars_plugin_default_on')}</span>
@@ -128,10 +128,10 @@ function PluginToolRows({
               className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 px-3 py-2 text-sm"
             >
               <div className="flex min-w-0 items-center gap-2" title={tool.description}>
-                <Puzzle className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
-                <span className="truncate text-text-primary">{tool.display_name}</span>
+                <Puzzle className="text-text-secondary h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="text-text-primary truncate">{tool.display_name}</span>
                 {!usable && (
-                  <span className="text-xs text-text-warning" title={tool.problems.join('\n')}>
+                  <span className="text-text-warning text-xs" title={tool.problems.join('\n')}>
                     {localize('com_ui_tars_plugin_invalid')}
                   </span>
                 )}
@@ -179,7 +179,7 @@ function PluginToolRows({
           {localize('com_ui_tars_plugin_reload')}
         </Button>
       </div>
-      <p className="mb-2 text-xs text-text-secondary">
+      <p className="text-text-secondary mb-2 text-xs">
         {localize('com_ui_tars_plugin_tools_hint')}
       </p>
       {isLoading ? <Spinner /> : renderPluginRows()}
@@ -199,10 +199,10 @@ function CheckboxList({
   onToggle: (id: string) => void;
 }) {
   if (items.length === 0) {
-    return <p className="text-sm text-text-secondary">{emptyLabel}</p>;
+    return <p className="text-text-secondary text-sm">{emptyLabel}</p>;
   }
   return (
-    <div className="max-h-40 overflow-y-auto rounded-lg border border-border-light p-2">
+    <div className="border-border-light max-h-40 overflow-y-auto rounded-lg border p-2">
       {items.map((item) => (
         <label key={item.id} className="flex cursor-pointer items-center gap-2 py-1 text-sm">
           <input
@@ -211,7 +211,7 @@ function CheckboxList({
             checked={selected.has(item.id)}
             onChange={() => onToggle(item.id)}
           />
-          <span className="truncate text-text-primary">{item.label}</span>
+          <span className="text-text-primary truncate">{item.label}</span>
         </label>
       ))}
     </div>
@@ -318,7 +318,7 @@ export default function DomainModal({
     const payload: TTarsDomainInput = {
       name,
       description: form.description.trim(),
-      role_ids: form.iframeEnabled ? '' : (idsToCsv([...form.roleIds]) ?? ''),
+      role_ids: idsToCsv([...form.roleIds]) ?? '',
       knowledge_base_ids: form.iframeEnabled ? '' : (idsToCsv([...form.kbIds]) ?? ''),
       prompt_instruction: form.iframeEnabled ? '' : form.promptInstruction,
       iframe_url: form.iframeEnabled ? form.iframeUrl.trim() : '',
@@ -337,6 +337,21 @@ export default function DomainModal({
     }
     createMutation.mutate(payload);
   };
+
+  /** Shown for embedded-site brains too: the bound roles decide who sees the brain at all. */
+  const rolesField = (
+    <div>
+      <Label>{localize('com_ui_tars_domain_roles')}</Label>
+      <div className="mt-1">
+        <CheckboxList
+          items={roleItems}
+          selected={form.roleIds}
+          emptyLabel={localize('com_ui_none')}
+          onToggle={toggleIn('roleIds')}
+        />
+      </div>
+    </div>
+  );
 
   return (
     <OGDialog open={open} onOpenChange={onOpenChange}>
@@ -391,21 +406,24 @@ export default function DomainModal({
             </div>
 
             {form.iframeEnabled ? (
-              <div>
-                <Label htmlFor="tars-domain-iframe-url">
-                  {localize('com_ui_tars_domain_iframe_url')}
-                </Label>
-                <Input
-                  id="tars-domain-iframe-url"
-                  type="url"
-                  className="mt-1"
-                  placeholder="https://example.com"
-                  value={form.iframeUrl}
-                  onChange={(e) => setForm((prev) => ({ ...prev, iframeUrl: e.target.value }))}
-                />
-                <p className="mt-1 text-xs text-text-secondary">
-                  {localize('com_ui_tars_domain_iframe_hint')}
-                </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="tars-domain-iframe-url">
+                    {localize('com_ui_tars_domain_iframe_url')}
+                  </Label>
+                  <Input
+                    id="tars-domain-iframe-url"
+                    type="url"
+                    className="mt-1"
+                    placeholder="https://example.com"
+                    value={form.iframeUrl}
+                    onChange={(e) => setForm((prev) => ({ ...prev, iframeUrl: e.target.value }))}
+                  />
+                  <p className="text-text-secondary mt-1 text-xs">
+                    {localize('com_ui_tars_domain_iframe_hint')}
+                  </p>
+                </div>
+                {rolesField}
               </div>
             ) : (
               <>
@@ -421,17 +439,7 @@ export default function DomainModal({
                       />
                     </div>
                   </div>
-                  <div>
-                    <Label>{localize('com_ui_tars_domain_roles')}</Label>
-                    <div className="mt-1">
-                      <CheckboxList
-                        items={roleItems}
-                        selected={form.roleIds}
-                        emptyLabel={localize('com_ui_none')}
-                        onToggle={toggleIn('roleIds')}
-                      />
-                    </div>
-                  </div>
+                  {rolesField}
                 </div>
 
                 <div>
@@ -445,9 +453,9 @@ export default function DomainModal({
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, promptInstruction: e.target.value }))
                     }
-                    className="mt-1 w-full resize-y rounded-lg border border-border-light bg-transparent px-3 py-2 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-heavy"
+                    className="border-border-light text-text-primary focus-visible:ring-border-heavy mt-1 w-full resize-y rounded-lg border bg-transparent px-3 py-2 text-sm focus-visible:ring-1 focus-visible:outline-none"
                   />
-                  <p className="mt-1 text-xs text-text-secondary">
+                  <p className="text-text-secondary mt-1 text-xs">
                     {localize('com_ui_tars_domain_prompt_hint')}
                   </p>
                 </div>

@@ -2,6 +2,7 @@ import { mergeTarsPluginFunctions } from 'librechat-data-provider';
 import type { TTarsPluginFunctionState } from 'librechat-data-provider';
 import type { TarsKnowledgeBase } from './knowledge';
 import { fetchTarsPluginTools } from './plugins/client';
+import { recordTarsCsvExport } from './syslogs';
 import { tarsFetch } from './client';
 
 /**
@@ -195,10 +196,11 @@ export async function updateTarsDomain(
 }
 
 /**
- * Deletes a specialized brain. pwc_tars strips the id out of every role's
- * `domain_ids` in the same request and records the operator in its audit log,
- * so `operator_id` must be passed even though the deletion itself would succeed
- * without it.
+ * Deletes a specialized brain. In the same transaction pwc_tars strips the id out
+ * of every role's `domain_ids` and removes the brain's prompts, token limit
+ * settings and MCP grants, keeping token usage for later queries. It records the
+ * operator in its audit log, so `operator_id` must be passed even though the
+ * deletion itself would succeed without it.
  */
 export async function deleteTarsDomain(
   tarsId: string,
@@ -210,4 +212,20 @@ export async function deleteTarsDomain(
     query: { operator_id: tarsId },
     baseUrl,
   });
+}
+
+/** Records a brain-list export on the pwc_tars audit trail. */
+export async function recordTarsDomainExport(
+  tarsId: string,
+  count: number,
+  pageUrl?: string,
+  baseUrl?: string,
+): Promise<void> {
+  await recordTarsCsvExport(
+    tarsId,
+    { module: 'domain-settings', targetName: '專用腦清單', rowNoun: '專用腦' },
+    count,
+    pageUrl,
+    baseUrl,
+  );
 }

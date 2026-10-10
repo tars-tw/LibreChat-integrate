@@ -1168,6 +1168,9 @@ export function createAgentMethods(
   }: {
     file_ids: string[];
   }) => Promise<{ matchedCount: number; modifiedCount: number }>;
+  unbindAgentsFromTarsDomain: (
+    domainId: string,
+  ) => Promise<{ matchedCount: number; modifiedCount: number }>;
   getSharedResourceFileIds: ({
     file_ids,
     excludeAgentObjectId,
@@ -1817,6 +1820,29 @@ export function createAgentMethods(
     }, {});
 
     const result = await Agent.updateMany({ $or: orQuery }, { $pullAll: pullAllOps });
+    return {
+      matchedCount: result.matchedCount ?? 0,
+      modifiedCount: result.modifiedCount ?? 0,
+    };
+  }
+
+  /**
+   * Clears `tars_domain_id` from every agent bound to a deleted pwc_tars 專用腦. A
+   * bound agent is refused for everyone once its brain is gone; unbound, it
+   * follows the chat's brain again. Brain ids are pwc_tars's, so callers that must
+   * reach every tenant run this as the system tenant.
+   */
+  async function unbindAgentsFromTarsDomain(
+    domainId: string,
+  ): Promise<{ matchedCount: number; modifiedCount: number }> {
+    if (!domainId) {
+      return { matchedCount: 0, modifiedCount: 0 };
+    }
+    const Agent = mongoose.models.Agent as Model<IAgent>;
+    const result = await Agent.updateMany(
+      { tars_domain_id: domainId },
+      { $unset: { tars_domain_id: 1 } },
+    );
     return {
       matchedCount: result.matchedCount ?? 0,
       modifiedCount: result.modifiedCount ?? 0,
@@ -2786,6 +2812,7 @@ export function createAgentMethods(
     generateActionMetadataHash,
     removeAgentFromUserFavorites,
     removeAgentResourceFilesFromAllAgents,
+    unbindAgentsFromTarsDomain,
     getSharedResourceFileIds,
   };
 }
