@@ -1,7 +1,7 @@
 import { PrincipalType } from 'librechat-data-provider';
 import type { TPrincipalSearchResult } from 'librechat-data-provider';
 import type { TarsRole } from './domains';
-import { tarsFetch, getTarsBaseUrl, TarsGuardError } from './client';
+import { tarsFetch, getTarsBaseUrl, TarsGuardError, isTarsConfigured } from './client';
 import { isTarsAdminRole } from '~/auth/tars';
 
 /**
@@ -91,6 +91,24 @@ interface UsersResponse {
 export async function fetchTarsUsers(baseUrl?: string): Promise<TarsAccount[]> {
   const data = await tarsFetch<UsersResponse>('/api/user_settings/get_users', { baseUrl });
   return data?.users ?? [];
+}
+
+/**
+ * Stamps the account's `last_active_at`; `get_users` reports it online while that
+ * stamp is under five minutes old. Accounts not linked to pwc_tars are skipped.
+ */
+export async function sendTarsHeartbeat(
+  tarsId: string | undefined,
+  baseUrl?: string,
+): Promise<void> {
+  if (!tarsId || !isTarsConfigured(baseUrl)) {
+    return;
+  }
+  await tarsFetch('/api/user_settings/heartbeat', {
+    method: 'POST',
+    body: { user_id: tarsId },
+    baseUrl,
+  });
 }
 
 /** The user admin listing, with the calling admin's own row marked so the page can lock it. */

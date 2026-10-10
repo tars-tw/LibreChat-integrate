@@ -1257,6 +1257,10 @@ export const getTarsUsers = (): Promise<t.TTarsUsersResponse> => {
   return request.get(endpoints.tarsUsers());
 };
 
+export const sendTarsHeartbeat = (): Promise<void> => {
+  return request.post(endpoints.tarsUsersHeartbeat());
+};
+
 export const getTarsUserPrepareData = (): Promise<t.TTarsUserPrepareData> => {
   return request.get(endpoints.tarsUserPrepareData());
 };
