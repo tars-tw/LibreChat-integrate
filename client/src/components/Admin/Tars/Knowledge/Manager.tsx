@@ -14,24 +14,31 @@ import {
   useTarsKnowledgeBaseOverviewQuery,
   useDeleteTarsKnowledgeBaseMutation,
 } from '~/data-provider';
-import { filterByName, relayedError } from './helpers';
+import { filterByName, relayedError, sortByName } from './helpers';
+import { useLocalize, useTarsAdminAccess } from '~/hooks';
 import BatchModal from './BatchModal';
-import { useLocalize } from '~/hooks';
 import KnowledgeModal from './Modal';
 import KnowledgeCards from './Cards';
 import KnowledgeTable from './Table';
 
 type ViewMode = 'grid' | 'table';
 
-/** Knowledge-base administration (知識庫管理): list, create, edit, batch settings. */
+/**
+ * Knowledge-base administration (知識庫管理): list, create, edit, batch settings.
+ *
+ * Anyone granted the page lists and edits the bases pwc_tars lets them see;
+ * creating, deleting, batch settings and access lists are admin-only, as on
+ * pwc_tars's own page.
+ */
 export default function KnowledgeManager() {
   const localize = useLocalize();
   const navigate = useNavigate();
   const { showToast } = useToastContext();
+  const { isTarsAdmin } = useTarsAdminAccess();
 
   const overviewQuery = useTarsKnowledgeBaseOverviewQuery();
   const knowledgeBases = useMemo(
-    () => overviewQuery.data?.knowledgeBases ?? [],
+    () => sortByName(overviewQuery.data?.knowledgeBases ?? []),
     [overviewQuery.data],
   );
   const users = useMemo(() => overviewQuery.data?.users ?? [], [overviewQuery.data]);
@@ -81,7 +88,7 @@ export default function KnowledgeManager() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[16rem] flex-1 sm:max-w-sm">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary"
+            className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
             aria-hidden
           />
           <Input
@@ -93,27 +100,31 @@ export default function KnowledgeManager() {
           />
         </div>
 
-        <Button
-          variant="outline"
-          onClick={() => setShowBatch(true)}
-          disabled={knowledgeBases.length === 0}
-          className="gap-1.5"
-        >
-          <SlidersHorizontal className="size-4" aria-hidden />
-          {localize('com_ui_tars_kb_batch')}
-          {selected.length > 0 && (
-            <span className="rounded-full bg-brand-primary-subtle px-1.5 text-xs tabular-nums text-brand-primary">
-              {selected.length}
-            </span>
-          )}
-        </Button>
+        {isTarsAdmin && (
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setShowBatch(true)}
+              disabled={knowledgeBases.length === 0}
+              className="gap-1.5"
+            >
+              <SlidersHorizontal className="size-4" aria-hidden />
+              {localize('com_ui_tars_kb_batch')}
+              {selected.length > 0 && (
+                <span className="bg-brand-primary-subtle text-brand-primary rounded-full px-1.5 text-xs tabular-nums">
+                  {selected.length}
+                </span>
+              )}
+            </Button>
 
-        <Button variant="submit" onClick={() => setEditing(null)} className="gap-1.5">
-          <Plus className="size-4" aria-hidden />
-          {localize('com_ui_tars_kb_new')}
-        </Button>
+            <Button variant="submit" onClick={() => setEditing(null)} className="gap-1.5">
+              <Plus className="size-4" aria-hidden />
+              {localize('com_ui_tars_kb_new')}
+            </Button>
+          </>
+        )}
 
-        <div className="ml-auto flex items-center rounded-lg border border-border-light p-0.5">
+        <div className="border-border-light ml-auto flex items-center rounded-lg border p-0.5">
           {viewButton(
             'grid',
             <LayoutGrid className="size-4" aria-hidden />,
@@ -133,9 +144,19 @@ export default function KnowledgeManager() {
         </div>
       )}
 
-      {!overviewQuery.isLoading && filtered.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-sm text-text-secondary">
-          <Library className="size-10 text-text-tertiary" aria-hidden />
+      {overviewQuery.isError && (
+        <div
+          role="alert"
+          className="text-pwc-danger flex flex-col items-center gap-3 py-16 text-sm"
+        >
+          <Library className="text-text-tertiary size-10" aria-hidden />
+          {relayedError(overviewQuery.error) ?? localize('com_ui_tars_kb_load_failed')}
+        </div>
+      )}
+
+      {!overviewQuery.isLoading && !overviewQuery.isError && filtered.length === 0 && (
+        <div className="text-text-secondary flex flex-col items-center gap-3 py-16 text-sm">
+          <Library className="text-text-tertiary size-10" aria-hidden />
           {localize(
             knowledgeBases.length === 0
               ? 'com_ui_tars_kb_empty'
@@ -149,7 +170,7 @@ export default function KnowledgeManager() {
           knowledgeBases={filtered}
           onOpen={open}
           onEdit={setEditing}
-          onDelete={setDeleting}
+          onDelete={isTarsAdmin ? setDeleting : undefined}
           onManagePrompts={openPrompts}
         />
       )}
@@ -157,11 +178,10 @@ export default function KnowledgeManager() {
       {!overviewQuery.isLoading && filtered.length > 0 && view === 'table' && (
         <KnowledgeTable
           knowledgeBases={filtered}
-          selected={selected}
-          onSelectedChange={setSelected}
+          selection={isTarsAdmin ? { selected, onChange: setSelected } : undefined}
           onOpen={open}
           onEdit={setEditing}
-          onDelete={setDeleting}
+          onDelete={isTarsAdmin ? setDeleting : undefined}
           onManagePrompts={openPrompts}
         />
       )}
@@ -171,6 +191,7 @@ export default function KnowledgeManager() {
           knowledgeBase={editing}
           users={users}
           groups={groups}
+          canManageAccess={isTarsAdmin}
           onClose={() => setEditing(undefined)}
         />
       )}
@@ -191,11 +212,11 @@ export default function KnowledgeManager() {
             showCloseButton={true}
             main={
               <div className="space-y-2">
-                <p className="text-sm text-text-secondary">
+                <p className="text-text-secondary text-sm">
                   {localize('com_ui_tars_kb_delete_confirm_named', { 0: deleting.name })}
                 </p>
                 {/* pwc_tars cascades to Milvus, chunks and documents. */}
-                <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
+                <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
                   {localize('com_ui_tars_kb_delete_warning')}
                 </p>
               </div>
