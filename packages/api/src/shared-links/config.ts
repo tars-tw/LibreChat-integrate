@@ -53,6 +53,18 @@ export function createSharedLinkConfigMiddleware({
 }
 
 /**
+ * Whether a newly created link is granted to everyone (`PUBLIC` viewer). Off unless
+ * `interface.sharedLinks.defaultPublic` is `true`: a new link is visible to its owner
+ * only until they add people, groups or public access in the access dialog.
+ */
+export function isSharedLinkDefaultPublic(appConfig?: AppConfig): boolean {
+  const sharedLinks = appConfig?.interfaceConfig?.sharedLinks;
+  return (
+    sharedLinks != null && typeof sharedLinks === 'object' && sharedLinks.defaultPublic === true
+  );
+}
+
+/**
  * Whether shared links should snapshot the files referenced by the shared chat
  * snapshot. The `SHARED_LINKS_SNAPSHOT_FILES` env var overrides the yaml
  * `interface.sharedLinks.snapshotFiles` value; both default to enabled.

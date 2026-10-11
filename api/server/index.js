@@ -99,6 +99,7 @@ const { ensureLangflowProjectId } = require('./services/langflow/project');
 const configureSocialLogins = require('./socialLogins');
 const createSpaFallback = require('./utils/fallback');
 const { getAppConfig, rederiveEndpoints } = require('./services/Config');
+const tarsSharing = require('./services/tarsSharing');
 const staticCache = require('./utils/staticCache');
 const noIndex = require('./middleware/noIndex');
 const agentEventMethods = require('~/models');
@@ -277,6 +278,7 @@ const startServer = async () => {
   initializeGitHubSkillSync(appConfig);
   startSkillDeletionSweep(appConfig.skillDeletion);
   startExpiredFileSweep({ appConfig, loadAppConfig: getAppConfig });
+  tarsSharing.start(appConfig);
   // Register any programmatic tool-approval policy hooks declared in
   // `endpoints.agents.toolApproval.hooks`. Honor the `enabled` kill switch: when tool
   // approval is off we pass no hooks, so a disabled endpoint imports/runs nothing (and any

@@ -11,6 +11,7 @@ const {
   grantCreationPermissions,
   ensureLinkPermissions,
   isFileSnapshotEnabled,
+  isSharedLinkDefaultPublic,
   isFileSnapshotKillSwitchActive,
   buildSharedLinkStartupPayload,
   deleteSharedLinkWithCleanup,
@@ -27,6 +28,7 @@ const {
   traceIdForMessage,
   resolveDownloadPath,
   prepareResultToolCallPreviews,
+  listSharedWithMe,
 } = require('@librechat/api');
 const {
   logger,
@@ -47,6 +49,10 @@ const {
   backfillSharedLinkFiles,
   getMessages,
   getRoleByName,
+  getUserPrincipals,
+  findGrantsByPrincipals,
+  getSharedLinksByIds,
+  findUsers,
 } = require('~/models');
 const { getStrategyFunctions } = require('~/server/services/Files/strategies');
 const { cleanFileName, getContentDisposition } = require('~/server/utils/files');
@@ -342,6 +348,26 @@ const streamSharedFile = async (req, res, file, requestedDisposition) => {
     fileStream.pipe(res);
   });
 };
+
+/**
+ * Conversations shared with the user by name or through one of their groups
+ * @route GET /api/share/shared-with-me
+ */
+router.get('/shared-with-me', requireJwtAuth, async (req, res) => {
+  try {
+    const links = await listSharedWithMe(req.user, {
+      getUserPrincipals,
+      findGrantsByPrincipals,
+      getSharedLinksByIds,
+      findUsers,
+    });
+    res.set('Cache-Control', 'private, no-store');
+    res.status(200).json({ links });
+  } catch (error) {
+    logger.error('Error getting conversations shared with the user:', error);
+    res.status(500).json({ message: 'Error getting shared conversations' });
+  }
+});
 
 if (allowSharedLinks) {
   const { forkIpLimiter, forkUserLimiter } = createForkLimiters();
@@ -658,7 +684,9 @@ router.post(
 
       const role = await getRoleByName(req.user.role);
       const sharedLinksPerms = role?.permissions?.[PermissionTypes.SHARED_LINKS] || {};
-      const grantPublic = sharedLinksPerms[Permissions.SHARE_PUBLIC] === true;
+      const grantPublic =
+        sharedLinksPerms[Permissions.SHARE_PUBLIC] === true &&
+        isSharedLinkDefaultPublic(req.config);
       // Per-link opt-out: snapshot only when the feature is enabled AND the user
       // did not uncheck "share files" (body flag absent defaults to enabled).
       const snapshotFiles = isFileSnapshotEnabled(req.config) && requestedSnapshotFiles !== false;

@@ -13,6 +13,7 @@ export * from './Misc';
 export * from './Projects';
 /* Scheduled chats */
 export * from './Schedules';
+export * from './Sharing';
 export * from './Subagents';
 export * from './BackgroundTasks';
 export * from './PullRequest';

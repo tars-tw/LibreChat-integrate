@@ -15,6 +15,7 @@ const {
   getGroupMembers,
   getGroupOwners,
 } = require('~/server/services/GraphApiService');
+const tarsSharing = require('~/server/services/tarsSharing');
 const db = require('~/models');
 
 /**
@@ -365,10 +366,12 @@ const ensurePrincipalExists = async function (principal) {
     }
 
     if (existingUser) {
-      if (!existingUser.tarsId) {
+      if (!existingUser.tarsId || !existingUser.idOnTheSource) {
+        const tarsId = existingUser.tarsId || principal.idOnTheSource;
         await db.updateUser(existingUser._id, {
-          tarsId: principal.idOnTheSource,
+          tarsId,
           provider: 'tars',
+          idOnTheSource: existingUser.idOnTheSource || tarsId,
         });
       }
       return existingUser._id.toString();
@@ -381,40 +384,7 @@ const ensurePrincipalExists = async function (principal) {
       emailVerified: false,
       provider: 'tars',
       tarsId: principal.idOnTheSource,
-    };
-
-    const userId = await db.createUser(userData, true, true);
-    return userId.toString();
-  }
-
-  if (principal.type === PrincipalType.USER && principal.source === 'tars') {
-    if (!principal.idOnTheSource) {
-      throw new Error('TARS user principals must have idOnTheSource');
-    }
-
-    let existingUser = await db.findUser({ tarsId: principal.idOnTheSource });
-
-    if (!existingUser && principal.email) {
-      existingUser = await db.findUser({ email: principal.email });
-    }
-
-    if (existingUser) {
-      if (!existingUser.tarsId) {
-        await db.updateUser(existingUser._id, {
-          tarsId: principal.idOnTheSource,
-          provider: 'tars',
-        });
-      }
-      return existingUser._id.toString();
-    }
-
-    const fallbackEmail = `${principal.name || principal.idOnTheSource}@tars.local`;
-    const userData = {
-      name: principal.name,
-      email: (principal.email || fallbackEmail).toLowerCase(),
-      emailVerified: false,
-      provider: 'tars',
-      tarsId: principal.idOnTheSource,
+      idOnTheSource: principal.idOnTheSource,
     };
 
     const userId = await db.createUser(userData, true, true);
@@ -438,8 +408,8 @@ const ensurePrincipalExists = async function (principal) {
  * @param {string} principal.name - Display name
  * @param {string} [principal.email] - Email address
  * @param {string} [principal.description] - Group description
- * @param {string} [principal.source] - 'local' or 'entra'
- * @param {string} [principal.idOnTheSource] - Entra ID object ID for external principals
+ * @param {string} [principal.source] - 'local', 'entra' or 'tars'
+ * @param {string} [principal.idOnTheSource] - Entra ID object ID, or pwc_tars group id, for external principals
  * @param {Object} [authContext] - Optional authentication context for fetching member data
  * @param {string} [authContext.accessToken] - Access token for Graph API calls
  * @param {string} [authContext.sub] - Subject identifier
@@ -452,6 +422,10 @@ const ensureGroupPrincipalExists = async function (principal, authContext = null
 
   if (principal.id && principal.source !== 'entra') {
     return await ensureLocalGroupPrincipalExists(principal.id);
+  }
+
+  if (principal.source === 'tars') {
+    return await tarsSharing.ensureGroupPrincipal(principal);
   }
 
   if (principal.source === 'entra') {
