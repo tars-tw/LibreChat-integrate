@@ -158,6 +158,11 @@ jest.mock('~/components/Conversations/ProjectsSection', () => ({
   default: () => <div data-testid="projects-stub" />,
 }));
 
+jest.mock('~/components/Conversations/SharedWithMeSection', () => ({
+  __esModule: true,
+  default: () => <div data-testid="shared-with-me-stub" />,
+}));
+
 jest.mock('~/components/Conversations/PinnedSection', () => {
   const { memo } = jest.requireActual('react');
   /** Mirrors the real merged section closely enough for the streaming test:
@@ -245,17 +250,19 @@ const renderSection = (searchQuery = '') =>
   );
 
 describe('ConversationsSection section order', () => {
-  it('renders Pinned between Projects and Chats', async () => {
+  it('renders Shared with me and Pinned between Projects and Chats', async () => {
     const { getByTestId } = renderSection();
     await settleRenders();
 
     const projects = getByTestId('projects-stub');
+    const shared = getByTestId('shared-with-me-stub');
     const pinned = getByTestId('pinned-stub');
     const chats = getByTestId('conversations-stub');
 
     expect(
-      projects.compareDocumentPosition(pinned) & Node.DOCUMENT_POSITION_FOLLOWING,
+      projects.compareDocumentPosition(shared) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(shared.compareDocumentPosition(pinned) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(pinned.compareDocumentPosition(chats) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

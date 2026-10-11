@@ -1197,6 +1197,53 @@ describe('Share Methods', () => {
     });
   });
 
+  describe('getSharedLinksByIds', () => {
+    test('returns the live links among the ids, leaving out the excluded owner', async () => {
+      const owner = new mongoose.Types.ObjectId().toString();
+      const viewer = new mongoose.Types.ObjectId().toString();
+      const [kept, own, expired] = await Promise.all([
+        SharedLink.create({
+          shareId: 'by_id_kept',
+          conversationId: 'c1',
+          user: owner,
+          title: 'Kept',
+        }),
+        SharedLink.create({
+          shareId: 'by_id_own',
+          conversationId: 'c2',
+          user: viewer,
+          title: 'Own',
+        }),
+        SharedLink.create({
+          shareId: 'by_id_expired',
+          conversationId: 'c3',
+          user: owner,
+          title: 'Expired',
+          expiredAt: new Date(Date.now() - 60_000),
+        }),
+      ]);
+
+      const links = await shareMethods.getSharedLinksByIds(
+        [kept._id.toString(), own._id.toString(), expired._id.toString(), 'not-an-id'],
+        viewer,
+      );
+
+      expect(links).toEqual([
+        expect.objectContaining({
+          id: kept._id.toString(),
+          shareId: 'by_id_kept',
+          title: 'Kept',
+          conversationId: 'c1',
+          user: owner,
+        }),
+      ]);
+    });
+
+    test('returns nothing for no valid ids', async () => {
+      await expect(shareMethods.getSharedLinksByIds(['nope'])).resolves.toEqual([]);
+    });
+  });
+
   describe('getSharedLinks', () => {
     test('should retrieve paginated shared links for a user', async () => {
       const userId = new mongoose.Types.ObjectId().toString();

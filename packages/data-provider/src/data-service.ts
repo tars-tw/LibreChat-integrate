@@ -263,6 +263,10 @@ export const listSharedLinks = async (
   return request.get(endpoints.getSharedLinks(pageSize, sortBy, sortDirection, search, cursor));
 };
 
+export function getSharedWithMe(): Promise<q.SharedWithMeResponse> {
+  return request.get(endpoints.sharedWithMe());
+}
+
 export function getSharedLink(
   conversationId: string,
   signal?: AbortSignal,
@@ -2915,6 +2919,10 @@ export function searchPrincipals(
   params: q.PrincipalSearchParams,
 ): Promise<q.PrincipalSearchResponse> {
   return request.get(endpoints.searchPrincipals(params));
+}
+
+export function getPrincipalDirectory(): Promise<q.PrincipalDirectoryResponse> {
+  return request.get(endpoints.principalDirectory());
 }
 
 export function getAccessRoles(

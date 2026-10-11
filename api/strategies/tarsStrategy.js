@@ -63,6 +63,8 @@ const tarsLogin = new PassportLocalStrategy(
       const mail = email || `${tarsUser.username}@tars.local`;
       const role = isTarsAdminRole(roleId) ? SystemRoles.ADMIN : SystemRoles.USER;
       const tarsContext = {
+        /** The member key of groups mirrored from pwc_tars (see tarsSharing). */
+        idOnTheSource: tarsId,
         tarsStatus: status,
         tarsRoleId: roleId,
         tarsGroupIds: groupIds,

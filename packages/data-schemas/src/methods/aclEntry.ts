@@ -211,6 +211,11 @@ export function createAclEntryMethods(mongoose: typeof import('mongoose')): {
     resourceIds?: Types.ObjectId[],
     readPrimary?: boolean,
   ) => Promise<Types.ObjectId[]>;
+  findGrantsByPrincipals: (
+    principalsList: Array<{ principalType: string; principalId?: string | Types.ObjectId }>,
+    resourceType: string,
+    requiredPermBit: number,
+  ) => Promise<Array<{ resourceId: string; grantedAt?: Date }>>;
   aggregateAclEntries: (pipeline: PipelineStage[]) => Promise<unknown[]>;
   getFirstOwnerIdsByResource: (
     resourceType: string,
@@ -776,6 +781,41 @@ export function createAclEntryMethods(mongoose: typeof import('mongoose')): {
   }
 
   /**
+   * The grants the given principals hold on resources of one type, each with when it
+   * was made, for listings ordered by share time. A resource reached through several
+   * principals (the user and one of their groups) appears once per grant.
+   * See {@link permissionBitSupersets} for the Cosmos-compatible bit filter.
+   * @param principalsList - The principals whose grants to read; PUBLIC is not matched
+   * @param resourceType - The type of resource
+   * @param requiredPermBit - Required permission bit (use PermissionBits enum)
+   */
+  async function findGrantsByPrincipals(
+    principalsList: Array<{ principalType: string; principalId?: string | Types.ObjectId }>,
+    resourceType: string,
+    requiredPermBit: number,
+  ): Promise<Array<{ resourceId: string; grantedAt?: Date }>> {
+    const principalsQuery = principalsList
+      .filter((p) => p.principalType !== PrincipalType.PUBLIC && p.principalId != null)
+      .map((p) => ({ principalType: p.principalType, principalId: p.principalId }));
+    if (principalsQuery.length === 0) {
+      return [];
+    }
+    const AclEntry = mongoose.models.AclEntry as Model<IAclEntry>;
+    const entries = await AclEntry.find(
+      {
+        $or: principalsQuery,
+        resourceType,
+        permBits: { $in: permissionBitSupersets(requiredPermBit) },
+      },
+      { resourceId: 1, grantedAt: 1, _id: 0 },
+    ).lean<Array<Pick<IAclEntry, 'resourceId' | 'grantedAt'>>>();
+    return entries.map((entry) => ({
+      resourceId: entry.resourceId.toString(),
+      grantedAt: entry.grantedAt,
+    }));
+  }
+
+  /**
    * Runs an aggregation pipeline on the AclEntry collection.
    * @param pipeline - MongoDB aggregation pipeline stages
    */
@@ -895,6 +935,7 @@ export function createAclEntryMethods(mongoose: typeof import('mongoose')): {
     replaceRoleBits,
     bulkWriteAclEntries,
     findPublicResourceIds,
+    findGrantsByPrincipals,
     aggregateAclEntries,
     getFirstOwnerIdsByResource,
     getSoleOwnedResourceIds,
