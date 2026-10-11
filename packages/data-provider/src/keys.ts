@@ -3,6 +3,7 @@ export enum QueryKeys {
   sharedMessages = 'sharedMessages',
   sharedStartupConfig = 'sharedStartupConfig',
   sharedLinks = 'sharedLinks',
+  sharedWithMe = 'sharedWithMe',
   allConversations = 'allConversations',
   archivedConversations = 'archivedConversations',
   pinnedConversations = 'pinnedConversations',
@@ -124,6 +125,7 @@ export enum QueryKeys {
   /* Memories */
   memories = 'memories',
   principalSearch = 'principalSearch',
+  principalDirectory = 'principalDirectory',
   accessRoles = 'accessRoles',
   resourcePermissions = 'resourcePermissions',
   effectivePermissions = 'effectivePermissions',

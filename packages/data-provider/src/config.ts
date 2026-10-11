@@ -2429,6 +2429,10 @@ export const interfaceSchema = z
           share: z.boolean().optional(),
           public: z.boolean().optional(),
           snapshotFiles: z.boolean().optional(),
+          /** Whether a newly created link is viewable by everyone (`PUBLIC` viewer grant).
+           *  Off unless set: a new link is visible to its owner only until they grant
+           *  people or groups, or turn on public access, in the access dialog. */
+          defaultPublic: z.boolean().optional(),
         }),
       ])
       .optional(),
@@ -3204,7 +3208,14 @@ export const permissionWriteAttemptsSchema = z.number().int().min(1).max(100).de
 
 export const configSchema = z.object({
   version: z.string(),
-  permissions: z.object({ maxWriteAttempts: permissionWriteAttemptsSchema }).optional(),
+  permissions: z
+    .object({
+      maxWriteAttempts: permissionWriteAttemptsSchema,
+      /** Seconds between pwc_tars user-group membership syncs into shared groups;
+       *  `0` disables the periodic sync (shares and admin edits still sync). */
+      tarsGroupSyncSeconds: z.number().int().min(0).max(86400).optional(),
+    })
+    .optional(),
   cache: z.boolean().default(true),
   ocr: ocrSchema.optional(),
   webSearch: webSearchSchema.optional(),

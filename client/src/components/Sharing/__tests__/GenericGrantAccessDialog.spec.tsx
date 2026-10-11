@@ -12,6 +12,7 @@ const mockUsePeoplePickerPermissions = jest.fn(() => ({
   peoplePickerTypeFilter: '' as string | null,
 }));
 const mockUseCanSharePublic = jest.fn(() => true);
+const mockUseGetStartupConfig = jest.fn(() => ({ data: {} as { tarsAuth?: boolean } }));
 
 const config = {
   defaultViewerRoleId: 'viewer',
@@ -53,6 +54,15 @@ jest.mock('@librechat/client', () => ({
   useToastContext: () => ({ showToast: jest.fn() }),
 }));
 
+jest.mock('~/data-provider', () => ({
+  useGetStartupConfig: () => mockUseGetStartupConfig(),
+}));
+
+jest.mock('../PeoplePicker/DirectoryPeoplePicker', () => ({
+  __esModule: true,
+  default: () => <div data-testid="directory-people-picker" />,
+}));
+
 jest.mock('../PeoplePicker/UnifiedPeopleSearch', () => ({
   __esModule: true,
   default: () => <div data-testid="unified-people-search" />,
@@ -90,6 +100,7 @@ describe('GenericGrantAccessDialog - permissions load failure', () => {
       peoplePickerTypeFilter: '',
     });
     mockUseCanSharePublic.mockReturnValue(true);
+    mockUseGetStartupConfig.mockReturnValue({ data: {} });
   });
 
   it('renders a compact alert button (not the share trigger, not raw text) when permissions fail to load', () => {
@@ -180,6 +191,34 @@ describe('GenericGrantAccessDialog - permissions load failure', () => {
       screen.getByRole('heading', { level: 3, name: 'com_ui_user_group_permissions' }),
     ).toBeInTheDocument();
     expect(screen.queryByTestId('public-toggle')).not.toBeInTheDocument();
+  });
+
+  it('lists the pwc_tars directory to any user, without people picker permissions', () => {
+    mockUseResourcePermissionState.mockReturnValue(baseState());
+    mockUseAuthContext.mockReturnValue({ user: { role: 'USER' } });
+    mockUsePeoplePickerPermissions.mockReturnValue({
+      hasPeoplePickerAccess: false,
+      peoplePickerTypeFilter: null,
+    });
+    mockUseGetStartupConfig.mockReturnValue({ data: { tarsAuth: true } });
+
+    renderDialog();
+    fireEvent.click(screen.getByRole('button', { name: 'com_ui_share_var' }));
+
+    expect(screen.getByTestId('directory-people-picker')).toBeInTheDocument();
+    expect(screen.queryByTestId('unified-people-search')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('admin-settings')).not.toBeInTheDocument();
+  });
+
+  it('keeps typed search and the people picker settings without pwc_tars', () => {
+    mockUseResourcePermissionState.mockReturnValue(baseState());
+
+    renderDialog();
+    fireEvent.click(screen.getByRole('button', { name: 'com_ui_share_var' }));
+
+    expect(screen.getByTestId('unified-people-search')).toBeInTheDocument();
+    expect(screen.queryByTestId('directory-people-picker')).not.toBeInTheDocument();
+    expect(screen.getByTestId('admin-settings')).toBeInTheDocument();
   });
 
   it('discards the draft through the shared close path', () => {

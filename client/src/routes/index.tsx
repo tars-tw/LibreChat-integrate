@@ -16,6 +16,7 @@ import AdminPlaceholder from '~/components/Admin/Placeholder';
 import LangflowView from '~/components/Langflow/LangflowView';
 import { AuthContextProvider } from '~/hooks/AuthContext';
 import RouteErrorBoundary from './RouteErrorBoundary';
+import ShareView from '~/components/Share/ShareView';
 import StartupLayout from './Layouts/Startup';
 import LoginLayout from './Layouts/Login';
 import dashboardRoutes from './Dashboard';
@@ -246,6 +247,11 @@ export const router = createBrowserRouter(
             {
               path: 'search',
               element: <Search />,
+            },
+            {
+              /** A conversation shared with the user, opened from the sidebar inside the app shell. */
+              path: 'shared/:shareId',
+              element: <ShareView embedded />,
             },
             {
               path: 'langflow',

@@ -16,6 +16,7 @@ import {
   useTitleGeneration,
 } from '~/data-provider';
 import { useLocalize, useAuthContext, useLocalStorage, useNavScrolling } from '~/hooks';
+import SharedWithMeSection from '~/components/Conversations/SharedWithMeSection';
 import ProjectsSection from '~/components/Conversations/ProjectsSection';
 import ChatFilterMenu from '~/components/Conversations/ChatFilterMenu';
 import PinnedSection from '~/components/Conversations/PinnedSection';
@@ -187,6 +188,9 @@ const ConversationsSection = memo(() => {
         <div ref={setScrollContent} className="flex min-h-full flex-col">
           {!search.query && (
             <ProjectsSection toggleNav={toggleNav} isAuthenticated={isAuthenticated} />
+          )}
+          {!search.query && (
+            <SharedWithMeSection toggleNav={toggleNav} isAuthenticated={isAuthenticated} />
           )}
           {!search.query && (
             <PinnedSection

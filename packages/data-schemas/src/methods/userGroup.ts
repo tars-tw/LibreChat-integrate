@@ -3,7 +3,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 import { CacheKeys, PrincipalType, SystemRoles } from 'librechat-data-provider';
 import type { TPrincipalSearchResult } from 'librechat-data-provider';
 import type { Model, ClientSession, FilterQuery } from 'mongoose';
-import type { CacheStore, IGroup, IRole, IUser } from '~/types';
+import type { CacheStore, GroupSource, IGroup, IRole, IUser } from '~/types';
 import { isValidObjectIdString } from '~/utils/objectId';
 import { scopedCacheKey } from '~/config/tenantContext';
 import { escapeRegExp } from '~/utils/string';
@@ -176,7 +176,7 @@ export function createUserGroupMethods(
   ) => Promise<IGroup | null>;
   findGroupByExternalId: (
     idOnTheSource: string,
-    source?: 'entra' | 'local',
+    source?: GroupSource,
     projection?: Record<string, 0 | 1>,
     session?: ClientSession,
   ) => Promise<IGroup | null>;
@@ -198,10 +198,11 @@ export function createUserGroupMethods(
   createGroup: (groupData: Partial<IGroup>, session?: ClientSession) => Promise<IGroup>;
   upsertGroupByExternalId: (
     idOnTheSource: string,
-    source: 'entra' | 'local',
+    source: GroupSource,
     updateData: Partial<IGroup>,
     session?: ClientSession,
   ) => Promise<IGroup | null>;
+  findGroupsBySource: (source: GroupSource, session?: ClientSession) => Promise<IGroup[]>;
   addUserToGroup: (
     userId: string | Types.ObjectId,
     groupId: string | Types.ObjectId,
@@ -575,7 +576,7 @@ export function createUserGroupMethods(
    */
   async function findGroupByExternalId(
     idOnTheSource: string,
-    source: 'entra' | 'local' = 'entra',
+    source: GroupSource = 'entra',
     projection: Record<string, 0 | 1> = {},
     session?: ClientSession,
   ): Promise<IGroup | null> {
@@ -699,7 +700,7 @@ export function createUserGroupMethods(
    */
   async function upsertGroupByExternalId(
     idOnTheSource: string,
-    source: 'entra' | 'local',
+    source: GroupSource,
     updateData: Partial<IGroup>,
     session?: ClientSession,
   ): Promise<IGroup | null> {
@@ -726,6 +727,27 @@ export function createUserGroupMethods(
       ]),
     );
     return await findGroupByExternalId(idOnTheSource, source, {}, session);
+  }
+
+  /**
+   * Every group mirrored from one external source, unpaginated, for reconcilers that
+   * own that source's membership.
+   * @param source - The source whose groups to list
+   * @param session - Optional MongoDB session for transactions
+   */
+  async function findGroupsBySource(
+    source: GroupSource,
+    session?: ClientSession,
+  ): Promise<IGroup[]> {
+    const Group = mongoose.models.Group as Model<IGroup>;
+    const query = Group.find(
+      { source },
+      { name: 1, description: 1, idOnTheSource: 1, memberIds: 1 },
+    );
+    if (session) {
+      query.session(session);
+    }
+    return await query.lean<IGroup[]>();
   }
 
   /**
@@ -1405,6 +1427,7 @@ export function createUserGroupMethods(
     findGroupsByMemberId,
     createGroup,
     upsertGroupByExternalId,
+    findGroupsBySource,
     addUserToGroup,
     removeUserFromGroup,
     removeUserFromAllGroups,

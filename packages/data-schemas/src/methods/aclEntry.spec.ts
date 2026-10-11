@@ -1232,6 +1232,87 @@ describe('AclEntry Model Tests', () => {
     });
   });
 
+  describe('findGrantsByPrincipals', () => {
+    test('returns each grant held by the given user and group principals with its time', async () => {
+      const linkA = new mongoose.Types.ObjectId();
+      const linkB = new mongoose.Types.ObjectId();
+      const otherUser = new mongoose.Types.ObjectId();
+      const grantedAt = new Date('2026-10-01T00:00:00Z');
+      await AclEntry.create([
+        {
+          principalType: PrincipalType.USER,
+          principalId: userId,
+          principalModel: PrincipalModel.USER,
+          resourceType: ResourceType.SHARED_LINK,
+          resourceId: linkA,
+          permBits: PermissionBits.VIEW,
+          grantedAt,
+        },
+        {
+          principalType: PrincipalType.GROUP,
+          principalId: groupId,
+          principalModel: PrincipalModel.GROUP,
+          resourceType: ResourceType.SHARED_LINK,
+          resourceId: linkB,
+          permBits: PermissionBits.VIEW | PermissionBits.EDIT,
+        },
+        {
+          principalType: PrincipalType.USER,
+          principalId: otherUser,
+          principalModel: PrincipalModel.USER,
+          resourceType: ResourceType.SHARED_LINK,
+          resourceId: new mongoose.Types.ObjectId(),
+          permBits: PermissionBits.VIEW,
+        },
+        {
+          principalType: PrincipalType.PUBLIC,
+          resourceType: ResourceType.SHARED_LINK,
+          resourceId: new mongoose.Types.ObjectId(),
+          permBits: PermissionBits.VIEW,
+        },
+        {
+          principalType: PrincipalType.USER,
+          principalId: userId,
+          principalModel: PrincipalModel.USER,
+          resourceType: ResourceType.AGENT,
+          resourceId: new mongoose.Types.ObjectId(),
+          permBits: PermissionBits.VIEW,
+        },
+      ]);
+
+      const grants = await methods.findGrantsByPrincipals(
+        [
+          { principalType: PrincipalType.USER, principalId: userId },
+          { principalType: PrincipalType.GROUP, principalId: groupId },
+          { principalType: PrincipalType.PUBLIC },
+        ],
+        ResourceType.SHARED_LINK,
+        PermissionBits.VIEW,
+      );
+
+      expect(grants).toHaveLength(2);
+      expect(grants).toEqual(
+        expect.arrayContaining([
+          { resourceId: linkA.toString(), grantedAt },
+          expect.objectContaining({ resourceId: linkB.toString() }),
+        ]),
+      );
+    });
+
+    test('returns nothing for an empty or PUBLIC-only principal list', async () => {
+      await expect(
+        methods.findGrantsByPrincipals([], ResourceType.SHARED_LINK, PermissionBits.VIEW),
+      ).resolves.toEqual([]);
+      await expect(
+        methods.findGrantsByPrincipals(
+          [{ principalType: PrincipalType.PUBLIC }],
+          ResourceType.SHARED_LINK,
+          PermissionBits.VIEW,
+        ),
+      ).resolves.toEqual([]);
+    });
+  });
+
   describe('aggregateAclEntries', () => {
     test('should run an aggregation pipeline and return results', async () => {
       await methods.grantPermission(

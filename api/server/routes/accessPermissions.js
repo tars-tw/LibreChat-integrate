@@ -6,7 +6,11 @@ const {
   ResourceType,
   PermissionBits,
 } = require('librechat-data-provider');
-const { createAgentAdminPermissionAccess, isAgentPermissionsAdmin } = require('@librechat/api');
+const {
+  createAgentAdminPermissionAccess,
+  isAgentPermissionsAdmin,
+  createPrincipalDirectoryHandler,
+} = require('@librechat/api');
 const {
   getUserEffectivePermissions,
   getAllEffectivePermissions,
@@ -21,6 +25,7 @@ const {
 } = require('~/server/middleware/checkSharePublicAccess');
 const { requireJwtAuth, checkBan, uaParser, canAccessResource } = require('~/server/middleware');
 const { checkPeoplePickerAccess } = require('~/server/middleware/checkPeoplePickerAccess');
+const tarsSharing = require('~/server/services/tarsSharing');
 const db = require('~/models');
 const { findMCPServerByObjectId, getSkillById } = db;
 
@@ -41,6 +46,18 @@ router.use(uaParser);
  * Search for users and groups to grant permissions
  */
 router.get('/search-principals', checkPeoplePickerAccess, searchPrincipals);
+
+/**
+ * GET /api/permissions/directory
+ * Every pwc_tars user and group the share dialog offers, to any signed-in user
+ */
+router.get(
+  '/directory',
+  createPrincipalDirectoryHandler({
+    isEnabled: tarsSharing.isEnabled,
+    directory: tarsSharing.directory,
+  }),
+);
 
 /**
  * GET /api/permissions/{resourceType}/roles
