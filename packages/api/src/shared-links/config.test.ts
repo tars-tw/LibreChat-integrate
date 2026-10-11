@@ -4,6 +4,7 @@ import type { AppConfig } from '@librechat/data-schemas';
 import {
   resolveSharedLinkConfig,
   isFileSnapshotEnabled,
+  isSharedLinkDefaultPublic,
   buildSharedLinkStartupPayload,
   createSharedLinkConfigMiddleware,
 } from './config';
@@ -61,6 +62,17 @@ describe('shared-link config resolution', () => {
       expect(getAppConfig).toHaveBeenCalledWith({ baseOnly: true });
     },
   );
+});
+
+describe('isSharedLinkDefaultPublic', () => {
+  it('keeps a new link private unless defaultPublic is explicitly true', () => {
+    expect(isSharedLinkDefaultPublic(undefined)).toBe(false);
+    expect(isSharedLinkDefaultPublic(appConfig())).toBe(false);
+    expect(isSharedLinkDefaultPublic(withSharedLinks(true))).toBe(false);
+    expect(isSharedLinkDefaultPublic(withSharedLinks({ public: true }))).toBe(false);
+    expect(isSharedLinkDefaultPublic(withSharedLinks({ defaultPublic: false }))).toBe(false);
+    expect(isSharedLinkDefaultPublic(withSharedLinks({ defaultPublic: true }))).toBe(true);
+  });
 });
 
 describe('isFileSnapshotEnabled', () => {

@@ -30,6 +30,7 @@ import { siblingIdxFamily, siblingKey } from '~/components/Chat/Messages/Thread/
 import { useLocalize, useDocumentTitle, useAuthContext } from '~/hooks';
 import { ThemeSelector, LangSelector } from '~/components/Appearance';
 import { ShareMessagesProvider } from './ShareMessagesProvider';
+import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
 import { useForkSharedConvoMutation } from '~/data-provider';
 import { useGetSharedStartupConfig } from '~/data-provider';
 import { ShareArtifactsContainer } from './ShareArtifacts';
@@ -42,7 +43,12 @@ import store from '~/store';
 /** Root sibling-index key used by the shared MessagesView/MultiMessage tree. */
 const SHARED_CONVO_KEY = 'shared-conversation';
 
-function SharedView() {
+/**
+ * A shared conversation. Standalone at `/share/:shareId` (the copied link); `embedded`
+ * at `/shared/:shareId` inside the app shell, opened from the sidebar's "Shared with me",
+ * where the sidebar stays and theme / language come from the app's own settings.
+ */
+function SharedView({ embedded = false }: { embedded?: boolean }) {
   const localize = useLocalize();
   const navigate = useNavigate();
   const { showToast } = useToastContext();
@@ -174,10 +180,12 @@ function SharedView() {
     [setLangcode],
   );
 
+  const fullHeight = embedded ? 'h-full' : 'h-screen';
+
   let content: JSX.Element;
   if (!isAuthReady || isLoading) {
     content = (
-      <div className="flex h-screen items-center justify-center">
+      <div className={cn('flex items-center justify-center', fullHeight)}>
         <Spinner className="" />
       </div>
     );
@@ -197,6 +205,7 @@ function SharedView() {
           langfuseSessionUrl={data.langfuseSessionUrl}
           onContinue={handleContinue}
           isContinuing={forkShare.isLoading}
+          embedded={embedded}
         />
         <ShareMessagesProvider messages={data.messages}>
           <MessagesView messagesTree={messagesTree} conversationId={SHARED_CONVO_KEY} />
@@ -210,6 +219,7 @@ function SharedView() {
         retryLabel={localize('com_ui_retry')}
         isRetrying={isFetching}
         onRetry={() => void refetch()}
+        className={fullHeight}
       />
     );
   }
@@ -251,7 +261,12 @@ function SharedView() {
         value={{ isSharedConvo: true, shareId, hasConfiguredSender: data?.hasConfiguredSender }}
       >
         <AppChatSurface>
-          <div className="relative flex h-screen w-full overflow-hidden dark:bg-surface-secondary">
+          <div
+            className={cn(
+              'relative flex w-full overflow-hidden dark:bg-surface-secondary',
+              fullHeight,
+            )}
+          >
             <main className="relative flex w-full grow overflow-hidden dark:bg-surface-secondary">
               {artifactsContainer}
             </main>
@@ -268,14 +283,18 @@ export function SharedLinkUnavailable({
   retryLabel,
   isRetrying,
   onRetry,
+  className = 'h-screen',
 }: {
   message: string;
   retryLabel: string;
   isRetrying: boolean;
   onRetry: () => void;
+  className?: string;
 }) {
   return (
-    <div className="flex h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+    <div
+      className={cn('flex flex-col items-center justify-center gap-4 px-4 text-center', className)}
+    >
       <p>{message}</p>
       <Button type="button" variant="outline" onClick={onRetry} disabled={isRetrying}>
         {isRetrying ? (
@@ -325,6 +344,9 @@ interface ShareHeaderProps {
   onContinue: () => void;
   onThemeChange: (value: string) => void;
   onLangChange: (value: string) => void;
+  /** In the app shell: the settings dialog gives way to the app's own, and on mobile
+   *  the sidebar opener leads the title since the shell's header is not shown here. */
+  embedded?: boolean;
 }
 
 export function ShareHeader({
@@ -340,6 +362,7 @@ export function ShareHeader({
   onContinue,
   onThemeChange,
   onLangChange,
+  embedded = false,
 }: ShareHeaderProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsContent, setSettingsContent] = useState<HTMLDivElement | null>(null);
@@ -357,7 +380,14 @@ export function ShareHeader({
       <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-3 rounded-2xl border border-border-light bg-surface-secondary px-4 py-4 shadow-xl md:gap-4 md:rounded-3xl md:px-6 md:py-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0 flex-1 space-y-1.5 md:space-y-2">
-            <ShareTitle title={title} />
+            {embedded && isMobile ? (
+              <div className="flex min-w-0 items-center gap-2">
+                <OpenSidebar className="size-9 shrink-0" testId="shared-open-sidebar-button" />
+                <ShareTitle title={title} />
+              </div>
+            ) : (
+              <ShareTitle title={title} />
+            )}
             {formattedDate && (
               <div className="flex items-center gap-2 text-sm text-text-secondary">
                 <CalendarDays className="size-4" aria-hidden="true" />
@@ -393,51 +423,53 @@ export function ShareHeader({
               )}
               {continueLabel}
             </Button>
-            <OGDialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <OGDialogTrigger asChild>
-                <Button
-                  size={isMobile ? 'icon' : 'default'}
-                  type="button"
-                  variant="outline"
-                  aria-label={settingsLabel}
-                  className={cn(
-                    'rounded-full border-border-medium text-sm text-text-primary transition-colors',
-                    isMobile
-                      ? 'absolute bottom-4 right-4 justify-center p-0 shadow-lg'
-                      : 'gap-2 self-start px-4 py-2',
-                  )}
+            {!embedded && (
+              <OGDialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+                <OGDialogTrigger asChild>
+                  <Button
+                    size={isMobile ? 'icon' : 'default'}
+                    type="button"
+                    variant="outline"
+                    aria-label={settingsLabel}
+                    className={cn(
+                      'rounded-full border-border-medium text-sm text-text-primary transition-colors',
+                      isMobile
+                        ? 'absolute bottom-4 right-4 justify-center p-0 shadow-lg'
+                        : 'gap-2 self-start px-4 py-2',
+                    )}
+                  >
+                    <Settings className="size-4" aria-hidden="true" />
+                    <span className="hidden md:inline">{settingsLabel}</span>
+                  </Button>
+                </OGDialogTrigger>
+                <OGDialogContent
+                  ref={setSettingsContent}
+                  className="w-11/12 max-w-lg overflow-y-visible"
+                  showCloseButton={true}
+                  onPointerDownOutside={handleDialogOutside}
+                  onInteractOutside={handleDialogOutside}
                 >
-                  <Settings className="size-4" aria-hidden="true" />
-                  <span className="hidden md:inline">{settingsLabel}</span>
-                </Button>
-              </OGDialogTrigger>
-              <OGDialogContent
-                ref={setSettingsContent}
-                className="w-11/12 max-w-lg overflow-y-visible"
-                showCloseButton={true}
-                onPointerDownOutside={handleDialogOutside}
-                onInteractOutside={handleDialogOutside}
-              >
-                <OGDialogHeader className="text-left">
-                  <OGDialogTitle>{settingsLabel}</OGDialogTitle>
-                </OGDialogHeader>
-                <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pt-2 text-sm">
-                  <ThemeSelector
-                    theme={theme}
-                    onChange={onThemeChange}
-                    portalElement={settingsContent}
-                    popoverClassName="z-[150]"
-                  />
-                  <Separator orientation="horizontal" className="bg-border-medium/60" />
-                  <LangSelector
-                    langcode={langcode}
-                    onChange={onLangChange}
-                    portalElement={settingsContent}
-                    popoverClassName="z-[150]"
-                  />
-                </div>
-              </OGDialogContent>
-            </OGDialog>
+                  <OGDialogHeader className="text-left">
+                    <OGDialogTitle>{settingsLabel}</OGDialogTitle>
+                  </OGDialogHeader>
+                  <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pt-2 text-sm">
+                    <ThemeSelector
+                      theme={theme}
+                      onChange={onThemeChange}
+                      portalElement={settingsContent}
+                      popoverClassName="z-[150]"
+                    />
+                    <Separator orientation="horizontal" className="bg-border-medium/60" />
+                    <LangSelector
+                      langcode={langcode}
+                      onChange={onLangChange}
+                      portalElement={settingsContent}
+                      popoverClassName="z-[150]"
+                    />
+                  </div>
+                </OGDialogContent>
+              </OGDialog>
+            )}
           </div>
         </div>
       </div>

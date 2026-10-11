@@ -113,6 +113,18 @@ export interface SharedLinksResult {
   hasNextPage: boolean;
 }
 
+/** A live shared link as listed to someone it was shared with, owner included. */
+export interface SharedLinkSummary {
+  id: string;
+  shareId: string;
+  title: string;
+  conversationId: string;
+  /** The owning user's id. */
+  user: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface SharedMessagesResult {
   conversationId: string;
   messages: Array<SharedMessage>;

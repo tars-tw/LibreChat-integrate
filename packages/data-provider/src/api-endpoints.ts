@@ -90,6 +90,7 @@ export const getSharedLinks = (
   search?: string,
   cursor?: string,
 ) => `${shareRoot}${buildQuery({ pageSize, sortBy, sortDirection, search, cursor })}`;
+export const sharedWithMe = () => `${shareRoot}/shared-with-me`;
 export const createSharedLink = (conversationId: string) => `${shareRoot}/${conversationId}`;
 export const updateSharedLink = (shareId: string) => `${shareRoot}/${shareId}`;
 /** Share-scoped file routes: serve snapshotted files via shared-link permission. */
@@ -788,6 +789,8 @@ export const memory = (key: string, agentId?: string) =>
 export const memoryById = (id: string, agentId?: string) =>
   `${memories()}/id/${encodeURIComponent(id)}${agentId ? `?agentId=${encodeURIComponent(agentId)}` : ''}`;
 export const memoryPreferences = () => `${memories()}/preferences`;
+
+export const principalDirectory = () => `${BASE_URL}/api/permissions/directory`;
 
 export const searchPrincipals = (params: q.PrincipalSearchParams) => {
   const { q: query, limit, types } = params;

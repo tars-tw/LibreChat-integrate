@@ -560,6 +560,30 @@ describe('User Methods - Database Tests', () => {
     });
   });
 
+  describe('linkTarsUserSourceIds', () => {
+    test('stamps pwc_tars users still missing idOnTheSource with their pwc_tars id', async () => {
+      const unlinked = await User.create({
+        email: 'tars-unlinked@example.com',
+        provider: 'tars',
+        tarsId: 'tars-1',
+      });
+      const linked = await User.create({
+        email: 'tars-linked@example.com',
+        provider: 'tars',
+        tarsId: 'tars-2',
+        idOnTheSource: 'tars-2',
+      });
+      const local = await User.create({ email: 'local-user@example.com', provider: 'local' });
+
+      await expect(methods.linkTarsUserSourceIds()).resolves.toBe(1);
+
+      expect((await User.findById(unlinked._id).lean())?.idOnTheSource).toBe('tars-1');
+      expect((await User.findById(linked._id).lean())?.idOnTheSource).toBe('tars-2');
+      expect((await User.findById(local._id).lean())?.idOnTheSource).toBeUndefined();
+      await expect(methods.linkTarsUserSourceIds()).resolves.toBe(0);
+    });
+  });
+
   describe('getUserById', () => {
     test('should get user by ID', async () => {
       const user = await User.create({

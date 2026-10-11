@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { PrincipalType } from 'librechat-data-provider';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import type * as t from '~/types';
 import { createUserGroupMethods } from './userGroup';
@@ -284,6 +285,51 @@ describe('UserGroup Methods - Detailed Tests', () => {
       expect(group.name).toBe('Minimal Group');
       expect(group.source).toBe('local'); // default
       expect(group.memberIds).toEqual([]); // default
+    });
+  });
+
+  describe('pwc_tars groups', () => {
+    test('mirrors a pwc_tars group by its id and lists every group of that source', async () => {
+      await methods.upsertGroupByExternalId('tars-g1', 'tars', {
+        name: 'Finance',
+        memberIds: ['tars-u1', 'tars-u2'],
+      });
+      await methods.upsertGroupByExternalId('tars-g1', 'tars', {
+        name: 'Finance',
+        memberIds: ['tars-u2'],
+      });
+      await methods.createGroup({ name: 'Local', source: 'local' });
+
+      const groups = await methods.findGroupsBySource('tars');
+
+      expect(groups).toHaveLength(1);
+      expect(groups[0]).toEqual(
+        expect.objectContaining({
+          idOnTheSource: 'tars-g1',
+          name: 'Finance',
+          memberIds: ['tars-u2'],
+        }),
+      );
+      expect(await methods.findGroupByExternalId('tars-g1', 'tars')).not.toBeNull();
+    });
+
+    test('resolves a pwc_tars member to the group through their idOnTheSource', async () => {
+      const group = await methods.upsertGroupByExternalId('tars-g2', 'tars', {
+        name: 'Sales',
+        memberIds: ['tars-member'],
+      });
+      const userId = new mongoose.Types.ObjectId();
+
+      const principals = await methods.getUserPrincipals({
+        userId,
+        role: null,
+        idOnTheSource: 'tars-member',
+      });
+
+      expect(principals).toContainEqual({
+        principalType: PrincipalType.GROUP,
+        principalId: group?._id,
+      });
     });
   });
 

@@ -114,7 +114,7 @@ export function createAdminGroupsHandlers(deps: AdminGroupsDeps): {
       const { search, source } = req.query as { search?: string; source?: string };
       const filter: GroupListFilter = {};
       if (source && VALID_GROUP_SOURCES.has(source)) {
-        filter.source = source as IGroup['source'];
+        filter.source = source as GroupListFilter['source'];
       }
       if (search && search.length > MAX_SEARCH_LENGTH) {
         return res

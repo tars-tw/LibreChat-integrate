@@ -29,10 +29,12 @@ import {
   useLocalize,
 } from '~/hooks';
 import { computeShareChanges, dedupeNewShares, principalKey } from './shareChanges';
+import DirectoryPeoplePicker from './PeoplePicker/DirectoryPeoplePicker';
 import UnifiedPeopleSearch from './PeoplePicker/UnifiedPeopleSearch';
 import PeoplePickerAdminSettings from './PeoplePickerAdminSettings';
 import PublicSharingToggle from './PublicSharingToggle';
 import { SelectedPrincipalsList } from './PeoplePicker';
+import { useGetStartupConfig } from '~/data-provider';
 import { cn } from '~/utils';
 
 export default function GenericGrantAccessDialog({
@@ -65,7 +67,11 @@ export default function GenericGrantAccessDialog({
   const canEditAgentInsights =
     resourceType === ResourceType.AGENT && user?.role === SystemRoles.ADMIN;
   const { hasPeoplePickerAccess, peoplePickerTypeFilter } = usePeoplePickerPermissions();
-  const canManagePrincipals = hasPeoplePickerAccess || canEditAgentInsights;
+  const { data: startupConfig } = useGetStartupConfig();
+  /** With pwc_tars, everyone and every group is listed to every user like an address
+   *  book, so the people-picker permissions do not gate it. */
+  const useDirectory = startupConfig?.tarsAuth === true;
+  const canManagePrincipals = useDirectory || hasPeoplePickerAccess || canEditAgentInsights;
 
   /** User can use the dialog if they can manage principals or share publicly. */
   const canUseShareDialog = canManagePrincipals || canSharePublic;
@@ -362,13 +368,20 @@ export default function GenericGrantAccessDialog({
                   </div>
                 ) : (
                   <>
-                    <UnifiedPeopleSearch
-                      onAddPeople={handleAddFromSearch}
-                      label={localize('com_ui_search_people_placeholder')}
-                      placeholder={localize('com_ui_search_people_placeholder')}
-                      typeFilter={peoplePickerTypeFilter}
-                      excludeIds={allShares.map((s) => s.idOnTheSource)}
-                    />
+                    {useDirectory ? (
+                      <DirectoryPeoplePicker
+                        onAddPeople={handleAddFromSearch}
+                        excludeIds={allShares.map((s) => s.idOnTheSource)}
+                      />
+                    ) : (
+                      <UnifiedPeopleSearch
+                        onAddPeople={handleAddFromSearch}
+                        label={localize('com_ui_search_people_placeholder')}
+                        placeholder={localize('com_ui_search_people_placeholder')}
+                        typeFilter={peoplePickerTypeFilter}
+                        excludeIds={allShares.map((s) => s.idOnTheSource)}
+                      />
+                    )}
 
                     {!hasAtLeastOneOwner && hasChanges && (
                       <Alert id={ownerErrorId} variant="error">
@@ -431,7 +444,7 @@ export default function GenericGrantAccessDialog({
 
         <OGDialogFooter className="shrink-0 gap-3 bg-transparent px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:space-x-0 sm:px-6">
           <div className="flex flex-col-reverse gap-2 sm:flex-row">
-            <PeoplePickerAdminSettings />
+            {!useDirectory && <PeoplePickerAdminSettings />}
             {resourceId && resourceUrl && (
               <TooltipAnchor
                 description={

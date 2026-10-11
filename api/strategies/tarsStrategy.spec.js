@@ -108,6 +108,7 @@ describe('tarsStrategy', () => {
       expect.objectContaining({
         provider: 'tars',
         tarsId: 'tars-uuid-1',
+        idOnTheSource: 'tars-uuid-1',
         username: 'jdoe',
         email: 'jdoe@example.com',
         role: 'ADMIN',
@@ -152,6 +153,7 @@ describe('tarsStrategy', () => {
       expect.objectContaining({
         provider: 'tars',
         tarsId: 'tars-uuid-1',
+        idOnTheSource: 'tars-uuid-1',
         email: 'jdoe@example.com',
         role: 'USER',
         tarsRoleId: 99,
