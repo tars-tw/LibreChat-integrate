@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 
 const mockGetSharedLinkExpiration = jest.fn();
 const mockGrantCreationPermissions = jest.fn();
+const mockIsSharedLinkDefaultPublic = jest.fn(() => true);
+const mockListSharedWithMe = jest.fn();
 const mockUpdateSharedLinkPermissionsExpiration = jest.fn();
 const mockRecordShareLinkRejection = jest.fn();
 const mockSharedLinksAccess = jest.fn((_req, _res, next) => next());
@@ -91,6 +93,8 @@ jest.mock('@librechat/api', () => ({
     mockUpdateSharedLinkPermissionsExpiration(...args),
   ensureLinkPermissions: jest.fn(),
   isFileSnapshotEnabled: jest.fn(() => true),
+  isSharedLinkDefaultPublic: (...args) => mockIsSharedLinkDefaultPublic(...args),
+  listSharedWithMe: (...args) => mockListSharedWithMe(...args),
   isFileSnapshotKillSwitchActive: jest.fn(() => false),
   buildSharedLinkStartupPayload: (...args) => mockBuildSharedLinkStartupPayload(...args),
   createSharedLinkConfigMiddleware: jest.fn(() => mockSharedLinkConfigMiddleware),
@@ -178,6 +182,10 @@ jest.mock('~/models', () => ({
   backfillSharedLinkFiles: jest.fn(),
   getMessages: jest.fn(),
   getRoleByName: jest.fn(),
+  getUserPrincipals: jest.fn(),
+  findGrantsByPrincipals: jest.fn(),
+  getSharedLinksByIds: jest.fn(),
+  findUsers: jest.fn(),
 }));
 
 jest.mock('~/server/middleware/roles/capabilities', () => ({
@@ -819,6 +827,57 @@ describe('share routes', () => {
       new Date('2030-01-01T00:00:00.000Z'),
     );
     expect(mockSharedLinksAccess).toHaveBeenCalled();
+  });
+
+  it('creates a link visible to its owner only unless default-public is configured', async () => {
+    mockGetSharedLinkExpiration.mockResolvedValue(activeExpiration);
+    createSharedLink.mockResolvedValue({ _id: 'link-123', shareId: 'share-123' });
+    mockIsSharedLinkDefaultPublic.mockReturnValueOnce(false);
+
+    const response = await request(buildApp())
+      .post('/api/share/convo-123')
+      .send({ targetMessageId: 'msg-123' });
+
+    expect(response.status).toBe(200);
+    expect(mockIsSharedLinkDefaultPublic).toHaveBeenCalledWith(
+      expect.objectContaining({ interfaceConfig: expect.any(Object) }),
+    );
+    expect(mockGrantCreationPermissions).toHaveBeenCalledWith(
+      'link-123',
+      'user-123',
+      false,
+      expect.anything(),
+    );
+  });
+
+  it('lists the conversations shared with the signed-in user', async () => {
+    const links = [{ shareId: 'share-9', title: 'Q3 plan', sharedBy: 'Alice' }];
+    mockListSharedWithMe.mockResolvedValueOnce(links);
+    const user = { id: 'user-123', role: 'USER', idOnTheSource: 'tars-1' };
+
+    const response = await request(buildApp({ user })).get('/api/share/shared-with-me');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ links });
+    expect(mockListSharedWithMe).toHaveBeenCalledWith(
+      user,
+      expect.objectContaining({
+        getUserPrincipals: expect.any(Function),
+        findGrantsByPrincipals: expect.any(Function),
+        getSharedLinksByIds: expect.any(Function),
+        findUsers: expect.any(Function),
+      }),
+    );
+    expect(getSharedMessages).not.toHaveBeenCalled();
+  });
+
+  it('answers 500 when the shared-with-me lookup fails', async () => {
+    mockListSharedWithMe.mockRejectedValueOnce(new Error('db down'));
+
+    const response = await request(buildApp()).get('/api/share/shared-with-me');
+
+    expect(response.status).toBe(500);
+    expect(logger.error).toHaveBeenCalled();
   });
 
   it('snapshots files by default when the user does not opt out', async () => {

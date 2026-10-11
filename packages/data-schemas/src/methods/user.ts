@@ -170,6 +170,7 @@ export function createUserMethods(
   >;
   getUserById: (userId: string, fieldsToSelect?: string | string[] | null) => Promise<IUser | null>;
   generateToken: (user: IUser, expiresIn?: number) => Promise<string>;
+  linkTarsUserSourceIds: () => Promise<number>;
   beginAgentTriggerUserDeletion: (
     userId: string,
     startedAt: Date,
@@ -525,6 +526,33 @@ export function createUserMethods(
   /** Resolves false only when a cached document for the user may still be served. */
   async function invalidateAuthUserDocCache(userId: string): Promise<boolean> {
     return evictAuthUserDocsForUsers(deps.getCache, [userId]);
+  }
+
+  /**
+   * Stamps every pwc_tars-linked user still missing `idOnTheSource` with their pwc_tars
+   * account id: groups mirrored from pwc_tars list members by that id, and
+   * `getUserPrincipals` resolves a user's groups by it.
+   * @returns How many users were linked
+   */
+  async function linkTarsUserSourceIds(): Promise<number> {
+    const User = mongoose.models.User as mongoose.Model<IUser>;
+    const unlinked = { $or: [{ idOnTheSource: { $exists: false } }, { idOnTheSource: null }] };
+    const users = await User.find(
+      { tarsId: { $type: 'string', $ne: '' }, ...unlinked },
+      { _id: 1, tarsId: 1 },
+    ).lean<Array<Pick<IUser, '_id' | 'tarsId'>>>();
+    let linked = 0;
+    for (const user of users) {
+      const result = await User.updateOne(
+        { _id: user._id, ...unlinked },
+        { $set: { idOnTheSource: user.tarsId } },
+      );
+      if (result.modifiedCount > 0) {
+        linked += 1;
+        await invalidateAuthUserDocCache(user._id.toString());
+      }
+    }
+    return linked;
   }
 
   /**
@@ -1035,6 +1063,7 @@ export function createUserMethods(
     searchUsers,
     getUserById,
     generateToken,
+    linkTarsUserSourceIds,
     beginAgentTriggerUserDeletion,
     recoverStaleAgentTriggerUserDeletion,
     cancelAgentTriggerUserDeletion,

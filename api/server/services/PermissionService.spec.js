@@ -81,6 +81,11 @@ beforeEach(async () => {
   await AclEntry.deleteMany({});
 });
 
+const mockEnsureTarsGroupPrincipal = jest.fn();
+jest.mock('~/server/services/tarsSharing', () => ({
+  ensureGroupPrincipal: (...args) => mockEnsureTarsGroupPrincipal(...args),
+}));
+
 // Mock getUserPrincipals to avoid depending on the actual implementation
 jest.mock('~/models', () => ({
   ...jest.requireActual('~/models'),
@@ -371,6 +376,7 @@ describe('PermissionService', () => {
       const created = await User.findById(principalId).lean();
       expect(created.provider).toBe('tars');
       expect(created.tarsId).toBe('tars-account-new');
+      expect(created.idOnTheSource).toBe('tars-account-new');
       expect(created.emailVerified).toBe(false);
     });
 
@@ -425,6 +431,41 @@ describe('PermissionService', () => {
       const updated = await User.findById(existing._id).lean();
       expect(updated.tarsId).toBe('tars-account-backfill');
       expect(updated.provider).toBe('tars');
+      expect(updated.idOnTheSource).toBe('tars-account-backfill');
+    });
+
+    test('links a pwc_tars user that predates idOnTheSource to their account id', async () => {
+      const existing = await User.create({
+        name: 'Tars Unlinked User',
+        email: 'tars-principal-unlinked@example.com',
+        provider: 'tars',
+        tarsId: 'tars-account-unlinked',
+      });
+
+      await ensurePrincipalExists({
+        type: PrincipalType.USER,
+        name: 'Tars Unlinked User',
+        email: 'tars-principal-unlinked@example.com',
+        source: 'tars',
+        idOnTheSource: 'tars-account-unlinked',
+      });
+
+      const updated = await User.findById(existing._id).lean();
+      expect(updated.tarsId).toBe('tars-account-unlinked');
+      expect(updated.idOnTheSource).toBe('tars-account-unlinked');
+    });
+
+    test('mirrors a pwc_tars group through the group sync', async () => {
+      mockEnsureTarsGroupPrincipal.mockResolvedValueOnce('mirrored-group-id');
+      const principal = {
+        type: PrincipalType.GROUP,
+        name: 'Finance',
+        source: 'tars',
+        idOnTheSource: 'tars-group-1',
+      };
+
+      await expect(ensureGroupPrincipalExists(principal)).resolves.toBe('mirrored-group-id');
+      expect(mockEnsureTarsGroupPrincipal).toHaveBeenCalledWith(principal);
     });
 
     test('rejects a tars principal without idOnTheSource', async () => {

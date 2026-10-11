@@ -167,7 +167,7 @@ function matchesTarsSearchQuery(account: TarsAccount, needle: string): boolean {
   return haystack.includes(needle);
 }
 
-function toTarsPrincipalSearchResult(account: TarsAccount): TPrincipalSearchResult {
+export function toTarsPrincipalSearchResult(account: TarsAccount): TPrincipalSearchResult {
   return {
     id: null,
     type: PrincipalType.USER,

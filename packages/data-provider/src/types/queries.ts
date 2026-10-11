@@ -167,6 +167,20 @@ export interface SharedLinksListParams {
   cursor?: string;
 }
 
+/** A conversation someone shared with the viewer directly or through one of their groups. */
+export type SharedWithMeLink = {
+  shareId: string;
+  title: string;
+  /** When the viewer (or their group) was granted access; ISO string. */
+  sharedAt?: string;
+  /** Display name of the conversation's owner. */
+  sharedBy?: string;
+};
+
+export type SharedWithMeResponse = {
+  links: SharedWithMeLink[];
+};
+
 export type SharedLinkItem = {
   shareId: string;
   title: string;
@@ -289,6 +303,16 @@ export type PrincipalSearchResponse = {
     local: number;
     entra: number;
   };
+};
+
+/**
+ * Everyone and every group the share dialog can offer. `enabled: false` means no
+ * directory is configured and the dialog falls back to typed principal search.
+ */
+export type PrincipalDirectoryResponse = {
+  enabled: boolean;
+  users: p.TPrincipalSearchResult[];
+  groups: p.TPrincipalSearchResult[];
 };
 
 export type AccessRole = {

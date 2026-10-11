@@ -36,6 +36,21 @@ describe('ShareHeader', () => {
   });
 });
 
+describe('ShareHeader inside the app shell', () => {
+  it('leaves theme and language to the app settings but keeps Continue chat', () => {
+    render(<ShareHeader {...defaultProps} embedded />);
+
+    expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue chat' })).toBeInTheDocument();
+  });
+
+  it('offers its own settings when opened from a copied link', () => {
+    render(<ShareHeader {...defaultProps} />);
+
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+  });
+});
+
 describe('SharedLinkUnavailable', () => {
   it('lets the viewer retry a broken shared-link load', () => {
     const onRetry = jest.fn();

@@ -342,6 +342,7 @@ const getResourcePermissions = async (req, res) => {
           description: result.groupInfo.description,
           avatar: result.groupInfo.avatar,
           source: result.groupInfo.source || 'local',
+          memberCount: result.groupInfo.memberIds?.length ?? 0,
           idOnTheSource: result.groupInfo.idOnTheSource || result.groupInfo._id.toString(),
           accessRoleId: result.accessRoleId,
           ...getInsightsPrincipalState({

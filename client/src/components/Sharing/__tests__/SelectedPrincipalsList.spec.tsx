@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
 import { AccessRoleIds, PrincipalType } from 'librechat-data-provider';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { TPrincipal } from 'librechat-data-provider';
 import SelectedPrincipalsList from '../PeoplePicker/SelectedPrincipalsList';
 
@@ -25,6 +25,58 @@ jest.mock('@librechat/client', () => ({
 }));
 
 describe('SelectedPrincipalsList', () => {
+  it('shows users and groups in separate columns, owners first', () => {
+    const principals: TPrincipal[] = [
+      {
+        type: PrincipalType.USER,
+        id: 'u-viewer',
+        name: 'Viewer User',
+        accessRoleId: AccessRoleIds.AGENT_VIEWER,
+      },
+      {
+        type: PrincipalType.GROUP,
+        id: 'g-finance',
+        name: 'Finance',
+        source: 'tars',
+        memberCount: 4,
+        accessRoleId: AccessRoleIds.AGENT_VIEWER,
+      },
+      {
+        type: PrincipalType.USER,
+        id: 'u-owner',
+        name: 'Owner User',
+        accessRoleId: AccessRoleIds.AGENT_OWNER,
+      },
+    ];
+
+    render(<SelectedPrincipalsList principles={principals} onRemoveHandler={jest.fn()} />);
+
+    const users = within(screen.getByTestId('principals-users'));
+    const groups = within(screen.getByTestId('principals-groups'));
+    expect(users.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      expect.stringContaining('Owner User'),
+      expect.stringContaining('Viewer User'),
+    ]);
+    expect(groups.getAllByRole('listitem')).toHaveLength(1);
+    expect(groups.getByText('Finance')).toBeInTheDocument();
+    expect(groups.getByText('com_ui_share_group_member_count')).toBeInTheDocument();
+  });
+
+  it('keeps an empty column with a hint', () => {
+    const owner: TPrincipal = {
+      type: PrincipalType.USER,
+      id: 'u-owner',
+      name: 'Owner User',
+      accessRoleId: AccessRoleIds.AGENT_OWNER,
+    };
+
+    render(<SelectedPrincipalsList principles={[owner]} onRemoveHandler={jest.fn()} />);
+
+    expect(
+      within(screen.getByTestId('principals-groups')).getByText('com_ui_share_no_groups_added'),
+    ).toBeInTheDocument();
+  });
+
   it('keys Insights changes by role ID when source IDs are absent', () => {
     const roles: TPrincipal[] = [
       {

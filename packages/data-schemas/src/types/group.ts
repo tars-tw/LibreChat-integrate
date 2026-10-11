@@ -1,6 +1,9 @@
 import type { Document, Types } from 'mongoose';
 import { CursorPaginationParams } from '~/common';
 
+/** Where a group's membership is owned: LibreChat itself, Entra ID, or pwc_tars. */
+export type GroupSource = 'local' | 'entra' | 'tars';
+
 export interface IGroup extends Document {
   _id: Types.ObjectId;
   name: string;
@@ -9,7 +12,7 @@ export interface IGroup extends Document {
   avatar?: string;
   /** Array of member IDs (stores idOnTheSource values, not ObjectIds) */
   memberIds?: string[];
-  source: 'local' | 'entra';
+  source: GroupSource;
   /** External ID (e.g., Entra ID) - required for non-local sources */
   idOnTheSource?: string;
   createdAt?: Date;
@@ -26,7 +29,7 @@ export interface CreateGroupRequest {
   email?: string;
   avatar?: string;
   memberIds?: string[];
-  source: 'local' | 'entra';
+  source: GroupSource;
   idOnTheSource?: string;
 }
 

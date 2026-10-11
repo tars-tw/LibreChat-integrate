@@ -927,6 +927,7 @@ export function createShareMethods(mongoose: typeof import('mongoose')): {
     beforePublish?: () => void | Promise<void>,
   ) => Promise<t.UpdateShareResult>;
   deleteSharedLink: (user: string, shareId: string) => Promise<t.DeleteShareResult | null>;
+  getSharedLinksByIds: (ids: string[], excludeUser?: string) => Promise<t.SharedLinkSummary[]>;
   getSharedMessages: (
     shareId: string,
     shareObjectId?: string,
@@ -1196,6 +1197,40 @@ export function createShareMethods(mongoose: typeof import('mongoose')): {
       });
       throw new ShareServiceError('Error getting shares', 'SHARES_FETCH_ERROR');
     }
+  }
+
+  /**
+   * The live (unexpired) links among `ids`, optionally leaving out one owner's links,
+   * for listings built from ACL grants rather than ownership.
+   */
+  async function getSharedLinksByIds(
+    ids: string[],
+    excludeUser?: string,
+  ): Promise<t.SharedLinkSummary[]> {
+    const objectIds = ids.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    if (objectIds.length === 0) {
+      return [];
+    }
+    const SharedLink = mongoose.models.SharedLink as Model<t.ISharedLink>;
+    const query: FilterQuery<t.ISharedLink> = {
+      _id: { $in: objectIds },
+      ...activeExpirationFilter<t.ISharedLink>(),
+    };
+    if (excludeUser) {
+      query.user = { $ne: excludeUser };
+    }
+    const links = await SharedLink.find(query)
+      .select('shareId title conversationId user createdAt updatedAt')
+      .lean();
+    return links.map((link) => ({
+      id: link._id.toString(),
+      shareId: link.shareId || '',
+      title: link.title || 'Untitled',
+      conversationId: link.conversationId,
+      user: link.user?.toString() ?? '',
+      createdAt: link.createdAt,
+      updatedAt: link.updatedAt,
+    }));
   }
 
   /**
@@ -1673,6 +1708,7 @@ export function createShareMethods(mongoose: typeof import('mongoose')): {
     createSharedLink,
     updateSharedLink,
     deleteSharedLink,
+    getSharedLinksByIds,
     getSharedMessages,
     getSharedLinkFile,
     backfillSharedLinkFiles,
