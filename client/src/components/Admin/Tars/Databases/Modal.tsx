@@ -159,20 +159,20 @@ export default function DatabaseModal({
 
   const nameList = (title: string, names: string[]) => (
     <div className="space-y-1">
-      <p className="text-xs font-medium text-text-secondary">
+      <p className="text-text-secondary text-xs font-medium">
         {title} ({names.length})
       </p>
-      <div className="max-h-32 overflow-y-auto rounded-md border border-border-light">
+      <div className="border-border-light max-h-32 overflow-y-auto rounded-md border">
         {names.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-text-tertiary">
+          <p className="text-text-tertiary px-3 py-2 text-xs">
             {localize('com_ui_tars_db_no_tables')}
           </p>
         ) : (
-          <ul className="divide-y divide-border-light">
+          <ul className="divide-border-light divide-y">
             {names.map((name) => (
               <li
                 key={name}
-                className="truncate px-3 py-1.5 text-xs text-text-primary"
+                className="text-text-primary truncate px-3 py-1.5 text-xs"
                 title={name}
               >
                 {name}
@@ -194,14 +194,14 @@ export default function DatabaseModal({
         main={
           <div className="max-h-[70vh] min-w-0 space-y-5 overflow-y-auto pr-1">
             <section className="space-y-3">
-              <p className="text-sm font-medium text-text-primary">
+              <p className="text-text-primary text-sm font-medium">
                 {localize('com_ui_tars_db_section_basic')}
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="tars-db-name">
                     {localize('com_ui_tars_db_name')}
-                    <span className="ml-0.5 text-pwc-danger">*</span>
+                    <span className="text-pwc-danger ml-0.5">*</span>
                   </Label>
                   <Input
                     id="tars-db-name"
@@ -210,7 +210,7 @@ export default function DatabaseModal({
                     placeholder={localize('com_ui_tars_db_name_placeholder')}
                   />
                   {form.name !== '' && invalidName && (
-                    <p className="text-xs text-pwc-danger">
+                    <p className="text-pwc-danger text-xs">
                       {localize('com_ui_tars_db_name_invalid', {
                         0: String(NAME_MIN),
                         1: String(NAME_MAX),
@@ -239,7 +239,7 @@ export default function DatabaseModal({
             </section>
 
             <section className="space-y-3">
-              <p className="text-sm font-medium text-text-primary">
+              <p className="text-text-primary text-sm font-medium">
                 {localize('com_ui_tars_db_section_connection')}
               </p>
 
@@ -278,9 +278,9 @@ export default function DatabaseModal({
                 <div className="space-y-1.5">
                   <Label htmlFor="tars-db-file">{localize('com_ui_tars_db_sqlite_file')}</Label>
                   {isEdit ? (
-                    <p className="rounded-md border border-border-light px-3 py-2 text-sm text-text-secondary">
+                    <p className="border-border-light text-text-secondary rounded-md border px-3 py-2 text-sm">
                       {form.databaseName || '—'}
-                      <span className="ml-2 text-xs text-text-tertiary">
+                      <span className="text-text-tertiary ml-2 text-xs">
                         {localize('com_ui_tars_db_sqlite_locked')}
                       </span>
                     </p>
@@ -292,7 +292,7 @@ export default function DatabaseModal({
                         accept={TARS_SQLITE_EXTENSIONS.join(',')}
                         onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                       />
-                      <p className="text-xs text-text-secondary">
+                      <p className="text-text-secondary text-xs">
                         {localize('com_ui_tars_db_sqlite_hint')}
                       </p>
                     </>
@@ -304,7 +304,7 @@ export default function DatabaseModal({
                     <div className="space-y-1.5 sm:col-span-2">
                       <Label htmlFor="tars-db-host">
                         {localize('com_ui_tars_db_host')}
-                        <span className="ml-0.5 text-pwc-danger">*</span>
+                        <span className="text-pwc-danger ml-0.5">*</span>
                       </Label>
                       <Input
                         id="tars-db-host"
@@ -316,7 +316,7 @@ export default function DatabaseModal({
                     <div className="space-y-1.5">
                       <Label htmlFor="tars-db-port">
                         {localize('com_ui_tars_db_port')}
-                        <span className="ml-0.5 text-pwc-danger">*</span>
+                        <span className="text-pwc-danger ml-0.5">*</span>
                       </Label>
                       <Input
                         id="tars-db-port"
@@ -326,7 +326,7 @@ export default function DatabaseModal({
                         placeholder={defaultPort(form.dbType)}
                       />
                       {form.port !== '' && portInvalid(form.port) && (
-                        <p className="text-xs text-pwc-danger">
+                        <p className="text-pwc-danger text-xs">
                           {localize('com_ui_tars_db_port_invalid')}
                         </p>
                       )}
@@ -336,7 +336,7 @@ export default function DatabaseModal({
                   <div className="space-y-1.5">
                     <Label htmlFor="tars-db-database">
                       {localize(oracle ? 'com_ui_tars_db_service_name' : 'com_ui_tars_db_database')}
-                      <span className="ml-0.5 text-pwc-danger">*</span>
+                      <span className="text-pwc-danger ml-0.5">*</span>
                     </Label>
                     <Input
                       id="tars-db-database"
@@ -344,7 +344,7 @@ export default function DatabaseModal({
                       onChange={(event) => set('databaseName', event.target.value)}
                     />
                     {oracle && (
-                      <p className="text-xs text-text-secondary">
+                      <p className="text-text-secondary text-xs">
                         {localize('com_ui_tars_db_oracle_hint')}
                       </p>
                     )}
@@ -354,7 +354,7 @@ export default function DatabaseModal({
                     <div className="space-y-1.5">
                       <Label htmlFor="tars-db-username">
                         {localize('com_ui_tars_db_username')}
-                        {!isEdit && <span className="ml-0.5 text-pwc-danger">*</span>}
+                        {!isEdit && <span className="text-pwc-danger ml-0.5">*</span>}
                       </Label>
                       <Input
                         id="tars-db-username"
@@ -364,7 +364,7 @@ export default function DatabaseModal({
                         placeholder={isEdit ? localize('com_ui_tars_db_account_keep') : undefined}
                       />
                       {isEdit && (
-                        <p className="text-xs text-text-secondary">
+                        <p className="text-text-secondary text-xs">
                           {localize('com_ui_tars_db_account_keep')}
                         </p>
                       )}
@@ -372,7 +372,7 @@ export default function DatabaseModal({
                     <div className="space-y-1.5">
                       <Label htmlFor="tars-db-password">
                         {localize('com_ui_tars_db_password')}
-                        {!isEdit && <span className="ml-0.5 text-pwc-danger">*</span>}
+                        {!isEdit && <span className="text-pwc-danger ml-0.5">*</span>}
                       </Label>
                       <Input
                         id="tars-db-password"
@@ -383,7 +383,7 @@ export default function DatabaseModal({
                         placeholder={isEdit ? localize('com_ui_tars_db_password_keep') : undefined}
                       />
                       {isEdit && (
-                        <p className="text-xs text-text-secondary">
+                        <p className="text-text-secondary text-xs">
                           {localize('com_ui_tars_db_password_keep')}
                         </p>
                       )}
@@ -392,7 +392,7 @@ export default function DatabaseModal({
                 </div>
               )}
 
-              <div className="space-y-2 rounded-lg border border-border-light p-3">
+              <div className="border-border-light space-y-2 rounded-lg border p-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
                     variant="outline"
@@ -411,7 +411,7 @@ export default function DatabaseModal({
                   </Button>
 
                   {testMutation.isSuccess && result != null && (
-                    <span className="flex items-center gap-1.5 text-sm text-pwc-success">
+                    <span className="text-pwc-success flex items-center gap-1.5 text-sm">
                       <CheckCircle2 className="size-4" aria-hidden />
                       {localize('com_ui_tars_db_test_success', {
                         0: String(result.tables.length),
@@ -421,7 +421,7 @@ export default function DatabaseModal({
                   )}
 
                   {testMutation.isError && (
-                    <span className="flex items-center gap-1.5 text-sm text-pwc-danger">
+                    <span className="text-pwc-danger flex items-center gap-1.5 text-sm">
                       <XCircle className="size-4" aria-hidden />
                       {errorMessage(testMutation.error) ?? localize('com_ui_tars_db_test_failed')}
                     </span>
@@ -432,7 +432,7 @@ export default function DatabaseModal({
                   <div className="space-y-2">
                     <div className="relative">
                       <Search
-                        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary"
+                        className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
                         aria-hidden
                       />
                       <Input
@@ -452,11 +452,11 @@ export default function DatabaseModal({
               </div>
             </section>
 
-            <section className="space-y-3 rounded-lg border border-border-light p-3">
-              <p className="text-sm font-medium text-text-primary">
+            <section className="border-border-light space-y-3 rounded-lg border p-3">
+              <p className="text-text-primary text-sm font-medium">
                 {localize('com_ui_tars_db_section_access')}
               </p>
-              <p className="text-xs text-text-secondary">
+              <p className="text-text-secondary text-xs">
                 {localize('com_ui_tars_db_allowed_kbs_hint')}
               </p>
               <Picker
@@ -466,6 +466,7 @@ export default function DatabaseModal({
                 selected={form.allowedKmIds}
                 onChange={(values) => set('allowedKmIds', values)}
                 placeholder={localize('com_ui_tars_db_allowed_kbs_none')}
+                chips
               />
             </section>
           </div>

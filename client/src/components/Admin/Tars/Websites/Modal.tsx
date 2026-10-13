@@ -138,8 +138,9 @@ export default function WebsiteModal({
                 selected={form.knowledgeBaseIds}
                 onChange={(values) => set('knowledgeBaseIds', values)}
                 placeholder={localize('com_ui_tars_web_select_knowledge_base')}
+                chips
               />
-              <p className="text-xs text-text-secondary">
+              <p className="text-text-secondary text-xs">
                 {localize('com_ui_tars_web_knowledge_base_hint')}
               </p>
               {removedNames.length > 0 && (
@@ -153,7 +154,7 @@ export default function WebsiteModal({
             <div className="space-y-1.5">
               <Label htmlFor="tars-web-name">
                 {localize('com_ui_tars_web_name')}
-                <span className="ml-0.5 text-pwc-danger">*</span>
+                <span className="text-pwc-danger ml-0.5">*</span>
               </Label>
               <Input
                 id="tars-web-name"
@@ -162,7 +163,7 @@ export default function WebsiteModal({
                 placeholder={localize('com_ui_tars_web_name_placeholder')}
               />
               {form.name !== '' && invalidName && (
-                <p className="text-xs text-pwc-danger">
+                <p className="text-pwc-danger text-xs">
                   {localize('com_ui_tars_db_name_invalid', {
                     0: String(NAME_MIN),
                     1: String(NAME_MAX),
@@ -174,10 +175,10 @@ export default function WebsiteModal({
             <div className="space-y-1.5">
               <Label htmlFor="tars-web-url">
                 {localize('com_ui_tars_web_url')}
-                {!isEdit && <span className="ml-0.5 text-pwc-danger">*</span>}
+                {!isEdit && <span className="text-pwc-danger ml-0.5">*</span>}
               </Label>
               {isEdit ? (
-                <p className="flex items-center gap-1.5 break-all rounded-md border border-border-light px-3 py-2 text-sm text-text-secondary">
+                <p className="border-border-light text-text-secondary flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm break-all">
                   {form.url}
                 </p>
               ) : (
@@ -188,7 +189,7 @@ export default function WebsiteModal({
                   placeholder="https://example.com/docs"
                 />
               )}
-              <p className="text-xs text-text-secondary">
+              <p className="text-text-secondary text-xs">
                 {localize(isEdit ? 'com_ui_tars_web_url_locked' : 'com_ui_tars_web_url_hint')}
               </p>
               {form.url !== '' && !invalidUrl && (
@@ -196,7 +197,7 @@ export default function WebsiteModal({
                   href={form.url.trim()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary hover:underline"
+                  className="text-text-secondary hover:text-text-primary inline-flex items-center gap-1 text-xs hover:underline"
                 >
                   {localize('com_ui_tars_web_preview')}
                   <ExternalLink className="size-3" aria-hidden />
@@ -226,13 +227,13 @@ export default function WebsiteModal({
             )}
 
             {!isEdit && (
-              <p className="rounded-lg border border-border-light p-3 text-xs text-text-secondary">
+              <p className="border-border-light text-text-secondary rounded-lg border p-3 text-xs">
                 {localize('com_ui_tars_web_import_notice')}
               </p>
             )}
 
             {isBusy && importsAny && (
-              <p className="flex items-center gap-2 text-sm text-text-secondary">
+              <p className="text-text-secondary flex items-center gap-2 text-sm">
                 <Spinner className="size-4" />
                 {localize('com_ui_tars_web_importing')}
               </p>
