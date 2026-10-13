@@ -23,6 +23,7 @@ import type {
   TTarsFileSystemSource,
   TTarsFileSystemInput,
   TTarsFileSystemConnectionTest,
+  TTarsFileSystemTestInput,
   TTarsWebsiteImportInput,
   TTarsFileSystemImportInput,
   TTarsDatasetBatchDelete,
@@ -1860,19 +1861,10 @@ export const useDeleteTarsFileSystemMutation = (
  * it uses `useMutation` because it is an explicit, on-demand action.
  */
 export const useTestTarsFileSystemConnectionMutation = (
-  options?: UseMutationOptions<
-    TTarsFileSystemConnectionTest,
-    unknown,
-    TTarsFileSystemInput & { fileSystemId?: string }
-  >,
-): UseMutationResult<
-  TTarsFileSystemConnectionTest,
-  unknown,
-  TTarsFileSystemInput & { fileSystemId?: string }
-> =>
+  options?: UseMutationOptions<TTarsFileSystemConnectionTest, unknown, TTarsFileSystemTestInput>,
+): UseMutationResult<TTarsFileSystemConnectionTest, unknown, TTarsFileSystemTestInput> =>
   useMutation(
-    (data: TTarsFileSystemInput & { fileSystemId?: string }) =>
-      dataService.testTarsFileSystemConnection(data),
+    (data: TTarsFileSystemTestInput) => dataService.testTarsFileSystemConnection(data),
     options,
   );
 

@@ -403,9 +403,28 @@ export type TTarsFileSystemsResponse = {
   fileSystems: TTarsFileSystemSource[];
 };
 
-/** The paths a document group's share currently holds. */
+export type TTarsFileSystemTestInput = TTarsFileSystemInput & {
+  /** An edit form's group, whose stored credentials fill in blank ones. */
+  fileSystemId?: string;
+  /** NFS only: list the server's exports instead of walking `path`. */
+  listExports?: boolean;
+};
+
+/** A subdirectory the walk skipped, with pwc_tars' one-line reason. */
+export type TTarsUnreadableDir = {
+  path: string;
+  reason: string;
+};
+
+/**
+ * What a connection test found. `files` is relative to the tested path except
+ * on SFTP, which prefixes it, and on SMB at `/`, which answers with share names.
+ */
 export type TTarsFileSystemConnectionTest = {
   files: string[];
+  /** NFS only; absent when the server would not list its exports. */
+  exports?: string[];
+  unreadableDirs: TTarsUnreadableDir[];
 };
 
 /** System-wide ceilings the upload forms must respect. */

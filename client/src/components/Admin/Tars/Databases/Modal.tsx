@@ -466,6 +466,7 @@ export default function DatabaseModal({
                 selected={form.allowedKmIds}
                 onChange={(values) => set('allowedKmIds', values)}
                 placeholder={localize('com_ui_tars_db_allowed_kbs_none')}
+                chips
               />
             </section>
           </div>
