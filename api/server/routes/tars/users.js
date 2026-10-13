@@ -17,6 +17,7 @@ const {
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 const tarsSharing = require('~/server/services/tarsSharing');
+const workflowTransfer = require('~/server/services/workflowTransfer');
 const { relayTarsError } = require('./relay');
 const { createTarsUpload } = require('./upload');
 
@@ -150,6 +151,7 @@ router.post('/users/import', requireTarsAdmin, upload.single('file'), async (req
     });
     if (ok) {
       tarsSharing.requestSync();
+      workflowTransfer.requestSweep();
     }
     return res.status(ok ? 200 : status).json(body);
   } catch (error) {
@@ -172,6 +174,7 @@ router.put('/users/bulk', requireTarsAdmin, async (req, res) => {
   try {
     const users = await bulkUpdateTarsUsers(req.user.tarsId, ids, updates ?? {});
     tarsSharing.requestSync();
+    workflowTransfer.requestSweep();
     return res.json({ users });
   } catch (error) {
     logger.error('[PUT /api/tars/users/bulk] Failed', error);
@@ -193,6 +196,7 @@ router.post('/users/bulk-delete', requireTarsAdmin, async (req, res) => {
   try {
     const deletedCount = await bulkDeleteTarsUsers(req.user.tarsId, ids);
     tarsSharing.requestSync();
+    workflowTransfer.requestSweep();
     return res.json({ success: true, deletedCount });
   } catch (error) {
     logger.error('[POST /api/tars/users/bulk-delete] Failed', error);
@@ -209,6 +213,7 @@ router.post('/users', requireTarsAdmin, async (req, res) => {
   try {
     const user = await createTarsUser(req.user.tarsId, req.body ?? {});
     tarsSharing.requestSync();
+    workflowTransfer.requestSweep();
     return res.status(201).json({ user });
   } catch (error) {
     logger.error('[POST /api/tars/users] Failed to create pwc_tars user', error);
@@ -245,6 +250,7 @@ router.put('/users/:id', requireTarsAdmin, async (req, res) => {
   try {
     const user = await updateTarsUser(req.user.tarsId, req.params.id, req.body ?? {});
     tarsSharing.requestSync();
+    workflowTransfer.requestSweep();
     return res.json({ user });
   } catch (error) {
     logger.error('[PUT /api/tars/users/:id] Failed to update pwc_tars user', error);
@@ -261,6 +267,7 @@ router.delete('/users/:id', requireTarsAdmin, async (req, res) => {
   try {
     await deleteTarsUser(req.user.tarsId, req.params.id);
     tarsSharing.requestSync();
+    workflowTransfer.requestSweep();
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/users/:id] Failed to delete pwc_tars user', error);

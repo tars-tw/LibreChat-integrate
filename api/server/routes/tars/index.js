@@ -20,6 +20,7 @@ const tickets = require('./tickets');
 const token = require('./token');
 const usage = require('./usage');
 const users = require('./users');
+const workflow = require('./workflow');
 
 /**
  * Every sub-router is mounted at `/` and sees every request, so each one scopes its
@@ -51,5 +52,6 @@ router.use('/', tickets);
 router.use('/', token);
 router.use('/', usage);
 router.use('/', users);
+router.use('/', workflow);
 
 module.exports = router;
