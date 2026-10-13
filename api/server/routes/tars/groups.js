@@ -11,6 +11,7 @@ const {
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 const tarsSharing = require('~/server/services/tarsSharing');
+const workflowTransfer = require('~/server/services/workflowTransfer');
 const { relayTarsError } = require('./relay');
 
 const router = express.Router();
@@ -78,6 +79,7 @@ router.put('/groups/:id', requireTarsAdmin, async (req, res) => {
   try {
     const group = await updateTarsUserGroup(req.user.tarsId, req.params.id, req.body ?? {});
     tarsSharing.requestSync();
+    workflowTransfer.requestSweep();
     return res.json({ group });
   } catch (error) {
     logger.error('[PUT /api/tars/groups/:id] Failed to update pwc_tars group', error);
@@ -94,6 +96,7 @@ router.delete('/groups/:id', requireTarsAdmin, async (req, res) => {
   try {
     await deleteTarsUserGroup(req.user.tarsId, req.params.id);
     tarsSharing.requestSync();
+    workflowTransfer.requestSweep();
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/groups/:id] Failed to delete pwc_tars group', error);
@@ -115,6 +118,7 @@ router.post('/groups/:id/members', requireTarsAdmin, async (req, res) => {
   try {
     await assignTarsUsersToGroup(req.user.tarsId, req.params.id, userIds);
     tarsSharing.requestSync();
+    workflowTransfer.requestSweep();
     return res.json({ success: true });
   } catch (error) {
     logger.error('[POST /api/tars/groups/:id/members] Failed', error);
@@ -131,6 +135,7 @@ router.delete('/groups/:id/members/:userId', requireTarsAdmin, async (req, res) 
   try {
     await removeTarsUserFromGroup(req.user.tarsId, req.params.id, req.params.userId);
     tarsSharing.requestSync();
+    workflowTransfer.requestSweep();
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/groups/:id/members/:userId] Failed', error);

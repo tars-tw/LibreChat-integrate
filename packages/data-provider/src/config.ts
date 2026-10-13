@@ -4469,6 +4469,10 @@ export const configSchema = z.object({
       /** Seconds between pwc_tars user-group membership syncs into shared groups;
        *  `0` disables the periodic sync (shares and admin edits still sync). */
       tarsGroupSyncSeconds: z.number().int().min(0).max(86400).optional(),
+      /** Seconds between sweeps that hand the Workflow (Langflow) flows of users who lost
+       *  Workflow to the system account (default 600); `0` disables the periodic sweep
+       *  (LibreChat admin edits to users, groups and roles still trigger one). */
+      tarsWorkflowTransferSeconds: z.number().int().min(0).max(86400).optional(),
     })
     .optional(),
   cache: z.boolean().default(true),
