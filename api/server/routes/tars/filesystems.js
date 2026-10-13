@@ -6,6 +6,7 @@ const {
   createTarsFileSystem,
   updateTarsFileSystem,
   deleteTarsFileSystem,
+  fileSystemTestErrorReply,
   testTarsFileSystemConnection,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
@@ -98,11 +99,16 @@ router.post('/data-sources/file-systems/test', async (req, res) => {
     const result = await testTarsFileSystemConnection({
       ...input,
       fileSystemId: req.body?.fileSystemId,
+      listExports: req.body?.listExports === true,
     });
     return res.json(result);
   } catch (error) {
     logger.error('[POST /api/tars/data-sources/file-systems/test] Failed', error);
-    return relayTarsError(res, error, 'Failed to connect to the file server');
+    const { status, error: message } = fileSystemTestErrorReply(
+      error,
+      'Failed to connect to the file server',
+    );
+    return res.status(status).json({ error: message });
   }
 });
 

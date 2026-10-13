@@ -12,8 +12,10 @@ import {
   createTarsFileSystem,
   updateTarsFileSystem,
   deleteTarsFileSystem,
+  fileSystemTestErrorReply,
   testTarsFileSystemConnection,
 } from './filesystems';
+import { TarsRequestError } from './client';
 
 const BASE_URL = 'http://tars.test';
 
@@ -146,9 +148,10 @@ describe('updateTarsFileSystem', () => {
 
 describe('testTarsFileSystemConnection', () => {
   it('asks pwc_tars to walk the tree, which it skips without is_sync_all', async () => {
+    /** pwc_tars walks SMB from the share root, so the share name is not in the path. */
     const fetchMock = jest
       .spyOn(global, 'fetch')
-      .mockResolvedValue(buildResponse(200, { files: ['public/reports/q1.pdf'] }));
+      .mockResolvedValue(buildResponse(200, { files: ['reports/q1.pdf'] }));
 
     const result = await testTarsFileSystemConnection(
       { ...smbInput, account: 'svc_files', password: 'smb-secret' },
@@ -156,7 +159,50 @@ describe('testTarsFileSystemConnection', () => {
     );
 
     expect(bodyOf(fetchMock).is_sync_all).toBe(true);
-    expect(result.files).toEqual(['public/reports/q1.pdf']);
+    expect(bodyOf(fetchMock).list_exports).toBe(false);
+    expect(result).toEqual({ files: ['reports/q1.pdf'], unreadableDirs: [] });
+  });
+
+  it('relays the subdirectories pwc_tars could not read', async () => {
+    const skipped = [{ path: 'reports/secret', reason: 'STATUS_ACCESS_DENIED' }];
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { files: [], unreadable_dirs: skipped }));
+
+    const result = await testTarsFileSystemConnection(
+      { ...smbInput, account: 'svc_files', password: 'smb-secret' },
+      BASE_URL,
+    );
+
+    expect(result.unreadableDirs).toEqual(skipped);
+  });
+
+  it('asks an NFS server for its exports instead of mounting /', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { files: [], exports: ['/mnt/data'] }));
+
+    const result = await testTarsFileSystemConnection(
+      { name: 'exports', protocol: 'NFS', host: 'nfs.internal', listExports: true },
+      BASE_URL,
+    );
+
+    expect(bodyOf(fetchMock).list_exports).toBe(true);
+    expect(result.exports).toEqual(['/mnt/data']);
+  });
+
+  it('never asks for exports on a protocol other than NFS', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { files: [] }));
+
+    const result = await testTarsFileSystemConnection(
+      { ...smbInput, account: 'svc_files', password: 'smb-secret', listExports: true },
+      BASE_URL,
+    );
+
+    expect(bodyOf(fetchMock).list_exports).toBe(false);
+    expect(result).not.toHaveProperty('exports');
   });
 
   it('fetches the stored credentials when testing an existing group', async () => {
@@ -199,5 +245,59 @@ describe('deleteTarsFileSystem', () => {
       '/api/dataset_file_system/delete_dataset_file_system/fs-1?operator_id=user-1',
     );
     expect(fetchMock.mock.calls[0][1]?.method).toBe('DELETE');
+  });
+});
+
+describe('fileSystemTestErrorReply', () => {
+  const FALLBACK = 'Failed to connect to the file server';
+  const TEST_PATH = '/api/dataset_file_system/test_connection';
+
+  it("relays the file server's reason pwc_tars sends as a 500", () => {
+    const error = new TarsRequestError(
+      500,
+      TEST_PATH,
+      "連線失敗: 550 Can't change directory to /missing: No such file or directory",
+    );
+
+    expect(fileSystemTestErrorReply(error, FALLBACK)).toEqual({
+      status: 502,
+      error: "連線失敗: 550 Can't change directory to /missing: No such file or directory",
+    });
+  });
+
+  it('cuts the pysmb packet dump out of an SMB reason but keeps the share list', () => {
+    const dump = [
+      '',
+      '==================== SMB Message 0 ====================',
+      'SMB Header:',
+      'Command: 0x03 (SMB2_COM_TREE_CONNECT) ',
+      "b'0900000048003a005c'",
+      '==================== SMB Message 1 ====================',
+      'Status: 0xC00000CC ',
+    ].join('\n');
+    const error = new TarsRequestError(
+      400,
+      TEST_PATH,
+      `連線失敗: 無法存取 'NoSuchShare'（Failed to list  on NoSuchShare: Unable to connect to shared device${dump}\n）。伺服器可列出的共享清單為: ['SharedFolder']。`,
+    );
+
+    expect(fileSystemTestErrorReply(error, FALLBACK)).toEqual({
+      status: 400,
+      error:
+        "連線失敗: 無法存取 'NoSuchShare'（Failed to list  on NoSuchShare: Unable to connect to shared device）。伺服器可列出的共享清單為: ['SharedFolder']。",
+    });
+  });
+
+  it('names a timeout so the form can say so', () => {
+    const timeout = Object.assign(new Error('This operation was aborted'), { name: 'AbortError' });
+
+    expect(fileSystemTestErrorReply(timeout, FALLBACK)).toEqual({ status: 504, error: FALLBACK });
+  });
+
+  it('falls back when pwc_tars gave no reason', () => {
+    expect(fileSystemTestErrorReply(new TarsRequestError(500, TEST_PATH), FALLBACK)).toEqual({
+      status: 500,
+      error: FALLBACK,
+    });
   });
 });
