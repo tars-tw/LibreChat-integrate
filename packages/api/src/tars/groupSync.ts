@@ -147,8 +147,11 @@ export function createTarsGroupSyncScheduler(deps: {
   run: () => Promise<unknown>;
   isLeader: () => Promise<boolean>;
   debounceMs?: number;
+  /** Names the job in logs; other periodic pwc_tars jobs reuse this scheduler. */
+  label?: string;
 }): TarsGroupSyncScheduler {
   const debounceMs = deps.debounceMs ?? 1000;
+  const label = deps.label ?? 'tarsGroupSync';
   let timer: ReturnType<typeof setInterval> | undefined;
   let debounce: ReturnType<typeof setTimeout> | undefined;
   let running: Promise<void> | undefined;
@@ -163,7 +166,7 @@ export function createTarsGroupSyncScheduler(deps: {
       .run()
       .then(() => undefined)
       .catch((error) => {
-        logger.error('[tarsGroupSync] pwc_tars group sync failed:', error);
+        logger.error(`[${label}] run failed:`, error);
       })
       .finally(() => {
         running = undefined;
@@ -184,7 +187,7 @@ export function createTarsGroupSyncScheduler(deps: {
         }
       })
       .catch((error) => {
-        logger.error('[tarsGroupSync] leader check failed:', error);
+        logger.error(`[${label}] leader check failed:`, error);
       });
   };
 
