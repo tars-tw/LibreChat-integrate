@@ -19,7 +19,7 @@
 | Node.js **24.16.0** | `nvm use` 讀 `.nvmrc`;沒裝先 `nvm install 24.16.0` | `node -v` |
 | Docker | 只用來跑依賴服務(MongoDB + Meilisearch),**不跑官方 api image** | `docker info` |
 | **pwc_tars** (`:5000`) | 登入/知識庫/工具的真正後端,由 pwc_tars 專案自己啟動 | `curl localhost:5000/api/auth/sso/status` |
-| Langflow (`:7860`) | 用 Langflow 整合才需要;**開機時要在線**(project id 開機探測一次) | `curl localhost:7860/health` |
+| Langflow (`:7860`) | 用 Langflow 整合才需要;須為 TARS 版 `langflow_tars` `187d365173`(`feat/langflow-sso`)之後的版本,舊版沒有 `/api/v1/tars/*`,Workflow 頁與從對話執行 flow 都會 404。建議比 LibreChat 先啟動 | `curl localhost:7860/health`;版本:`curl -s -o /dev/null -w '%{http_code}' localhost:7860/api/v1/tars/flows` 回 `403` 為新版、`404` 為舊版 |
 
 ### 1.2 初始化指令(只做一次)
 
@@ -44,7 +44,8 @@ npm run frontend                           # build 全部 packages + client
 | `HOST` | `127.0.0.1`(同機)或 `0.0.0.0`(跨機) | 預設 `localhost` 在 macOS 綁 IPv6-only,pwc_tars 走 IPv4 探測會 `ECONNREFUSED` |
 | `MONGO_URI` | `mongodb://127.0.0.1:27017/LibreChat` | 後端在本機跑,連 override 打開的 27017 |
 | `VITE_LANGFLOW_URL` | `http://localhost:7860` | Langflow URL 單一來源(iframe + MCP url host + SSRF 白名單)。**Vite build-time,改了要重 build 前端** |
-| `LANGFLOW_API_KEY` | 你的 Langflow API key | `librechat.yaml` 以 `${LANGFLOW_API_KEY}` 帶入 MCP header |
+| `LANGFLOW_API_KEY` | Langflow **系統共用帳號**(`LANGFLOW_SUPERUSER`,預設 `langflow`)的 API key | `librechat.yaml` 以 `${LANGFLOW_API_KEY}` 帶入 MCP header,也用來同步「Workflow ·」Agent。要以系統帳號登入 Langflow 後在 Settings > API Keys 產生(管理員可從 Workflow 頁的工作區切換器進入「系統共用帳號」);其他帳號的 key 會被 Langflow 拒絕(403) |
+| `TARS_LANGFLOW_SSO_SECRET` | `openssl rand -hex 32` 產生,至少 32 字元 | Workflow 頁的一次性登入票證與 Langflow 帳號移交呼叫用它簽章,**必須和 Langflow 端(本機為 pwc_tars `infra/langflow/.env`)的同名變數相同**。不設則 Workflow 頁顯示「Workflow 登入尚未完成設定」(503);兩邊不一致則顯示「登入連結已失效」。從對話執行「Workflow ·」Agent 不需要它 |
 | `SCHEDULES_SINGLE_PROCESS` | `true` | 單機跑排程,避免多實例重複執行 |
 | `HTTP_REQUEST_TIMEOUT_MS` | `1800000`(30 分鐘) | Node 預設 300 秒,涵蓋整個請求含 body。大檔上傳(含音檔轉錄、OCR)在回應前同步處理,超過上限時瀏覽器會看到請求中斷 |
 
@@ -59,7 +60,7 @@ npm run frontend                           # build 全部 packages + client
 | `TARS_ADMIN_ROLE_IDS` | `1` | pwc_tars `role_id` 屬此集合者 → LibreChat ADMIN |
 | `TARS_PLUGIN_TOOL_TIMEOUT_MS` | `240000`(4 分鐘) | 聊天室呼叫 pwc_tars 外掛工具(`tars_tool_sdk`,`POST /api/langflow-service/tools/<name>`)的上限。外掛本身由 pwc_tars `backend/.env` 的 `TARS_TOOL_PLUGINS_DIR` 載入,LibreChat 這邊不用設定;在專用腦管理的「外掛工具」區塊決定每個腦要顯示哪些 |
 
-> Langflow 的 project id **不用設**:開機時後端從唯一的 Langflow 專案自動探測。Langflow 有多個專案時才需在 `.env` 設 `LANGFLOW_PROJECT_ID`。
+> Langflow 的 project id **不用設**:MCP 連線改走 `/api/v1/tars/mcp/streamable`,涵蓋所有使用者、所有專案的 flow,不再需要 `LANGFLOW_PROJECT_ID`。Langflow 端要設的值(`TARS_LANGFLOW_SSO_SECRET`、正式部署要關閉 auto login 等)見 pwc_tars `infra/langflow/README.md`。
 
 ### 1.4 `docker-compose.override.yml`(全文)
 
@@ -150,14 +151,14 @@ webSearch:
   tavilyApiKey: '${tars:KEY_TAVILY}'
 
 mcpServers:
-  # Langflow integration — exposes the flows of a Langflow project as callable tools.
-  # Which flows appear is controlled on the Langflow side (per-flow `mcp_enabled` toggle in the
-  # project's MCP settings). Nothing here is per-machine: the host is ${VITE_LANGFLOW_URL} (.env),
-  # the api key ${LANGFLOW_API_KEY} (.env), and the project id is auto-discovered at boot from the
-  # single Langflow project (api/server/services/langflow/project.js) into ${LANGFLOW_PROJECT_ID}.
+  # Langflow integration — Langflow flows exposed as callable tools (the "Workflow ·" agents).
+  # Each chatting user gets the shared account's MCP-enabled flows plus their own, in any project;
+  # a flow is published by its MCP switch in Langflow. Nothing here is per-machine: the host is
+  # ${VITE_LANGFLOW_URL} (.env) and the key ${LANGFLOW_API_KEY} (.env), which must be the Langflow
+  # system account's (LANGFLOW_SUPERUSER) — Langflow refuses any other key on this endpoint.
   langflow:
-    type: sse
-    url: '${VITE_LANGFLOW_URL}/api/v1/mcp/project/${LANGFLOW_PROJECT_ID}/sse'
+    type: streamable-http
+    url: '${VITE_LANGFLOW_URL}/api/v1/tars/mcp/streamable'
     headers:
       x-api-key: '${LANGFLOW_API_KEY}'
       # 把發話者的 LibreChat user id 以 Langflow request-variable header 帶進 flow：
@@ -205,7 +206,7 @@ npm run backend      # Express 在 :3080 同時 serve 打包好的前端 + API
 → 瀏覽器開 **http://localhost:3080**。
 
 - `:3080` 吐的是「上次 build 的靜態前端」——改了 `client/` 沒重跑 `npm run frontend`(或 `cd client && npm run build`)就永遠是舊畫面。
-- 對外部署時把網域指到 `:3080`,並改 `.env`:`VITE_LANGFLOW_URL` 設為對外 Langflow 網址(**要用主站同網域的子網域**,否則 iframe 被第三方 cookie 政策擋)、重新產生 `JWT_*`/`CREDS_*`、`LLM_GATEWAY_ALLOW_UNAUTHENTICATED` 改為 `LLM_GATEWAY_SERVICE_KEY`。改任何 `VITE_*` 都要重跑 `npm run frontend`。
+- 對外部署時把網域指到 `:3080`,並改 `.env`:`VITE_LANGFLOW_URL` 設為對外 Langflow 網址(**要用主站同網域的子網域**,否則 iframe 被第三方 cookie 政策擋)、重新產生 `JWT_*`/`CREDS_*`/`TARS_LANGFLOW_SSO_SECRET`(**每個部署各自產生,不同客戶不可共用同一組**;SSO secret 改了要同步到 Langflow 端並兩邊重啟)、`LLM_GATEWAY_ALLOW_UNAUTHENTICATED` 改為 `LLM_GATEWAY_SERVICE_KEY`。改任何 `VITE_*` 都要重跑 `npm run frontend`。
 
 ---
 
@@ -246,6 +247,7 @@ npm run build
 
 | 日期 | 檔案 | 變更內容 | 相關 commit |
 |---|---|---|---|
+| 2026-10-13 | `librechat.yaml`、`.env` | Langflow 改為每個 pwc_tars 使用者各自的帳號(Workflow SSO)。`librechat.yaml` 的 `mcpServers.langflow` 改為 `type: streamable-http`、`url: '${VITE_LANGFLOW_URL}/api/v1/tars/mcp/streamable'`(舊的 `/api/v1/mcp/project/${LANGFLOW_PROJECT_ID}/sse` 不再使用)。`.env` 新增必填 `TARS_LANGFLOW_SSO_SECRET`(與 Langflow 端相同);`LANGFLOW_API_KEY` 必須改用 Langflow 系統共用帳號的 key;`LANGFLOW_PROJECT_ID` 不再需要。Langflow 須同步升級到 `langflow_tars` `187d365173` 之後,否則 Workflow 頁與從對話執行 flow 都會 404;升級後也要重 build 前端。 | `a6de9bf87`、`876ec6d6a`(PR #91) |
 | 2026-10-05 | `librechat.yaml` | `endpoints.agents.capabilities` 新增 `file_agent`(產生檔案的 capability 閘門)。產生檔案(`tars_generate_file`,PDF / Word / Excel / PPT)改為獨立開關,不再隨知識庫檢索、資料庫查詢、產生圖表或附加試算表自動掛上;**既有部署若未加 `file_agent`,產生檔案會整個不可用**。另有 `interface.fileAgent`(角色權限 `FILE_AGENT.USE`,預設開)。`.env` 無新增值。 | `feature/tool_plugin`(待 commit) |
 | 2026-10-03 | `librechat.yaml`、`.env` | 聊天上傳改回 LibreChat 原生檔案(不再用 pwc_tars 長期記憶區)。`librechat.yaml` 新增 `fileConfig.defaultLLMDeliveryPath.overrides`,把 `text/csv`、`application/csv`、`application/vnd.ms-excel`、`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` 設為 `none`(只存原檔,整張表不會被抽成文字塞進 prompt;試算表由 pwc_tars 資料工具查詢)。`.env` 的 `TARS_MEMORY_UPLOAD_TIMEOUT_MS` 已無作用,可刪。pwc_tars 端:sys_config `KEY_LIBRECHAT_BASE_URL` 必須是 pwc_tars 連得到的 LibreChat 位址(資料工具從它的 `/api/tars/files` 下載試算表);可選 env `LIBRECHAT_DATA_CACHE_DIR`、`LIBRECHAT_DATA_FILE_MAX_BYTES`(預設 100MB)、`LIBRECHAT_DATA_CACHE_TTL_HOURS`(預設 24)、`LIBRECHAT_DATA_FILE_TIMEOUT_SEC`(預設 120)。同日再加 `speech.stt.openai`(`apiKey: '${tars:KEY_OPEN_AI_API}'` 即時讀 pwc_tars sys_config、`model: gpt-4o-mini-transcribe`)與 `fileConfig.defaultLLMDeliveryPath.overrides` 的 `audio/*: text`,音檔一律轉成逐字稿再給模型;`KEY_OPEN_AI_API` 沒有有效值時音檔上傳會失敗。`speech.stt.traditionalChinese: true` 把逐字稿轉成繁體台灣用語(OpenCC s2twp,與 pwc_tars 相同;新增依賴 `opencc-js`),附件與輸入框麥克風都套用;不設則維持模型原樣輸出。STT 改為可設多個 provider:`speech.stt.provider: openai` 為預設(麥克風與非 Gemini 對話),`speech.stt.endpoints: { google: gemini }` 讓 Gemini 對話裡附的音檔改由 `speech.stt.gemini`(`apiKey: '${tars:KEY_GEMINI_API}'`、`model: gemini-3.6-flash`,`generateContent` 直接聽音檔轉錄)處理。 | `feature/longterm_memory_fix`、pwc_tars `feature/librechat_data_file_refs`(待 commit) |
 | 2026-10-02 | `librechat.yaml` | 新增 `webSearch` 區塊:網路搜尋只用 Tavily(`searchProvider`/`scraperProvider: tavily`、`rerankerType: none`),key 為 `tavilyApiKey: '${tars:KEY_TAVILY}'`,即時讀 pwc_tars sys_config `KEY_TAVILY`(30 秒快取)。`.env` 的 `TAVILY_API_KEY` 不再被網路搜尋使用;`KEY_TAVILY` 未設或 pwc_tars 連不到時網路搜尋不可用。 | `feature/web_search_tavily_only`(待 commit) |
