@@ -862,7 +862,7 @@ export const deleteTarsFileSystem = (id: string): Promise<{ success: boolean }> 
 };
 
 export const testTarsFileSystemConnection = (
-  data: t.TTarsFileSystemInput & { fileSystemId?: string },
+  data: t.TTarsFileSystemTestInput,
 ): Promise<t.TTarsFileSystemConnectionTest> => {
   return request.post(endpoints.tarsFileSystemTest(), data);
 };

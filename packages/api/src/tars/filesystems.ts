@@ -3,9 +3,14 @@ import {
   tarsProtocolNeedsCredentials,
   tarsProtocolUsesHostName,
 } from 'librechat-data-provider';
-import type { TTarsFileProtocol } from 'librechat-data-provider';
+import type {
+  TTarsFileProtocol,
+  TTarsUnreadableDir,
+  TTarsFileSystemConnectionTest,
+} from 'librechat-data-provider';
 import type { TarsFileSystemSource, TarsRawFileSystem } from './datasets';
-import { tarsFetch, TarsRequestError } from './client';
+import type { TarsErrorReply } from './client';
+import { tarsFetch, tarsErrorReply, TarsRequestError } from './client';
 import { toSafeFileSystem } from './datasets';
 
 /**
@@ -31,9 +36,10 @@ export interface TarsFileSystemInput {
   allowedKmIds?: string[];
 }
 
-/** What `POST /api/dataset_file_system/test_connection` reports back. */
-export interface TarsFileSystemConnectionTest {
-  files: string[];
+interface ConnectionTestResponse {
+  files?: string[];
+  exports?: string[];
+  unreadable_dirs?: TTarsUnreadableDir[];
 }
 
 interface FileSystemListResponse {
@@ -167,11 +173,15 @@ export async function deleteTarsFileSystem(
  *
  * `fileSystemId` lets an edit form test with the stored credentials still
  * hidden: pass the id and leave the account or password blank.
+ *
+ * `listExports` is how an NFS form that has not picked an export yet asks for
+ * the server's exports: walking `/` instead would try to mount it, which most
+ * servers do not export.
  */
 export async function testTarsFileSystemConnection(
-  input: TarsFileSystemInput & { fileSystemId?: string },
+  input: TarsFileSystemInput & { fileSystemId?: string; listExports?: boolean },
   baseUrl?: string,
-): Promise<TarsFileSystemConnectionTest> {
+): Promise<TTarsFileSystemConnectionTest> {
   let credentials = credentialsFor(input);
   const needsStored =
     tarsProtocolNeedsCredentials(input.protocol) &&
@@ -192,7 +202,7 @@ export async function testTarsFileSystemConnection(
     };
   }
 
-  const data = await tarsFetch<{ files?: string[] }>('/api/dataset_file_system/test_connection', {
+  const data = await tarsFetch<ConnectionTestResponse>('/api/dataset_file_system/test_connection', {
     method: 'POST',
     timeoutMs: CONNECT_TIMEOUT_MS,
     baseUrl,
@@ -204,9 +214,42 @@ export async function testTarsFileSystemConnection(
       account: credentials.account !== '' ? credentials.account : null,
       password: credentials.password !== '' ? credentials.password : null,
       hostname: tarsProtocolUsesHostName(input.protocol) ? (input.hostName ?? null) : null,
+      list_exports: input.protocol === 'NFS' && input.listExports === true,
       is_sync_all: true,
     },
   });
 
-  return { files: data?.files ?? [] };
+  const nfsExports = data?.exports;
+  return {
+    files: data?.files ?? [],
+    unreadableDirs: data?.unreadable_dirs ?? [],
+    ...(Array.isArray(nfsExports) ? { exports: nfsExports } : {}),
+  };
+}
+
+/**
+ * pysmb's errors append a dump of every SMB packet exchanged, and pwc_tars
+ * puts the whole string inside its `（…）` — so the dump is cut back out,
+ * leaving the reason and the share list that follows it.
+ */
+const withoutSmbPacketDump = (message: string): string =>
+  message.replace(/\n=+ SMB Message \d+ =+[\s\S]*?(?=）|$)/, '');
+
+/**
+ * Answers a failed connection test. pwc_tars reports most failures as a 500
+ * whose message is the file server's own reason (`連線失敗: 550 …`), so unlike
+ * other routes that reason is relayed on a 5xx too; a timeout becomes a 504
+ * the form can name.
+ */
+export function fileSystemTestErrorReply(error: unknown, fallback: string): TarsErrorReply {
+  if (error instanceof TarsRequestError && error.serverMessage) {
+    return {
+      status: error.status < 500 ? error.status : 502,
+      error: withoutSmbPacketDump(error.serverMessage),
+    };
+  }
+  if (error instanceof Error && error.name === 'AbortError') {
+    return { status: 504, error: fallback };
+  }
+  return tarsErrorReply(error, fallback);
 }

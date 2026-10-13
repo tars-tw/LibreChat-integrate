@@ -138,6 +138,7 @@ export default function WebsiteModal({
                 selected={form.knowledgeBaseIds}
                 onChange={(values) => set('knowledgeBaseIds', values)}
                 placeholder={localize('com_ui_tars_web_select_knowledge_base')}
+                chips
               />
               <p className="text-xs text-text-secondary">
                 {localize('com_ui_tars_web_knowledge_base_hint')}
