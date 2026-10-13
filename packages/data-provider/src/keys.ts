@@ -79,6 +79,7 @@ export enum QueryKeys {
   tarsTicket = 'tarsTicket',
   tarsTicketOptions = 'tarsTicketOptions',
   tarsReleaseNotes = 'tarsReleaseNotes',
+  tarsWorkflowAccounts = 'tarsWorkflowAccounts',
   tarsSyncSchedule = 'tarsSyncSchedule',
   tarsUserPrepareData = 'tarsUserPrepareData',
   tarsAdWhitelist = 'tarsAdWhitelist',

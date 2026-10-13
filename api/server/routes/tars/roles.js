@@ -8,6 +8,7 @@ const {
   fetchTarsRolePrepareData,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const workflowTransfer = require('~/server/services/workflowTransfer');
 const { relayTarsError } = require('./relay');
 
 const router = express.Router();
@@ -74,6 +75,7 @@ router.post('/roles/export-log', requireTarsAdmin, async (req, res) => {
 router.put('/roles/:id', requireTarsAdmin, async (req, res) => {
   try {
     const role = await updateTarsRole(req.user.tarsId, req.params.id, req.body ?? {});
+    workflowTransfer.requestSweep();
     return res.json({ role });
   } catch (error) {
     logger.error('[PUT /api/tars/roles/:id] Failed to update pwc_tars role', error);
@@ -90,6 +92,7 @@ router.put('/roles/:id', requireTarsAdmin, async (req, res) => {
 router.delete('/roles/:id', requireTarsAdmin, async (req, res) => {
   try {
     await deleteTarsRole(req.user.tarsId, req.params.id);
+    workflowTransfer.requestSweep();
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/roles/:id] Failed to delete pwc_tars role', error);

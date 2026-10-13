@@ -1187,6 +1187,21 @@ export const getTarsReleaseNotes = (): Promise<t.TTarsReleaseNotesResponse> => {
   return request.get(endpoints.tarsReleaseNotes());
 };
 
+/**
+ * A one-time ticket the Workflow iframe trades for a Langflow session: on the user's own account,
+ * or — for a pwc_tars admin passing `actAs` — on the system account or another user's workspace.
+ */
+export const createTarsWorkflowTicket = (
+  actAs?: t.TTarsWorkflowActAs,
+): Promise<t.TTarsWorkflowTicket> => {
+  return request.post(endpoints.tarsWorkflowTicket(), actAs ? { actAs } : {});
+};
+
+/** Admin: the workspaces they can switch into (everyone who has entered Workflow but them). */
+export const getTarsWorkflowAccounts = (): Promise<t.TTarsWorkflowAccountsResponse> => {
+  return request.get(endpoints.tarsWorkflowAccounts());
+};
+
 export const getTarsRoles = (): Promise<t.TTarsRolePrepareData> => {
   return request.get(endpoints.tarsRoles());
 };
