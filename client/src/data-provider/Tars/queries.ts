@@ -80,6 +80,8 @@ import type {
   TTarsTokenReportUserResponse,
   TTarsReleaseNote,
   TTarsReleaseNotesResponse,
+  TTarsWorkflowAccount,
+  TTarsWorkflowAccountsResponse,
 } from 'librechat-data-provider';
 import type { UseQueryOptions, QueryObserverResult } from '@tanstack/react-query';
 import { useGetStartupConfig } from '../Endpoints';
@@ -754,6 +756,24 @@ export const useTarsReleaseNotesQuery = (
     {
       select: (data) => data.releaseNotes ?? [],
       ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Admin: the Workflow workspaces they can switch into. Refetched on every visit to the page,
+ * since the list grows as people open Workflow for the first time.
+ */
+export const useTarsWorkflowAccountsQuery = (
+  config?: UseQueryOptions<TTarsWorkflowAccountsResponse, unknown, TTarsWorkflowAccount[]>,
+): QueryObserverResult<TTarsWorkflowAccount[]> => {
+  return useQuery<TTarsWorkflowAccountsResponse, unknown, TTarsWorkflowAccount[]>(
+    [QueryKeys.tarsWorkflowAccounts],
+    () => dataService.getTarsWorkflowAccounts(),
+    {
+      select: (data) => data.accounts ?? [],
+      refetchOnWindowFocus: false,
       ...config,
     },
   );

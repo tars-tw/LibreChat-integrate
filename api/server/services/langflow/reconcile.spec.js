@@ -1,15 +1,19 @@
 /**
- * Integration test for the Langflow → shared-agent reconcile.
+ * Integration test for the Langflow → Workflow agent reconcile.
  *
  * Langflow keeps a flow's `action_name` fixed when the flow is renamed, so the agent id is stable
  * while the display name is not. The reconcile therefore has to converge on the id: rename in
  * place, drop the rows a create-only pass left behind, and remove agents whose flow is gone.
- * Only the outbound Langflow call and the ACL grant are stubbed; the agent writes are real.
+ * Shared flows (the system account's) become agents everyone can use; a user's own flows become
+ * agents only they can use. Only the outbound Langflow call and the ACL grant are stubbed; the
+ * agent writes are real.
  */
 
 jest.mock('~/server/services/PermissionService', () => ({
   grantPermission: jest.fn(async () => undefined),
 }));
+
+const { grantPermission } = require('~/server/services/PermissionService');
 
 /** The model catalogue this instance serves; only the endpoint→models shape matters here. */
 jest.mock('~/server/controllers/ModelController', () => ({
@@ -29,27 +33,23 @@ const { reconcileLangflowAgents } = require('./reconcile');
 
 const OWNER_EMAIL = 'langflow-owner@example.com';
 
-/** Shape of one entry in Langflow's `GET /api/v1/mcp/project/:id` response. */
+/** One row of Langflow's `GET /api/v1/tars/flows`: a shared (system account) flow. */
 const flow = (name, actionName, model) => ({
-  id: `flow-${actionName}`,
+  tool_name: actionName,
+  flow_id: `flow-${actionName}`,
   name,
-  action_name: actionName,
   description: `${name} description`,
-  mcp_enabled: true,
-  /** Not part of the MCP listing — the test's stand-in for what the flow's TarsTool node holds,
-   *  which the reconcile reads from `GET /api/v1/flows/:id`. */
-  model,
+  owner: 'system',
+  tars_model: model ?? null,
+  action_name: actionName,
 });
 
-const flowDefinition = (model) => ({
-  data: {
-    nodes: [
-      { data: { type: 'ChatInput', node: { template: {} } } },
-      {
-        data: { type: 'TarsTool', node: { template: { ctx__model_name: { value: model ?? '' } } } },
-      },
-    ],
-  },
+/** A flow of the chatting user's own; Langflow names its tool with a `my_` prefix. */
+const personalFlow = (name, toolName) => ({
+  ...flow(name, toolName),
+  tool_name: `my_${toolName}`,
+  flow_id: `flow-my-${toolName}`,
+  owner: 'personal',
 });
 
 describe('reconcileLangflowAgents', () => {
@@ -60,23 +60,20 @@ describe('reconcileLangflowAgents', () => {
    *  back, so the clock is advanced between them rather than the debounce being reached into. */
   let clock;
 
-  /** Serves both Langflow calls the reconcile makes: the MCP listing, and the per-flow definition
-   *  it reads the TARS node's model from. */
-  const respondWith = (flows) => {
-    global.fetch = jest.fn(async (url) => {
-      const match = String(url).match(/\/api\/v1\/flows\/(.+)$/);
-      if (match) {
-        const source = flows.find((entry) => entry.id === match[1]);
-        return { ok: true, json: async () => flowDefinition(source?.model) };
-      }
-      return { ok: true, json: async () => ({ tools: flows }) };
+  /** Langflow answers the flows list; the chatting user it was asked about decides the personal rows. */
+  const respondWith = (flows, personalByTarsId = {}) => {
+    global.fetch = jest.fn(async (url, init) => {
+      expect(String(url)).toBe('http://langflow.test/api/v1/tars/flows');
+      expect(init.headers['x-api-key']).toBe('test-key');
+      const tarsId = init.headers['x-langflow-global-var-tars_user_id'];
+      return { ok: true, json: async () => [...flows, ...(personalByTarsId[tarsId] ?? [])] };
     });
   };
 
-  const reconcile = async (flows) => {
-    respondWith(flows);
+  const reconcile = async (flows, user = { id: 'req-user' }, personal = {}) => {
+    respondWith(flows, personal);
     clock += 60_000;
-    await reconcileLangflowAgents({ user: { id: 'req-user' } });
+    await reconcileLangflowAgents({ user });
   };
 
   const agentNames = async () =>
@@ -87,7 +84,6 @@ describe('reconcileLangflowAgents', () => {
     await mongoose.connect(mongoServer.getUri());
     process.env.LANGFLOW_API_KEY = 'test-key';
     process.env.VITE_LANGFLOW_URL = 'http://langflow.test';
-    process.env.LANGFLOW_PROJECT_ID = 'project-1';
     process.env.LANGFLOW_AGENT_OWNER_EMAIL = OWNER_EMAIL;
     const owner = await mongoose.models.User.create({
       email: OWNER_EMAIL,
@@ -106,6 +102,7 @@ describe('reconcileLangflowAgents', () => {
 
   beforeEach(async () => {
     await mongoose.models.Agent.deleteMany({});
+    grantPermission.mockClear();
   });
 
   it('creates one shared agent per MCP-enabled flow', async () => {
@@ -248,5 +245,90 @@ describe('reconcileLangflowAgents', () => {
     await reconcile([flow('TARS_tool', 'tars_rag', 'gemini-3.6-flash')]);
     const [second] = await db.getAgents({ id: 'agent_langflow_tars_rag' });
     expect(second.updatedAt.getTime()).toBe(first.updatedAt.getTime());
+  });
+
+  describe('personal flows', () => {
+    let alice;
+    let bob;
+    const personalId = (user, tool) => `agent_langflow_p_${user._id}_my_${tool}`;
+    const asUser = (user) => ({ id: user._id.toString(), tarsId: user.tarsId });
+
+    beforeAll(async () => {
+      alice = await mongoose.models.User.create({
+        email: 'alice@example.com',
+        provider: 'tars',
+        tarsId: 'tars-alice',
+      });
+      bob = await mongoose.models.User.create({
+        email: 'bob@example.com',
+        provider: 'tars',
+        tarsId: 'tars-bob',
+      });
+    });
+
+    it("publishes a user's own flows as agents only they can use", async () => {
+      await reconcile([flow('Shared', 'shared')], asUser(alice), {
+        'tars-alice': [personalFlow('My Notes', 'notes')],
+      });
+
+      const [agent] = await db.getAgents({ id: personalId(alice, 'notes') });
+      expect(agent.name).toBe('Workflow · My Notes');
+      expect(agent.author.toString()).toBe(alice._id.toString());
+      expect(agent.tools).toEqual(['my_notes_mcp_langflow']);
+      expect(grantPermission).toHaveBeenCalledWith(
+        expect.objectContaining({
+          principalType: 'user',
+          principalId: alice._id.toString(),
+          resourceId: agent._id,
+          accessRoleId: 'agent_viewer',
+        }),
+      );
+      expect(await agentNames()).toEqual(['agent_langflow_shared|Workflow · Shared']);
+    });
+
+    it('removes a personal agent once its flow is unpublished', async () => {
+      await reconcile([flow('Shared', 'shared')], asUser(alice), {
+        'tars-alice': [personalFlow('My Notes', 'notes')],
+      });
+      await reconcile([flow('Shared', 'shared')], asUser(alice), { 'tars-alice': [] });
+
+      expect(await db.getAgents({ id: new RegExp(`^agent_langflow_p_${alice._id}_`) })).toEqual([]);
+    });
+
+    it("never touches another user's personal agents", async () => {
+      await reconcile([flow('Shared', 'shared')], asUser(bob), {
+        'tars-bob': [personalFlow('Bob Report', 'report')],
+      });
+      await reconcile([flow('Shared', 'shared')], asUser(alice), { 'tars-alice': [] });
+
+      expect(await db.getAgents({ id: personalId(bob, 'report') })).toHaveLength(1);
+    });
+
+    it("keeps the shared owner's own personal agents out of the shared clean-up", async () => {
+      const owner = await mongoose.models.User.findById(ownerId);
+      owner.tarsId = 'tars-owner';
+      await owner.save();
+      const asOwner = { id: ownerId.toString(), tarsId: 'tars-owner' };
+
+      await reconcile([flow('Shared', 'shared')], asOwner, {
+        'tars-owner': [personalFlow('Owner Draft', 'draft')],
+      });
+      await reconcile([flow('Shared', 'shared')], { id: 'req-user' });
+
+      expect(await db.getAgents({ id: personalId(owner, 'draft') })).toHaveLength(1);
+      expect(await db.getAgents({ id: 'agent_langflow_shared' })).toHaveLength(1);
+    });
+
+    it('syncs nothing personal for a user not linked to pwc_tars', async () => {
+      await reconcile(
+        [flow('Shared', 'shared')],
+        { id: alice._id.toString() },
+        {
+          undefined: [personalFlow('Ghost', 'ghost')],
+        },
+      );
+
+      expect(await db.getAgents({ id: new RegExp('^agent_langflow_p_') })).toEqual([]);
+    });
   });
 });

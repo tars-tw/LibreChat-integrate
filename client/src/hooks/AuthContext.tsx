@@ -49,6 +49,7 @@ import {
 import { resetChatFilterSessionAtom } from '~/components/Conversations/chatFilters';
 import { TAuthConfig, TUserContext, TAuthContext, TResError } from '~/common';
 import { resetFacetsAtom } from '~/components/Conversations/facets';
+import { signOutOfLangflow } from '~/utils/langflow';
 import useTimeout from './useTimeout';
 import store from '~/store';
 
@@ -261,6 +262,7 @@ const AuthContextProvider = ({
       if (redirect) {
         logoutRedirectRef.current = redirect;
       }
+      signOutOfLangflow();
       logoutMutate(undefined);
     },
     [logoutMutate],

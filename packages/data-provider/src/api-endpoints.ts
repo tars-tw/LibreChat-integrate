@@ -565,6 +565,9 @@ export const tarsTicketOptions = () => `${BASE_URL}/api/tars/tickets/options`;
 export const tarsTicket = (id: string) => `${BASE_URL}/api/tars/tickets/${encodeURIComponent(id)}`;
 export const tarsTicketComments = (id: string) => `${tarsTicket(id)}/comments`;
 export const tarsReleaseNotes = () => `${BASE_URL}/api/tars/home`;
+
+export const tarsWorkflowTicket = () => `${BASE_URL}/api/tars/workflow/ticket`;
+export const tarsWorkflowAccounts = () => `${BASE_URL}/api/tars/workflow/accounts`;
 export const tarsRoles = () => `${BASE_URL}/api/tars/roles`;
 export const tarsRolesExportLog = () => `${tarsRoles()}/export-log`;
 export const tarsRole = (id: string | number) =>

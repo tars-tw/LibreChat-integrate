@@ -3,8 +3,15 @@ const request = require('supertest');
 
 /** Every export is a no-op: the gates under test decide before any handler reaches pwc_tars. */
 jest.mock('@librechat/api', () => {
-  /** Constants read at module load stay numbers; a stub function would make multer's limits NaN. */
-  const stubs = { TARS_TICKET_MAX_FILES: 5, TARS_TICKET_MAX_FILE_MB: 20 };
+  /** Constants read at module load stay numbers; a stub function would make multer's limits NaN.
+   *  Factories called at module load must hand back what their caller mounts or keeps. */
+  const stubs = {
+    TARS_TICKET_MAX_FILES: 5,
+    TARS_TICKET_MAX_FILE_MB: 20,
+    createWorkflowTicketHandler: () => (req, res) => res.json({ ticket: 'stub' }),
+    createWorkflowAccountsHandler: () => (req, res) => res.json({ accounts: [] }),
+    createWorkflowTransfer: () => ({ start: () => {}, requestSweep: () => {}, stop: () => {} }),
+  };
   return new Proxy(stubs, {
     get: (target, key) => {
       if (key === '__esModule') {
@@ -127,6 +134,7 @@ describe('/api/tars auth gates', () => {
     ['get', '/sys-configs'],
     ['get', '/token/configs'],
     ['get', '/usage/openai'],
+    ['get', '/workflow/accounts'],
   ])('keeps %s %s admin-only', async (method, path) => {
     const res = await request(app)
       [method](toUrl(path))

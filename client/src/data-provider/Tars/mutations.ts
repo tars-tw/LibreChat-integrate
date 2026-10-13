@@ -61,6 +61,8 @@ import type {
   TTarsTokenConfigInput,
   TTarsTokenQuotaInput,
   TTarsTokenSystemDefaultInput,
+  TTarsWorkflowTicket,
+  TTarsWorkflowActAs,
 } from 'librechat-data-provider';
 import type { UseMutationResult, UseMutationOptions } from '@tanstack/react-query';
 
@@ -1968,3 +1970,9 @@ export const useDeleteTarsWebsiteSourceMutation = (
     },
     options,
   );
+
+/** Each call mints a new one-time ticket, so this is a mutation rather than a cached query. */
+export const useTarsWorkflowTicketMutation = (
+  options?: UseMutationOptions<TTarsWorkflowTicket, unknown, TTarsWorkflowActAs | undefined>,
+): UseMutationResult<TTarsWorkflowTicket, unknown, TTarsWorkflowActAs | undefined> =>
+  useMutation((actAs?: TTarsWorkflowActAs) => dataService.createTarsWorkflowTicket(actAs), options);

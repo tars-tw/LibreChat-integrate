@@ -100,6 +100,7 @@ const configureSocialLogins = require('./socialLogins');
 const createSpaFallback = require('./utils/fallback');
 const { getAppConfig, rederiveEndpoints } = require('./services/Config');
 const tarsSharing = require('./services/tarsSharing');
+const workflowTransfer = require('./services/workflowTransfer');
 const staticCache = require('./utils/staticCache');
 const noIndex = require('./middleware/noIndex');
 const agentEventMethods = require('~/models');
@@ -279,6 +280,7 @@ const startServer = async () => {
   startSkillDeletionSweep(appConfig.skillDeletion);
   startExpiredFileSweep({ appConfig, loadAppConfig: getAppConfig });
   tarsSharing.start(appConfig);
+  workflowTransfer.start(appConfig);
   // Register any programmatic tool-approval policy hooks declared in
   // `endpoints.agents.toolApproval.hooks`. Honor the `enabled` kill switch: when tool
   // approval is off we pass no hooks, so a disabled endpoint imports/runs nothing (and any

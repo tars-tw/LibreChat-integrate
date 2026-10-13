@@ -1782,6 +1782,25 @@ export type TTarsReleaseNotesResponse = {
   releaseNotes: TTarsReleaseNote[];
 };
 
+/** `POST /api/tars/workflow/ticket`: redeemable once, within a minute, at Langflow's `/api/v1/tars/sso`. */
+export type TTarsWorkflowTicket = {
+  ticket: string;
+};
+
+/** Whose workspace a pwc_tars admin enters instead of their own. */
+export type TTarsWorkflowActAs = { type: 'system' } | { type: 'user'; tarsId: string };
+
+/** A pwc_tars user who has entered Workflow, so an admin can switch into their workspace. */
+export type TTarsWorkflowAccount = {
+  tarsId: string;
+  username: string;
+  lastLoginAt: string | null;
+};
+
+export type TTarsWorkflowAccountsResponse = {
+  accounts: TTarsWorkflowAccount[];
+};
+
 /** A JSON value as pwc_tars records a tool's arguments. */
 export type TTarsTraceJson =
   | string

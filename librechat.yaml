@@ -99,14 +99,14 @@ speech:
       model: 'gemini-3.6-flash'
 
 mcpServers:
-  # Langflow integration — exposes the flows of a Langflow project as callable tools.
-  # Which flows appear is controlled on the Langflow side (per-flow `mcp_enabled` toggle in the
-  # project's MCP settings). Nothing here is per-machine: the host is ${VITE_LANGFLOW_URL} (.env),
-  # the api key ${LANGFLOW_API_KEY} (.env), and the project id is auto-discovered at boot from the
-  # single Langflow project (api/server/services/langflow/project.js) into ${LANGFLOW_PROJECT_ID}.
+  # Langflow integration — Langflow flows exposed as callable tools (the "Workflow ·" agents).
+  # Each chatting user gets the shared account's MCP-enabled flows plus their own, in any project;
+  # a flow is published by its MCP switch in Langflow. Nothing here is per-machine: the host is
+  # ${VITE_LANGFLOW_URL} (.env) and the key ${LANGFLOW_API_KEY} (.env), which must be the Langflow
+  # system account's (LANGFLOW_SUPERUSER) — Langflow refuses any other key on this endpoint.
   langflow:
-    type: sse
-    url: '${VITE_LANGFLOW_URL}/api/v1/mcp/project/${LANGFLOW_PROJECT_ID}/sse'
+    type: streamable-http
+    url: '${VITE_LANGFLOW_URL}/api/v1/tars/mcp/streamable'
     headers:
       x-api-key: '${LANGFLOW_API_KEY}'
       # 把發話者的 LibreChat user id 以 Langflow request-variable header 帶進 flow：
