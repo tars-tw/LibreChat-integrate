@@ -685,6 +685,23 @@ describe('MCPServerInspector', () => {
       expect(result[plainKey].serverToolName).toBeUndefined();
     });
 
+    it('keeps a tool title that differs from its name, for display', async () => {
+      mockConnection.fetchOrderedToolsSnapshot = jest.fn().mockResolvedValue({
+        complete: true,
+        tools: [
+          { name: '_48', title: '製作48腳位比對表格', inputSchema: { type: 'object' } },
+          { name: 'guide', annotations: { title: 'City guide' }, inputSchema: { type: 'object' } },
+          { name: 'same', title: 'same', inputSchema: { type: 'object' } },
+        ],
+      });
+
+      const { tools: result } = await MCPServerInspector.getToolCatalog('langflow', mockConnection);
+
+      expect(result['_48_mcp_langflow'].title).toBe('製作48腳位比對表格');
+      expect(result['guide_mcp_langflow'].title).toBe('City guide');
+      expect(result['same_mcp_langflow'].title).toBeUndefined();
+    });
+
     it('rejects an incomplete snapshot before it can replace cached tools', async () => {
       mockConnection.fetchOrderedToolsSnapshot = jest.fn().mockResolvedValue({
         tools: [{ name: 'partial', inputSchema: { type: 'object' } }],

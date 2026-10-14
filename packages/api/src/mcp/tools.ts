@@ -13,8 +13,8 @@ import type { JsonSchemaType, SubagentExecutionContext } from '@librechat/agents
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { LCAvailableTools, LCFunctionTool, ParsedServerConfig } from './types';
 import type { MCPClientCapabilityProfile } from './capabilities';
+import { canUseAppConnection, requiresEphemeralUserConnection, getMCPToolTitle } from './utils';
 import { assertToolApprovalExecution, withToolApprovalTransport } from '~/tools/approval';
-import { canUseAppConnection, requiresEphemeralUserConnection } from './utils';
 import { normalizeJsonSchema, resolveJsonSchemaRefs } from './zod';
 import { STANDARD_MCP_CAPABILITY_PROFILE } from './capabilities';
 import { getMCPToolCatalogGeneration } from './toolsChanged';
@@ -71,7 +71,7 @@ export function createMCPStructuredTool(
 
 /** `_meta` carries the MCP Apps `ui.visibility` used to hide app-only tools from the model. */
 export type MCPToolInput = Pick<Tool, 'name' | 'description'> &
-  Partial<Pick<Tool, 'inputSchema' | '_meta'>>;
+  Partial<Pick<Tool, 'inputSchema' | '_meta' | 'title' | 'annotations'>>;
 
 export interface MCPToolCacheDeps {
   getCachedTools: (options?: {
@@ -172,6 +172,10 @@ export function formatMCPServerTools(serverName: string, tools: MCPToolInput[]):
     };
     if (keyToolName !== tool.name) {
       entry.serverToolName = tool.name;
+    }
+    const title = getMCPToolTitle(tool);
+    if (title) {
+      entry.title = title;
     }
     serverTools[name] = entry;
   }

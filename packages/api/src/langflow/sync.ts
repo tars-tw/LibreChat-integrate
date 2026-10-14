@@ -1,10 +1,12 @@
 import { logger } from '@librechat/data-schemas';
 import { AccessRoleIds, PrincipalType, ResourceType } from 'librechat-data-provider';
+import type { LCAvailableTools } from '~/mcp/types';
 import { flowAgentDescription, flowAgentInstructions, flowAgentName } from './labels';
 import { findModelEndpoint } from './models';
 
 const SERVER_NAME = 'langflow';
 const MCP_DELIMITER = '_mcp_';
+const TOOL_KEY_SUFFIX = `${MCP_DELIMITER}${SERVER_NAME}`;
 /** Every agent mirrored from a Langflow flow; the client marks them with the Workflow icon. */
 const AGENT_ID_PREFIX = `agent_${SERVER_NAME}_`;
 /** Personal agents carry their user's id after this, so one user's never collide with another's. */
@@ -66,6 +68,13 @@ export interface WorkflowAgentSyncDeps {
   }) => Promise<unknown>;
   /** The orchestration provider/model for a flow whose TARS node names none. */
   defaultOrchestration: Orchestration;
+  /**
+   * The user's cached catalogue of an MCP server, and dropping it. Langflow names a tool after its
+   * flow and never announces `tools/list_changed`, so a renamed flow leaves the old name cached:
+   * the agent builder offers it and Langflow refuses the call. Both or neither.
+   */
+  getCachedTools?: (userId: string, serverName: string) => Promise<LCAvailableTools | null>;
+  invalidateCachedTools?: (userId: string, serverName: string) => Promise<unknown>;
   debounceMs?: number;
 }
 
@@ -134,6 +143,21 @@ function driftedFields(agent: WorkflowAgent, desired: AgentFields): AgentFields 
     return null;
   }
   return Object.fromEntries(drifted.map((key) => [key, desired[key]])) as AgentFields;
+}
+
+/** The upstream tool names in a cached `langflow` catalogue. */
+function cachedToolNames(tools: LCAvailableTools): Set<string> {
+  return new Set(
+    Object.entries(tools).map(
+      ([key, entry]) =>
+        entry.serverToolName ??
+        (key.endsWith(TOOL_KEY_SUFFIX) ? key.slice(0, -TOOL_KEY_SUFFIX.length) : key),
+    ),
+  );
+}
+
+function sameNames(cached: Set<string>, flows: WorkflowFlow[]): boolean {
+  return cached.size === flows.length && flows.every((flow) => cached.has(flow.toolName));
 }
 
 const isDuplicateKeyError = (error: unknown) =>
@@ -244,6 +268,27 @@ export function createWorkflowAgentSync(deps: WorkflowAgentSyncDeps) {
     }
   };
 
+  /** Drops the user's cached `langflow` catalogue when it no longer names what Langflow publishes,
+   *  so the next listing re-reads `tools/list`. Never throws. */
+  const refreshStaleCatalog = async (userId: string, flows: WorkflowFlow[]) => {
+    const { getCachedTools, invalidateCachedTools } = deps;
+    if (!getCachedTools || !invalidateCachedTools) {
+      return;
+    }
+    try {
+      const cached = await getCachedTools(userId, SERVER_NAME);
+      if (!cached || sameNames(cachedToolNames(cached), flows)) {
+        return;
+      }
+      await invalidateCachedTools(userId, SERVER_NAME);
+      logger.info("[langflow/sync] Langflow's tools changed; dropped the cached catalogue");
+    } catch (error) {
+      logger.warn(
+        `[langflow/sync] Could not check the cached Langflow catalogue: ${(error as Error).message}`,
+      );
+    }
+  };
+
   const syncShared = async (
     flows: WorkflowFlow[],
     modelsConfig: () => Promise<Record<string, string[] | undefined>>,
@@ -326,6 +371,7 @@ export function createWorkflowAgentSync(deps: WorkflowAgentSyncDeps) {
     if (flows == null) {
       return;
     }
+    await refreshStaleCatalog(user.id, flows);
 
     let catalogue: Promise<Record<string, string[] | undefined>> | null = null;
     const cachedModels = () => {

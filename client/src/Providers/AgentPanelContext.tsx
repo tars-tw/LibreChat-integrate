@@ -124,6 +124,7 @@ export function AgentPanelProvider({
           tool_id: tool.pluginKey,
           metadata: {
             ...tool,
+            name: tool.title || tool.name,
             icon: serverData.icon,
             authConfig: serverData.authConfig,
             authenticated: serverData.authenticated,
