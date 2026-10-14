@@ -22,6 +22,7 @@ let mockSkillsActive: boolean;
 let mockUser: { personalization?: { memories?: boolean } } | undefined;
 let mockSkillsQuery: Record<string, unknown>;
 let mockSkillsQueryEnabled: boolean | undefined;
+let mockStartupConfig: { tarsAuth?: boolean } | undefined;
 
 jest.mock('~/hooks', () => ({
   useHasAccess: ({ permissionType }: { permissionType: string }) =>
@@ -49,6 +50,7 @@ jest.mock('~/data-provider', () => ({
     mockSkillsQueryEnabled = options?.enabled;
     return mockSkillsQuery;
   },
+  useGetStartupConfig: () => ({ data: mockStartupConfig }),
 }));
 
 const toggle = (state: unknown, isPinned = false): ToggleFixture => ({
@@ -151,6 +153,7 @@ describe('usePaletteEntries', () => {
     mockSkills = [];
     mockAgentsMap = {};
     mockSkillsActive = true;
+    mockStartupConfig = undefined;
     mockSkillsQuery = {
       get data() {
         return { pages: [{ skills: mockSkills }] };
@@ -607,6 +610,160 @@ describe('usePaletteEntries', () => {
       context.mcpServerManager = { ...context.mcpServerManager, selectableServers: undefined };
       mockContext = context;
       expect(keysOf(entries().result).filter((key) => key.startsWith('mcp:'))).toEqual([]);
+    });
+  });
+
+  describe('pwc_tars', () => {
+    const tarsPermissions = {
+      ...allPermissions,
+      [PermissionTypes.SQL_AGENT]: true,
+      [PermissionTypes.RAG_AGENT]: true,
+      [PermissionTypes.CHART_AGENT]: true,
+      [PermissionTypes.FILE_AGENT]: true,
+    };
+    const tarsCapabilities = {
+      ...allCapabilities,
+      sqlAgentEnabled: true,
+      ragAgentEnabled: true,
+      chartAgentEnabled: true,
+      fileAgentEnabled: true,
+    };
+    const tarsTools = (overrides: Record<string, unknown> = {}) => ({
+      isServerAllowed: (name: string) => name !== 'tars_hidden',
+      getDomainTools: (name: string) =>
+        name === 'tars_stock'
+          ? [
+              { name: 'quote', tool_key: 'quote_mcp_tars_stock' },
+              { name: 'history', tool_key: 'history_mcp_tars_stock' },
+            ]
+          : [],
+      getSelectedToolKeys: () => new Set(['quote_mcp_tars_stock']),
+      toggleToolSelection: jest.fn(),
+      getCredentialsStatus: (name: string) => (name === 'tars_stock' ? 'needed' : undefined),
+      openCredentials: jest.fn(),
+      pendingServers: [{ id: 'srv-9', name: 'Maps', gateway_name: 'tars_maps', tool_count: 3 }],
+      enableServer: jest.fn(),
+      enablingServerId: null,
+      ...overrides,
+    });
+    const tarsContext = (overrides: Record<string, unknown> = {}) => ({
+      ...fullContext(),
+      sqlAgent: toggle(false),
+      ragAgent: toggle(true),
+      chartAgent: toggle(false, true),
+      fileAgent: toggle(false),
+      tarsPlugins: {
+        tools: [{ name: 'summarize', display_name: 'Summarize', description: 'Sum it up' }],
+        isSelected: () => true,
+        isPinned: () => false,
+        toggle: jest.fn(),
+        setPinned: jest.fn(),
+      },
+      mcpServerManager: {
+        selectableServers: [
+          { serverName: 'github', config: { title: 'Github' } },
+          { serverName: 'tars_stock', config: { title: 'Stock' } },
+          { serverName: 'tars_hidden', config: { title: 'Hidden' } },
+        ],
+        mcpValues: ['tars_stock'],
+        toggleServerSelection: jest.fn(),
+        connectionStatus: { tars_stock: { connectionState: 'connected' } },
+      },
+      tarsMcpTools: tarsTools(),
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      mockPermissions = { ...tarsPermissions };
+      mockCapabilities = { ...tarsCapabilities };
+      mockStartupConfig = { tarsAuth: true };
+    });
+
+    it('offers the four capability switches and the brain plugins after web search', () => {
+      mockContext = tarsContext();
+      expect(keysOf(entries().result).slice(0, 6)).toEqual([
+        'builtin:web_search',
+        'builtin:sql_agent',
+        'builtin:rag_agent',
+        'builtin:chart_agent',
+        'builtin:file_agent',
+        'tool:tars_plugin_summarize',
+      ]);
+      const byKey = new Map(entries().result.current.map((entry) => [entry.key, entry]));
+      expect(byKey.get('builtin:rag_agent')?.active).toBe(true);
+      expect(byKey.get('builtin:chart_agent')?.pinned).toBe(true);
+      expect(byKey.get('tool:tars_plugin_summarize')?.active).toBe(true);
+    });
+
+    it('drops charts, files and plugins on a deployment without pwc_tars', () => {
+      mockContext = tarsContext();
+      mockStartupConfig = { tarsAuth: false };
+      const keys = keysOf(entries().result);
+      expect(keys).toContain('builtin:sql_agent');
+      expect(keys).not.toContain('builtin:chart_agent');
+      expect(keys).not.toContain('builtin:file_agent');
+      expect(keys).not.toContain('tool:tars_plugin_summarize');
+    });
+
+    it('gates each capability switch on its role permission', () => {
+      mockContext = tarsContext();
+      mockPermissions = { ...tarsPermissions, [PermissionTypes.SQL_AGENT]: false };
+      expect(keysOf(entries().result)).not.toContain('builtin:sql_agent');
+    });
+
+    it('toggles a capability and a plugin through their own controls', () => {
+      const context = tarsContext();
+      mockContext = context;
+      const { result } = entries();
+      act(() => result.current.find((entry) => entry.key === 'builtin:sql_agent')?.onSelect());
+      expect((context.sqlAgent as ToggleFixture).debouncedChange).toHaveBeenCalledWith({
+        value: true,
+      });
+      act(() =>
+        result.current.find((entry) => entry.key === 'tool:tars_plugin_summarize')?.onSelect(),
+      );
+      expect((context.tarsPlugins as { toggle: jest.Mock }).toggle).toHaveBeenCalledWith(
+        'summarize',
+      );
+    });
+
+    it('hides gateway servers the brain does not grant and lists pending ones to opt into', () => {
+      mockContext = tarsContext();
+      const mcpKeys = keysOf(entries().result).filter((key) => key.startsWith('mcp:'));
+      expect(mcpKeys).toEqual(['mcp:github', 'mcp:tars_stock', 'mcp:pending:srv-9']);
+    });
+
+    it('carries a selected gateway server tools as a chip checklist and its credentials on the row', () => {
+      const tools = tarsTools();
+      mockContext = tarsContext({ tarsMcpTools: tools });
+      const stock = entries().result.current.find((entry) => entry.key === 'mcp:tars_stock');
+      expect(stock?.toolModes?.map((mode) => [mode.label, mode.active])).toEqual([
+        ['quote', true],
+        ['history', false],
+      ]);
+      stock?.toolModes?.[1].onSelect();
+      expect(tools.toggleToolSelection).toHaveBeenCalledWith(
+        'tars_stock',
+        'history_mcp_tars_stock',
+      );
+      const credentials = stock?.modes?.find((mode) => mode.id === 'credentials');
+      expect(credentials?.label).toBe('com_ui_tars_mcp_creds_needed');
+      credentials?.onSelect();
+      expect(tools.openCredentials).toHaveBeenCalledWith('tars_stock');
+    });
+
+    it('opts into a pending server once, and not again while it is enabling', () => {
+      const tools = tarsTools();
+      mockContext = tarsContext({ tarsMcpTools: tools });
+      const pending = () =>
+        entries().result.current.find((entry) => entry.key === 'mcp:pending:srv-9');
+      pending()?.onSelect();
+      expect(tools.enableServer).toHaveBeenCalledWith('srv-9');
+
+      const enabling = tarsTools({ enablingServerId: 'srv-9' });
+      mockContext = tarsContext({ tarsMcpTools: enabling });
+      pending()?.onSelect();
+      expect(enabling.enableServer).not.toHaveBeenCalled();
     });
   });
 });

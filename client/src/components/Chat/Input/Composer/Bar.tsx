@@ -126,25 +126,31 @@ function RoundButton({
  */
 interface ChipModesProps {
   modes: PaletteMode[];
+  /** Each mode switches on and off on its own (a checklist, not a radio group). */
+  multiple?: boolean;
 }
 
-export function ChipModes({ modes }: ChipModesProps) {
+export function ChipModes({ modes, multiple = false }: ChipModesProps) {
   const localize = useLocalize();
   const [open, setOpen] = useState(false);
-  const active = modes.find((mode) => mode.active);
+  const active = multiple ? undefined : modes.find((mode) => mode.active);
+  const summary = multiple
+    ? localize('com_ui_tars_mcp_tools_count', {
+        selected: modes.filter((mode) => mode.active).length,
+        total: modes.length,
+      })
+    : active?.label;
 
   return (
     <Ariakit.MenuProvider open={open} setOpen={setOpen} placement="bottom">
       <Ariakit.MenuButton
         aria-label={
-          active != null
-            ? localize('com_ui_mode_value', { 0: active.label })
-            : localize('com_ui_mode')
+          summary != null ? localize('com_ui_mode_value', { 0: summary }) : localize('com_ui_mode')
         }
         onClick={(e) => e.stopPropagation()}
         className="text-text-secondary hover:bg-surface-tertiary hover:text-text-primary focus-visible:ring-border-xheavy -mr-0.5 flex shrink-0 items-center gap-0.5 rounded px-1 text-xs transition-colors focus-visible:ring-2 focus-visible:outline-hidden"
       >
-        {active != null && <span className="max-w-[7rem] truncate">{active.label}</span>}
+        {summary != null && <span className="max-w-[7rem] truncate">{summary}</span>}
         <ChevronDown
           className={cn('animate-composer-icon size-3 shrink-0 opacity-70', open && '-rotate-180')}
           aria-hidden="true"
@@ -164,7 +170,7 @@ export function ChipModes({ modes }: ChipModesProps) {
           <Ariakit.MenuItem
             key={mode.id}
             hideOnClick={false}
-            role="menuitemradio"
+            role={multiple ? 'menuitemcheckbox' : 'menuitemradio'}
             aria-checked={mode.active}
             onClick={mode.onSelect}
             className="text-text-secondary data-[active-item]:bg-surface-hover data-[active-item]:text-text-primary flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm"
@@ -323,7 +329,12 @@ function Bar({
   const renderChip = (entry: PaletteEntry) => {
     const pinnedInactive = entry.pinned && !entry.active;
     const menuModes = chipMenuModes(entry.modes);
-    const modeMenu = menuModes.length > 0 ? <ChipModes modes={menuModes} /> : null;
+    let modeMenu: React.ReactNode = null;
+    if (entry.toolModes != null && entry.toolModes.length > 0) {
+      modeMenu = <ChipModes modes={entry.toolModes} multiple />;
+    } else if (menuModes.length > 0) {
+      modeMenu = <ChipModes modes={menuModes} />;
+    }
     const activate = pinnedInactive ? (
       <IconButton
         label={localize('com_ui_select_var', { 0: entry.label })}
