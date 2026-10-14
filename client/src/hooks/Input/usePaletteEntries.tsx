@@ -4,11 +4,17 @@ import { useSetRecoilState } from 'recoil';
 import { MCPIcon } from '@librechat/client';
 import { pendingManualSkillsByConvoId } from '@librechat/chat/react';
 import {
+  X,
   Brain,
   Globe,
   Layers,
+  Puzzle,
+  KeyRound,
+  BookOpen,
+  Database,
   Settings,
-  X,
+  BarChart3,
+  FileOutput,
   FolderSearch,
   WandSparkles,
   SquareChevronRight,
@@ -21,6 +27,7 @@ import {
   PermissionTypes,
   hasPermissions,
   SkillsScope,
+  tarsPluginToolName,
   isEphemeralAgentId,
   defaultAgentCapabilities,
   resolveAgentSkillsScope,
@@ -37,8 +44,8 @@ import {
 } from '~/hooks';
 import { getStatusColor, getStatusTextKey } from '~/components/MCP/mcpServerUtils';
 import { filterSkillsForPopover } from '~/components/Chat/Input/SkillsCommand';
+import { useSkillsInfiniteQuery, useGetStartupConfig } from '~/data-provider';
 import { useAgentsMapContext, useBadgeRowContext } from '~/Providers';
-import { useSkillsInfiniteQuery } from '~/data-provider';
 import { ephemeralAgentByConvoId } from '~/store';
 import { favoriteKey } from './useToolFavorites';
 import useLocalize from '~/hooks/useLocalize';
@@ -80,6 +87,9 @@ export interface PaletteEntry {
   /** Refinements of this tool, rendered as inline pills on the row while it is
    *  on. Not separately favouritable: they only exist within the parent. */
   modes?: PaletteMode[];
+  /** Independent on/off choices carried only on the bar chip, as a checklist
+   *  (a pwc_tars gateway server's tools): too many to sit on the palette row. */
+  toolModes?: PaletteMode[];
   /** The catalog record behind a skill row, for the "Show all" dialog's card. */
   skill?: TSkillSummary;
   /** A server's own branding, for the "Show all" dialog's card. */
@@ -186,6 +196,10 @@ export default function usePaletteEntries({
     artifactsEnabled,
     fileSearchEnabled,
     skillsEnabled,
+    sqlAgentEnabled,
+    ragAgentEnabled,
+    chartAgentEnabled,
+    fileAgentEnabled,
   } = useAgentCapabilities(context?.agentsConfig?.capabilities ?? defaultAgentCapabilities);
 
   const canUseWebSearch = useHasAccess({
@@ -208,6 +222,24 @@ export default function usePaletteEntries({
     permissionType: PermissionTypes.SKILLS,
     permission: Permissions.USE,
   });
+  const canUseSqlAgent = useHasAccess({
+    permissionType: PermissionTypes.SQL_AGENT,
+    permission: Permissions.USE,
+  });
+  const canUseRagAgent = useHasAccess({
+    permissionType: PermissionTypes.RAG_AGENT,
+    permission: Permissions.USE,
+  });
+  const canUseChartAgent = useHasAccess({
+    permissionType: PermissionTypes.CHART_AGENT,
+    permission: Permissions.USE,
+  });
+  const canUseFileAgent = useHasAccess({
+    permissionType: PermissionTypes.FILE_AGENT,
+    permission: Permissions.USE,
+  });
+  const { data: startupConfig } = useGetStartupConfig();
+  const tarsEnabled = startupConfig?.tarsAuth === true;
   const { user } = useAuthContext();
   /* Personalization is the user's own opt-out and the backend refuses to
      register the memory tools once it is off, so role access and the global
@@ -278,6 +310,12 @@ export default function usePaletteEntries({
       artifacts,
       mcpServerManager,
       searchApiKeyForm,
+      sqlAgent,
+      ragAgent,
+      chartAgent,
+      fileAgent,
+      tarsPlugins,
+      tarsMcpTools,
     } = context;
 
     const pushTool = (
@@ -334,6 +372,73 @@ export default function usePaletteEntries({
             ]
           : undefined,
       );
+    }
+
+    /* pwc_tars capabilities, in the order the old tools menu listed them. Charts
+       and files reach pwc_tars only, so they also need a linked deployment. */
+    const tarsToggles = [
+      {
+        id: 'sql_agent',
+        toggle: sqlAgent,
+        available: canUseSqlAgent && sqlAgentEnabled,
+        label: localize('com_ui_tars_sql_agent'),
+        icon: <Database className="icon-md" aria-hidden="true" />,
+      },
+      {
+        id: 'rag_agent',
+        toggle: ragAgent,
+        available: canUseRagAgent && ragAgentEnabled,
+        label: localize('com_ui_tars_rag_agent'),
+        icon: <BookOpen className="icon-md" aria-hidden="true" />,
+      },
+      {
+        id: 'chart_agent',
+        toggle: chartAgent,
+        available: canUseChartAgent && chartAgentEnabled && tarsEnabled,
+        label: localize('com_ui_tars_chart_agent'),
+        icon: <BarChart3 className="icon-md" aria-hidden="true" />,
+      },
+      {
+        id: 'file_agent',
+        toggle: fileAgent,
+        available: canUseFileAgent && fileAgentEnabled && tarsEnabled,
+        label: localize('com_ui_tars_file_agent'),
+        icon: <FileOutput className="icon-md" aria-hidden="true" />,
+      },
+    ];
+    for (const { id, toggle, available, label, icon } of tarsToggles) {
+      if (!toolsEnabled || !available || toggle == null) {
+        continue;
+      }
+      pushTool(
+        id,
+        label,
+        icon,
+        toggle.toggleState === true,
+        toggle.isPinned === true,
+        () => toggle.debouncedChange({ value: !toggle.toggleState }),
+        () => toggle.setIsPinned(false),
+      );
+    }
+
+    /* The plugin tools the active brain offers, each its own switch. */
+    if (toolsEnabled && tarsEnabled && tarsPlugins != null) {
+      for (const plugin of tarsPlugins.tools) {
+        const itemId = tarsPluginToolName(plugin.name);
+        entries.push({
+          key: `tool:${itemId}`,
+          itemType: 'tool',
+          itemId,
+          label: plugin.display_name || plugin.name,
+          description: plugin.description,
+          icon: <Puzzle className="icon-md" aria-hidden="true" />,
+          section: 'tool',
+          active: tarsPlugins.isSelected(plugin.name),
+          pinned: tarsPlugins.isPinned(plugin.name),
+          onSelect: () => tarsPlugins.toggle(plugin.name),
+          onUnpin: () => tarsPlugins.setPinned(plugin.name, false),
+        });
+      }
     }
 
     if (toolsEnabled && canRunCode && codeEnabled) {
@@ -509,6 +614,10 @@ export default function usePaletteEntries({
         preventDefault: () => {},
       } as React.MouseEvent;
       for (const server of selectableServers) {
+        /* pwc_tars gateway entries the active brain does not grant are hidden. */
+        if (tarsMcpTools != null && !tarsMcpTools.isServerAllowed(server.serverName)) {
+          continue;
+        }
         const title = server.config?.title || server.serverName;
         const statusProps = getServerStatusIconProps?.(server.serverName);
         /* A row for a server that is not connected routes through the manager
@@ -541,6 +650,34 @@ export default function usePaletteEntries({
         };
         /* A connected server keeps its per-user variables editable: the
            palette row carries the Configure action the replaced menu had. */
+        const credentialsStatus = tarsMcpTools?.getCredentialsStatus(server.serverName);
+        const credentialsMode: PaletteMode | undefined =
+          credentialsStatus == null || tarsMcpTools == null
+            ? undefined
+            : {
+                id: 'credentials',
+                label: localize(
+                  credentialsStatus === 'needed'
+                    ? 'com_ui_tars_mcp_creds_needed'
+                    : 'com_ui_tars_mcp_creds_set',
+                ),
+                active: false,
+                icon: <KeyRound className="h-4 w-4" aria-hidden="true" />,
+                onSelect: () => tarsMcpTools.openCredentials(server.serverName),
+              };
+        const isSelected = selected.has(server.serverName);
+        const domainTools = isSelected
+          ? tarsMcpTools?.getDomainTools(server.serverName)
+          : undefined;
+        const selectedToolKeys = tarsMcpTools?.getSelectedToolKeys(server.serverName);
+        const toolModes = domainTools?.map<PaletteMode>((tool) => ({
+          id: tool.tool_key,
+          label: tool.name,
+          active: selectedToolKeys == null || selectedToolKeys.has(tool.tool_key),
+          onSelect: () => tarsMcpTools?.toggleToolSelection(server.serverName, tool.tool_key),
+        }));
+        const withCredentials = (modes?: PaletteMode[]) =>
+          credentialsMode == null ? modes : [...(modes ?? []), credentialsMode];
         const getServerModes = (): PaletteMode[] | undefined => {
           if (statusProps?.isInitializing === true && statusProps.canCancel === true) {
             return [
@@ -590,15 +727,51 @@ export default function usePaletteEntries({
               <MCPIcon className="h-4 w-4" aria-hidden="true" />
             ),
           section: 'mcp',
-          active: selected.has(server.serverName),
+          active: isSelected,
           pinned: false,
           onSelect: selectServer,
-          modes: getServerModes(),
+          modes: withCredentials(getServerModes()),
+          toolModes: toolModes != null && toolModes.length > 0 ? toolModes : undefined,
           iconUrl: server.config?.iconPath,
           /* Only the owner role carries Share, so it separates a server this
              user made from one merely shared with them. */
           ownedByUser: hasPermissions(server.effectivePermissions, PermissionBits.SHARE),
           status: getServerStatus(server.serverName),
+        });
+      }
+    }
+
+    /* Servers the brain grants but the user has not opted into yet: picking one
+       opts in (`sys_user_mcp.is_enabled`), after which it lists like the rest. */
+    if (toolsEnabled && canUseMcp && tarsMcpTools != null) {
+      for (const server of tarsMcpTools.pendingServers) {
+        const enabling = tarsMcpTools.enablingServerId === server.id;
+        const toolCount = server.tool_count ?? 0;
+        entries.push({
+          key: `mcp:pending:${server.id}`,
+          itemType: 'mcp',
+          itemId: server.gateway_name,
+          label: server.name,
+          description:
+            toolCount > 0
+              ? localize('com_ui_tars_mcp_enable_hint_count', { count: toolCount })
+              : localize('com_ui_tars_mcp_enable_hint'),
+          icon: <MCPIcon className="h-4 w-4" aria-hidden="true" />,
+          section: 'mcp',
+          active: false,
+          pinned: false,
+          favoritable: false,
+          onSelect: () => {
+            if (!enabling) {
+              tarsMcpTools.enableServer(server.id);
+            }
+          },
+          status: {
+            label: enabling
+              ? localize('com_ui_connecting')
+              : localize('com_ui_tars_mcp_enable_server'),
+            tone: enabling ? 'bg-status-info' : 'bg-status-neutral',
+          },
         });
       }
     }
@@ -626,6 +799,15 @@ export default function usePaletteEntries({
     artifactsEnabled,
     canUseFileSearch,
     fileSearchEnabled,
+    canUseSqlAgent,
+    sqlAgentEnabled,
+    canUseRagAgent,
+    ragAgentEnabled,
+    canUseChartAgent,
+    chartAgentEnabled,
+    canUseFileAgent,
+    fileAgentEnabled,
+    tarsEnabled,
     user?.id,
   ]);
 }
