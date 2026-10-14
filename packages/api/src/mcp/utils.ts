@@ -16,6 +16,20 @@ import { isDirectOpenIDBearerRecoveryEnabled } from '~/mcp/openid';
 import { ALLOWED_BODY_FIELDS, isPluginSourced } from '~/utils/env';
 import { isEnabled } from '~/utils/common';
 
+/**
+ * The display title the MCP spec gives a tool (`title`, then `annotations.title`), or undefined
+ * when it adds nothing over the name. Servers that sanitize names to ASCII (Langflow drops CJK:
+ * "製作48腳位比對表格" -> `_48`) keep the readable one here.
+ */
+export function getMCPToolTitle(tool: {
+  name: string;
+  title?: string;
+  annotations?: { title?: string };
+}): string | undefined {
+  const title = (tool.title ?? tool.annotations?.title)?.trim();
+  return title && title !== tool.name ? title : undefined;
+}
+
 export const mcpToolPattern: RegExp = new RegExp(`^.+${Constants.mcp_delimiter}.+$`);
 
 function isMCPServerConfig(config: unknown): config is ParsedServerConfig {
