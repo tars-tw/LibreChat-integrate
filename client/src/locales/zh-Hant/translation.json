@@ -2367,7 +2367,7 @@
   "com_ui_tars_mcp_type_openapi": "OpenAPI",
   "com_ui_tars_mcp_type_custom": "自訂 API",
   "com_ui_tars_mcp_disabled": "已停用",
-  "com_ui_tars_mcp_tools_count": "工具",
+  "com_ui_tars_mcp_tools_count": "{{selected}}/{{total}} 個工具",
   "com_ui_tars_mcp_test": "測試連線",
   "com_ui_tars_mcp_test_success": "連線測試通過",
   "com_ui_tars_mcp_test_failed": "連線測試失敗",
