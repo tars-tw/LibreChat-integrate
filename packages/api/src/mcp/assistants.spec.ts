@@ -89,6 +89,17 @@ describe('getAssistantToolDefinitions', () => {
     );
   });
 
+  it('strips the display-only title before a provider sees the entry', () => {
+    const fn = { name: `_48${Constants.mcp_delimiter}langflow`, description: 'Pin table' };
+    const titled: LCAvailableTools[string] = {
+      type: 'function',
+      ['function']: fn,
+      title: '製作48腳位比對表格',
+    };
+
+    expect(toProviderToolDefinition(titled)).toEqual({ type: 'function', ['function']: fn });
+  });
+
   it('reconnects a user server when neither cache nor local snapshot has a catalog', async () => {
     const recoveredCatalog = { ...catalog };
     const recoverServerTools = jest.fn().mockResolvedValue(recoveredCatalog);

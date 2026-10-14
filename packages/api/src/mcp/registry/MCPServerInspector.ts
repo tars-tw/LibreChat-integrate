@@ -10,6 +10,7 @@ import {
   hasRuntimeUrlPlaceholders,
   toCatalogConnectionConfig,
   isUserSourced,
+  getMCPToolTitle,
 } from '~/mcp/utils';
 import { isMCPDomainAllowed, extractMCPServerDomain } from '~/auth/domain';
 import { normalizeJsonSchema, resolveJsonSchemaRefs } from '~/mcp/zod';
@@ -216,9 +217,11 @@ export class MCPServerInspector {
       }
       const keyToolName = keyToolNames.get(tool.name) ?? tool.name;
       const name = `${keyToolName}${Constants.mcp_delimiter}${keyServerName}`;
+      const title = getMCPToolTitle(tool);
       toolFunctions[name] = {
         type: 'function',
         ...(keyToolName !== tool.name && { serverToolName: tool.name }),
+        ...(title && { title }),
         ['function']: {
           name,
           description: tool.description,
