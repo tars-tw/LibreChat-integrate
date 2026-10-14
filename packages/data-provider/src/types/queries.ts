@@ -199,6 +199,9 @@ export type MCPTool = {
   /** Raw upstream tool name when the model-facing key stripped a redundant
    *  server-name prefix — gates the agent editor's legacy id migration. */
   serverToolName?: string;
+  /** The server's human-readable title, shown in place of `name` (e.g. a Langflow flow's name,
+   *  whose tool name lost its CJK characters to sanitizing). */
+  title?: string;
 };
 
 export type MCPServer = {

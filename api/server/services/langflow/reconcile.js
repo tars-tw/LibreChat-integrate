@@ -4,6 +4,7 @@ const {
   resolveLangflowOrigin,
   createWorkflowAgentSync,
 } = require('@librechat/api');
+const { getMCPServerTools, invalidateCachedTools } = require('~/server/services/Config');
 const { grantPermission } = require('~/server/services/PermissionService');
 const { getModelsConfig } = require('~/server/controllers/ModelController');
 const db = require('~/models');
@@ -30,6 +31,8 @@ const syncWorkflowAgents = createWorkflowAgentSync({
   deleteAgent: (filter) => db.deleteAgent(filter),
   grantPermission,
   defaultOrchestration: { provider: PROVIDER, model: MODEL },
+  getCachedTools: (userId, serverName) => getMCPServerTools(userId, serverName),
+  invalidateCachedTools: (userId, serverName) => invalidateCachedTools({ userId, serverName }),
 });
 
 /**

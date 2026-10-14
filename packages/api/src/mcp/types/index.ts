@@ -67,6 +67,8 @@ export interface LCFunctionTool {
   /** Raw upstream tool name when the model-facing key stripped a redundant
    *  server-name prefix — tool calls must send THIS name to the server. */
   serverToolName?: string;
+  /** The server's human-readable tool title, for display only (the key stays the tool name). */
+  title?: string;
 }
 
 export type LCAvailableTools = Record<string, LCFunctionTool>;

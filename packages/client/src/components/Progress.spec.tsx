@@ -17,9 +17,9 @@ describe('Progress', () => {
     expect(indicator().style.transform).toBe('translateX(-62%)');
   });
 
-  it('fills with the inverted surface by default', () => {
+  it('fills with the brand submit surface by default', () => {
     render(<Progress value={10} />);
-    expect(indicator()).toHaveClass('bg-surface-inverted');
+    expect(indicator()).toHaveClass('bg-surface-submit');
   });
 
   it.each([
@@ -28,8 +28,8 @@ describe('Progress', () => {
   ] as const)('fills the %s variant from its status token', (variant, token) => {
     render(<Progress value={95} variant={variant} />);
     expect(indicator()).toHaveClass(token);
-    expect(indicator()).not.toHaveClass('bg-surface-inverted');
-    expect(screen.getByRole('progressbar')).toHaveClass('bg-surface-tertiary');
+    expect(indicator()).not.toHaveClass('bg-surface-submit');
+    expect(screen.getByRole('progressbar')).toHaveClass('bg-surface-submit/20');
   });
 });
 
@@ -43,7 +43,7 @@ const referenceTheme: ThemeDefinition = {
       colors: {
         'rgb-status-warning': '11 22 33',
         'rgb-status-error': '44 55 66',
-        'rgb-surface-inverted': '77 88 99',
+        'rgb-surface-submit': '77 88 99',
       },
     },
   },
@@ -60,12 +60,12 @@ describe('Progress under a reference theme', () => {
     const root = document.documentElement;
     expect(root.style.getPropertyValue('--status-warning')).toBe('11 22 33');
     expect(root.style.getPropertyValue('--status-error')).toBe('44 55 66');
-    expect(root.style.getPropertyValue('--surface-inverted')).toBe('77 88 99');
+    expect(root.style.getPropertyValue('--surface-submit')).toBe('77 88 99');
 
     const tokens = readFileSync(join(__dirname, '../theme/tokens.css'), 'utf8');
     expect(tokens).toContain('--color-status-warning: rgb(var(--status-warning));');
     expect(tokens).toContain('--color-status-error: rgb(var(--status-error));');
-    expect(tokens).toContain('--color-surface-inverted: rgb(var(--surface-inverted));');
+    expect(tokens).toContain('--color-surface-submit: rgb(var(--surface-submit));');
   });
 
   it('paints no colour of its own', () => {

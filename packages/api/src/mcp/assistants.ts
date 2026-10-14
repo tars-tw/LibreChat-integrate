@@ -277,16 +277,17 @@ export async function getAssistantToolDefinitions(
 /**
  * Assistant writers submit tool entries VERBATIM as provider tool definitions
  * (`assistantData.tools` in the v1/v2 controllers), and providers reject
- * unknown fields — the internal `serverToolName` mapping must never leave the
- * catalog. Strings and entries without the mapping pass through by reference;
- * the cached catalog keeps the mapping for the runtime call path.
+ * unknown fields — the internal `serverToolName` mapping and the display-only
+ * `title` must never leave the catalog. Strings and entries without either pass
+ * through by reference; the cached catalog keeps them for the runtime call path.
  */
 export function toProviderToolDefinition<T>(tool: T): T | LCFunctionTool {
   if (tool == null || typeof tool !== 'object') {
     return tool;
   }
   const entry = tool as Partial<LCFunctionTool>;
-  if (entry.serverToolName == null || entry.type !== 'function' || entry['function'] == null) {
+  const hasCatalogFields = entry.serverToolName != null || entry.title != null;
+  if (!hasCatalogFields || entry.type !== 'function' || entry['function'] == null) {
     return tool;
   }
   return { type: entry.type, ['function']: entry['function'] };
