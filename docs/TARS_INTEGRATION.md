@@ -45,7 +45,6 @@ npm run frontend                           # build 全部 packages + client
 | `MONGO_URI` | `mongodb://127.0.0.1:27017/LibreChat` | 後端在本機跑,連 override 打開的 27017 |
 | `VITE_LANGFLOW_URL` | `http://localhost:7860` | Langflow URL 單一來源(iframe + MCP url host + SSRF 白名單)。**Vite build-time,改了要重 build 前端** |
 | `LANGFLOW_API_KEY` | Langflow **系統共用帳號**(`LANGFLOW_SUPERUSER`,預設 `langflow`)的 API key | `librechat.yaml` 以 `${LANGFLOW_API_KEY}` 帶入 MCP header,也用來同步「Workflow ·」Agent。要以系統帳號登入 Langflow 後在 Settings > API Keys 產生(管理員可從 Workflow 頁的工作區切換器進入「系統共用帳號」);其他帳號的 key 會被 Langflow 拒絕(403) |
-| `SCHEDULES_SINGLE_PROCESS` | `true` | 單機跑排程,避免多實例重複執行 |
 | `HTTP_REQUEST_TIMEOUT_MS` | `1800000`(30 分鐘) | Node 預設 300 秒,涵蓋整個請求含 body。大檔上傳(含音檔轉錄、OCR)在回應前同步處理,超過上限時瀏覽器會看到請求中斷 |
 
 以下在 `.env.example` **已預設可用**,本機 dev 不用動,但要知道它們的意義:
@@ -57,8 +56,11 @@ npm run frontend                           # build 全部 packages + client
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GOOGLE_KEY` | `user_provided` | 哨兵值,`.env` 不放真 key。實際 key 解析鏈:使用者聊天室自設 > pwc_tars sys_config > 提示設 key |
 | `JWT_SECRET` / `JWT_REFRESH_SECRET` / `CREDS_KEY` / `CREDS_IV` / `MEILI_MASTER_KEY` | 內建範例值 | ⚠️ 是公開 repo 人人可見的值,**對外/共享環境務必重新產生** |
 | `TARS_LANGFLOW_SSO_SECRET` | 內建預設值(與 pwc_tars `infra/langflow/.env.example` 相同) | Workflow 頁的一次性登入票證與 Langflow 帳號移交呼叫用它簽章,**必須和 Langflow 端(本機為 pwc_tars `infra/langflow/.env`)的同名變數相同**;兩邊都照範例檔複製就一致。要換時兩邊一起換(至少 32 字元)並都重啟。沒設定時 Workflow 頁顯示「Workflow 登入尚未完成設定」(503),兩邊不一致時顯示「登入連結已失效」。從對話執行「Workflow ·」Agent 不需要它 |
+| `SCHEDULES_SINGLE_PROCESS` | `true` | 排程聊天(側欄「排程」)的執行引擎開關,見下方說明。不設且沒有 Redis 時,排程入口仍會出現,但新增/修改排程回 503、排程也不會觸發,後端 log 有 `[schedules] scheduler NOT started` |
 | `TARS_ADMIN_ROLE_IDS` | `1` | pwc_tars `role_id` 屬此集合者 → LibreChat ADMIN |
 | `TARS_PLUGIN_TOOL_TIMEOUT_MS` | `240000`(4 分鐘) | 聊天室呼叫 pwc_tars 外掛工具(`tars_tool_sdk`,`POST /api/langflow-service/tools/<name>`)的上限。外掛本身由 pwc_tars `backend/.env` 的 `TARS_TOOL_PLUGINS_DIR` 載入,LibreChat 這邊不用設定;在專用腦管理的「外掛工具」區塊決定每個腦要顯示哪些 |
+
+> **排程聊天與部署方式**:排程引擎要知道「同一個排程現在是不是有人在跑」。這份資訊預設存在 LibreChat process 的記憶體裡,只有一個 process 時是準確的;若同時跑多個 LibreChat(多台機器、PM2 cluster、多個容器副本)又沒有共用的 Redis,每個 process 只看得到自己的執行狀態,可能把別台正在跑的排程誤判為中斷、重複佔用額度。`SCHEDULES_SINGLE_PROCESS=true` 就是宣告「只有一個 process」,符合本文件的部署方式(單一 `npm run backend`)。**要擴成多個 LibreChat 時**:架 Redis、設 `USE_REDIS=true`(`USE_REDIS_STREAMS` 跟著預設開啟)與 `REDIS_URI`,並拿掉 `SCHEDULES_SINGLE_PROCESS`。另外,會「中途停下來等人」的排程 agent(工具核准 `endpoints.agents.toolApproval`,或 `ask_user_question` 詢問使用者)一定要有 Redis 才能跑,沒有時該次排程直接失敗;目前 `librechat.yaml` 兩者都沒開,所以不受影響。
 
 > Langflow 的 project id **不用設**:MCP 連線改走 `/api/v1/tars/mcp/streamable`,涵蓋所有使用者、所有專案的 flow,不再需要 `LANGFLOW_PROJECT_ID`。Langflow 端要設的值(`TARS_LANGFLOW_SSO_SECRET`、正式部署要關閉 auto login 等)見 pwc_tars `infra/langflow/README.md`。
 
@@ -96,6 +98,11 @@ interface:
   marketplace:
     use: false
   langflow: false
+  # Scheduled chats (upstream default: off). Firing needs Redis streams or, on a
+  # single replica without Redis, SCHEDULES_SINGLE_PROCESS=true in .env.
+  schedules:
+    use: true
+    create: true
 
 endpoints:
   agents:
@@ -247,6 +254,7 @@ npm run build
 
 | 日期 | 檔案 | 變更內容 | 相關 commit |
 |---|---|---|---|
+| 2026-10-15 | `librechat.yaml`、`.env` | 開啟排程聊天(upstream 預設關閉):`librechat.yaml` 的 `interface` 新增 `schedules: { use: true, create: true }`,側欄出現「排程」入口(角色權限 `SCHEDULES` 預設即開)。`.env.example` 的 `SCHEDULES_SINGLE_PROCESS=true` 改為預設開啟;既有 `.env` 沒有這行要補上,否則排程不會觸發。多個 LibreChat process 的部署改用 Redis,見 §1.3 排程說明。 | `feat/enable-scheduled-chats`(待 commit) |
 | 2026-10-14 | `.env` | `.env.example` 直接帶 `TARS_LANGFLOW_SSO_SECRET` 預設值,與 pwc_tars `infra/langflow/.env.example` 相同,兩邊照範例檔複製即可;既有 `.env` 若是自己產生的值,改成範例檔的值,或維持兩邊相同即可。 | `feat/hard-code-langflow-sso-secret`(待 commit)、pwc_tars `feature/hard-code-langflow-sso-secret` |
 | 2026-10-13 | `librechat.yaml`、`.env` | Langflow 改為每個 pwc_tars 使用者各自的帳號(Workflow SSO)。`librechat.yaml` 的 `mcpServers.langflow` 改為 `type: streamable-http`、`url: '${VITE_LANGFLOW_URL}/api/v1/tars/mcp/streamable'`(舊的 `/api/v1/mcp/project/${LANGFLOW_PROJECT_ID}/sse` 不再使用)。`.env` 新增必填 `TARS_LANGFLOW_SSO_SECRET`(與 Langflow 端相同);`LANGFLOW_API_KEY` 必須改用 Langflow 系統共用帳號的 key;`LANGFLOW_PROJECT_ID` 不再需要。Langflow 須同步升級到 `langflow_tars` `187d365173` 之後,否則 Workflow 頁與從對話執行 flow 都會 404;升級後也要重 build 前端。 | `a6de9bf87`、`876ec6d6a`(PR #91) |
 | 2026-10-05 | `librechat.yaml` | `endpoints.agents.capabilities` 新增 `file_agent`(產生檔案的 capability 閘門)。產生檔案(`tars_generate_file`,PDF / Word / Excel / PPT)改為獨立開關,不再隨知識庫檢索、資料庫查詢、產生圖表或附加試算表自動掛上;**既有部署若未加 `file_agent`,產生檔案會整個不可用**。另有 `interface.fileAgent`(角色權限 `FILE_AGENT.USE`,預設開)。`.env` 無新增值。 | `feature/tool_plugin`(待 commit) |
