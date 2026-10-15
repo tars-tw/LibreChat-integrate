@@ -11,6 +11,11 @@ interface:
   marketplace:
     use: false
   langflow: false
+  # Scheduled chats (upstream default: off). Firing needs Redis streams or, on a
+  # single replica without Redis, SCHEDULES_SINGLE_PROCESS=true in .env.
+  schedules:
+    use: true
+    create: true
 
 endpoints:
   agents:
