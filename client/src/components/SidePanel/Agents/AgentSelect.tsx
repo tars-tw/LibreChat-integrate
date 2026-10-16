@@ -5,6 +5,7 @@ import { ControlCombobox } from '@librechat/client';
 import { useFormContext, Controller } from 'react-hook-form';
 import {
   AgentCapabilities,
+  isTarsLangflowAgentId,
   normalizeAgentSelectorLimit,
   defaultAgentFormValues,
 } from 'librechat-data-provider';
@@ -66,14 +67,16 @@ function AgentSelect({
     { requiredPermission: permissionLevel, ...(mine ? { mine: 1 as const } : {}) },
     {
       select: (res) =>
-        res.data.map((agent) =>
-          processAgentOption({
-            agent: {
-              ...agent,
-              name: agent.name || agent.id,
-            },
-          }),
-        ),
+        res.data
+          .filter((agent) => !isTarsLangflowAgentId(agent.id))
+          .map((agent) =>
+            processAgentOption({
+              agent: {
+                ...agent,
+                name: agent.name || agent.id,
+              },
+            }),
+          ),
     },
   );
 

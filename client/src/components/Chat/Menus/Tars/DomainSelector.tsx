@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Bot, Brain } from 'lucide-react';
 import { TooltipAnchor } from '@librechat/client';
+import { isTarsLangflowAgentId } from 'librechat-data-provider';
 import type { TConversation } from 'librechat-data-provider';
 import { useModelSelectorContext } from '../Endpoints/ModelSelectorContext';
 import { CustomMenu as Menu } from '../Endpoints/CustomMenu';
@@ -10,28 +11,30 @@ import AgentItems from './AgentItems';
 import { useLocalize } from '~/hooks';
 
 /**
- * Primary chat-header picker. Three rows: the general brain, a submenu of the
- * specialized brains (專用腦), and the agents endpoint. The model picker
- * (`ModelSelector`) sits beside it and only surfaces on the general brain.
- * Renders nothing for non-tars users or when no domains are available.
+ * Primary chat-header picker. Two rows: the general brain and the agents endpoint —
+ * specialized brains (專用腦) are reached through an agent bound to one, not picked here.
+ * The model picker (`ModelSelector`) sits beside it and only surfaces on the general brain.
+ * Renders nothing for non-tars users, when no domains are available, or on an older
+ * conversation the list hides (`buildTarsHiddenConversationFilter`) but a URL still opens:
+ * one bound to a specialized brain without an agent, or one with a Workflow agent.
  */
 function DomainSelector() {
   const localize = useLocalize();
-  const { domains, generalDomainId, selectedId, selectedName, selectedAgentId, selectDomain } =
-    useTarsDomain();
+  const {
+    domains,
+    generalDomainId,
+    selectedId,
+    selectedName,
+    selectedAgentId,
+    selectDomain,
+    isGeneralDomain,
+  } = useTarsDomain();
   const { agentsEndpoint, agentsMap, mappedEndpoints } = useModelSelectorContext();
-  const [searchValue, setSearchValue] = useState('');
 
   const generalDomain = useMemo(
     () => domains.find((domain) => String(domain.id) === generalDomainId),
     [domains, generalDomainId],
   );
-
-  const specializedDomains = useMemo(() => {
-    const rest = domains.filter((domain) => String(domain.id) !== generalDomainId);
-    const term = searchValue.trim().toLowerCase();
-    return term ? rest.filter((domain) => domain.name.toLowerCase().includes(term)) : rest;
-  }, [domains, generalDomainId, searchValue]);
 
   /**
    * The selected agent stands in for the brain: it names the trigger and takes the
@@ -72,11 +75,14 @@ function DomainSelector() {
     [defaultModelFields, selectDomain, selectedAgentId],
   );
 
-  if (!domains.length || !selectedName) {
+  const isHiddenConversation = selectedAgentId
+    ? isTarsLangflowAgentId(selectedAgentId)
+    : !isGeneralDomain;
+  if (!domains.length || !selectedName || isHiddenConversation) {
     return null;
   }
 
-  const label = localize('com_ui_tars_domains');
+  const label = localize('com_ui_select_agent');
   const displayName = agentName ?? selectedName;
 
   const renderTriggerIcon = () => {
@@ -85,21 +91,21 @@ function DomainSelector() {
     }
     if (selectedAgentId) {
       return (
-        agentsEndpoint?.icon ?? <Bot className="size-5 text-text-primary" aria-hidden="true" />
+        agentsEndpoint?.icon ?? <Bot className="text-text-primary size-5" aria-hidden="true" />
       );
     }
-    return <Brain className="size-5 text-text-primary" aria-hidden="true" />;
+    return <Brain className="text-text-primary size-5" aria-hidden="true" />;
   };
 
   const trigger = (
     <TooltipAnchor
       aria-label={label}
-      description={`${localize('com_ui_tars_domain_active')}: ${displayName}`}
+      description={label}
       render={
         <button
           data-testid="domain-selector-button"
           aria-label={label}
-          className="my-1 flex h-9 w-full max-w-[70vw] items-center justify-center gap-2 rounded-xl border border-border-light bg-presentation px-3 py-2 text-sm text-text-primary hover:bg-surface-active-alt"
+          className="border-border-light bg-presentation text-text-primary hover:bg-surface-active-alt my-1 flex h-9 w-full max-w-[70vw] items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm"
         >
           <div
             className="flex size-5 flex-shrink-0 items-center justify-center overflow-hidden"
@@ -122,30 +128,6 @@ function DomainSelector() {
             isSelected={!selectedAgentId && String(generalDomain.id) === selectedId}
             onSelect={handleSelectDomain}
           />
-        )}
-        {specializedDomains.length > 0 && (
-          <Menu
-            id="tars-specialized-domains-menu"
-            searchValue={searchValue}
-            onSearch={setSearchValue}
-            combobox={<input placeholder=" " />}
-            comboboxLabel={localize('com_ui_tars_domain_search')}
-            label={
-              <div className="flex w-full min-w-0 items-center gap-2 py-1 text-sm">
-                <Brain className="size-5 shrink-0 text-text-primary" aria-hidden="true" />
-                <span className="truncate text-left">{label}</span>
-              </div>
-            }
-          >
-            {specializedDomains.map((domain) => (
-              <DomainMenuItem
-                key={`tars-domain-${domain.id}`}
-                domain={domain}
-                isSelected={!selectedAgentId && String(domain.id) === selectedId}
-                onSelect={handleSelectDomain}
-              />
-            ))}
-          </Menu>
         )}
         {agentsEndpoint && <AgentItems endpoint={agentsEndpoint} />}
       </Menu>

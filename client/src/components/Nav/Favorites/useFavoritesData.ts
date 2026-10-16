@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { QueryKeys, EModelEndpoint, dataService } from 'librechat-data-provider';
+import {
+  QueryKeys,
+  EModelEndpoint,
+  dataService,
+  isTarsLangflowAgentId,
+} from 'librechat-data-provider';
 import type { Agent, TEndpointsConfig, TModelSpec } from 'librechat-data-provider';
 import type { Favorite } from '~/store/favorites';
 import { useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
@@ -194,8 +199,14 @@ export default function useFavoritesData(): FavoritesData {
           (agentsMapContext === undefined && q.isError && !isMissingAgentError(q.error)),
       ));
 
+  /** Workflow agents stay stored but unlisted; cleanup above still sees the full list. */
+  const visibleFavorites = useMemo(
+    () => safeFavorites.filter((f) => !isTarsLangflowAgentId(f.agentId)),
+    [safeFavorites],
+  );
+
   return {
-    favorites: safeFavorites,
+    favorites: visibleFavorites,
     isLoading,
     isLoaded,
     dataUpdatedAt,

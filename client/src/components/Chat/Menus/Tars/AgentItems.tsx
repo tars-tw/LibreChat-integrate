@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { VisuallyHidden } from '@ariakit/react';
-import { CheckCircle2, Workflow } from 'lucide-react';
+import { isTarsLangflowAgentId } from 'librechat-data-provider';
 import type { Endpoint } from '~/common';
 import { EndpointModelItem } from '../Endpoints/components/EndpointModelItem';
 import { useModelSelectorContext } from '../Endpoints/ModelSelectorContext';
@@ -8,18 +9,10 @@ import { CustomMenu as Menu } from '../Endpoints/CustomMenu';
 import { useFavorites, useLocalize } from '~/hooks';
 
 /**
- * Langflow flows are mirrored into agents with a deterministic id
- * (`api/server/services/langflow/reconcile.js` → `agent_langflow_<action>`), which is the
- * only marker that survives to the client — the agent record itself looks local otherwise.
- */
-const LANGFLOW_AGENT_ID_PREFIX = 'agent_langflow_';
-
-const isLangflowAgent = (agentId: string) => agentId.startsWith(LANGFLOW_AGENT_ID_PREFIX);
-
-/**
- * The agents submenu of the brain picker. Lists every agent the marketplace would list
- * (the endpoint is loaded with view permissions) in one name-sorted list, so the menu
- * replaces the marketplace shortcut it used to host; the icon marks each agent's kind.
+ * The agents submenu of the brain picker. Lists the Agent Builder agents the marketplace
+ * would list (the endpoint is loaded with view permissions) in one name-sorted list, so the
+ * menu replaces the marketplace shortcut it used to host. Workflow agents mirrored from
+ * Langflow flows are left out: a flow is used as a tool inside an agent, not chatted with.
  */
 function AgentItems({ endpoint }: { endpoint: Endpoint }) {
   const localize = useLocalize();
@@ -36,6 +29,9 @@ function AgentItems({ endpoint }: { endpoint: Endpoint }) {
     const term = searchValue.trim().toLowerCase();
     const matches: Array<{ id: string; name: string }> = [];
     for (const model of endpoint.models ?? []) {
+      if (isTarsLangflowAgentId(model.name)) {
+        continue;
+      }
       const name = endpoint.agentNames?.[model.name] ?? model.name;
       if (term && !name.toLowerCase().includes(term)) {
         continue;
@@ -71,7 +67,7 @@ function AgentItems({ endpoint }: { endpoint: Endpoint }) {
           </div>
           {isEndpointSelected && (
             <>
-              <CheckCircle2 className="size-4 shrink-0 text-text-primary" aria-hidden="true" />
+              <CheckCircle2 className="text-text-primary size-4 shrink-0" aria-hidden="true" />
               <VisuallyHidden>{localize('com_a11y_selected')}</VisuallyHidden>
             </>
           )}
@@ -85,11 +81,6 @@ function AgentItems({ endpoint }: { endpoint: Endpoint }) {
           endpoint={endpoint}
           isFavorite={isFavoriteAgent(agent.id)}
           onToggleFavorite={onToggleFavorite}
-          icon={
-            isLangflowAgent(agent.id) ? (
-              <Workflow className="size-5 text-text-primary" aria-hidden="true" />
-            ) : undefined
-          }
         />
       ))}
     </Menu>
