@@ -7,6 +7,7 @@ import {
   isParamEndpoint,
   isAgentsEndpoint,
   getEndpointField,
+  isTarsLocalEndpointName,
 } from 'librechat-data-provider';
 import type { ModelSelectorProps } from '~/common';
 import { useModelSelectorVisible } from '../Endpoints/visibility';
@@ -20,7 +21,8 @@ const defaultInterface = getConfigDefaults().interface;
 /**
  * Opens the per-conversation 模型參數 dialog from the header, immediately right of the
  * model picker. Gated on the same conditions the side panel's parameters entry used,
- * plus the picker's own visibility — a pinned model has no parameters to offer.
+ * plus the picker's own visibility — a pinned model has no parameters to offer. pwc_tars
+ * local (vLLM) models offer none either: pwc_tars owns their serving settings.
  */
 export default function ParametersButton({ startupConfig }: ModelSelectorProps) {
   const localize = useLocalize();
@@ -47,7 +49,11 @@ export default function ParametersButton({ startupConfig }: ModelSelectorProps) 
     return null;
   }
 
-  if (isAgentsEndpoint(endpoint) || isParamEndpoint(endpoint, endpointType ?? '') !== true) {
+  if (
+    isAgentsEndpoint(endpoint) ||
+    isTarsLocalEndpointName(endpoint) ||
+    isParamEndpoint(endpoint, endpointType ?? '') !== true
+  ) {
     return null;
   }
 
@@ -60,7 +66,7 @@ export default function ParametersButton({ startupConfig }: ModelSelectorProps) 
         aria-label={localize('com_ui_model_parameters')}
         onClick={() => setOpen(true)}
         data-testid="header-parameters-button"
-        className="inline-flex size-9 flex-shrink-0 items-center justify-center rounded-xl border border-border-light bg-presentation text-text-primary transition-all ease-in-out hover:bg-surface-tertiary disabled:pointer-events-none disabled:opacity-50"
+        className="border-border-light bg-presentation text-text-primary hover:bg-surface-tertiary inline-flex size-9 flex-shrink-0 items-center justify-center rounded-xl border transition-all ease-in-out disabled:pointer-events-none disabled:opacity-50"
       >
         <SlidersHorizontal className="icon-sm" aria-hidden="true" />
       </TooltipAnchor>
