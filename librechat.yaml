@@ -11,6 +11,13 @@ interface:
   marketplace:
     use: false
   langflow: false
+  # Hide the chat header's 預設設定 (presets) and 新增多重對話 (multi-convo) buttons.
+  presets: false
+  multiConvo: false
+  # Hide the agent builder's 遠端存取 (globe) button for every role.
+  remoteAgents:
+    share: false
+    public: false
   # Scheduled chats (upstream default: off). Firing needs Redis streams or, on a
   # single replica without Redis, SCHEDULES_SINGLE_PROCESS=true in .env.
   schedules:
