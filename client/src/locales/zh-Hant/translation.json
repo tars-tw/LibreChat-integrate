@@ -1753,7 +1753,7 @@
   "com_ui_tars_models_type_google_vertex": "GOOGLE_VERTEX（Google Vertex AI）",
   "com_ui_tars_models_type_legacy": "{{type}}（舊版類型）",
   "com_ui_tars_models_type_select": "請選擇類型",
-  "com_ui_tars_models_type_vllm": "VLLM（地端模型）",
+  "com_ui_tars_models_type_vllm": "vLLM（地端模型）",
   "com_ui_tars_models_updated": "模型已更新",
   "com_ui_tars_models_updated_at": "更新時間",
   "com_ui_tars_models_version": "版本",

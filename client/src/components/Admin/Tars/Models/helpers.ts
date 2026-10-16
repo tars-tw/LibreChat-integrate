@@ -7,6 +7,12 @@ const EN = 'en-US';
 export const isProfileEnabled = (profile: TTarsModelProfile): boolean =>
   Number(profile.status) === 1;
 
+/** Display casing for stored type codes; the stored value itself never changes. */
+const TYPE_DISPLAY: Partial<Record<string, string>> = { VLLM: 'vLLM' };
+
+/** How a stored model type reads in the list, e.g. `VLLM` → `vLLM`. */
+export const displayModelType = (type: string): string => TYPE_DISPLAY[type] ?? type;
+
 /** The selectable types plus any legacy one still in use, for the list filter. */
 export const collectModelTypes = (profiles: TTarsModelProfile[]): string[] => {
   const types = new Set<string>(TARS_MODEL_TYPES);

@@ -38,7 +38,15 @@ const profile: TTarsModelProfile = {
   api_version: null,
 };
 
+const vllmProfile: TTarsModelProfile = {
+  ...profile,
+  name: 'gemma-4-31B',
+  type: 'VLLM',
+  endpoint: 'http://10.0.0.5:8000/v1',
+};
+
 const configBox = () => screen.getByLabelText('com_ui_tars_models_config') as HTMLTextAreaElement;
+const queryConfigBox = () => screen.queryByLabelText('com_ui_tars_models_config');
 
 const renderModal = (target?: TTarsModelProfile) =>
   render(
@@ -104,10 +112,56 @@ describe('ModelProfileModal type and endpoint', () => {
   });
 });
 
+describe('ModelProfileModal config visibility', () => {
+  it('shows the config only once the type is VLLM', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    renderModal();
+    expect(queryConfigBox()).toBeNull();
+
+    await user.click(screen.getByRole('combobox', { name: /com_ui_tars_models_type/ }));
+    await user.click(
+      screen.getByRole('option', { name: 'com_ui_tars_models_type_vllm', hidden: true }),
+    );
+    expect(configBox()).toBeInTheDocument();
+  });
+
+  it('hides the config for other types and leaves the stored value out of the save', async () => {
+    const user = userEvent.setup();
+    renderModal({ ...profile, config: 'not json' });
+    expect(queryConfigBox()).toBeNull();
+
+    const endpoint = screen.getByLabelText(/com_ui_tars_models_endpoint/);
+    await user.clear(endpoint);
+    await user.type(endpoint, 'https://api.openai.com/v2');
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockUpdate).toHaveBeenCalledWith({
+      id: 'p-1',
+      data: { endpoint: 'https://api.openai.com/v2' },
+    });
+  });
+
+  it('creates a non-VLLM model without a config', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    renderModal();
+    await user.type(screen.getByLabelText(/com_ui_tars_models_name/), 'gpt-6');
+    await user.click(screen.getByRole('combobox', { name: /com_ui_tars_models_type/ }));
+    await user.click(
+      screen.getByRole('option', { name: 'com_ui_tars_models_type_cloud', hidden: true }),
+    );
+    await user.type(
+      screen.getByLabelText(/com_ui_tars_models_endpoint/),
+      'https://api.openai.com/v1',
+    );
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(mockCreate.mock.calls[0][0]).not.toHaveProperty('config');
+  });
+});
+
 describe('ModelProfileModal config editor', () => {
   it('lays a pasted one-line JSON object out with indentation', async () => {
     const user = userEvent.setup();
-    renderModal();
+    renderModal({ ...vllmProfile, config: null });
     await user.click(configBox());
     await user.paste('{"thinking": {"mode": "toggleable", "levels": ["off", "low"]}, "x": 1}');
     expect(configBox().value).toBe(
@@ -128,7 +182,7 @@ describe('ModelProfileModal config editor', () => {
 
   it('pastes anything that is not a whole JSON object as typed', async () => {
     const user = userEvent.setup();
-    renderModal();
+    renderModal({ ...vllmProfile, config: null });
     await user.click(configBox());
     await user.paste('{"partial": ');
     expect(configBox().value).toBe('{"partial": ');
@@ -136,7 +190,7 @@ describe('ModelProfileModal config editor', () => {
 
   it('formats on leaving the field, or flags it when it is not valid JSON', async () => {
     const user = userEvent.setup();
-    renderModal();
+    renderModal({ ...vllmProfile, config: null });
     await user.click(configBox());
     await user.paste('{"a": ');
     await user.tab();
@@ -151,7 +205,7 @@ describe('ModelProfileModal config editor', () => {
 
   it('shows a stored config formatted without counting that as a change', async () => {
     const user = userEvent.setup();
-    renderModal(profile);
+    renderModal(vllmProfile);
     expect(configBox().value).toBe('{\n  "is_multi_modal": true,\n  "context_windows": 192000\n}');
 
     await user.click(screen.getByRole('button', { name: 'com_ui_save' }));

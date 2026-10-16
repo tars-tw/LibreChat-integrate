@@ -29,6 +29,12 @@ import { useLocalize } from '~/hooks';
 const NO_SOURCE = 'none';
 const NO_TYPE = 'none';
 
+/**
+ * Only local models expose their config here; every other type's config is maintained in
+ * the database, so the form hides it and a save leaves the stored value untouched.
+ */
+const CONFIG_EDITABLE_TYPE: TTarsModelType = 'VLLM';
+
 const TYPE_LABELS: Record<TTarsModelType, TranslationKeys> = {
   CLOUD: 'com_ui_tars_models_type_cloud',
   VLLM: 'com_ui_tars_models_type_vllm',
@@ -77,7 +83,7 @@ function FieldError({ messageKey }: { messageKey?: TranslationKeys }) {
   if (!messageKey) {
     return null;
   }
-  return <p className="mt-1 text-xs text-text-destructive">{localize(messageKey)}</p>;
+  return <p className="text-text-destructive mt-1 text-xs">{localize(messageKey)}</p>;
 }
 
 export default function ModelProfileModal({
@@ -99,6 +105,7 @@ export default function ModelProfileModal({
   const [form, setForm] = useState<FormState>(initial);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [copySource, setCopySource] = useState(NO_SOURCE);
+  const showConfig = form.type === CONFIG_EDITABLE_TYPE;
 
   const createMutation = useCreateTarsModelProfileMutation({
     onSuccess: () => {
@@ -212,7 +219,7 @@ export default function ModelProfileModal({
     } else if (!isTarsModelEndpoint(form.endpoint)) {
       next.endpoint = 'com_ui_tars_models_endpoint_invalid';
     }
-    if (!isValidConfig(form.config)) {
+    if (showConfig && !isValidConfig(form.config)) {
       next.config = 'com_ui_tars_models_config_invalid';
     }
     return next;
@@ -225,7 +232,8 @@ export default function ModelProfileModal({
       return;
     }
 
-    const fields = toFields(form);
+    const { config, ...rest } = toFields(form);
+    const fields: Partial<ReturnType<typeof toFields>> = showConfig ? { ...rest, config } : rest;
     const description = joinDescription(
       profile?.description,
       form.descriptionZh,
@@ -243,7 +251,7 @@ export default function ModelProfileModal({
      */
     const baseline = toFields(initial);
     const changes: TTarsModelProfileInput = {};
-    for (const key of Object.keys(fields) as Array<keyof typeof fields>) {
+    for (const key of Object.keys(fields) as Array<keyof typeof baseline>) {
       if (fields[key] !== baseline[key]) {
         changes[key] = fields[key];
       }
@@ -272,9 +280,9 @@ export default function ModelProfileModal({
         main={
           <div className="max-h-[65vh] space-y-4 overflow-y-auto px-1">
             {isEdit && (
-              <p className="text-xs text-text-secondary">
+              <p className="text-text-secondary text-xs">
                 {localize('com_ui_tars_models_id')}:{' '}
-                <span className="select-all break-all font-mono">{profile.id}</span>
+                <span className="font-mono break-all select-all">{profile.id}</span>
               </p>
             )}
 
@@ -283,7 +291,7 @@ export default function ModelProfileModal({
                 <Label htmlFor="tars-model-name">{localize('com_ui_tars_models_name')} *</Label>
                 <Input
                   id="tars-model-name"
-                  className="mt-1 placeholder:text-text-muted"
+                  className="placeholder:text-text-muted mt-1"
                   value={form.name}
                   autoComplete="off"
                   aria-invalid={errors.name != null}
@@ -292,7 +300,7 @@ export default function ModelProfileModal({
                 />
                 <FieldError messageKey={errors.name} />
                 {renamed && errors.name == null && (
-                  <p className="mt-1 text-xs text-text-secondary">
+                  <p className="text-text-secondary mt-1 text-xs">
                     {localize('com_ui_tars_models_rename_hint')}
                   </p>
                 )}
@@ -313,7 +321,7 @@ export default function ModelProfileModal({
                 <Label htmlFor="tars-model-version">{localize('com_ui_tars_models_version')}</Label>
                 <Input
                   id="tars-model-version"
-                  className="mt-1 placeholder:text-text-muted"
+                  className="placeholder:text-text-muted mt-1"
                   value={form.version}
                   autoComplete="off"
                   placeholder={localize('com_ui_tars_models_version_placeholder')}
@@ -326,13 +334,13 @@ export default function ModelProfileModal({
                 </Label>
                 <Input
                   id="tars-model-api-version"
-                  className="mt-1 font-mono placeholder:text-text-muted"
+                  className="placeholder:text-text-muted mt-1 font-mono"
                   value={form.apiVersion}
                   autoComplete="off"
                   placeholder={localize('com_ui_tars_models_api_version_placeholder')}
                   onChange={(e) => update('apiVersion', e.target.value)}
                 />
-                <p className="mt-1 text-xs text-text-secondary">
+                <p className="text-text-secondary mt-1 text-xs">
                   {localize('com_ui_tars_models_api_version_hint')}
                 </p>
               </div>
@@ -342,7 +350,7 @@ export default function ModelProfileModal({
                 </Label>
                 <Input
                   id="tars-model-endpoint"
-                  className="mt-1 font-mono placeholder:text-text-muted"
+                  className="placeholder:text-text-muted mt-1 font-mono"
                   value={form.endpoint}
                   autoComplete="off"
                   spellCheck={false}
@@ -356,10 +364,10 @@ export default function ModelProfileModal({
             </div>
 
             <div>
-              <p className="text-sm text-text-primary">
+              <p className="text-text-primary text-sm">
                 {localize('com_ui_tars_models_description')}
               </p>
-              <p className="mt-1 text-xs text-text-secondary">
+              <p className="text-text-secondary mt-1 text-xs">
                 {localize('com_ui_tars_models_description_hint')}
               </p>
               <div className="mt-2 grid gap-4 md:grid-cols-2">
@@ -390,44 +398,46 @@ export default function ModelProfileModal({
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="tars-model-config">{localize('com_ui_tars_models_config')}</Label>
-              <p className="mt-1 text-xs text-text-secondary">
-                {localize('com_ui_tars_models_config_hint')}
-              </p>
-              {!isEdit && profiles.length > 0 && (
-                <div className="mt-2">
-                  <Label id="tars-model-copy-label" className="text-xs">
-                    {localize('com_ui_tars_models_copy_from')}
-                  </Label>
-                  <Dropdown
-                    value={copySource}
-                    options={sourceOptions}
-                    onChange={handleCopy}
-                    searchable={true}
-                    variant="field"
-                    aria-labelledby="tars-model-copy-label"
-                    className="mt-1"
-                  />
-                  <p className="mt-1 text-xs text-text-secondary">
-                    {localize('com_ui_tars_models_copy_from_hint')}
-                  </p>
-                </div>
-              )}
-              <Textarea
-                id="tars-model-config"
-                rows={12}
-                spellCheck={false}
-                className="mt-2 resize-y font-mono text-xs placeholder:text-text-muted"
-                value={form.config}
-                aria-invalid={errors.config != null}
-                placeholder={localize('com_ui_tars_models_config_placeholder')}
-                onChange={(e) => update('config', e.target.value)}
-                onPaste={handleConfigPaste}
-                onBlur={handleConfigBlur}
-              />
-              <FieldError messageKey={errors.config} />
-            </div>
+            {showConfig && (
+              <div>
+                <Label htmlFor="tars-model-config">{localize('com_ui_tars_models_config')}</Label>
+                <p className="text-text-secondary mt-1 text-xs">
+                  {localize('com_ui_tars_models_config_hint')}
+                </p>
+                {!isEdit && profiles.length > 0 && (
+                  <div className="mt-2">
+                    <Label id="tars-model-copy-label" className="text-xs">
+                      {localize('com_ui_tars_models_copy_from')}
+                    </Label>
+                    <Dropdown
+                      value={copySource}
+                      options={sourceOptions}
+                      onChange={handleCopy}
+                      searchable={true}
+                      variant="field"
+                      aria-labelledby="tars-model-copy-label"
+                      className="mt-1"
+                    />
+                    <p className="text-text-secondary mt-1 text-xs">
+                      {localize('com_ui_tars_models_copy_from_hint')}
+                    </p>
+                  </div>
+                )}
+                <Textarea
+                  id="tars-model-config"
+                  rows={12}
+                  spellCheck={false}
+                  className="placeholder:text-text-muted mt-2 resize-y font-mono text-xs"
+                  value={form.config}
+                  aria-invalid={errors.config != null}
+                  placeholder={localize('com_ui_tars_models_config_placeholder')}
+                  onChange={(e) => update('config', e.target.value)}
+                  onPaste={handleConfigPaste}
+                  onBlur={handleConfigBlur}
+                />
+                <FieldError messageKey={errors.config} />
+              </div>
+            )}
           </div>
         }
         buttons={
