@@ -905,6 +905,8 @@
   "com_ui_at_least_one_owner_required": "至少需要一位擁有者",
   "com_ui_attach_error": "無法附加檔案。請建立或選擇對話，或嘗試重新整理頁面。",
   "com_ui_attach_error_disabled": "此端點已停用檔案上傳功能",
+  "com_ui_attach_error_file_limit": "已達檔案數量上限：{{count}} 個檔案（{{0}}）",
+  "com_ui_attach_error_file_limit_one": "已達檔案數量上限：{{count}} 個檔案（{{0}}）",
   "com_ui_attach_error_limit": "已達檔案數量上限：",
   "com_ui_attach_error_openai": "無法將助理檔案附加至其他端點",
   "com_ui_attach_error_size": "檔案大小超過端點的限制",
