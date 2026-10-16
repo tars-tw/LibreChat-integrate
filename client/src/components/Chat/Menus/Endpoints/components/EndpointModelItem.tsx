@@ -20,8 +20,6 @@ interface EndpointModelItemProps {
   isGlobal?: boolean;
   isFavorite: boolean;
   onToggleFavorite: (modelId: string) => void;
-  /** Replaces the row's avatar — used to mark a row's kind (e.g. Langflow agents). */
-  icon?: React.ReactNode;
   /**
    * Only set when the list is virtualized. The mounted rows are then a small window over
    * a much larger set, so the position a screen reader would infer from the DOM is wrong;
@@ -38,7 +36,6 @@ function EndpointModelItemComponent({
   isGlobal = false,
   isFavorite,
   onToggleFavorite,
-  icon,
   posInSet,
   setSize,
 }: EndpointModelItemProps) {
@@ -94,13 +91,6 @@ function EndpointModelItemComponent({
   );
 
   const renderAvatar = () => {
-    if (icon) {
-      return (
-        <div className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full">
-          {icon}
-        </div>
-      );
-    }
     if (avatarUrl) {
       return (
         <div className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full">

@@ -54,8 +54,7 @@ jest.mock('@librechat/client', () => ({
 }));
 
 jest.mock('~/hooks', () => ({
-  useLocalize: () => (key: string) =>
-    ({ com_ui_tars_domains: '專用腦', com_ui_tars_domain_active: '使用中的專用腦' })[key] ?? key,
+  useLocalize: () => (key: string) => ({ com_ui_select_agent: '選擇 Agent' })[key] ?? key,
 }));
 
 const openMenu = async () => {
@@ -87,31 +86,43 @@ describe('DomainSelector', () => {
     expect(screen.getByTestId('domain-selector-button')).toHaveTextContent('通用腦');
   });
 
-  it('lists the general brain, the specialized submenu, then agents', async () => {
+  it('names the trigger as the agent picker', () => {
+    render(<DomainSelector />);
+    expect(screen.getByTestId('domain-selector-button')).toHaveAttribute(
+      'aria-label',
+      '選擇 Agent',
+    );
+  });
+
+  it('lists only the general brain and agents', async () => {
     render(<DomainSelector />);
     await openMenu();
 
     const rows = screen.getAllByRole('menuitem');
+    expect(rows).toHaveLength(1);
     expect(rows[0]).toHaveTextContent('通用腦');
-    expect(rows[1]).toHaveTextContent('專用腦');
     expect(screen.getByTestId('agents-endpoint')).toHaveTextContent('My Agents');
-  });
-
-  it('keeps specialized brains out of the top level', async () => {
-    render(<DomainSelector />);
-    await openMenu();
-
     expect(screen.queryByText('HR AI助手')).not.toBeInTheDocument();
     expect(screen.queryByText('CRUD')).not.toBeInTheDocument();
   });
 
-  it('selects the general brain from the top level', async () => {
+  it('renders nothing on an older specialized-brain conversation without an agent', () => {
     mockSelectedId = '201';
-    render(<DomainSelector />);
-    await openMenu();
+    const { container } = render(<DomainSelector />);
+    expect(container).toBeEmptyDOMElement();
+  });
 
-    await userEvent.click(screen.getByText('通用腦'));
-    expect(mockSelectDomain).toHaveBeenCalledWith('100', undefined);
+  it('renders nothing on an older Workflow-agent conversation', () => {
+    mockSelectedAgentId = 'agent_langflow_tars_flow';
+    const { container } = render(<DomainSelector />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('keeps the picker for an agent bound to a specialized brain', () => {
+    mockSelectedId = '201';
+    mockSelectedAgentId = 'agent_1';
+    render(<DomainSelector />);
+    expect(screen.getByTestId('domain-selector-button')).toHaveTextContent('簡報高手');
   });
 
   it('labels the trigger with the selected agent instead of the brain', () => {
