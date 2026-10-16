@@ -5,6 +5,7 @@ import {
   summarizeSync,
   joinDescription,
   splitDescription,
+  displayModelType,
   collectModelTypes,
   displayDescription,
 } from '../helpers';
@@ -29,6 +30,14 @@ describe('collectModelTypes', () => {
       'OPEN_AI',
       'VLLM',
     ]);
+  });
+});
+
+describe('displayModelType', () => {
+  it('shows VLLM as vLLM and leaves every other code as stored', () => {
+    expect(displayModelType('VLLM')).toBe('vLLM');
+    expect(displayModelType('CLOUD')).toBe('CLOUD');
+    expect(displayModelType('OPEN_AI')).toBe('OPEN_AI');
   });
 });
 
