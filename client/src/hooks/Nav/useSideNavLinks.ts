@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MCPIcon, OpenAIMinimalIcon } from '@librechat/client';
+import { MCPIcon, AttachmentIcon, OpenAIMinimalIcon } from '@librechat/client';
 import { Bot, NotebookPen, ScrollText, CalendarClock, ArrowRightToLine } from 'lucide-react';
 import {
   Permissions,
@@ -19,6 +19,7 @@ import {
 import AgentPanelSwitch from '~/components/SidePanel/Agents/AgentPanelSwitch';
 import PanelSwitch from '~/components/SidePanel/Builder/PanelSwitch';
 import { SchedulePanel } from '~/components/SidePanel/Schedules';
+import FilesPanel from '~/components/SidePanel/Files/Panel';
 import { PromptsAccordion } from '~/components/Prompts';
 import { SkillsAccordion } from '~/components/Skills';
 
@@ -138,6 +139,14 @@ export default function useSideNavLinks({
         Component: SchedulePanel,
       });
     }
+
+    links.push({
+      title: 'com_sidepanel_attach_files',
+      label: '',
+      icon: AttachmentIcon,
+      id: 'files',
+      Component: FilesPanel,
+    });
 
     if (hasAccessToSkills && skillsEnabled) {
       links.push({
