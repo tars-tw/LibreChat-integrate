@@ -27,6 +27,7 @@ const {
   recordShareLinkRejection,
   traceIdForMessage,
   resolveDownloadPath,
+  renderOfficePreview,
   prepareResultToolCallPreviews,
   listSharedWithMe,
 } = require('@librechat/api');
@@ -524,6 +525,17 @@ if (allowSharedLinks) {
         if (status === 'ready' && liveFile?.text != null) {
           payload.text = liveFile.text;
           payload.textFormat = liveFile.textFormat ?? null;
+        } else if (status === 'ready') {
+          const file = req.shareFile;
+          const rendered = await runWithTenant(file.tenantId, () =>
+            renderOfficePreview(file, () =>
+              getStrategyFunctions(file.source || FileSources.local).getDownloadStream(
+                req,
+                (resolveDownloadPath(file) || '').split('?')[0],
+              ),
+            ),
+          );
+          Object.assign(payload, rendered);
         } else if (status === 'failed' && liveFile?.previewError) {
           payload.previewError = liveFile.previewError;
         }

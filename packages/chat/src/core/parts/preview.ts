@@ -1,7 +1,7 @@
 import { FileSources } from 'librechat-data-provider';
 import type { TFile } from 'librechat-data-provider';
 
-type PreviewKind = 'pdf' | 'text' | false;
+type PreviewKind = 'pdf' | 'text' | 'office' | false;
 
 const TEXT_EXTENSIONS = new Set([
   'txt',
@@ -30,6 +30,22 @@ const TEXT_EXTENSIONS = new Set([
   'log',
 ]);
 
+/** Extensions the server renders as an HTML document; mirrors `officeHtmlBucket` in
+ *  `packages/api/src/files/documents/html.ts`. */
+const OFFICE_EXTENSIONS = new Set(['docx', 'csv', 'xlsx', 'xls', 'ods', 'pptx', 'potx']);
+
+const OFFICE_MIME_TYPES = new Set([
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.presentationml.template',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'application/vnd.ms-excel',
+  'text/csv',
+  'application/csv',
+  'text/comma-separated-values',
+]);
+
 export function getFileExtension(filename: string): string {
   const dot = filename.lastIndexOf('.');
   return dot > 0 ? filename.slice(dot + 1).toLowerCase() : '';
@@ -51,6 +67,19 @@ export function isExtractedTextPreviewLoading(
   return !isError && (isInitialLoading || status === 'pending');
 }
 
+/** XML proper and `+xml` suffixes only: OOXML types (`…spreadsheetml.sheet`) contain
+ *  "xml" too, but they are zip archives. */
+const XML_MIME = /^application\/xml\b|\+xml\b/;
+
+/** A known office extension wins; MIME only classifies extensionless files, as on the server. */
+function isOfficePreview(fileName: string, mime?: string): boolean {
+  const extension = getFileExtension(fileName);
+  if (extension) {
+    return OFFICE_EXTENSIONS.has(extension);
+  }
+  return !!mime && OFFICE_MIME_TYPES.has(mime.split(';')[0].trim().toLowerCase());
+}
+
 function getPreviewKindByMime(mime?: string): PreviewKind {
   if (!mime) {
     return false;
@@ -61,7 +90,7 @@ function getPreviewKindByMime(mime?: string): PreviewKind {
   if (
     mime.startsWith('text/') ||
     mime.includes('json') ||
-    mime.includes('xml') ||
+    XML_MIME.test(mime) ||
     mime.includes('javascript') ||
     mime.includes('typescript') ||
     mime.includes('yaml') ||
@@ -87,6 +116,9 @@ export function getPreviewKind(
 ): PreviewKind {
   if (fileSource === FileSources.text) {
     return 'text';
+  }
+  if (isOfficePreview(fileName, fileType)) {
+    return 'office';
   }
   return getPreviewKindByMime(fileType) || getPreviewKindByExtension(fileName);
 }
