@@ -17,10 +17,9 @@ jest.mock('../../Endpoints/ModelSelectorContext', () => ({
 }));
 
 jest.mock('../../Endpoints/components/EndpointModelItem', () => ({
-  EndpointModelItem: ({ modelId, icon }: { modelId: string; icon?: React.ReactNode }) => (
+  EndpointModelItem: ({ modelId }: { modelId: string }) => (
     <div role="menuitem" data-testid={`agent-row-${modelId}`}>
       {modelId}
-      {icon != null && <span data-testid={`agent-icon-${modelId}`} />}
     </div>
   ),
 }));
@@ -58,24 +57,19 @@ describe('AgentItems', () => {
     mockSearchValue = '';
   });
 
-  it('lists every agent in one list sorted by name', async () => {
+  it('lists the Agent Builder agents in one list sorted by name', async () => {
     render(<AgentItems endpoint={endpoint} />);
     await openMenu();
 
     const rows = screen.getAllByRole('menuitem');
-    expect(rows.map((row) => row.textContent)).toEqual([
-      'agent_local_2',
-      'agent_langflow_simple',
-      'agent_local_1',
-    ]);
+    expect(rows.map((row) => row.textContent)).toEqual(['agent_local_2', 'agent_local_1']);
   });
 
-  it('marks only Langflow agents with their own icon', async () => {
+  it('leaves out Workflow agents mirrored from Langflow', async () => {
     render(<AgentItems endpoint={endpoint} />);
     await openMenu();
 
-    expect(screen.getByTestId('agent-icon-agent_langflow_simple')).toBeInTheDocument();
-    expect(screen.queryByTestId('agent-icon-agent_local_1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('agent-row-agent_langflow_simple')).not.toBeInTheDocument();
   });
 
   it('has no marketplace shortcut', async () => {
@@ -87,11 +81,19 @@ describe('AgentItems', () => {
   });
 
   it('filters the list by the search term', async () => {
+    mockSearchValue = 'rag';
+    render(<AgentItems endpoint={endpoint} />);
+    await openMenu();
+
+    expect(screen.getByTestId('agent-row-agent_local_2')).toBeInTheDocument();
+    expect(screen.queryByTestId('agent-row-agent_local_1')).not.toBeInTheDocument();
+  });
+
+  it('keeps Workflow agents out of search results', async () => {
     mockSearchValue = 'workflow';
     render(<AgentItems endpoint={endpoint} />);
     await openMenu();
 
-    expect(screen.getByTestId('agent-row-agent_langflow_simple')).toBeInTheDocument();
-    expect(screen.queryByTestId('agent-row-agent_local_1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('agent-row-agent_langflow_simple')).not.toBeInTheDocument();
   });
 });

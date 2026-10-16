@@ -331,3 +331,17 @@ export const mergeTarsPluginFunctions = (
   }
   return JSON.stringify(next);
 };
+
+/**
+ * pwc_tars reserves `sys_domain` id 100 for the general brain (通用腦) in its seed data
+ * (`sql/2_insert_values/sys_domain.sql`: 150+ is agent-specific, 201+ is custom), so the
+ * id is the reliable identifier — admins rename the domain freely.
+ */
+export const TARS_GENERAL_DOMAIN_ID = 100;
+
+/** Langflow flows are mirrored into agents under this id prefix (`packages/api/src/langflow/sync.ts`). */
+export const TARS_LANGFLOW_AGENT_ID_PREFIX = 'agent_langflow_';
+
+/** Whether an agent id names a Workflow agent mirrored from a Langflow flow. */
+export const isTarsLangflowAgentId = (agentId: string | null | undefined): boolean =>
+  agentId?.startsWith(TARS_LANGFLOW_AGENT_ID_PREFIX) === true;

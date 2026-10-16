@@ -138,4 +138,16 @@ describe('useFavoritesData', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(mockGetAgentById).not.toHaveBeenCalled();
   });
+
+  it('unlists Workflow agent favorites without deleting them', async () => {
+    mockFavorites = [{ agentId: 'agent_langflow_tars_flow' }, { agentId: 'agent_local' }];
+    mockAgentsMap = {
+      agent_langflow_tars_flow: { id: 'agent_langflow_tars_flow' },
+      agent_local: { id: 'agent_local' },
+    };
+    renderProbe();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(latest?.favorites).toEqual([{ agentId: 'agent_local' }]);
+    expect(mockReorderFavorites).not.toHaveBeenCalled();
+  });
 });

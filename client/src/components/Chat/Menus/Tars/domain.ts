@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { isAgentsEndpoint, isEphemeralAgentId } from 'librechat-data-provider';
+import {
+  isAgentsEndpoint,
+  isEphemeralAgentId,
+  TARS_GENERAL_DOMAIN_ID,
+} from 'librechat-data-provider';
 import type { TConversation, TTarsDomain } from 'librechat-data-provider';
 import { useTarsDomainsQuery } from '~/data-provider';
 /** Imported from the module, not the `~/Providers` barrel: the barrel re-exports
@@ -7,17 +11,11 @@ import { useTarsDomainsQuery } from '~/data-provider';
 import { useChatContext } from '~/Providers/ChatContext';
 import { useNewConvo } from '~/hooks';
 
-/**
- * pwc_tars reserves id 100 for the general brain (通用腦) in its seed data
- * (`sql/2_insert_values/sys_domain.sql`: 150+ is agent-specific, 201+ is custom),
- * so the id is the reliable identifier — admins rename the domain freely.
- */
-const GENERAL_DOMAIN_ID = 100;
 const GENERAL_DOMAIN_NAMES = new Set(['general', '通用腦']);
 
 /** Resolve the default specialized brain — the general brain (通用腦), else the first one. */
 const resolveDefaultDomain = (domains: TTarsDomain[]): TTarsDomain | undefined =>
-  domains.find((domain) => domain.id === GENERAL_DOMAIN_ID) ??
+  domains.find((domain) => domain.id === TARS_GENERAL_DOMAIN_ID) ??
   domains.find((domain) => GENERAL_DOMAIN_NAMES.has(domain.name.trim().toLowerCase())) ??
   domains[0];
 
