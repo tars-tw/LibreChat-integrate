@@ -20,6 +20,7 @@ export * from './mistral/crud';
 export * from './ocr';
 export * from './parse';
 export * from './preflight';
+export * from './preview';
 export * from './provision';
 export * from './upload/routing';
 export * from './upload/diagnostics';

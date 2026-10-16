@@ -250,7 +250,7 @@ const OVERSIZED_HTML_BANNER = `<!DOCTYPE html>
  * producer's HTML — slicing mid-tag would ship malformed markup to the
  * iframe.
  */
-const renderOfficeHtml = async (
+export const renderOfficeHtml = async (
   buffer: Buffer,
   name: string,
   mimeType: string,
