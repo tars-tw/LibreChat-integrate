@@ -35,3 +35,17 @@ export const connectionPayload = (config: TTarsSsoConfig) => ({
   ldap_admin_password: config.ldap_admin_password ?? '',
   ldap_search_attribute: config.ldap_search_attribute ?? 'sAMAccountName',
 });
+
+/** AD attributes offered as user group sources; anything else is entered as a custom attribute. */
+export const GROUP_ATTRIBUTE_PRESETS = [
+  'department',
+  'company',
+  'title',
+  'physicalDeliveryOfficeName',
+] as const;
+
+/** pwc_tars's rule for a group source attribute name (`normalize_ldap_group_attribute`). */
+export const LDAP_ATTRIBUTE_PATTERN = /^[A-Za-z][A-Za-z0-9-]{0,99}$/;
+
+export const isPresetGroupAttribute = (attribute: string): boolean =>
+  GROUP_ATTRIBUTE_PRESETS.some((preset) => preset === attribute);
