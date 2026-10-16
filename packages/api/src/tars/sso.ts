@@ -20,6 +20,8 @@ export interface TarsSsoConfig {
   ldap_whitelist_users?: string | null;
   ldap_whitelist_groups?: string | null;
   ldap_enable_whitelist?: boolean;
+  /** AD user attribute whose values become pwc_tars user groups; null keeps AD group membership. */
+  ldap_group_attribute?: string | null;
   frequency?: number | null;
   frequency_unit?: string | null;
   start_time?: string | null;
@@ -74,6 +76,8 @@ export interface TarsLdapConfigInput {
   ldap_admin_password?: string;
   ldap_whitelist_users?: string;
   ldap_enable_whitelist?: boolean;
+  /** Group source attribute; an empty string clears it back to AD group membership. */
+  ldap_group_attribute?: string;
   status?: number;
   /**
    * Whitelist tree only: also nest every user under the OU it actually sits
@@ -84,6 +88,8 @@ export interface TarsLdapConfigInput {
   include_ou_users?: boolean;
   /** Label for the synthetic node holding users pwc_tars couldn't place under any OU. */
   no_ou_label?: string;
+  /** Import preview only: label for the synthetic node holding users without a group source value. */
+  no_group_label?: string;
 }
 
 /**
@@ -172,6 +178,8 @@ export interface TarsLdapTreeSummary {
   ungrouped_users: number;
   group_member_error_count: number;
   primary_group_augmented_count: number;
+  /** The group source attribute the preview grouped by; null when grouped by AD groups. Absent from older pwc_tars. */
+  group_attribute?: string | null;
   query_seconds: number;
 }
 
@@ -237,6 +245,33 @@ export async function importTarsAdData(
     },
   );
   return unwrap(response, {}).message ?? '';
+}
+
+/** What a configuration has already imported, read before its group source changes. */
+export interface TarsAdSyncSummary {
+  synced_user_count: number;
+  synced_group_count: number;
+  /**
+   * Users this configuration did not sync (e.g. local accounts added by hand) who sit in its
+   * groups. A group source change deletes those groups, and the sync never adds them back.
+   */
+  external_member_count: number;
+}
+
+export async function fetchTarsAdSyncSummary(
+  configId: string,
+  baseUrl?: string,
+): Promise<TarsAdSyncSummary> {
+  const response = await tarsFetch<TarsSsoEnvelope<Partial<TarsAdSyncSummary>>>(
+    '/api/settings/get_ad_sync_summary',
+    { query: { config_id: configId }, baseUrl },
+  );
+  const summary = unwrap<Partial<TarsAdSyncSummary>>(response, {});
+  return {
+    synced_user_count: summary.synced_user_count ?? 0,
+    synced_group_count: summary.synced_group_count ?? 0,
+    external_member_count: summary.external_member_count ?? 0,
+  };
 }
 
 /** Removes every account and group this configuration synced from AD. */

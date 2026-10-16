@@ -27,6 +27,7 @@ import {
 } from '~/data-provider';
 import { isSsoConfigEnabled, whitelistToUsernames } from '../helpers';
 import ImportPreviewModal from './ImportPreview';
+import useGroupSourceLabel from './source';
 import SyncScheduleModal from './Schedule';
 import WhitelistPanel from './Whitelist';
 import { useLocalize } from '~/hooks';
@@ -39,8 +40,8 @@ const errorMessage = (error: unknown): string | undefined =>
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-medium text-text-secondary">{label}</p>
-      <p className="mt-0.5 break-all text-sm text-text-primary">{value || '—'}</p>
+      <p className="text-text-secondary text-xs font-medium">{label}</p>
+      <p className="text-text-primary mt-0.5 text-sm break-all">{value || '—'}</p>
     </div>
   );
 }
@@ -52,6 +53,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 export default function SsoCard() {
   const localize = useLocalize();
   const { showToast } = useToastContext();
+  const groupSourceLabel = useGroupSourceLabel();
   const { data: configs = [], isLoading } = useTarsSsoConfigsQuery();
 
   const [creating, setCreating] = useState(false);
@@ -120,7 +122,7 @@ export default function SsoCard() {
       )}
 
       {!isLoading && configs.length === 0 && (
-        <p className="py-10 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-10 text-center text-sm">
           {localize('com_ui_tars_sso_empty')}
         </p>
       )}
@@ -130,7 +132,7 @@ export default function SsoCard() {
           const expanded = expandedId === config.id;
           const enabled = isSsoConfigEnabled(config);
           return (
-            <div key={config.id} className="rounded-lg border border-border-light">
+            <div key={config.id} className="border-border-light rounded-lg border">
               <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                 <button
                   type="button"
@@ -143,14 +145,14 @@ export default function SsoCard() {
                   ) : (
                     <ChevronRight className="icon-sm text-text-secondary" />
                   )}
-                  <span className="truncate font-medium text-text-primary">
+                  <span className="text-text-primary truncate font-medium">
                     {config.ldap_name || config.ldap_server_address || config.id}
                   </span>
-                  <span className="truncate font-mono text-xs text-text-secondary">
+                  <span className="text-text-secondary truncate font-mono text-xs">
                     {config.ldap_server_address}:{config.ldap_server_port}
                   </span>
                   <span
-                    className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${
+                    className={`rounded-full px-2 py-0.5 text-xs whitespace-nowrap ${
                       enabled
                         ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
                         : 'bg-surface-tertiary text-text-secondary'
@@ -167,7 +169,7 @@ export default function SsoCard() {
                     aria-label={localize('com_ui_tars_sso_schedule')}
                     title={localize('com_ui_tars_sso_schedule')}
                     onClick={() => setScheduling(config)}
-                    className="rounded p-1.5 text-[rgb(var(--pwc-info-cyan))] hover:bg-surface-tertiary"
+                    className="hover:bg-surface-tertiary rounded p-1.5 text-[rgb(var(--pwc-info-cyan))]"
                   >
                     <CalendarClock className="icon-sm" />
                   </button>
@@ -177,9 +179,12 @@ export default function SsoCard() {
                     title={localize('com_ui_tars_sso_import')}
                     onClick={() => {
                       setPreviewingImport(config);
-                      importTreeMutation.mutate({ config_id: config.id });
+                      importTreeMutation.mutate({
+                        config_id: config.id,
+                        no_group_label: localize('com_ui_tars_sso_no_group_value_label'),
+                      });
                     }}
-                    className="rounded p-1.5 text-brand-primary hover:bg-surface-tertiary"
+                    className="hover:bg-surface-tertiary text-brand-primary rounded p-1.5"
                   >
                     <DownloadCloud className="icon-sm" />
                   </button>
@@ -188,7 +193,7 @@ export default function SsoCard() {
                     aria-label={localize('com_ui_tars_sso_unlink')}
                     title={localize('com_ui_tars_sso_unlink')}
                     onClick={() => setUnlinking(config)}
-                    className="rounded p-1.5 text-pwc-info hover:bg-surface-tertiary"
+                    className="hover:bg-surface-tertiary text-pwc-info rounded p-1.5"
                   >
                     <Unlink className="icon-sm" />
                   </button>
@@ -197,7 +202,7 @@ export default function SsoCard() {
                     aria-label={localize('com_ui_edit')}
                     title={localize('com_ui_edit')}
                     onClick={() => setEditing(config)}
-                    className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                    className="text-text-secondary hover:bg-surface-tertiary hover:text-text-primary rounded p-1.5"
                   >
                     <Pencil className="icon-sm" />
                   </button>
@@ -206,7 +211,7 @@ export default function SsoCard() {
                     aria-label={localize('com_ui_delete')}
                     title={localize('com_ui_delete')}
                     onClick={() => setDeleting(config)}
-                    className="rounded p-1.5 text-red-500 hover:bg-surface-tertiary"
+                    className="hover:bg-surface-tertiary rounded p-1.5 text-red-500"
                   >
                     <Trash2 className="icon-sm" />
                   </button>
@@ -214,7 +219,7 @@ export default function SsoCard() {
               </div>
 
               {expanded && (
-                <div className="space-y-4 border-t border-border-light p-3">
+                <div className="border-border-light space-y-4 border-t p-3">
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <Detail
                       label={localize('com_ui_tars_sso_base_dn')}
@@ -227,6 +232,10 @@ export default function SsoCard() {
                     <Detail
                       label={localize('com_ui_tars_sso_admin_dn')}
                       value={config.ldap_admin_dn ?? ''}
+                    />
+                    <Detail
+                      label={localize('com_ui_tars_sso_group_source')}
+                      value={groupSourceLabel(config.ldap_group_attribute)}
                     />
                     <Detail
                       label={localize('com_ui_tars_sso_whitelist_enable')}
@@ -279,7 +288,7 @@ export default function SsoCard() {
             showCloseButton={true}
             className="w-11/12 max-w-md"
             main={
-              <p className="text-sm text-text-secondary">
+              <p className="text-text-secondary text-sm">
                 {localize('com_ui_tars_sso_delete_confirm', {
                   name: deleting.ldap_name || deleting.ldap_server_address || deleting.id,
                 })}
@@ -321,8 +330,13 @@ export default function SsoCard() {
             className="w-11/12 max-w-md"
             main={
               <div className="space-y-3">
-                <p className="text-sm text-text-secondary">
+                <p className="text-text-secondary text-sm">
                   {localize('com_ui_tars_sso_import_confirm')}
+                </p>
+                <p className="text-text-secondary text-sm">
+                  {localize('com_ui_tars_sso_import_group_source', {
+                    source: groupSourceLabel(importing.ldap_group_attribute),
+                  })}
                 </p>
                 <div className="flex items-center gap-2">
                   <Switch
@@ -331,7 +345,7 @@ export default function SsoCard() {
                     checked={importEnableUsers}
                     onCheckedChange={setImportEnableUsers}
                   />
-                  <label htmlFor="tars-sso-import-enable" className="text-sm text-text-primary">
+                  <label htmlFor="tars-sso-import-enable" className="text-text-primary text-sm">
                     {localize('com_ui_tars_sso_import_enable')}
                   </label>
                 </div>
@@ -362,7 +376,7 @@ export default function SsoCard() {
             showCloseButton={true}
             className="w-11/12 max-w-md"
             main={
-              <p className="text-sm text-text-secondary">
+              <p className="text-text-secondary text-sm">
                 {localize('com_ui_tars_sso_unlink_confirm')}
               </p>
             }

@@ -15,6 +15,7 @@ const {
   fetchTarsSyncSchedule,
   saveTarsSyncSchedule,
   deleteTarsSyncSchedule,
+  fetchTarsAdSyncSummary,
   testTarsLdapConnection,
   fetchTarsSystemSettings,
   fetchTarsWhitelistUsersDetail,
@@ -264,6 +265,21 @@ router.post('/settings/sso/:id/import', requireTarsAdmin, async (req, res) => {
   } catch (error) {
     logger.error('[POST /api/tars/settings/sso/:id/import] Failed', error);
     return relayTarsError(res, error, 'Failed to import AD data');
+  }
+});
+
+/**
+ * @route GET /api/tars/settings/sso/:id/summary
+ * @desc Counts of what this configuration already imported, checked before its group source changes.
+ * @access Admin (pwc_tars)
+ */
+router.get('/settings/sso/:id/summary', requireTarsAdmin, async (req, res) => {
+  try {
+    const summary = await fetchTarsAdSyncSummary(req.params.id);
+    return res.json(summary);
+  } catch (error) {
+    logger.error('[GET /api/tars/settings/sso/:id/summary] Failed', error);
+    return relayTarsError(res, error, 'Failed to read AD import summary');
   }
 });
 

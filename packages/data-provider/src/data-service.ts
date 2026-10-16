@@ -1035,6 +1035,10 @@ export const deleteTarsAdData = (id: string): Promise<{ message: string }> => {
   return request.delete(endpoints.tarsSsoImport(id));
 };
 
+export const getTarsAdSyncSummary = (id: string): Promise<t.TTarsAdSyncSummary> => {
+  return request.get(endpoints.tarsSsoSummary(id));
+};
+
 export const getTarsSyncSchedule = (id: string): Promise<t.TTarsSyncScheduleResponse> => {
   return request.get(endpoints.tarsSsoSchedule(id));
 };

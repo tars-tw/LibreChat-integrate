@@ -531,6 +531,7 @@ export const tarsSsoTest = () => `${BASE_URL}/api/tars/settings/sso/test`;
 export const tarsSsoTree = () => `${BASE_URL}/api/tars/settings/sso/tree`;
 export const tarsSsoWhitelist = () => `${BASE_URL}/api/tars/settings/sso/whitelist`;
 export const tarsSsoImport = (id: string) => `${tarsSsoConfig(id)}/import`;
+export const tarsSsoSummary = (id: string) => `${tarsSsoConfig(id)}/summary`;
 export const tarsSsoSchedule = (id: string) => `${tarsSsoConfig(id)}/schedule`;
 
 export const tarsAuditMessages = () => `${BASE_URL}/api/tars/audit/messages`;
