@@ -1,6 +1,7 @@
 import yauzl from 'yauzl';
 import { excelMimeTypes, megabyte } from 'librechat-data-provider';
 import { tryLibreOfficePreview } from './libreoffice';
+import { decodeSpreadsheetText } from './encoding';
 import { assertSafeZipSize } from './zipSafety';
 
 /**
@@ -642,38 +643,163 @@ export async function wordDocToHtml(buffer: Buffer): Promise<string> {
  * XLSX / XLS / ODS → HTML (multi-sheet with pure-CSS tab strip)
  * ============================================================================= */
 
-/** A workbook sheet rendered to its `<table>` HTML and metadata. */
+/** A workbook sheet rendered to its sanitized `<table>` HTML and metadata. */
 interface RenderedSheet {
   name: string;
   html: string;
-  truncated: boolean;
   totalRows: number;
+  /** Rows the table holds; fewer than `totalRows` when the row cap or byte budget cut it. */
+  shownRows: number;
+  /** The budget was spent before this sheet, so it renders a download prompt instead. */
+  omitted: boolean;
 }
 
+/** Room the document chrome takes beside the tables: the base stylesheet, plus a tab label,
+ *  radio, panel rule and banner for every sheet. */
+const SPREADSHEET_CHROME_BASE_BYTES = 16 * 1024;
+const SPREADSHEET_CHROME_PER_SHEET_BYTES = 1024;
+
+/**
+ * Shrinks a sheet's declared range to the cells that hold a value (and the merges anchored
+ * among them). Excel keeps formatting-only cells in `!ref`, so a 10-row sheet can declare
+ * `A1:XEL10`; rendering that range emits ~16k empty cells per row and blows the cache cap.
+ */
+function usedRange(
+  ws: import('xlsx').WorkSheet,
+  range: import('xlsx').Range,
+  XLSX: typeof import('xlsx'),
+): import('xlsx').Range {
+  let lastRow = range.s.r;
+  let lastCol = range.s.c;
+  for (const address of Object.keys(ws)) {
+    if (address.startsWith('!')) {
+      continue;
+    }
+    const cell = ws[address] as import('xlsx').CellObject | undefined;
+    if (cell?.v == null || cell.v === '') {
+      continue;
+    }
+    const { r, c } = XLSX.utils.decode_cell(address);
+    lastRow = Math.max(lastRow, r);
+    lastCol = Math.max(lastCol, c);
+  }
+  for (const merge of ws['!merges'] ?? []) {
+    if (merge.s.r <= lastRow && merge.s.c <= lastCol) {
+      lastRow = Math.max(lastRow, merge.e.r);
+      lastCol = Math.max(lastCol, merge.e.c);
+    }
+  }
+  return {
+    s: range.s,
+    e: { r: Math.min(range.e.r, lastRow), c: Math.min(range.e.c, lastCol) },
+  };
+}
+
+function renderSheetRows(
+  ws: import('xlsx').WorkSheet,
+  range: import('xlsx').Range,
+  rows: number,
+  XLSX: typeof import('xlsx'),
+): string {
+  ws['!ref'] = XLSX.utils.encode_range({
+    s: range.s,
+    e: { r: range.s.r + rows - 1, c: range.e.c },
+  });
+  return XLSX.utils.sheet_to_html(ws, { editable: false, header: '', footer: '' });
+}
+
+/** Scales the row count down to the share of `bytes` that fits, always by at least one row. */
+const shrinkRows = (rows: number, budget: number, bytes: number): number =>
+  Math.min(rows - 1, Math.floor(((rows * budget) / bytes) * 0.95));
+
+/** The sanitized table for a sheet's leading `rows` rows. */
+interface SheetFit {
+  html: string;
+  rows: number;
+}
+
+const NO_FIT: SheetFit = { html: '', rows: 0 };
+
+/** Rows sanitized up front to learn how much sanitizing shrinks this sheet's markup. */
+const SPREADSHEET_SAMPLE_ROWS = 50;
+
+/**
+ * Renders as many leading rows of a sheet as fit `budget` bytes once sanitized. Raw
+ * `sheet_to_html` output carries `data-*` copies of every value, so it runs about twice the
+ * sanitized size: sizes are estimated from a sanitized sample, and a table far over budget is
+ * never sanitized whole.
+ */
+async function renderSheetWithin(
+  ws: import('xlsx').WorkSheet,
+  range: import('xlsx').Range,
+  rows: number,
+  budget: number,
+  XLSX: typeof import('xlsx'),
+): Promise<SheetFit> {
+  const sampleRows = Math.min(rows, SPREADSHEET_SAMPLE_ROWS);
+  const sampleRaw = renderSheetRows(ws, range, sampleRows, XLSX);
+  const sample = await sanitizeOfficeHtml(sampleRaw);
+  const ratio =
+    Buffer.byteLength(sample, 'utf-8') / Math.max(1, Buffer.byteLength(sampleRaw, 'utf-8'));
+  let count = rows;
+  while (count > 0) {
+    const raw = count === sampleRows ? sampleRaw : renderSheetRows(ws, range, count, XLSX);
+    const estimate = Buffer.byteLength(raw, 'utf-8') * ratio;
+    if (estimate > budget) {
+      count = shrinkRows(count, budget, estimate);
+      continue;
+    }
+    const html = count === sampleRows ? sample : await sanitizeOfficeHtml(raw);
+    const bytes = Buffer.byteLength(html, 'utf-8');
+    if (bytes <= budget) {
+      return { html, rows: count };
+    }
+    count = shrinkRows(count, budget, bytes);
+  }
+  return NO_FIT;
+}
+
+/**
+ * Renders every sheet into one shared byte budget sized to the output cap. The first sheet
+ * that overflows what is left keeps its leading rows that fit; after it, a sheet renders only
+ * if it fits whole, and the rest are listed with a download prompt rather than as a few-row
+ * fragment. One large sheet no longer turns the whole workbook into the "too large" banner.
+ */
 async function renderWorkbookSheets(
   workbook: import('xlsx').WorkBook,
   XLSX: typeof import('xlsx'),
 ): Promise<RenderedSheet[]> {
   const sheets: RenderedSheet[] = [];
+  let remaining =
+    OFFICE_HTML_OUTPUT_CAP -
+    SPREADSHEET_CHROME_BASE_BYTES -
+    workbook.SheetNames.length * SPREADSHEET_CHROME_PER_SHEET_BYTES;
+  let truncatedOne = false;
   for (const sheetName of workbook.SheetNames) {
     const ws = workbook.Sheets[sheetName];
     const ref = ws['!ref'];
-    let totalRows = 0;
-    let truncated = false;
-    if (ref) {
-      const range = XLSX.utils.decode_range(ref);
-      totalRows = range.e.r - range.s.r + 1;
-      if (totalRows > SPREADSHEET_MAX_ROWS_PER_SHEET) {
-        const cappedEnd = range.s.r + SPREADSHEET_MAX_ROWS_PER_SHEET - 1;
-        ws['!ref'] = XLSX.utils.encode_range({
-          s: range.s,
-          e: { r: cappedEnd, c: range.e.c },
-        });
-        truncated = true;
-      }
+    if (!ref) {
+      const html = await sanitizeOfficeHtml(
+        XLSX.utils.sheet_to_html(ws, { editable: false, header: '', footer: '' }),
+      );
+      sheets.push({ name: sheetName, html, totalRows: 0, shownRows: 0, omitted: false });
+      continue;
     }
-    const html = XLSX.utils.sheet_to_html(ws, { editable: false, header: '', footer: '' });
-    sheets.push({ name: sheetName, html, truncated, totalRows });
+    const range = usedRange(ws, XLSX.utils.decode_range(ref), XLSX);
+    const totalRows = range.e.r - range.s.r + 1;
+    const rows = Math.min(totalRows, SPREADSHEET_MAX_ROWS_PER_SHEET);
+    const fitted: SheetFit =
+      remaining > 0 ? await renderSheetWithin(ws, range, rows, remaining, XLSX) : NO_FIT;
+    const rendered: SheetFit = truncatedOne && fitted.rows < rows ? NO_FIT : fitted;
+    truncatedOne ||= rendered.rows > 0 && rendered.rows < rows;
+    remaining -= Buffer.byteLength(rendered.html, 'utf-8');
+    sheets.push({
+      name: sheetName,
+      html: rendered.html,
+      totalRows,
+      shownRows: rendered.rows,
+      omitted: rendered.rows === 0,
+    });
   }
   return sheets;
 }
@@ -731,9 +857,13 @@ ${sheets
 
   const panels = sheets
     .map((s, i) => {
-      const banner = s.truncated
-        ? `<div class="lc-banner">Showing first ${SPREADSHEET_MAX_ROWS_PER_SHEET.toLocaleString()} of ${s.totalRows.toLocaleString()} rows. Download the file to see the rest.</div>`
-        : '';
+      if (s.omitted) {
+        return `<section class="lc-sheet-panel" id="lc-sheet-panel-${i}"><div class="lc-banner">This sheet is not included in the preview (${s.totalRows.toLocaleString()} rows). Download the file to view it.</div></section>`;
+      }
+      const banner =
+        s.shownRows < s.totalRows
+          ? `<div class="lc-banner">Showing first ${s.shownRows.toLocaleString()} of ${s.totalRows.toLocaleString()} rows. Download the file to see the rest.</div>`
+          : '';
       return `<section class="lc-sheet-panel" id="lc-sheet-panel-${i}">${banner}<div class="lc-table-scroll">${s.html}</div></section>`;
     })
     .join('\n');
@@ -771,14 +901,9 @@ export async function excelSheetToHtml(buffer: Buffer): Promise<string> {
   }
   const XLSX = await import('xlsx');
   const workbook = XLSX.read(buffer, { type: 'buffer' });
-  const sheets = await renderWorkbookSheets(workbook, XLSX);
-  /* The per-sheet HTML from `sheet_to_html` is generally well-formed but we
-   * still sanitize it (defense in depth). The chrome (tab strip, banners) is
-   * our own code and doesn't need sanitization. */
-  const sanitizedSheets = await Promise.all(
-    sheets.map(async (s) => ({ ...s, html: await sanitizeOfficeHtml(s.html) })),
-  );
-  return renderSpreadsheetHtml(sanitizedSheets);
+  /* `renderWorkbookSheets` sanitizes each sheet's `sheet_to_html` output (defense in depth);
+   * the chrome (tab strip, banners) is our own code and doesn't need it. */
+  return renderSpreadsheetHtml(await renderWorkbookSheets(workbook, XLSX));
 }
 
 /* =============================================================================
@@ -788,17 +913,14 @@ export async function excelSheetToHtml(buffer: Buffer): Promise<string> {
 /** Convert a CSV buffer to a sandboxed HTML document with a single table. */
 export async function csvToHtml(buffer: Buffer): Promise<string> {
   const XLSX = await import('xlsx');
-  const text = buffer.toString('utf-8');
+  const text = decodeSpreadsheetText(buffer);
   /* `XLSX.read` with `type: 'string'` accepts CSV as well as XML/JSON
    * formats; the default sheet name for CSV is `Sheet1` which we relabel
    * below for a friendlier tab. */
   const workbook = XLSX.read(text, { type: 'string', raw: true });
   const sheets = await renderWorkbookSheets(workbook, XLSX);
   // Single sheet for CSV — relabel to "CSV" for clarity, no tab strip emitted.
-  const sanitized = await Promise.all(
-    sheets.map(async (s) => ({ ...s, name: 'CSV', html: await sanitizeOfficeHtml(s.html) })),
-  );
-  return renderSpreadsheetHtml(sanitized);
+  return renderSpreadsheetHtml(sheets.map((s) => ({ ...s, name: 'CSV' })));
 }
 
 /* =============================================================================
