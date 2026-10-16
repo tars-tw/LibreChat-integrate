@@ -17,7 +17,12 @@ import {
   useDeleteTarsModelProfileMutation,
   useUpdateTarsModelProfileMutation,
 } from '~/data-provider';
-import { collectModelTypes, displayDescription, isProfileEnabled } from './helpers';
+import {
+  isProfileEnabled,
+  collectModelTypes,
+  displayModelType,
+  displayDescription,
+} from './helpers';
 import { formatDateTime } from '../Users/helpers';
 import ModelProfileModal from './Modal';
 import useFeedback from './useFeedback';
@@ -88,7 +93,10 @@ export default function ModelProfileManager() {
 
   const types = useMemo(() => collectModelTypes(profiles), [profiles]);
   const typeOptions = useMemo(
-    () => [{ value: ALL, label: localize('com_ui_tars_models_filter_type_all') }, ...types],
+    () => [
+      { value: ALL, label: localize('com_ui_tars_models_filter_type_all') },
+      ...types.map((type) => ({ value: type, label: displayModelType(type) })),
+    ],
     [types, localize],
   );
   const statusOptions = useMemo(
@@ -114,7 +122,7 @@ export default function ModelProfileManager() {
       }
       return [
         profile.name,
-        profile.type,
+        profile.type && displayModelType(profile.type),
         profile.version,
         profile.endpoint,
         displayDescription(profile.description, i18n.language),
@@ -182,7 +190,7 @@ export default function ModelProfileManager() {
       <button
         type="button"
         onClick={() => toggleSort(field)}
-        className="flex items-center gap-1 hover:text-text-primary"
+        className="hover:text-text-primary flex items-center gap-1"
       >
         {localize(labelKey)}
         {field === sortField &&
@@ -203,13 +211,13 @@ export default function ModelProfileManager() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative w-96 max-w-full">
-            <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+            <Search className="icon-sm text-text-secondary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
             <Input
               value={search}
               onChange={(e) => resetPage(setSearch)(e.target.value)}
               placeholder={localize('com_ui_tars_models_search')}
               aria-label={localize('com_ui_tars_models_search')}
-              className="pl-9 placeholder:text-text-muted"
+              className="placeholder:text-text-muted pl-9"
             />
           </div>
           <Button variant="submit" onClick={() => setCreating(true)}>
@@ -243,22 +251,22 @@ export default function ModelProfileManager() {
       )}
 
       {!isLoading && isError && (
-        <p className="py-12 text-center text-sm text-text-destructive">
+        <p className="text-text-destructive py-12 text-center text-sm">
           {localize('com_ui_tars_models_load_failed')}
         </p>
       )}
 
       {!isLoading && !isError && filtered.length === 0 && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_tars_models_empty')}
         </p>
       )}
 
       {!isLoading && !isError && filtered.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border-light">
+          <div className="border-border-light overflow-x-auto rounded-lg border">
             <table className="w-full min-w-[72rem] table-fixed text-sm">
-              <thead className="bg-surface-secondary text-left text-text-secondary">
+              <thead className="bg-surface-secondary text-text-secondary text-left">
                 <tr>
                   {sortableHeader('name', 'com_ui_tars_models_name', 'w-[14%]')}
                   <th className="w-[7%] px-3 py-2 font-medium">
@@ -287,36 +295,36 @@ export default function ModelProfileManager() {
                   return (
                     <tr
                       key={profile.id}
-                      className="border-t border-border-light hover:bg-surface-hover"
+                      className="border-border-light hover:bg-surface-hover border-t"
                     >
-                      <td className="px-3 py-2 font-medium text-text-primary">
+                      <td className="text-text-primary px-3 py-2 font-medium">
                         <Truncated value={profile.name} />
                       </td>
-                      <td className="px-3 py-2 text-text-secondary">
+                      <td className="text-text-secondary px-3 py-2">
                         <Truncated value={profile.version ?? ''} />
                       </td>
                       <td className="px-3 py-2">
                         {profile.type ? (
                           <span
-                            title={profile.type}
-                            className="inline-block max-w-full truncate rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-primary"
+                            title={displayModelType(profile.type)}
+                            className="bg-surface-tertiary text-text-primary inline-block max-w-full truncate rounded-full px-2 py-0.5 text-xs"
                           >
-                            {profile.type}
+                            {displayModelType(profile.type)}
                           </span>
                         ) : (
                           <span className="text-text-secondary">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-text-secondary">
+                      <td className="text-text-secondary px-3 py-2">
                         <Truncated value={profile.endpoint ?? ''} className="font-mono text-xs" />
                       </td>
-                      <td className="px-3 py-2 text-text-secondary">
+                      <td className="text-text-secondary px-3 py-2">
                         <Truncated
                           value={profile.api_version ?? ''}
                           className="font-mono text-xs"
                         />
                       </td>
-                      <td className="px-3 py-2 text-text-secondary">
+                      <td className="text-text-secondary px-3 py-2">
                         <Truncated value={displayDescription(profile.description, i18n.language)} />
                       </td>
                       <td className="px-3 py-2">
@@ -332,7 +340,7 @@ export default function ModelProfileManager() {
                           {togglingId === profile.id ? (
                             <Spinner className="icon-sm" />
                           ) : (
-                            <span className="text-xs text-text-secondary">
+                            <span className="text-text-secondary text-xs">
                               {enabled
                                 ? localize('com_ui_tars_users_enabled')
                                 : localize('com_ui_tars_users_disabled')}
@@ -340,7 +348,7 @@ export default function ModelProfileManager() {
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-xs text-text-secondary">
+                      <td className="text-text-secondary px-3 py-2 text-xs">
                         {formatDateTime(profile.updated_at ?? profile.created_at, i18n.language) ||
                           '—'}
                       </td>
@@ -351,7 +359,7 @@ export default function ModelProfileManager() {
                             aria-label={localize('com_ui_edit')}
                             title={localize('com_ui_edit')}
                             onClick={() => setEditing(profile)}
-                            className="rounded p-1.5 text-text-secondary hover:text-text-primary"
+                            className="text-text-secondary hover:text-text-primary rounded p-1.5"
                           >
                             <Pencil className="icon-sm" />
                           </button>
@@ -360,7 +368,7 @@ export default function ModelProfileManager() {
                             aria-label={localize('com_ui_delete')}
                             title={localize('com_ui_delete')}
                             onClick={() => setDeleting(profile)}
-                            className="rounded p-1.5 text-text-destructive hover:text-text-destructive"
+                            className="text-text-destructive hover:text-text-destructive rounded p-1.5"
                           >
                             <Trash2 className="icon-sm" />
                           </button>
@@ -373,7 +381,7 @@ export default function ModelProfileManager() {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
+          <div className="text-text-secondary flex flex-wrap items-center justify-between gap-3 text-sm">
             <div className="flex items-center gap-2">
               <span id="tars-models-page-size-label">
                 {localize('com_ui_tars_users_rows_per_page')}
@@ -438,10 +446,10 @@ export default function ModelProfileManager() {
             showCloseButton={true}
             main={
               <div className="space-y-2">
-                <p className="text-sm text-text-secondary">
+                <p className="text-text-secondary text-sm">
                   {localize('com_ui_tars_models_disable_confirm', { name: disabling.name })}
                 </p>
-                <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
+                <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
                   {localize('com_ui_tars_models_cascade_warning')}
                 </p>
               </div>
@@ -473,11 +481,11 @@ export default function ModelProfileManager() {
             showCloseButton={true}
             main={
               <div className="space-y-2">
-                <p className="text-sm text-text-secondary">
+                <p className="text-text-secondary text-sm">
                   {localize('com_ui_tars_models_delete_confirm', { name: deleting.name })}
                 </p>
                 {isProfileEnabled(deleting) && (
-                  <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
+                  <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
                     {localize('com_ui_tars_models_cascade_warning')}
                   </p>
                 )}

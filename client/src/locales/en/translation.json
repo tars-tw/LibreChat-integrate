@@ -3540,7 +3540,7 @@
   "com_ui_tars_models_type_google_vertex": "GOOGLE_VERTEX (Google Vertex AI)",
   "com_ui_tars_models_type_legacy": "{{type}} (legacy type)",
   "com_ui_tars_models_type_select": "Select a type",
-  "com_ui_tars_models_type_vllm": "VLLM (on-premises model)",
+  "com_ui_tars_models_type_vllm": "vLLM (on-premises model)",
   "com_ui_tars_models_updated": "Model updated",
   "com_ui_tars_models_updated_at": "Updated",
   "com_ui_tars_models_version": "Version",
