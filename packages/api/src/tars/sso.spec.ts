@@ -15,6 +15,7 @@ import {
   updateTarsSsoConfig,
   deleteTarsSsoConfig,
   saveTarsSyncSchedule,
+  fetchTarsAdSyncSummary,
   testTarsLdapConnection,
 } from './sso';
 import type { TarsSsoConfig } from './sso';
@@ -198,6 +199,58 @@ describe('directory operations', () => {
 
     await expect(importTarsAdData('cfg-1', false, BASE_URL)).resolves.toBe('synced 3');
     expect(parseBody(fetchMock)).toEqual({ config_id: 'cfg-1', enable_users: false });
+  });
+});
+
+describe('group source', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  /** An empty string is how the form switches back to AD groups, so it must reach pwc_tars. */
+  it('passes a cleared group source attribute through on an update', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { success: true, data: {} }));
+
+    await updateTarsSsoConfig('admin', 'cfg-1', { ldap_group_attribute: '' }, BASE_URL);
+
+    expect(parseBody(fetchMock)).toEqual({
+      config_id: 'cfg-1',
+      user_id: 'admin',
+      ldap_group_attribute: '',
+    });
+  });
+
+  it('reads the imported counts by config id', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(200, {
+        success: true,
+        data: { synced_user_count: 44, synced_group_count: 11, external_member_count: 1 },
+      }),
+    );
+
+    await expect(fetchTarsAdSyncSummary('cfg-1', BASE_URL)).resolves.toEqual({
+      synced_user_count: 44,
+      synced_group_count: 11,
+      external_member_count: 1,
+    });
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain('/api/settings/get_ad_sync_summary');
+    expect(url).toContain('config_id=cfg-1');
+  });
+
+  /** A pwc_tars build without the external count must not surface `undefined` in the warning. */
+  it('defaults counts pwc_tars leaves out to zero', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { success: true, data: { synced_user_count: 3 } }));
+
+    await expect(fetchTarsAdSyncSummary('cfg-1', BASE_URL)).resolves.toEqual({
+      synced_user_count: 3,
+      synced_group_count: 0,
+      external_member_count: 0,
+    });
   });
 });
 

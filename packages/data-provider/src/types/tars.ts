@@ -1134,6 +1134,8 @@ export type TTarsSsoConfig = {
   ldap_whitelist_users?: string | null;
   ldap_whitelist_groups?: string | null;
   ldap_enable_whitelist?: boolean;
+  /** AD user attribute whose values become pwc_tars user groups; null keeps AD group membership. */
+  ldap_group_attribute?: string | null;
   frequency?: number | null;
   frequency_unit?: string | null;
   start_time?: string | null;
@@ -1158,6 +1160,8 @@ export type TTarsLdapConfigInput = {
   ldap_admin_password?: string;
   ldap_whitelist_users?: string;
   ldap_enable_whitelist?: boolean;
+  /** Group source attribute; an empty string clears it back to AD group membership. */
+  ldap_group_attribute?: string;
   status?: number;
   /**
    * Whitelist tree only: also nest every user under the OU it actually sits
@@ -1168,6 +1172,8 @@ export type TTarsLdapConfigInput = {
   include_ou_users?: boolean;
   /** Label for the synthetic node holding users pwc_tars couldn't place under any OU. */
   no_ou_label?: string;
+  /** Import preview only: label for the synthetic node holding users without a group source value. */
+  no_group_label?: string;
 };
 
 /**
@@ -1194,6 +1200,8 @@ export type TTarsLdapTreeSummary = {
   ungrouped_users: number;
   group_member_error_count: number;
   primary_group_augmented_count: number;
+  /** The group source attribute the preview grouped by; null when grouped by AD groups. Absent from older pwc_tars. */
+  group_attribute?: string | null;
   query_seconds: number;
 };
 
@@ -1212,6 +1220,14 @@ export type TTarsWhitelistUser = {
 
 export type TTarsWhitelistResponse = {
   users: TTarsWhitelistUser[];
+};
+
+/** What a configuration has already imported, read before its group source changes. */
+export type TTarsAdSyncSummary = {
+  synced_user_count: number;
+  synced_group_count: number;
+  /** Users this configuration did not sync who sit in its groups; a group source change drops them from those groups. */
+  external_member_count: number;
 };
 
 export type TTarsSyncSchedule = {

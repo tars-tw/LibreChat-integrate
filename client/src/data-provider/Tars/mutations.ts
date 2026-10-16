@@ -56,6 +56,7 @@ import type {
   TTarsLdapConfigInput,
   TTarsWhitelistUser,
   TTarsLdapTreeResponse,
+  TTarsAdSyncSummary,
   TTarsSyncScheduleInput,
   TTarsTokenConfig,
   TTarsTokenUserQuota,
@@ -1520,6 +1521,13 @@ export const useImportTarsAdDataMutation = (
       },
     },
   );
+};
+
+/** Read on demand when a saved configuration's group source changes, so it is not cached. */
+export const useTarsAdSyncSummaryMutation = (
+  options?: UseMutationOptions<TTarsAdSyncSummary, unknown, string>,
+): UseMutationResult<TTarsAdSyncSummary, unknown, string> => {
+  return useMutation((id: string) => dataService.getTarsAdSyncSummary(id), options);
 };
 
 export const useDeleteTarsAdDataMutation = (
