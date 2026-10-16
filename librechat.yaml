@@ -55,7 +55,8 @@ endpoints:
     # Add a local model purely on the pwc_tars side (register it in model_profile
     # with its endpoint + serve it on vLLM) and it appears here with ZERO LibreChat
     # config. `models.default` is nominal only (schema requires ≥1); the real list
-    # always comes from pwc_tars.
+    # always comes from pwc_tars. The client recognizes this endpoint by its name
+    # (TARS_LOCAL_ENDPOINT_NAME in data-provider) — rename both together.
     - name: 'vLLM'
       # vLLM runs without --api-key, so any non-empty placeholder works. The real
       # per-model baseURL is injected at request time (see tars://local above).

@@ -339,6 +339,17 @@ export const mergeTarsPluginFunctions = (
  */
 export const TARS_GENERAL_DOMAIN_ID = 100;
 
+/**
+ * Name of the custom endpoint serving pwc_tars local (vLLM) models — the one whose
+ * `baseURL` is `tars://local` in librechat.yaml. The client never sees the base URL,
+ * so it identifies the endpoint by this name; keep the two in step.
+ */
+export const TARS_LOCAL_ENDPOINT_NAME = 'vLLM';
+
+/** Whether an endpoint name is the pwc_tars local (vLLM) endpoint. */
+export const isTarsLocalEndpointName = (endpoint: string | null | undefined): boolean =>
+  endpoint === TARS_LOCAL_ENDPOINT_NAME;
+
 /** Langflow flows are mirrored into agents under this id prefix (`packages/api/src/langflow/sync.ts`). */
 export const TARS_LANGFLOW_AGENT_ID_PREFIX = 'agent_langflow_';
 
