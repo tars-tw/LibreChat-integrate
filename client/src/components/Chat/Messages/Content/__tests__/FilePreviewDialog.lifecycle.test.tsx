@@ -51,6 +51,9 @@ jest.mock('~/data-provider', () => ({
   revokeDownloadURL: (url: string) => mockRevoke(url),
 }));
 jest.mock('@librechat/client', () => ({
+  ThemeContext: jest
+    .requireActual<typeof import('react')>('react')
+    .createContext({ resolvedMode: 'light', highContrast: false }),
   OGDialog: ({ open, children }: React.PropsWithChildren<{ open: boolean }>) =>
     open ? <div>{children}</div> : null,
   OGDialogContent: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
@@ -164,6 +167,36 @@ describe('FilePreviewDialog lifecycle', () => {
     });
     expect(screen.getByText('shared bytes')).toBeInTheDocument();
     expect(screen.queryByText('com_ui_preview_unavailable')).toBeNull();
+  });
+
+  it('renders an uploaded spreadsheet from the server document instead of its bytes', () => {
+    mockPreview = {
+      file_id: 'f1',
+      status: 'ready',
+      text: '<!DOCTYPE html><table><tr><td>蘋果</td></tr></table>',
+      textFormat: 'html',
+    };
+    render(
+      <FilePreviewDialog
+        {...props}
+        fileName="品質會議.xlsx"
+        fileType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        deliveryPath="none"
+      />,
+    );
+    expect(screen.getByText('com_ui_file_type_spreadsheet')).toBeInTheDocument();
+    const frame = screen.getByTitle('com_ui_preview: 品質會議.xlsx');
+    expect(frame).toHaveAttribute('sandbox', 'allow-scripts');
+    expect(frame.getAttribute('srcdoc')).toContain('蘋果');
+    expect(mockUseFilePreview).toHaveBeenLastCalledWith('f1', { enabled: true }, undefined);
+    expect(mockOwnedPreview).not.toHaveBeenCalled();
+  });
+
+  it('reports an office file the server could not render as unavailable', () => {
+    mockPreview = { file_id: 'f1', status: 'ready' };
+    render(<FilePreviewDialog {...props} fileName="deck.pptx" fileType="" />);
+    expect(screen.getByText('com_ui_preview_unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'com_ui_retry' })).toBeInTheDocument();
   });
 
   it('uses only shared metadata and the shared authorization scope', async () => {

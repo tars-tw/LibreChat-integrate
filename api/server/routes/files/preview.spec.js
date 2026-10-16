@@ -15,7 +15,10 @@ jest.mock('@librechat/data-schemas', () => ({
   SystemCapabilities: {},
 }));
 
+const mockRenderOfficePreview = jest.fn();
 jest.mock('@librechat/api', () => ({
+  renderOfficePreview: (...args) => mockRenderOfficePreview(...args),
+  resolveDownloadPath: (file) => file.filepath,
   refreshS3FileUrls: jest.fn(),
   resolveUploadErrorMessage: jest.fn(),
   verifyAgentUploadPermission: jest.fn(),
@@ -40,8 +43,9 @@ jest.mock('~/server/services/Files/process', () => ({
   processAgentFileUpload: jest.fn(),
 }));
 
+const mockGetDownloadStream = jest.fn();
 jest.mock('~/server/services/Files/strategies', () => ({
-  getStrategyFunctions: jest.fn(() => ({})),
+  getStrategyFunctions: jest.fn(() => ({ getDownloadStream: mockGetDownloadStream })),
 }));
 
 jest.mock('~/server/controllers/assistants/helpers', () => ({
@@ -99,6 +103,9 @@ describe('GET /files/:file_id/preview', () => {
     mockUpdateFile.mockReset();
     mockGetAgents.mockReset();
     mockGetAgents.mockResolvedValue([]);
+    mockRenderOfficePreview.mockReset();
+    mockRenderOfficePreview.mockResolvedValue(null);
+    mockGetDownloadStream.mockReset();
   });
 
   it('returns 404 when the file does not exist (auth check fails first via fileAccess)', async () => {
@@ -260,6 +267,49 @@ describe('GET /files/:file_id/preview', () => {
     const res = await request(buildApp()).get('/files/fid-race/preview');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ file_id: 'fid-race', status: 'ready' });
+  });
+
+  it('renders an office upload that stores no preview text from its stored bytes', async () => {
+    const record = {
+      file_id: 'fid-sheet',
+      user: OWNER_USER_ID,
+      filename: '品質會議.xlsx',
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      source: 'local',
+      filepath: '/uploads/user-123/fid-sheet__品質會議.xlsx',
+    };
+    mockGetFiles.mockResolvedValueOnce([record]);
+    mockFindFileById.mockResolvedValueOnce({ ...record, text: null });
+    mockGetDownloadStream.mockResolvedValueOnce('stream');
+    mockRenderOfficePreview.mockImplementationOnce(async (_file, openStream) => {
+      await openStream();
+      return { text: '<!DOCTYPE html><table></table>', textFormat: 'html' };
+    });
+
+    const res = await request(buildApp()).get('/files/fid-sheet/preview');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      file_id: 'fid-sheet',
+      status: 'ready',
+      text: '<!DOCTYPE html><table></table>',
+      textFormat: 'html',
+    });
+    expect(mockRenderOfficePreview).toHaveBeenCalledWith(
+      expect.objectContaining({ file_id: 'fid-sheet', source: 'local' }),
+      expect.any(Function),
+    );
+    expect(mockGetDownloadStream).toHaveBeenCalledWith(expect.anything(), record.filepath);
+  });
+
+  it('does not re-render when stored preview text exists', async () => {
+    mockGetFiles.mockResolvedValueOnce([
+      { file_id: 'fid-stored', user: OWNER_USER_ID, filename: 'report.docx' },
+    ]);
+    mockFindFileById.mockResolvedValueOnce({ file_id: 'fid-stored', text: 'extracted' });
+    const res = await request(buildApp()).get('/files/fid-stored/preview');
+    expect(res.body.text).toBe('extracted');
+    expect(mockRenderOfficePreview).not.toHaveBeenCalled();
   });
 
   it('returns 500 with a stable shape if the text fetch throws unexpectedly', async () => {

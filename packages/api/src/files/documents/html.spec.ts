@@ -289,6 +289,85 @@ describe('Office HTML producers', () => {
       expect(html).toContain('Sheet One');
       expect(html).toContain('Second Sheet');
     });
+
+    describe('byte budget', () => {
+      const cap = 512 * 1024;
+      const wideRows = (count: number): string[][] =>
+        Array.from({ length: count }, (_, r) =>
+          Array.from({ length: 10 }, (_, c) => `r${r}c${c}-${'資料'.repeat(60)}`),
+        );
+      const workbookOf = async (sheets: Record<string, unknown[][]>): Promise<Buffer> => {
+        const XLSX = await import('xlsx');
+        const workbook = XLSX.utils.book_new();
+        for (const [name, rows] of Object.entries(sheets)) {
+          XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), name);
+        }
+        return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+      };
+
+      test('keeps the leading rows of a sheet too large for the cap', async () => {
+        const html = await excelSheetToHtml(await workbookOf({ 明細: wideRows(2000) }));
+
+        expect(Buffer.byteLength(html, 'utf-8')).toBeLessThanOrEqual(cap);
+        expect(html).toContain('r0c0-');
+        expect(html).not.toContain('r1999c0-');
+        const shown = Number(html.match(/Showing first ([\d,]+) of 2,000 rows/)?.[1]);
+        expect(shown).toBeGreaterThan(0);
+        expect(html.match(/<tr/g)).toHaveLength(shown);
+        expect(html.trimEnd()).toMatch(/<\/html>$/);
+      });
+
+      test('lists the sheets past the budget with a download prompt', async () => {
+        const html = await excelSheetToHtml(
+          await workbookOf({
+            第一頁: wideRows(2000),
+            第二頁: wideRows(2000),
+            第三頁: wideRows(2000),
+            附註: [['附註內容']],
+          }),
+        );
+
+        expect(Buffer.byteLength(html, 'utf-8')).toBeLessThanOrEqual(cap);
+        expect(html).toContain('第三頁');
+        expect(html.match(/Showing first/g)).toHaveLength(1);
+        expect(
+          html.match(/This sheet is not included in the preview \(2,000 rows\)/g),
+        ).toHaveLength(2);
+        expect(html).toContain('附註內容');
+      });
+
+      test('still renders a small sheet that follows one it could not fit', async () => {
+        const row = Array.from({ length: 20 }, () => 'x'.repeat(30_000));
+        const huge = Array.from({ length: 5 }, () => row);
+        const html = await excelSheetToHtml(await workbookOf({ 大表: huge, 小表: [['小表的值']] }));
+
+        expect(html).toContain('This sheet is not included in the preview (5 rows)');
+        expect(html).toContain('小表的值');
+      });
+
+      test('reports the row cap even when the rows fit the budget', async () => {
+        const rows = Array.from({ length: 6000 }, (_, r) => [r]);
+        const html = await excelSheetToHtml(await workbookOf({ 長表: rows }));
+        expect(html).toContain('Showing first 5,000 of 6,000 rows');
+      });
+    });
+
+    test('drops the empty columns a formatting-only declared range carries', async () => {
+      const XLSX = await import('xlsx');
+      const ws = XLSX.utils.aoa_to_sheet([
+        ['品項', '數量'],
+        ['蘋果', 3],
+      ]);
+      ws['!ref'] = 'A1:XEL40';
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, ws, '明細');
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+
+      const html = await excelSheetToHtml(buffer);
+
+      expect(html).toContain('蘋果');
+      expect(html.match(/<td/g)).toHaveLength(4);
+    });
   });
 
   describe('csvToHtml', () => {
@@ -307,6 +386,20 @@ describe('Office HTML producers', () => {
       const html = await csvToHtml(csv);
       expect(html).toContain('hello, world');
       expect(html).toContain('42');
+    });
+
+    test('decodes a Big5 CSV exported by zh-TW Excel', async () => {
+      const big5 = Buffer.from([0xa6, 0x57, 0xba, 0xd9, 0x2c, 0xbc, 0xc6, 0xb6, 0x71, 0x0a]);
+      const html = await csvToHtml(big5);
+      expect(html).toContain('名稱');
+      expect(html).toContain('數量');
+    });
+
+    test('strips the UTF-8 BOM Excel prepends', async () => {
+      const csv = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('名稱,數量\n')]);
+      const html = await csvToHtml(csv);
+      expect(html).toContain('>名稱<');
+      expect(html).not.toContain('\uFEFF');
     });
 
     test('handles an empty CSV without crashing', async () => {

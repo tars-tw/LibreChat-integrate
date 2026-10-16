@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import copy from 'copy-to-clipboard';
 import { Download } from 'lucide-react';
 import { useRecoilValue } from 'recoil';
 import {
   Button,
   OGDialog,
+  ThemeContext,
   OGDialogContent,
   OGDialogTitle,
   OGDialogDescription,
@@ -26,6 +27,7 @@ import {
 import { getDownloadFilename, logger, sortPagesByRelevance, triggerDownload } from '~/utils';
 import CopyButton from '~/components/Messages/Content/CopyButton';
 import { useFileMapContext, useShareContext } from '~/Providers';
+import { withOfficeContrast } from '~/utils/officePreview';
 import { useLocalize } from '~/hooks';
 import store from '~/store';
 
@@ -68,14 +70,15 @@ export function getDisplayType(
     if (fileType.includes('pdf')) {
       return 'PDF';
     }
-    if (fileType.includes('word') || fileType.includes('document')) {
-      return localize('com_ui_file_type_document');
-    }
+    /** Before "document": every OOXML type is `…officedocument.*`. */
     if (fileType.includes('spreadsheet') || fileType.includes('excel')) {
       return localize('com_ui_file_type_spreadsheet');
     }
     if (fileType.includes('presentation') || fileType.includes('powerpoint')) {
       return localize('com_ui_file_type_presentation');
+    }
+    if (fileType.includes('word') || fileType.includes('document')) {
+      return localize('com_ui_file_type_document');
     }
     if (fileType.includes('image')) {
       return localize('com_ui_file_type_image');
@@ -112,9 +115,13 @@ export default function FilePreviewDialog({
   const user = useRecoilValue(store.user);
   const { shareId } = useShareContext();
   const fileMap = useFileMapContext();
+  const { resolvedMode, highContrast } = useContext(ThemeContext);
   const showExtractedText = shouldUseExtractedTextPreview(
     deliveryPath ?? (!shareId && fileId ? fileMap?.[fileId]?.llmDeliveryPath : undefined),
   );
+  const previewKind = showExtractedText ? false : getPreviewKind(fileName, fileType, fileSource);
+  /** Extracted text and rendered office documents both come from the preview endpoint. */
+  const showServerPreview = showExtractedText || previewKind === 'office';
   const {
     data: extractedPreview,
     isInitialLoading: extractedTextLoading,
@@ -124,7 +131,7 @@ export default function FilePreviewDialog({
   } = useFilePreview(
     fileId,
     {
-      enabled: open && showExtractedText && !!fileId,
+      enabled: open && showServerPreview && !!fileId,
     },
     shareId,
   );
@@ -143,20 +150,28 @@ export default function FilePreviewDialog({
   const [previewError, setPreviewError] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
-  const previewKind = showExtractedText ? false : getPreviewKind(fileName, fileType, fileSource);
   const downloadFilename = getDownloadFilename(fileName, fileId, fileSource);
-  const displayedText = showExtractedText ? (extractedPreview?.text ?? null) : fileContent;
+  const serverText = showServerPreview ? (extractedPreview?.text ?? null) : null;
+  const isHtmlPreview = serverText != null && extractedPreview?.textFormat === 'html';
+  const previewText = isHtmlPreview ? null : serverText;
+  const displayedText = showServerPreview ? previewText : fileContent;
+  const previewHtml = useMemo(() => {
+    if (!isHtmlPreview || serverText == null) {
+      return null;
+    }
+    return highContrast ? withOfficeContrast(serverText, resolvedMode === 'dark') : serverText;
+  }, [isHtmlPreview, serverText, highContrast, resolvedMode]);
   const isLoading =
-    (!showExtractedText && loading) ||
-    (showExtractedText &&
+    (!showServerPreview && loading) ||
+    (showServerPreview &&
       isExtractedTextPreviewLoading(
         extractedPreview?.status,
         extractedTextLoading,
         extractedTextError,
       ));
   const hasPreviewError =
-    (!showExtractedText && previewError) ||
-    (showExtractedText &&
+    (!showServerPreview && previewError) ||
+    (showServerPreview &&
       (extractedTextError ||
         extractedPreview?.status === 'failed' ||
         (extractedPreview?.status === 'ready' && extractedPreview.text == null)));
@@ -168,7 +183,7 @@ export default function FilePreviewDialog({
     setFileBlobUrl(null);
     setPreviewError(false);
     setLoading(false);
-    if (!open || !fileId || !previewKind) {
+    if (!open || !fileId || !previewKind || previewKind === 'office') {
       return;
     }
 
@@ -299,7 +314,7 @@ export default function FilePreviewDialog({
               <span className="text-text-secondary text-sm">
                 {localize('com_ui_preview_unavailable')}
               </span>
-              {showExtractedText && (
+              {showServerPreview && (
                 <Button
                   type="button"
                   variant="outline"
@@ -312,9 +327,17 @@ export default function FilePreviewDialog({
               )}
             </div>
           )}
-          {fileBlobUrl && !showExtractedText && (
+          {fileBlobUrl && !showServerPreview && (
             <iframe
               src={fileBlobUrl}
+              title={`${localize('com_ui_preview')}: ${fileName}`}
+              className="border-border-light h-[70vh] w-full rounded-lg border"
+            />
+          )}
+          {previewHtml !== null && !isLoading && !hasPreviewError && (
+            <iframe
+              srcDoc={previewHtml}
+              sandbox="allow-scripts"
               title={`${localize('com_ui_preview')}: ${fileName}`}
               className="border-border-light h-[70vh] w-full rounded-lg border"
             />
@@ -337,7 +360,7 @@ export default function FilePreviewDialog({
               </div>
             </>
           )}
-          {!previewKind && !showExtractedText && !isLoading && (
+          {!previewKind && !showServerPreview && !isLoading && (
             <div className="bg-surface-secondary flex h-32 items-center justify-center rounded-lg">
               <span className="text-text-secondary text-sm">
                 {localize('com_ui_preview_unavailable')}

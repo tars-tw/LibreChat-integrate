@@ -23,6 +23,7 @@ const {
   checkToolResourceUploadPermission,
   resolveAssistantToolPermissions,
   resolveDownloadPath,
+  renderOfficePreview,
 } = require('@librechat/api');
 const {
   isUUID,
@@ -516,6 +517,11 @@ router.get('/:file_id/preview', fileAccess, async (req, res) => {
       if (withText?.text != null) {
         payload.text = withText.text;
         payload.textFormat = withText.textFormat ?? null;
+      } else {
+        const rendered = await renderOfficePreview(file, () =>
+          getStrategyFunctions(file.source).getDownloadStream(req, resolveDownloadPath(file)),
+        );
+        Object.assign(payload, rendered);
       }
     } else if (status === 'failed' && file.previewError) {
       payload.previewError = file.previewError;
