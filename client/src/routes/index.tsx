@@ -241,71 +241,6 @@ export const router = createBrowserRouter(
             dashboardRoutes,
             codeSetupRoute,
             {
-              path: 'admin/domains',
-              lazy: loadDomainsView,
-            },
-            {
-              path: 'kb-schedules',
-              lazy: loadSchedulesView,
-            },
-            {
-              path: 'data-sources/databases',
-              lazy: loadDatabasesView,
-            },
-            {
-              path: 'data-sources/documents',
-              lazy: loadFileSystemsView,
-            },
-            {
-              path: 'data-sources/websites',
-              lazy: loadWebsitesView,
-            },
-            {
-              path: 'admin/users',
-              lazy: loadUsersView,
-            },
-            {
-              path: 'admin/groups',
-              lazy: loadGroupsView,
-            },
-            {
-              path: 'admin/permissions',
-              lazy: loadRolesView,
-            },
-            {
-              path: 'admin/system-settings',
-              lazy: loadSystemSettingsView,
-            },
-            {
-              path: 'admin/models',
-              lazy: loadModelsView,
-            },
-            {
-              path: 'admin/model-keys',
-              lazy: loadModelKeysView,
-            },
-            {
-              path: 'admin/issues',
-              lazy: loadIssuesView,
-            },
-            {
-              path: 'admin/about',
-              lazy: loadAboutView,
-            },
-            {
-              path: 'audit/messages',
-              lazy: loadAuditMessagesView,
-            },
-            {
-              path: 'audit/operations',
-              lazy: loadAuditOperationsView,
-            },
-            {
-              path: 'audit/tokens',
-              lazy: loadTokenQuotaView,
-            },
-            placeholderRoute('audit/governance', 'com_ui_tars_nav_audit_governance'),
-            {
               path: '/',
               element: <Root />,
               children: [
@@ -406,6 +341,71 @@ export const router = createBrowserRouter(
                   path: 'mcp-settings',
                   lazy: loadMcpSettingsView,
                 },
+                {
+                  path: 'admin/domains',
+                  lazy: loadDomainsView,
+                },
+                {
+                  path: 'kb-schedules',
+                  lazy: loadSchedulesView,
+                },
+                {
+                  path: 'data-sources/databases',
+                  lazy: loadDatabasesView,
+                },
+                {
+                  path: 'data-sources/documents',
+                  lazy: loadFileSystemsView,
+                },
+                {
+                  path: 'data-sources/websites',
+                  lazy: loadWebsitesView,
+                },
+                {
+                  path: 'admin/users',
+                  lazy: loadUsersView,
+                },
+                {
+                  path: 'admin/groups',
+                  lazy: loadGroupsView,
+                },
+                {
+                  path: 'admin/permissions',
+                  lazy: loadRolesView,
+                },
+                {
+                  path: 'admin/system-settings',
+                  lazy: loadSystemSettingsView,
+                },
+                {
+                  path: 'admin/models',
+                  lazy: loadModelsView,
+                },
+                {
+                  path: 'admin/model-keys',
+                  lazy: loadModelKeysView,
+                },
+                {
+                  path: 'admin/issues',
+                  lazy: loadIssuesView,
+                },
+                {
+                  path: 'admin/about',
+                  lazy: loadAboutView,
+                },
+                {
+                  path: 'audit/messages',
+                  lazy: loadAuditMessagesView,
+                },
+                {
+                  path: 'audit/operations',
+                  lazy: loadAuditOperationsView,
+                },
+                {
+                  path: 'audit/tokens',
+                  lazy: loadTokenQuotaView,
+                },
+                placeholderRoute('audit/governance', 'com_ui_tars_nav_audit_governance'),
                 {
                   path: 'agents',
                   element: <MarketplaceRoute />,
