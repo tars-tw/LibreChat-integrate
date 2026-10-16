@@ -20,9 +20,11 @@ interface:
     public: false
   # Scheduled chats (upstream default: off). Firing needs Redis streams or, on a
   # single replica without Redis, SCHEDULES_SINGLE_PROCESS=true in .env.
-  schedules:
-    use: true
-    create: true
+  # Temporarily disabled: absent config = off (server getLimits + side-nav entry).
+  # Uncomment to re-enable.
+  # schedules:
+  #   use: true
+  #   create: true
 
 endpoints:
   agents:
@@ -33,7 +35,7 @@ endpoints:
       - actions
       - file_search
       - artifacts
-      - execute_code
+      #- execute_code  # Disabled for now; uncomment to enable code execution capability for agents.
       - web_search
       - sql_agent
       - rag_agent
