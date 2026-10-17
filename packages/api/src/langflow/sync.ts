@@ -1,14 +1,23 @@
 import { logger } from '@librechat/data-schemas';
-import { AccessRoleIds, PrincipalType, ResourceType } from 'librechat-data-provider';
+import {
+  AccessRoleIds,
+  PrincipalType,
+  ResourceType,
+  TARS_LANGFLOW_AGENT_ID_PREFIX,
+  TARS_WORKFLOW_MCP_SERVER_NAME,
+} from 'librechat-data-provider';
 import type { LCAvailableTools } from '~/mcp/types';
 import { flowAgentDescription, flowAgentInstructions, flowAgentName } from './labels';
 import { findModelEndpoint } from './models';
 
-const SERVER_NAME = 'langflow';
+const SERVER_NAME = TARS_WORKFLOW_MCP_SERVER_NAME;
 const MCP_DELIMITER = '_mcp_';
 const TOOL_KEY_SUFFIX = `${MCP_DELIMITER}${SERVER_NAME}`;
-/** Every agent mirrored from a Langflow flow; the client marks them with the Workflow icon. */
-const AGENT_ID_PREFIX = `agent_${SERVER_NAME}_`;
+/**
+ * Every agent mirrored from a Langflow flow; the client marks them with the Workflow icon. Kept
+ * apart from {@link SERVER_NAME}: existing conversations reference these ids.
+ */
+const AGENT_ID_PREFIX = TARS_LANGFLOW_AGENT_ID_PREFIX;
 /** Personal agents carry their user's id after this, so one user's never collide with another's. */
 const PERSONAL_SEGMENT = 'p_';
 const DEFAULT_DEBOUNCE_MS = 8000;
@@ -145,7 +154,7 @@ function driftedFields(agent: WorkflowAgent, desired: AgentFields): AgentFields 
   return Object.fromEntries(drifted.map((key) => [key, desired[key]])) as AgentFields;
 }
 
-/** The upstream tool names in a cached `langflow` catalogue. */
+/** The upstream tool names in a cached Workflow catalogue. */
 function cachedToolNames(tools: LCAvailableTools): Set<string> {
   return new Set(
     Object.entries(tools).map(
@@ -268,7 +277,7 @@ export function createWorkflowAgentSync(deps: WorkflowAgentSyncDeps) {
     }
   };
 
-  /** Drops the user's cached `langflow` catalogue when it no longer names what Langflow publishes,
+  /** Drops the user's cached Workflow catalogue when it no longer names what Langflow publishes,
    *  so the next listing re-reads `tools/list`. Never throws. */
   const refreshStaleCatalog = async (userId: string, flows: WorkflowFlow[]) => {
     const { getCachedTools, invalidateCachedTools } = deps;

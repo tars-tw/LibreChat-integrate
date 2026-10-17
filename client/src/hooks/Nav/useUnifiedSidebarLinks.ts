@@ -73,8 +73,8 @@ export default function useUnifiedSidebarLinks() {
               title: 'com_ui_langflow',
               label: '',
               icon: Workflow,
-              id: 'langflow',
-              onClick: () => navigate('/langflow'),
+              id: 'workflow',
+              onClick: () => navigate('/workflow'),
             },
           ]
         : [];
