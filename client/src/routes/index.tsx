@@ -262,8 +262,13 @@ export const router = createBrowserRouter(
                   element: <ShareView embedded />,
                 },
                 {
-                  path: 'langflow',
+                  path: 'workflow',
                   element: <LangflowView />,
+                },
+                {
+                  /** Pre-rename address, kept so bookmarks land on the Workflow view. */
+                  path: 'langflow',
+                  element: <Navigate to="/workflow" replace={true} />,
                 },
                 {
                   path: 'prompts',

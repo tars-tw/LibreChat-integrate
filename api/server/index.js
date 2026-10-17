@@ -84,6 +84,7 @@ const optionalJwtAuth = require('./middleware/optionalJwtAuth');
 const initializeMCPs = require('./services/initializeMCPs');
 const { configureSubagentTaskRouting } = require('./services/Endpoints/agents/subagentThreadStore');
 const { ensureLangflowProjectId } = require('./services/langflow/project');
+const { migrateLegacyWorkflowServer } = require('./services/langflow/reconcile');
 const configureSocialLogins = require('./socialLogins');
 const createSpaFallback = require('./utils/fallback');
 const { getAppConfig } = require('./services/Config');
@@ -232,6 +233,9 @@ const startServer = async () => {
    * covers anything younger than the boot cutoff. */
   runAsSystem(sweepOrphanedPreviews).catch((err) => {
     logger.error('[sweepOrphanedPreviews] Background sweep failed:', err);
+  });
+  runAsSystem(migrateLegacyWorkflowServer).catch((err) => {
+    logger.error('[langflow/legacy] Workflow server key migration failed:', err);
   });
   // Resolve the Langflow project id before the app config is first loaded, so the
   // `${LANGFLOW_PROJECT_ID}` placeholder in the langflow MCP url interpolates from a single

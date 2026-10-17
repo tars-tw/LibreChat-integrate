@@ -163,7 +163,9 @@ mcpServers:
   # a flow is published by its MCP switch in Langflow. Nothing here is per-machine: the host is
   # ${VITE_LANGFLOW_URL} (.env) and the key ${LANGFLOW_API_KEY} (.env), which must be the Langflow
   # system account's (LANGFLOW_SUPERUSER) — Langflow refuses any other key on this endpoint.
-  langflow:
+  # The key `workflow` is product-facing (tool library, chat tool-call cards, the `_mcp_workflow`
+  # tool-name suffix) and must match TARS_WORKFLOW_MCP_SERVER_NAME, which the agent sync reads.
+  workflow:
     type: streamable-http
     url: '${VITE_LANGFLOW_URL}/api/v1/tars/mcp/streamable'
     headers:
@@ -171,12 +173,12 @@ mcpServers:
       # 把發話者的 LibreChat user id 以 Langflow request-variable header 帶進 flow：
       # Langflow 會把 x-langflow-global-var-* 放進 graph.context.request_variables，
       # TarsAgent component 讀取後轉發 pwc_tars → LLM gateway 以該使用者身分解析個人 key。
-      # 這個佔位符同時讓 langflow 的 MCP 連線變成 per-user scoped。
+      # 這個佔位符同時讓 workflow 的 MCP 連線變成 per-user scoped。
       x-langflow-global-var-librechat_user_id: '{{LIBRECHAT_USER_ID}}'
       # 發話者對應的 pwc_tars 使用者（sys_user.id）；pwc_tars 依此限制可用的知識庫，沒帶就不能用知識庫。
       x-langflow-global-var-tars_user_id: '{{LIBRECHAT_USER_TARSID}}'
-    title: 'Langflow'
-    description: 'Langflow flows exposed as callable tools'
+    title: 'Workflow'
+    description: '將 Workflow 流程作為可呼叫的工具'
     timeout: 60000
     # Hidden from the regular chat input toggle — the per-flow "Workflow ·" Agents are the
     # intended entry point. The server still loads on startup so those Agents can call its tools.
@@ -254,6 +256,7 @@ npm run build
 
 | 日期 | 檔案 | 變更內容 | 相關 commit |
 |---|---|---|---|
+| 2026-10-17 | `librechat.yaml` | `mcpServers.langflow` 改名為 `mcpServers.workflow`,`title` 改 `Workflow`、`description` 改中文;key 會顯示在代理建構器工具庫與對話的工具呼叫卡片,也是工具名後綴(`<flow>_mcp_workflow`),必須是 `workflow`(程式依 `TARS_WORKFLOW_MCP_SERVER_NAME` 同步 Workflow agent)。既有 agent 上的 `*_mcp_langflow` 工具在後端啟動時自動改名,不用手動遷移。Workflow 頁網址改為 `/workflow`,舊的 `/langflow` 會轉址。`.env` 無異動。 | `feature/workflow-branding`(待 commit) |
 | 2026-10-15 | `librechat.yaml`、`.env` | 開啟排程聊天(upstream 預設關閉):`librechat.yaml` 的 `interface` 新增 `schedules: { use: true, create: true }`,側欄出現「排程」入口(角色權限 `SCHEDULES` 預設即開)。`.env.example` 的 `SCHEDULES_SINGLE_PROCESS=true` 改為預設開啟;既有 `.env` 沒有這行要補上,否則排程不會觸發。多個 LibreChat process 的部署改用 Redis,見 §1.3 排程說明。 | `feat/enable-scheduled-chats`(待 commit) |
 | 2026-10-14 | `.env` | `.env.example` 直接帶 `TARS_LANGFLOW_SSO_SECRET` 預設值,與 pwc_tars `infra/langflow/.env.example` 相同,兩邊照範例檔複製即可;既有 `.env` 若是自己產生的值,改成範例檔的值,或維持兩邊相同即可。 | `feat/hard-code-langflow-sso-secret`(待 commit)、pwc_tars `feature/hard-code-langflow-sso-secret` |
 | 2026-10-13 | `librechat.yaml`、`.env` | Langflow 改為每個 pwc_tars 使用者各自的帳號(Workflow SSO)。`librechat.yaml` 的 `mcpServers.langflow` 改為 `type: streamable-http`、`url: '${VITE_LANGFLOW_URL}/api/v1/tars/mcp/streamable'`(舊的 `/api/v1/mcp/project/${LANGFLOW_PROJECT_ID}/sse` 不再使用)。`.env` 新增必填 `TARS_LANGFLOW_SSO_SECRET`(與 Langflow 端相同);`LANGFLOW_API_KEY` 必須改用 Langflow 系統共用帳號的 key;`LANGFLOW_PROJECT_ID` 不再需要。Langflow 須同步升級到 `langflow_tars` `187d365173` 之後,否則 Workflow 頁與從對話執行 flow 都會 404;升級後也要重 build 前端。 | `a6de9bf87`、`876ec6d6a`(PR #91) |

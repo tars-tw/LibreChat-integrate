@@ -97,7 +97,7 @@ export const MOBILE_SCRIM_ID = 'mobile-drawer-scrim';
  */
 export const ROUTE_VIEWS = [
   { id: 'insights', path: '/insights' },
-  { id: 'langflow', path: '/langflow' },
+  { id: 'workflow', path: '/workflow' },
   { id: 'mcp-builder', path: '/mcp-settings' },
 ] as const;
 

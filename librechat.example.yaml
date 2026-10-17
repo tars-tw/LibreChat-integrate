@@ -703,14 +703,15 @@ actions:
 #   # (set LANGFLOW_PROJECT_ID in .env only to override, e.g. when more than one project exists).
 #   # NOTE: localhost is an SSRF target, but its host:port is auto-derived from
 #   # VITE_LANGFLOW_URL and added to the allowlist in code — you do NOT add it to
-#   # `mcpSettings.allowedAddresses`.
-#   langflow:
+#   # `mcpSettings.allowedAddresses`. Keep the key `workflow`: it is shown to users and the
+#   # Workflow agent sync looks the server up by it (TARS_WORKFLOW_MCP_SERVER_NAME).
+#   workflow:
 #     type: sse
 #     url: '${VITE_LANGFLOW_URL}/api/v1/mcp/project/${LANGFLOW_PROJECT_ID}/sse'
 #     headers:
 #       x-api-key: '${LANGFLOW_API_KEY}'
-#     title: 'Langflow'
-#     description: 'Langflow flows exposed as callable tools'
+#     title: 'Workflow'
+#     description: 'Workflows exposed as callable tools'
 #     timeout: 60000
 #     chatMenu: true
 #     startup: true
