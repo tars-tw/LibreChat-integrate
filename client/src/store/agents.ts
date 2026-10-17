@@ -1,7 +1,16 @@
+import { atom } from 'jotai';
 import { Constants } from 'librechat-data-provider';
 import { atomFamily, useRecoilCallback } from 'recoil';
 import type { TEphemeralAgent } from 'librechat-data-provider';
 import { logger } from '~/utils';
+
+/**
+ * The agent the open chat was talking to when the builder deleted it. The header's brain
+ * picker consumes it: an agent can carry the conversation onto its own brain, so only
+ * the picker — which owns "leaving an agent" — can hand the chat back to the general
+ * brain with a model.
+ */
+export const deletedChatAgentIdAtom = atom<string | null>(null);
 
 export const ephemeralAgentByConvoId = atomFamily<TEphemeralAgent | null, string>({
   key: 'ephemeralAgentByConvoId',

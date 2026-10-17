@@ -1,10 +1,12 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useAtom } from 'jotai';
 import { Bot, Brain } from 'lucide-react';
 import { TooltipAnchor } from '@librechat/client';
 import { isTarsLangflowAgentId } from 'librechat-data-provider';
 import type { TConversation } from 'librechat-data-provider';
 import { useModelSelectorContext } from '../Endpoints/ModelSelectorContext';
 import { CustomMenu as Menu } from '../Endpoints/CustomMenu';
+import { deletedChatAgentIdAtom } from '~/store/agents';
 import { DomainMenuItem } from './DomainItems';
 import { useTarsDomain } from './domain';
 import AgentItems from './AgentItems';
@@ -74,6 +76,30 @@ function DomainSelector() {
     (id: string) => selectDomain(id, selectedAgentId ? defaultModelFields : undefined),
     [defaultModelFields, selectDomain, selectedAgentId],
   );
+
+  /**
+   * The builder deleted the agent this chat was on. Leave it exactly as picking the general
+   * brain would: the agent may have bound the conversation to its own brain, which offers
+   * neither picker, so merely clearing `agent_id` would leave the header empty.
+   */
+  const [deletedAgentId, setDeletedAgentId] = useAtom(deletedChatAgentIdAtom);
+  useEffect(() => {
+    if (!deletedAgentId) {
+      return;
+    }
+    setDeletedAgentId(null);
+    if (deletedAgentId !== selectedAgentId || !generalDomainId) {
+      return;
+    }
+    selectDomain(generalDomainId, defaultModelFields ?? { agent_id: undefined });
+  }, [
+    deletedAgentId,
+    setDeletedAgentId,
+    selectedAgentId,
+    generalDomainId,
+    selectDomain,
+    defaultModelFields,
+  ]);
 
   const isHiddenConversation = selectedAgentId
     ? isTarsLangflowAgentId(selectedAgentId)

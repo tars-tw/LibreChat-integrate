@@ -1,7 +1,9 @@
 import React from 'react';
 import '@testing-library/jest-dom';
+import { Provider, createStore } from 'jotai';
 import userEvent from '@testing-library/user-event';
 import { render, screen } from '@testing-library/react';
+import { deletedChatAgentIdAtom } from '~/store/agents';
 import DomainSelector from '../DomainSelector';
 
 const mockSelectDomain = jest.fn();
@@ -161,6 +163,48 @@ describe('DomainSelector', () => {
       '100',
       expect.objectContaining({ endpoint: 'openAI', model: 'gpt-4o', agent_id: undefined }),
     );
+  });
+
+  describe('when the builder deletes the chat agent', () => {
+    const renderWithDeleted = (agentId: string) => {
+      const store = createStore();
+      store.set(deletedChatAgentIdAtom, agentId);
+      render(
+        <Provider store={store}>
+          <DomainSelector />
+        </Provider>,
+      );
+      return store;
+    };
+
+    it('hands the chat back to the general brain with a default model', () => {
+      mockSelectedId = '201';
+      mockSelectedAgentId = 'agent_1';
+      const store = renderWithDeleted('agent_1');
+
+      expect(mockSelectDomain).toHaveBeenCalledTimes(1);
+      expect(mockSelectDomain).toHaveBeenCalledWith(
+        '100',
+        expect.objectContaining({ endpoint: 'openAI', model: 'gpt-4o', agent_id: undefined }),
+      );
+      expect(store.get(deletedChatAgentIdAtom)).toBeNull();
+    });
+
+    it('still clears the agent when no model is available', () => {
+      mockSelectedAgentId = 'agent_1';
+      mockMappedEndpoints = [];
+      renderWithDeleted('agent_1');
+
+      expect(mockSelectDomain).toHaveBeenCalledWith('100', { agent_id: undefined });
+    });
+
+    it('ignores a deletion of an agent the chat is not on', () => {
+      mockSelectedAgentId = 'agent_1';
+      const store = renderWithDeleted('agent_2');
+
+      expect(mockSelectDomain).not.toHaveBeenCalled();
+      expect(store.get(deletedChatAgentIdAtom)).toBeNull();
+    });
   });
 
   it('omits the agents row when no agents endpoint is available', async () => {
