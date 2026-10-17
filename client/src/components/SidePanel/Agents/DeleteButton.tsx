@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useSetAtom } from 'jotai';
 import { useFormContext } from 'react-hook-form';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { resolveStatefulCodeEnvironment } from 'librechat-data-provider';
@@ -13,9 +14,10 @@ import {
 } from '@librechat/client';
 import type { Agent, AgentCreateParams } from 'librechat-data-provider';
 import type { UseMutationResult } from '@tanstack/react-query';
+import { useDeleteAgentMutation, useTarsDomainsQuery } from '~/data-provider';
 import { useAuthContext, useGetAgentsConfig, useLocalize } from '~/hooks';
 import { logger, getDefaultAgentFormValues } from '~/utils';
-import { useDeleteAgentMutation } from '~/data-provider';
+import { deletedChatAgentIdAtom } from '~/store/agents';
 import { isEphemeralAgent } from '~/common';
 import store from '~/store';
 
@@ -35,6 +37,8 @@ function DeleteButton({
   const { showToast } = useToastContext();
   const setConversation = useSetRecoilState(store.conversationByIndex(0));
   const conversationAgentId = useRecoilValue(store.conversationAgentIdByIndex(0));
+  const setDeletedChatAgentId = useSetAtom(deletedChatAgentIdAtom);
+  const { data: tarsDomains } = useTarsDomainsQuery();
 
   const deleteAgent = useDeleteAgentMutation({
     onSuccess: (_, vars, context) => {
@@ -53,6 +57,15 @@ function DeleteButton({
         createMutation.reset();
       }
 
+      /** With TARS brains the header picker takes the chat back to the general brain —
+       *  the deleted agent may have carried the conversation onto its own brain, where
+       *  no picker is offered — instead of switching it onto another agent. */
+      const leavesChatAgent =
+        vars.agent_id === conversationAgentId && (tarsDomains?.length ?? 0) > 0;
+      if (leavesChatAgent) {
+        setDeletedChatAgentId(vars.agent_id);
+      }
+
       const firstAgent = updatedList[0] as Agent | undefined;
       if (!firstAgent) {
         setCurrentAgentId(undefined);
@@ -64,7 +77,14 @@ function DeleteButton({
             ) ?? 'user',
           ),
         );
-        setConversation((prev) => (prev ? { ...prev, agent_id: '' } : prev));
+        if (!leavesChatAgent) {
+          setConversation((prev) => (prev ? { ...prev, agent_id: '' } : prev));
+        }
+        return;
+      }
+
+      if (leavesChatAgent) {
+        setCurrentAgentId(firstAgent.id);
         return;
       }
 
