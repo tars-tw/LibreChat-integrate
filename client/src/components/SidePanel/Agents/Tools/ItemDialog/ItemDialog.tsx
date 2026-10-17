@@ -3,6 +3,7 @@ import { OGDialog, OGDialogContent } from '@librechat/client';
 import type { AgentItem } from '../items/types';
 import { AgentPickerPortalContext } from '../../Advanced/AgentList';
 import ItemDialogHeader from './ItemDialogHeader';
+import { isTarsSwitchId } from '../items/tars';
 import ItemDialogBody from './ItemDialogBody';
 import { cn } from '~/utils';
 
@@ -16,6 +17,8 @@ export default function ItemDialog({ item, agentId, onClose }: Props) {
   const [portalElement, setPortalElement] = useState<HTMLDivElement | null>(null);
   const isOrchestration =
     item?.kind === 'builtin' && (item.id === 'subagents' || item.id === 'handoffs');
+  /** These bodies open pickers portaled into the dialog, which must not clip them. */
+  const hasInnerPicker = isOrchestration || (item?.kind === 'builtin' && isTarsSwitchId(item.id));
   const isAction = item?.kind === 'action';
   const contentRef = useRef<HTMLDivElement | null>(null);
   const setContent = useCallback((node: HTMLDivElement | null) => {
@@ -38,7 +41,7 @@ export default function ItemDialog({ item, agentId, onClose }: Props) {
         onOpenAutoFocus={handleOpenAutoFocus}
         className={cn(
           'w-11/12 gap-0 p-0 md:max-h-[85dvh]',
-          isOrchestration ? 'overflow-visible' : 'overflow-hidden',
+          hasInnerPicker ? 'overflow-visible' : 'overflow-hidden',
           isAction ? 'max-w-5xl' : 'max-w-[35rem]',
         )}
         data-testid="item-dialog"

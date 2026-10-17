@@ -1,13 +1,19 @@
 import '@testing-library/jest-dom/extend-expect';
+import userEvent from '@testing-library/user-event';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryScope, ArtifactModes } from 'librechat-data-provider';
+import type { TTarsDomain } from 'librechat-data-provider';
 import type { ReactNode } from 'react';
 import type { AgentForm } from '~/common';
+import { AgentPickerPortalContext } from '../../../Advanced/AgentList';
 import BuiltinSection from '../sections/BuiltinSection';
 
+let mockTarsDomains: Array<Pick<TTarsDomain, 'id' | 'name' | 'status'>> = [];
+
 jest.mock('~/hooks', () => ({
-  useLocalize: () => (key: string) => key,
+  useLocalize: () => (key: string, vars?: Record<string, string>) =>
+    vars ? `${key}:${vars[0]}` : key,
   useAuthContext: () => ({ user: {} }),
   useGetAgentsConfig: () => ({
     agentsConfig: {
@@ -22,6 +28,7 @@ jest.mock('~/hooks', () => ({
 jest.mock('~/data-provider', () => ({
   useVerifyAgentToolAuth: () => ({ data: undefined }),
   useCodeEnvironmentStatusQueries: () => [],
+  useTarsDomainsQuery: () => ({ data: mockTarsDomains }),
 }));
 jest.mock('../../../Search/Action', () => ({ __esModule: true, default: () => <div /> }));
 jest.mock('../../../FileContext', () => ({ __esModule: true, default: () => <div /> }));
@@ -33,14 +40,20 @@ function ScopeProbe() {
   return <span data-testid="scope">{String(value)}</span>;
 }
 
-function renderSection(builtinId: string, defaultValues: Partial<AgentForm> = {}) {
+function renderSection(
+  builtinId: string,
+  defaultValues: Partial<AgentForm> = {},
+  portalElement: HTMLElement | null = null,
+) {
   function Wrapper({ children }: { children: ReactNode }) {
     const methods = useForm<AgentForm>({ defaultValues: defaultValues as AgentForm });
     return (
-      <FormProvider {...methods}>
-        {children}
-        <ScopeProbe />
-      </FormProvider>
+      <AgentPickerPortalContext.Provider value={portalElement}>
+        <FormProvider {...methods}>
+          {children}
+          <ScopeProbe />
+        </FormProvider>
+      </AgentPickerPortalContext.Provider>
     );
   }
 
@@ -141,5 +154,66 @@ describe('BuiltinSection artifacts mode docs link', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'com_ui_artifacts_mode_custom' }));
     expect(docsLink()).toBeInTheDocument();
+  });
+});
+
+describe('BuiltinSection TARS brain binding', () => {
+  const brainTrigger = () => screen.getByRole('combobox', { name: /com_agents_tars_domain/ });
+
+  beforeEach(() => {
+    mockTarsDomains = [
+      { id: 100, name: '通用腦', status: true },
+      { id: 154, name: '154文件檢索', status: false },
+      { id: 200, name: '法規比對', status: true },
+      { id: 201, name: '製程助手', status: true },
+    ];
+  });
+
+  test('offers only enabled brains, without the general brain', async () => {
+    const user = userEvent.setup();
+    renderSection('rag_agent');
+
+    await user.click(brainTrigger());
+
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+      'com_agents_tars_domain_follow_chat',
+      '法規比對',
+      '製程助手',
+    ]);
+  });
+
+  test('keeps an agent already bound to the general brain, listed by name', async () => {
+    const user = userEvent.setup();
+    renderSection('rag_agent', { tars_domain_id: '100' });
+
+    expect(brainTrigger()).toHaveTextContent('通用腦');
+    await user.click(brainTrigger());
+    expect(screen.getAllByRole('option')).toHaveLength(4);
+  });
+
+  test('keeps a bound brain that was since disabled, marked as disabled', async () => {
+    const user = userEvent.setup();
+    renderSection('sql_agent', { tars_domain_id: '154' });
+
+    expect(brainTrigger()).toHaveTextContent('com_agents_tars_domain_disabled:154文件檢索');
+    await user.click(brainTrigger());
+    expect(screen.getAllByRole('option')).toHaveLength(4);
+  });
+
+  test('keeps a bound brain the editor cannot see, listed by id', () => {
+    renderSection('rag_agent', { tars_domain_id: '999' });
+    expect(brainTrigger()).toHaveTextContent('999');
+  });
+
+  test('opens the brain list inside the dialog so the modal scroll lock lets it scroll', async () => {
+    const user = userEvent.setup();
+    const dialog = document.createElement('div');
+    document.body.appendChild(dialog);
+    renderSection('rag_agent', {}, dialog);
+
+    await user.click(brainTrigger());
+
+    expect(dialog).toContainElement(screen.getByRole('option', { name: '法規比對' }));
+    dialog.remove();
   });
 });

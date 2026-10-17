@@ -1,12 +1,19 @@
-import { useMemo } from 'react';
+import { useMemo, useContext } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { Radio, Checkbox, Dropdown } from '@librechat/client';
-import { Tools, MemoryScope, ArtifactModes, AgentCapabilities } from 'librechat-data-provider';
+import {
+  Tools,
+  MemoryScope,
+  ArtifactModes,
+  AgentCapabilities,
+  TARS_GENERAL_DOMAIN_ID,
+} from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import type { AgentForm, ExtendedFile } from '~/common';
 import type { BuiltinId } from '../../items/types';
-import OrchestrationHub from '../../../Advanced/OrchestrationHub';
 import { useVerifyAgentToolAuth, useTarsDomainsQuery } from '~/data-provider';
+import { AgentPickerPortalContext } from '../../../Advanced/AgentList';
+import OrchestrationHub from '../../../Advanced/OrchestrationHub';
 import CodeBackground from '../../../Code/Background';
 import { isTarsSwitchId } from '../../items/tars';
 import CodeSettings from '../../../Code/Settings';
@@ -148,22 +155,40 @@ interface TarsDomainConfigProps {
 function TarsDomainConfig({ value, onChange }: TarsDomainConfigProps) {
   const localize = useLocalize();
   const { data: domains = [] } = useTarsDomainsQuery();
+  /** Rendered inside the dialog: the modal's scroll lock swallows wheel and touch
+   *  scrolling on a body-portaled list, so a long brain list could not be scrolled. */
+  const portalElement = useContext(AgentPickerPortalContext) ?? undefined;
 
-  /** A brain the editor cannot see (an agent shared by someone else) stays listed
-   *  by id, so opening the dialog never silently drops the binding. */
+  /** Only enabled brains are offered, minus the general brain, which is what an unbound
+   *  agent already follows. The bound brain stays listed even when it is not offered
+   *  (disabled ones marked as such) or the editor cannot see it (an agent shared by
+   *  someone else, listed by id), so opening the dialog never silently drops it. */
   const options = useMemo(() => {
-    const listed = domains.map((domain) => ({ value: String(domain.id), label: domain.name }));
-    const missing = value && !listed.some((option) => option.value === value);
+    const listed: Array<{ value: string; label: string }> = [];
+    let bound = value ? { value, label: value } : null;
+    for (const domain of domains) {
+      const id = String(domain.id);
+      const offered = domain.status && domain.id !== TARS_GENERAL_DOMAIN_ID;
+      if (offered) {
+        listed.push({ value: id, label: domain.name });
+      }
+      if (id === value) {
+        const label = domain.status
+          ? domain.name
+          : localize('com_agents_tars_domain_disabled', { 0: domain.name });
+        bound = offered ? null : { value: id, label };
+      }
+    }
     return [
       { value: FOLLOW_CHAT_DOMAIN, label: localize('com_agents_tars_domain_follow_chat') },
       ...listed,
-      ...(missing ? [{ value, label: value }] : []),
+      ...(bound ? [bound] : []),
     ];
   }, [domains, value, localize]);
 
   return (
     <div className="flex flex-col gap-3">
-      <span id="tars-domain-label" className="text-sm font-medium text-text-primary">
+      <span id="tars-domain-label" className="text-text-primary text-sm font-medium">
         {localize('com_agents_tars_domain')}
       </span>
       <Dropdown
@@ -171,12 +196,13 @@ function TarsDomainConfig({ value, onChange }: TarsDomainConfigProps) {
         onChange={(next) => onChange(next === FOLLOW_CHAT_DOMAIN ? undefined : next)}
         options={options}
         searchable={options.length > 8}
+        portalElement={portalElement}
         variant="field"
         aria-labelledby="tars-domain-label"
         sizeClasses="w-full"
         className="w-full"
       />
-      <p className="text-sm leading-relaxed text-text-secondary">
+      <p className="text-text-secondary text-sm leading-relaxed">
         {localize('com_agents_tars_domain_info')}
       </p>
     </div>
