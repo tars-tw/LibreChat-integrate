@@ -350,6 +350,14 @@ export const TARS_LOCAL_ENDPOINT_NAME = 'vLLM';
 export const isTarsLocalEndpointName = (endpoint: string | null | undefined): boolean =>
   endpoint === TARS_LOCAL_ENDPOINT_NAME;
 
+/**
+ * The librechat.yaml `mcpServers` key the Langflow flows are published under. It is
+ * product-facing: the agent builder's tool library and every chat tool-call card show it, and
+ * it suffixes each flow's tool name (`<flow>_mcp_workflow`), so it carries the Workflow name
+ * rather than the Langflow brand.
+ */
+export const TARS_WORKFLOW_MCP_SERVER_NAME = 'workflow';
+
 /** Langflow flows are mirrored into agents under this id prefix (`packages/api/src/langflow/sync.ts`). */
 export const TARS_LANGFLOW_AGENT_ID_PREFIX = 'agent_langflow_';
 

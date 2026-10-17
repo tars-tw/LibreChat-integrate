@@ -3,6 +3,7 @@ const {
   fetchWorkflowFlows,
   resolveLangflowOrigin,
   createWorkflowAgentSync,
+  renameLegacyWorkflowServer,
 } = require('@librechat/api');
 const { getMCPServerTools, invalidateCachedTools } = require('~/server/services/Config');
 const { grantPermission } = require('~/server/services/PermissionService');
@@ -52,4 +53,12 @@ async function reconcileLangflowAgents(req) {
   );
 }
 
-module.exports = { reconcileLangflowAgents };
+/** Boot step: moves agents still on the old `langflow` MCP server key onto `workflow`. */
+function migrateLegacyWorkflowServer() {
+  return renameLegacyWorkflowServer({
+    findAgents: (filter) => db.getAgents(filter),
+    updateAgent: (filter, changes) => db.updateAgent(filter, changes, { skipVersioning: true }),
+  });
+}
+
+module.exports = { reconcileLangflowAgents, migrateLegacyWorkflowServer };
