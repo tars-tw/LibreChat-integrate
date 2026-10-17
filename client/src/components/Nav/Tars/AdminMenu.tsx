@@ -114,7 +114,7 @@ export const ADMIN_MENU: AdminMenuNode[] = [
         labelKey: 'com_ui_langflow',
         icon: Workflow,
         key: 'admin.langflow',
-        path: '/langflow',
+        path: '/workflow',
       },
     ],
   },
@@ -289,7 +289,7 @@ export function SubmenuGroup({
       >
         <Icon className="icon-md" aria-hidden="true" />
         <span className="flex-1 text-left">{label}</span>
-        <ChevronRight className="h-4 w-4 text-text-secondary" aria-hidden="true" />
+        <ChevronRight className="text-text-secondary h-4 w-4" aria-hidden="true" />
       </Menu.MenuItem>
       <Menu.Menu
         portal

@@ -160,7 +160,7 @@ npm run frontend:dev
 
 | 入口 | 位置 | 用途 |
 |---|---|---|
-| **內嵌 Langflow 頁面** | 左側 rail 的 **Langflow**（流程圖示）→ 全頁 `/langflow` iframe | 在 LibreChat 裡直接編輯 Langflow flow |
+| **內嵌 Langflow 頁面** | 左側 rail 的 **Langflow**（流程圖示）→ 全頁 `/workflow` iframe | 在 LibreChat 裡直接編輯 Langflow flow |
 | **每個 flow 一個共享 Agent** | endpoint 切 **Agents** → 選 `Workflow · <flow 名>` | 明確指定用哪個 flow；對話會顯示 tool-call 卡片 |
 | ~~一般聊天的 MCP「Langflow」開關~~ | 已用 `chatMenu: false` 隱藏 | 避免「所有 flow 一起、模型自動挑」造成混淆 |
 

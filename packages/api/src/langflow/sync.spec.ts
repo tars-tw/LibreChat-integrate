@@ -51,20 +51,20 @@ describe('createWorkflowAgentSync — cached Langflow catalogue', () => {
   it('drops the catalogue when a flow was renamed since it was cached', async () => {
     const { run, getCachedTools, invalidateCachedTools } = setup(
       [flow('_48pin'), flow('guide')],
-      catalogue(['_48_mcp_langflow'], ['guide_mcp_langflow']),
+      catalogue(['_48_mcp_workflow'], ['guide_mcp_workflow']),
     );
 
     await run();
 
-    expect(getCachedTools).toHaveBeenCalledWith('user-1', 'langflow');
+    expect(getCachedTools).toHaveBeenCalledWith('user-1', 'workflow');
     expect(invalidateCachedTools).toHaveBeenCalledTimes(1);
-    expect(invalidateCachedTools).toHaveBeenCalledWith('user-1', 'langflow');
+    expect(invalidateCachedTools).toHaveBeenCalledWith('user-1', 'workflow');
   });
 
   it('drops the catalogue when a flow was published since it was cached', async () => {
     const { run, invalidateCachedTools } = setup(
       [flow('guide'), flow('new_flow')],
-      catalogue(['guide_mcp_langflow']),
+      catalogue(['guide_mcp_workflow']),
     );
 
     await run();
@@ -75,7 +75,7 @@ describe('createWorkflowAgentSync — cached Langflow catalogue', () => {
   it('keeps a catalogue that names exactly what Langflow publishes', async () => {
     const { run, invalidateCachedTools } = setup(
       [flow('guide'), flow('langflow_report')],
-      catalogue(['guide_mcp_langflow'], ['report_mcp_langflow', 'langflow_report']),
+      catalogue(['guide_mcp_workflow'], ['report_mcp_workflow', 'langflow_report']),
     );
 
     await run();

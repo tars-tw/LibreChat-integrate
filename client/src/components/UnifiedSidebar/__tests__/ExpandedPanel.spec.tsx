@@ -232,7 +232,7 @@ describe('ExpandedPanel', () => {
 
   describe('leaving a route view', () => {
     it('returns to the conversation when switching panels from a route view', () => {
-      const { onLeaveInsights } = renderPanel({ expanded: true, pathname: '/langflow' });
+      const { onLeaveInsights } = renderPanel({ expanded: true, pathname: '/workflow' });
       fireEvent.click(screen.getByRole('button', { name: 'com_ui_prompts' }));
       expect(onLeaveInsights).toHaveBeenCalledTimes(1);
     });
