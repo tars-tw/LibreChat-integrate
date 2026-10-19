@@ -28,7 +28,7 @@ function toErrorMessage(error: unknown): string {
  * scoped to a single pwc_tars server when `serverId` is given (per-server
  * gateway entries) or aggregated across all servers (legacy single entry).
  * Listing and execution both proxy to the pwc_tars `/api/mcp` REST API, so
- * pwc_tars stays the source of truth for tool definitions and domain
+ * pwc_tars stays the source of truth for tool definitions and user/group
  * permissions. A `null` user (LibreChat account not linked to pwc_tars) fails
  * closed to an empty tool list.
  */

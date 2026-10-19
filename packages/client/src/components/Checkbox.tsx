@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Check } from 'lucide-react';
+import { Check, Minus } from 'lucide-react';
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import { cn, disabledFillClasses } from '~/utils';
 
@@ -27,14 +27,19 @@ const Checkbox: React.ForwardRefExoticComponent<
     <CheckboxPrimitive.Root
       ref={ref}
       className={cn(
-        'peer border-border-xheavy ring-offset-surface-primary focus-visible:ring-focus-control theme-checkbox-fill:bg-checkbox-fill data-[state=checked]:bg-surface-submit data-[state=checked]:text-text-on-status size-theme-checkbox rounded-theme-checkbox shrink-0 border focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+        'peer border-border-xheavy ring-offset-surface-primary focus-visible:ring-focus-control theme-checkbox-fill:bg-checkbox-fill data-[state=checked]:bg-surface-submit data-[state=checked]:text-text-on-status data-[state=indeterminate]:bg-surface-submit data-[state=indeterminate]:text-text-on-status size-theme-checkbox rounded-theme-checkbox shrink-0 border focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
         disabledFillClasses,
         className,
       )}
       {...props}
     >
       <CheckboxPrimitive.Indicator className={cn('flex items-center justify-center')}>
-        <Check className="size-theme-checkbox" />
+        {/* `checked="indeterminate"` (some, not all, children selected) shows a dash, not a check. */}
+        {props.checked === 'indeterminate' ? (
+          <Minus className="size-theme-checkbox" />
+        ) : (
+          <Check className="size-theme-checkbox" />
+        )}
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   ),

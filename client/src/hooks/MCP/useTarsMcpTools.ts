@@ -15,13 +15,12 @@ import type {
   TTarsMcpDomainServer,
 } from 'librechat-data-provider';
 import { ephemeralAgentByConvoId, mcpValuesAtomFamily, mcpToolValuesAtomFamily } from '~/store';
-import { useTarsMcpDomainToolsQuery, useTarsMcpUserSettingsQuery } from '~/data-provider';
+import { useTarsMcpChatToolsQuery, useTarsMcpUserSettingsQuery } from '~/data-provider';
 import { useUpdateTarsMcpUserServerMutation } from '~/data-provider/Tars/mutations';
-import { useSelectedTarsDomain } from '~/components/Chat/Menus/Tars/domain';
 import { useAuthContext } from '~/hooks/AuthContext';
 import { setTimestamp } from '~/utils/timestamps';
 
-/** Only the injected per-server entries are brain-scoped — the legacy `tars` aggregate is not. */
+/** Only the injected per-server entries are assignment-scoped — the legacy `tars` aggregate is not. */
 const isScopedServerName = (serverName: string): boolean =>
   serverName.startsWith(TARS_MCP_SERVER_PREFIX);
 
@@ -29,14 +28,14 @@ const isScopedServerName = (serverName: string): boolean =>
 export type TarsMcpCredentialsStatus = 'needed' | 'set';
 
 export interface TarsMcpToolsControl {
-  /** Whether a `tars_*` dropdown entry may show for the active brain (fail-open while loading). */
+  /** Whether a `tars_*` dropdown entry is assigned to the user and opted in (fail-open while loading). */
   isServerAllowed: (serverName: string) => boolean;
-  /** The active brain's usable tools for one gateway server; undefined for non-tars servers. */
+  /** The user's usable tools for one gateway server; undefined for non-tars servers. */
   getDomainTools: (serverName: string) => TTarsMcpDomainTool[] | undefined;
   /** Checked tool keys of one server; `null` means every tool is checked. */
   getSelectedToolKeys: (serverName: string) => Set<string> | null;
   toggleToolSelection: (serverName: string, toolKey: string) => void;
-  /** Servers the brain allows that the user has not opted into yet. */
+  /** Servers assigned to the user (or their groups) that they have not opted into yet. */
   pendingServers: TTarsMcpDomainServer[];
   /** Opts a pending server in (`sys_user_mcp.is_enabled`), moving it into the usable list. */
   enableServer: (serverId: string) => void;
@@ -50,9 +49,9 @@ export interface TarsMcpToolsControl {
 }
 
 /**
- * Chat-scoped per-tool MCP selection for the pwc_tars gateway entries, keyed by
- * the conversation's brain (domain). Mirrors pwc_tars: the dropdown only offers
- * the brain's whitelisted servers/tools, every tool starts checked, and the
+ * Chat-scoped per-tool MCP selection for the pwc_tars gateway entries. The
+ * dropdown only offers what `sys_mcp_permission` assigns to the user or their
+ * groups (whatever brain the chat is on), every tool starts checked, and the
  * checked subset is mirrored into `ephemeralAgent.mcp_tools` so the backend
  * equips exactly those tools. Must be called inside ChatContext (BadgeRow).
  */
@@ -70,25 +69,22 @@ export default function useTarsMcpTools({
 
   const { user } = useAuthContext();
   const isTarsUser = user?.provider === 'tars';
-  const { selectedId } = useSelectedTarsDomain();
-  const { data: domainServers } = useTarsMcpDomainToolsQuery(
-    isTarsUser && selectedId !== '' ? selectedId : null,
-  );
+  const { data: chatServers } = useTarsMcpChatToolsQuery({ enabled: isTarsUser });
 
   /** Only opted-in servers are usable; the rest are offered as an opt-in below the list. */
   const serversByName = useMemo(() => {
     const map = new Map<string, TTarsMcpDomainServer>();
-    for (const server of domainServers ?? []) {
+    for (const server of chatServers ?? []) {
       if (server.user_enabled) {
         map.set(server.gateway_name, server);
       }
     }
     return map;
-  }, [domainServers]);
+  }, [chatServers]);
 
   const pendingServers = useMemo(
-    () => (domainServers ?? []).filter((server) => !server.user_enabled),
-    [domainServers],
+    () => (chatServers ?? []).filter((server) => !server.user_enabled),
+    [chatServers],
   );
 
   /**
@@ -129,7 +125,7 @@ export default function useTarsMcpTools({
   const [enablingServerId, setEnablingServerId] = useState<string | null>(null);
   const updateUserServer = useUpdateTarsMcpUserServerMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries([QueryKeys.tarsMcpDomainTools]);
+      queryClient.invalidateQueries([QueryKeys.tarsMcpChatTools]);
       setEnablingServerId(null);
     },
     onError: () => setEnablingServerId(null),
@@ -193,13 +189,13 @@ export default function useTarsMcpTools({
   );
 
   /**
-   * Reconcile selection with the active brain: deselect gateway servers the
-   * brain may not use, drop stale tool keys, and materialize the full tool
+   * Reconcile selection with the user's assignments: deselect gateway servers
+   * they may not use, drop stale tool keys, and materialize the full tool
    * whitelist for every selected server (all checked by default) so the
-   * backend loads exactly the brain's tools.
+   * backend loads exactly the assigned tools.
    */
   useEffect(() => {
-    if (!isTarsUser || domainServers == null) {
+    if (!isTarsUser || chatServers == null) {
       return;
     }
     const nextMcp = mcpValues.filter(
@@ -211,26 +207,26 @@ export default function useTarsMcpTools({
       if (server == null || server.tools.length === 0) {
         continue;
       }
-      const domainKeys = server.tools.map((tool) => tool.tool_key);
-      const domainSet = new Set(domainKeys);
+      const grantedKeys = server.tools.map((tool) => tool.tool_key);
+      const grantedSet = new Set(grantedKeys);
       const stored = toolValues[name];
       const kept =
         Array.isArray(stored) && stored.length > 0
-          ? stored.filter((toolKey) => domainSet.has(toolKey))
-          : domainKeys;
-      nextTools[name] = kept.length > 0 ? kept : domainKeys;
+          ? stored.filter((toolKey) => grantedSet.has(toolKey))
+          : grantedKeys;
+      nextTools[name] = kept.length > 0 ? kept : grantedKeys;
     }
     commit(nextMcp.length === mcpValues.length ? null : nextMcp, nextTools);
-  }, [isTarsUser, domainServers, serversByName, mcpValues, toolValues, commit]);
+  }, [isTarsUser, chatServers, serversByName, mcpValues, toolValues, commit]);
 
   const isServerAllowed = useCallback(
     (serverName: string): boolean => {
-      if (!isTarsUser || !isScopedServerName(serverName) || domainServers == null) {
+      if (!isTarsUser || !isScopedServerName(serverName) || chatServers == null) {
         return true;
       }
       return serversByName.has(serverName);
     },
-    [isTarsUser, domainServers, serversByName],
+    [isTarsUser, chatServers, serversByName],
   );
 
   const getDomainTools = useCallback(
@@ -255,9 +251,9 @@ export default function useTarsMcpTools({
       if (server == null) {
         return;
       }
-      const domainKeys = server.tools.map((tool) => tool.tool_key);
+      const grantedKeys = server.tools.map((tool) => tool.tool_key);
       const stored = toolValues[serverName];
-      const current = Array.isArray(stored) && stored.length > 0 ? stored : domainKeys;
+      const current = Array.isArray(stored) && stored.length > 0 ? stored : grantedKeys;
       const next = current.includes(toolKey)
         ? current.filter((storedKey) => storedKey !== toolKey)
         : [...current, toolKey];

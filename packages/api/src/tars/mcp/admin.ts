@@ -1,4 +1,10 @@
-import type { TTarsMcpSystemVariable } from 'librechat-data-provider';
+import type {
+  TTarsMcpPermission,
+  TTarsMcpSystemVariable,
+  TTarsMcpPermissionPrincipal,
+  TTarsMcpPermissionSaveResult,
+  TTarsMcpPermissionSavePayload,
+} from 'librechat-data-provider';
 import { tarsMcpFetch } from './client';
 
 /**
@@ -270,6 +276,82 @@ export async function adminSaveTarsDomainMcp(
     body: { ...payload, user_id: tarsUserId },
     asUser: tarsUserId,
   });
+}
+
+/** Identifies one principal: exactly one of the two (pwc_tars rejects anything else with 400). */
+export interface TarsMcpPermissionTarget {
+  user_id?: string;
+  user_group_id?: string;
+}
+
+/** Only string values reach pwc_tars — an Express query may also carry arrays or objects. */
+function permissionTargetQuery(target: TarsMcpPermissionTarget): Record<string, string> {
+  const query: Record<string, string> = {};
+  if (typeof target.user_id === 'string' && target.user_id !== '') {
+    query.user_id = target.user_id;
+  }
+  if (typeof target.user_group_id === 'string' && target.user_group_id !== '') {
+    query.user_group_id = target.user_group_id;
+  }
+  return query;
+}
+
+/**
+ * Users and groups holding `sys_mcp_permission` grants, disabled ones included
+ * (shown as 已停用 and removable only). Every permission endpoint is
+ * `@admin_required` on pwc_tars, reads included, so all of them carry `asUser`.
+ */
+export async function adminListTarsMcpPermissionPrincipals(
+  asUser: string,
+): Promise<TTarsMcpPermissionPrincipal[]> {
+  const rows = await tarsMcpFetch<TTarsMcpPermissionPrincipal[]>('/api/mcp/permission/principals', {
+    asUser,
+  });
+  return rows ?? [];
+}
+
+/** One user's or group's own grants (not what a user inherits from groups). */
+export async function adminGetTarsMcpPermissions(
+  target: TarsMcpPermissionTarget,
+  asUser: string,
+): Promise<TTarsMcpPermission[]> {
+  const rows = await tarsMcpFetch<TTarsMcpPermission[]>('/api/mcp/permission', {
+    query: permissionTargetQuery(target),
+    asUser,
+  });
+  return rows ?? [];
+}
+
+/**
+ * Overwrites the grants of every listed user and group (unchecked servers are
+ * removed). pwc_tars validates the payload and refuses disabled principals.
+ */
+export async function adminSaveTarsMcpPermissions(
+  payload: TTarsMcpPermissionSavePayload,
+  asUser: string,
+): Promise<TTarsMcpPermissionSaveResult | undefined> {
+  return tarsMcpFetch<TTarsMcpPermissionSaveResult>('/api/mcp/permission/save', {
+    method: 'POST',
+    body: {
+      user_ids: payload.user_ids,
+      user_group_ids: payload.user_group_ids,
+      servers: payload.servers,
+    },
+    asUser,
+  });
+}
+
+/** Removes every grant of one user or group; returns how many rows went. */
+export async function adminDeleteTarsMcpPermissions(
+  target: TarsMcpPermissionTarget,
+  asUser: string,
+): Promise<number> {
+  const result = await tarsMcpFetch<{ deleted?: number }>('/api/mcp/permission', {
+    method: 'DELETE',
+    query: permissionTargetQuery(target),
+    asUser,
+  });
+  return result?.deleted ?? 0;
 }
 
 /**
