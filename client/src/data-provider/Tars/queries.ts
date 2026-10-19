@@ -46,10 +46,8 @@ import type {
   TTarsMcpSystemVariable,
   TTarsMcpSystemVariablesResponse,
   TTarsMcpServersResponse,
-  TTarsDomainMcpRelation,
   TTarsMcpDomainServer,
   TTarsMcpUserSettingsResponse,
-  TTarsDomainMcpServersResponse,
   TTarsMcpPermission,
   TTarsMcpPrincipalType,
   TTarsMcpPermissionsResponse,
@@ -434,23 +432,6 @@ export const useTarsMcpServerQuery = (
     {
       select: (data) => data.server ?? null,
       enabled: serverId != null,
-      ...adminQueryOptions,
-      ...config,
-    },
-  );
-};
-
-/** Admin: existing domain↔MCP bindings (`sys_domain_mcp` rows) of one domain. */
-export const useTarsDomainMcpServersQuery = (
-  domainId: number | null,
-  config?: UseQueryOptions<TTarsDomainMcpServersResponse, unknown, TTarsDomainMcpRelation[]>,
-): QueryObserverResult<TTarsDomainMcpRelation[]> => {
-  return useQuery<TTarsDomainMcpServersResponse, unknown, TTarsDomainMcpRelation[]>(
-    [QueryKeys.tarsMcpDomainServers, domainId],
-    () => dataService.getTarsDomainMcpServers(domainId as number),
-    {
-      select: (data) => data.servers ?? [],
-      enabled: domainId != null,
       ...adminQueryOptions,
       ...config,
     },

@@ -605,11 +605,6 @@ export const tarsMcpAdminServerSync = (id: string) => `${tarsMcpAdminServer(id)}
 export const tarsMcpAdminParseOpenapi = () => `${BASE_URL}/api/tars/mcp/admin/parse-openapi`;
 export const tarsMcpAdminTool = (id: string) =>
   `${BASE_URL}/api/tars/mcp/admin/tools/${encodeURIComponent(id)}`;
-export const tarsMcpAdminDomainServers = (domainId: number) =>
-  `${BASE_URL}/api/tars/mcp/admin/domains/${domainId}/servers`;
-export const tarsMcpAdminDomainAvailableServers = (domainId: number) =>
-  `${BASE_URL}/api/tars/mcp/admin/domains/${domainId}/available-servers`;
-export const tarsMcpAdminDomainSave = () => `${BASE_URL}/api/tars/mcp/admin/domains/save`;
 export const tarsMcpAdminPermissionPrincipals = () =>
   `${BASE_URL}/api/tars/mcp/admin/permissions/principals`;
 export const tarsMcpAdminPermissionSave = () => `${BASE_URL}/api/tars/mcp/admin/permissions/save`;

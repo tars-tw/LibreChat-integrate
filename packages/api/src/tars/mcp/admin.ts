@@ -65,28 +65,6 @@ export interface TarsMcpToolInput {
   input_schema?: Record<string, unknown>;
 }
 
-/** One `sys_domain_mcp` relation row (+ joined server) from the domain-binding endpoints. */
-export interface TarsDomainMcpRelation {
-  id: string;
-  sys_domain_id: number;
-  mcp_server_id: string;
-  is_enabled: boolean;
-  mcp_tool_ids?: string[] | null;
-  config?: Record<string, unknown> | null;
-  server?: TarsMcpServerDetail | null;
-  [key: string]: unknown;
-}
-
-/**
- * Full-overwrite domain↔MCP binding payload (`POST /api/mcp/domain/save`):
- * for every listed domain, unlisted servers get unbound and each listed
- * server's tool whitelist is replaced (`mcp_tool_ids: []` = whole server).
- */
-export interface TarsDomainMcpSavePayload {
-  domain_ids: number[];
-  servers: Array<{ mcp_server_id: string; mcp_tool_ids?: string[] }>;
-}
-
 /** One `mcp_logs` audit row. */
 export interface TarsMcpLogRow {
   id: string;
@@ -242,39 +220,6 @@ export async function adminDeleteTarsMcpTool(toolId: string, asUser: string): Pr
   await tarsMcpFetch(`/api/mcp/tools/${encodeURIComponent(toolId)}`, {
     method: 'DELETE',
     asUser,
-  });
-}
-
-/** The `sys_domain_mcp` bindings of one domain (existing whitelist state). */
-export async function adminListTarsDomainMcpServers(
-  domainId: number,
-): Promise<TarsDomainMcpRelation[]> {
-  const rows = await tarsMcpFetch<TarsDomainMcpRelation[]>(`/api/mcp/domain/${domainId}/servers`);
-  return rows ?? [];
-}
-
-/** The servers (with tools) a domain's whitelist currently exposes. */
-export async function adminListTarsDomainAvailableServers(
-  domainId: number,
-): Promise<TarsMcpServerDetail[]> {
-  const rows = await tarsMcpFetch<TarsMcpServerDetail[]>(
-    `/api/mcp/domain/${domainId}/available-servers`,
-  );
-  return rows ?? [];
-}
-
-/**
- * Overwrites the domain↔MCP bindings for the given domains. `tarsUserId` (the
- * acting admin) is forwarded so pwc_tars validates domain accessibility.
- */
-export async function adminSaveTarsDomainMcp(
-  payload: TarsDomainMcpSavePayload,
-  tarsUserId: string,
-): Promise<void> {
-  await tarsMcpFetch('/api/mcp/domain/save', {
-    method: 'POST',
-    body: { ...payload, user_id: tarsUserId },
-    asUser: tarsUserId,
   });
 }
 

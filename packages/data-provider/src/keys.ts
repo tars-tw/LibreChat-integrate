@@ -93,7 +93,6 @@ export enum QueryKeys {
   tarsMcpServers = 'tarsMcpServers',
   tarsMcpUserSettings = 'tarsMcpUserSettings',
   tarsMcpChatTools = 'tarsMcpChatTools',
-  tarsMcpDomainServers = 'tarsMcpDomainServers',
   tarsMcpPermissionPrincipals = 'tarsMcpPermissionPrincipals',
   tarsMcpPermissions = 'tarsMcpPermissions',
   tarsMcpLogs = 'tarsMcpLogs',
