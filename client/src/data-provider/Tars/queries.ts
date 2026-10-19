@@ -50,6 +50,11 @@ import type {
   TTarsMcpDomainServer,
   TTarsMcpUserSettingsResponse,
   TTarsDomainMcpServersResponse,
+  TTarsMcpPermission,
+  TTarsMcpPrincipalType,
+  TTarsMcpPermissionsResponse,
+  TTarsMcpPermissionPrincipal,
+  TTarsMcpPermissionPrincipalsResponse,
   TTarsMcpDomainToolsResponse,
   TTarsActionLog,
   TTarsActionLogPage,
@@ -452,6 +457,46 @@ export const useTarsDomainMcpServersQuery = (
   );
 };
 
+/** Admin: every user and group holding MCP grants, disabled ones included. */
+export const useTarsMcpPermissionPrincipalsQuery = (
+  config?: UseQueryOptions<
+    TTarsMcpPermissionPrincipalsResponse,
+    unknown,
+    TTarsMcpPermissionPrincipal[]
+  >,
+): QueryObserverResult<TTarsMcpPermissionPrincipal[]> => {
+  return useQuery<TTarsMcpPermissionPrincipalsResponse, unknown, TTarsMcpPermissionPrincipal[]>(
+    [QueryKeys.tarsMcpPermissionPrincipals],
+    () => dataService.getTarsMcpPermissionPrincipals(),
+    {
+      select: (data) => data.principals ?? [],
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: one user's or group's own MCP grants (`null` = nothing to load). */
+export const useTarsMcpPermissionsQuery = (
+  principal: { type: TTarsMcpPrincipalType; id: string } | null,
+  config?: UseQueryOptions<TTarsMcpPermissionsResponse, unknown, TTarsMcpPermission[]>,
+): QueryObserverResult<TTarsMcpPermission[]> => {
+  return useQuery<TTarsMcpPermissionsResponse, unknown, TTarsMcpPermission[]>(
+    [QueryKeys.tarsMcpPermissions, principal?.type ?? '', principal?.id ?? ''],
+    () =>
+      dataService.getTarsMcpPermissions(
+        principal?.type as TTarsMcpPrincipalType,
+        principal?.id as string,
+      ),
+    {
+      select: (data) => data.permissions ?? [],
+      enabled: principal != null,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
 /** Admin: the `{{TARS_*}}` variables a tool field may bind, resolved for the signed-in admin. */
 export const useTarsMcpSystemVariablesQuery = (
   config?: UseQueryOptions<TTarsMcpSystemVariablesResponse, unknown, TTarsMcpSystemVariable[]>,
@@ -502,20 +547,18 @@ export const useTarsMcpUserSettingsQuery = (
 };
 
 /**
- * The MCP servers/tools the given brain (domain) may use, filtered by pwc_tars
- * with both the domain whitelist and the user's own toggles. Feeds the chat
- * dropdown's per-tool selection.
+ * The chat menu's pwc_tars MCP servers: everything assigned to the user (directly or
+ * through an active group), opted-in ones with their usable tools and the rest as
+ * pending opt-ins. Not scoped to the selected brain.
  */
-export const useTarsMcpDomainToolsQuery = (
-  domainId: string | number | null,
+export const useTarsMcpChatToolsQuery = (
   config?: UseQueryOptions<TTarsMcpDomainToolsResponse, unknown, TTarsMcpDomainServer[]>,
 ): QueryObserverResult<TTarsMcpDomainServer[]> => {
   return useQuery<TTarsMcpDomainToolsResponse, unknown, TTarsMcpDomainServer[]>(
-    [QueryKeys.tarsMcpDomainTools, String(domainId ?? '')],
-    () => dataService.getTarsMcpUserDomainTools(domainId as string | number),
+    [QueryKeys.tarsMcpChatTools],
+    () => dataService.getTarsMcpUserTools(),
     {
       select: (data) => data.servers ?? [],
-      enabled: domainId != null && domainId !== '',
       ...adminQueryOptions,
       ...config,
     },

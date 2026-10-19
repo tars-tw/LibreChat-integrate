@@ -816,6 +816,57 @@ export type TTarsDomainMcpSavePayload = {
   servers: Array<{ mcp_server_id: string; mcp_tool_ids?: string[] }>;
 };
 
+/** Who a `sys_mcp_permission` grant is assigned to. */
+export type TTarsMcpPrincipalType = 'user' | 'group';
+
+/** One user or group holding MCP grants (admin overview — disabled ones included). */
+export type TTarsMcpPermissionPrincipal = {
+  principal_type: TTarsMcpPrincipalType;
+  principal_id: string;
+  name: string;
+  email?: string | null;
+  /** A disabled user/group keeps its rows but they grant nothing; it can only be removed. */
+  is_active: boolean;
+  mcp_server_ids: string[];
+  server_count: number;
+};
+
+/** One `sys_mcp_permission` row: one user or one group × one server. */
+export type TTarsMcpPermission = {
+  id: string;
+  user_id?: string | null;
+  user_group_id?: string | null;
+  mcp_server_id: string;
+  /** `[]` = the whole server. */
+  mcp_tool_ids: string[];
+  is_enabled: boolean;
+  config?: Record<string, unknown> | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  created_by?: string | null;
+  updated_by?: string | null;
+};
+
+export type TTarsMcpPermissionPrincipalsResponse = { principals: TTarsMcpPermissionPrincipal[] };
+
+export type TTarsMcpPermissionsResponse = { permissions: TTarsMcpPermission[] };
+
+/**
+ * Full overwrite for every listed user and group: listed servers are upserted
+ * (`mcp_tool_ids: []` = whole server), any other server they held is removed.
+ */
+export type TTarsMcpPermissionSavePayload = {
+  user_ids: string[];
+  user_group_ids: string[];
+  servers: Array<{ mcp_server_id: string; mcp_tool_ids: string[] }>;
+};
+
+export type TTarsMcpPermissionSaveResult = {
+  user_ids: string[];
+  user_group_ids: string[];
+  server_count: number;
+};
+
 /** One `mcp_logs` audit row. */
 export type TTarsMcpLog = {
   id: string;
@@ -910,7 +961,10 @@ export type TTarsMcpUserServerUpdate = {
   tool_config?: Record<string, boolean>;
 };
 
-/** One tool a domain (腦袋) may use, with the chat-facing LibreChat tool key. */
+/**
+ * One assigned tool the user may use in chat, with the chat-facing LibreChat tool key.
+ * (Named for the former brain scoping; grants now come from `sys_mcp_permission`.)
+ */
 export type TTarsMcpDomainTool = {
   name: string;
   description?: string | null;
@@ -918,7 +972,7 @@ export type TTarsMcpDomainTool = {
   tool_key: string;
 };
 
-/** One gateway server a domain grants, with its usable tools. */
+/** One gateway server assigned to the user (or an active group of theirs), with its usable tools. */
 export type TTarsMcpDomainServer = {
   id: string;
   name: string;
@@ -928,13 +982,13 @@ export type TTarsMcpDomainServer = {
   gateway_name: string;
   /**
    * Whether the user opted this server in. pwc_tars defaults servers to OFF, so
-   * `false` means the brain allows it but it is not usable yet — the chat menu
-   * offers the opt-in rather than hiding it.
+   * `false` means it is assigned but not usable yet — the chat menu offers the
+   * opt-in rather than hiding it.
    */
   user_enabled: boolean;
-  /** Tools the brain grants; only populated once `user_enabled` is true. */
+  /** Tools the assignment grants; only populated once `user_enabled` is true. */
   tools: TTarsMcpDomainTool[];
-  /** Tool count the brain grants, known even while opted out. */
+  /** Tool count the assignment grants, known even while opted out. */
   tool_count?: number;
 };
 

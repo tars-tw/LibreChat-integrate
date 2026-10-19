@@ -1830,6 +1830,31 @@ export const saveTarsDomainMcp = (
   return request.post(endpoints.tarsMcpAdminDomainSave(), data);
 };
 
+export const getTarsMcpPermissionPrincipals =
+  (): Promise<t.TTarsMcpPermissionPrincipalsResponse> => {
+    return request.get(endpoints.tarsMcpAdminPermissionPrincipals());
+  };
+
+export const getTarsMcpPermissions = (
+  principalType: t.TTarsMcpPrincipalType,
+  principalId: string,
+): Promise<t.TTarsMcpPermissionsResponse> => {
+  return request.get(endpoints.tarsMcpAdminPermissions(principalType, principalId));
+};
+
+export const saveTarsMcpPermissions = (
+  data: t.TTarsMcpPermissionSavePayload,
+): Promise<{ result: t.TTarsMcpPermissionSaveResult }> => {
+  return request.post(endpoints.tarsMcpAdminPermissionSave(), data);
+};
+
+export const deleteTarsMcpPermissions = (
+  principalType: t.TTarsMcpPrincipalType,
+  principalId: string,
+): Promise<{ deleted: number }> => {
+  return request.delete(endpoints.tarsMcpAdminPermissions(principalType, principalId));
+};
+
 export const getTarsMcpSystemVariables = (): Promise<t.TTarsMcpSystemVariablesResponse> => {
   return request.get(endpoints.tarsMcpAdminSystemVariables());
 };
@@ -1845,10 +1870,8 @@ export const getTarsMcpUserSettings = (): Promise<t.TTarsMcpUserSettingsResponse
   return request.get(endpoints.tarsMcpUserSettings());
 };
 
-export const getTarsMcpUserDomainTools = (
-  domainId: string | number,
-): Promise<t.TTarsMcpDomainToolsResponse> => {
-  return request.get(endpoints.tarsMcpUserDomainTools(domainId));
+export const getTarsMcpUserTools = (): Promise<t.TTarsMcpDomainToolsResponse> => {
+  return request.get(endpoints.tarsMcpUserTools());
 };
 
 export const updateTarsMcpUserServer = (

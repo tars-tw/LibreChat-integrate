@@ -1,15 +1,37 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronRight, X } from 'lucide-react';
-import { Button, Spinner, Checkbox, useToastContext } from '@librechat/client';
-import type { TTarsMcpTool, TTarsMcpServer } from 'librechat-data-provider';
+import { PrincipalType } from 'librechat-data-provider';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Button,
+  Spinner,
+  Checkbox,
+  OGDialog,
+  OGDialogTemplate,
+  useToastContext,
+} from '@librechat/client';
+import type {
+  TPrincipal,
+  TTarsMcpTool,
+  TTarsMcpServer,
+  TTarsMcpPermission,
+  TTarsMcpPrincipalType,
+  TPrincipalSearchResult,
+  TTarsMcpPermissionPrincipal,
+} from 'librechat-data-provider';
 import {
   useTarsMcpServerQuery,
   useTarsMcpServersQuery,
-  useSaveTarsDomainMcpMutation,
-  useTarsDomainMcpServersQuery,
-  useTarsDomainPrepareDataQuery,
+  usePrincipalDirectoryQuery,
+  useTarsMcpPermissionsQuery,
+  useSaveTarsMcpPermissionsMutation,
+  useDeleteTarsMcpPermissionsMutation,
+  useTarsMcpPermissionPrincipalsQuery,
 } from '~/data-provider';
-import Picker, { type PickerOption } from '~/components/Admin/Tars/Audit/Picker';
+import DirectoryPeoplePicker from '~/components/Sharing/PeoplePicker/DirectoryPeoplePicker';
+import { SelectedPrincipalsList } from '~/components/Sharing/PeoplePicker';
+import { errorMessage } from '~/components/Admin/Tars/Models/helpers';
+import { principalKey } from '~/components/Sharing/shareChanges';
+import McpPermissionPrincipals from './McpPermissionPrincipals';
 import McpPaginationControls from './McpPaginationControls';
 import { useClientPagination } from './useClientPagination';
 import { useLocalize } from '~/hooks';
@@ -46,17 +68,22 @@ function PermissionServerRow({
   const { data: detail, isLoading } = useTarsMcpServerQuery(isExpanded ? server.id : null);
   const tools: TTarsMcpTool[] = detail?.tools ?? [];
   const isServerChecked = checkedTools != null;
+  /** A stored subset is a partial grant (an empty set means the whole server). */
+  const isPartial = (checkedTools?.size ?? 0) > 0;
+  let serverCheckState: boolean | 'indeterminate' = false;
+  if (isServerChecked) {
+    serverCheckState = isPartial ? 'indeterminate' : true;
+  }
   const allToolIds = tools.map((tool) => tool.id);
   let selectionLabel = '';
   if (isServerChecked) {
-    selectionLabel =
-      (checkedTools?.size ?? 0) > 0
-        ? localize('com_ui_tars_mcp_tools_selected', { count: checkedTools?.size ?? 0 })
-        : localize('com_ui_tars_mcp_all_tools');
+    selectionLabel = isPartial
+      ? localize('com_ui_tars_mcp_tools_selected', { count: checkedTools?.size ?? 0 })
+      : localize('com_ui_tars_mcp_all_tools');
   }
 
   return (
-    <div className="border-b border-border-light last:border-b-0">
+    <div className="border-border-light border-b last:border-b-0">
       <div
         className={`${PERMISSIONS_ROW_GRID} ${
           isServerChecked ? 'bg-brand-primary-subtle/40' : 'hover:bg-surface-hover'
@@ -64,7 +91,7 @@ function PermissionServerRow({
       >
         <Checkbox
           aria-label={server.name}
-          checked={isServerChecked}
+          checked={serverCheckState}
           onCheckedChange={(checked) => onToggleServer(checked === true)}
         />
         <button
@@ -74,9 +101,9 @@ function PermissionServerRow({
           className="flex min-w-0 items-center gap-2 rounded py-0.5 text-left"
         >
           {isExpanded ? (
-            <ChevronDown className="icon-sm shrink-0 text-brand-primary" />
+            <ChevronDown className="icon-sm text-brand-primary shrink-0" />
           ) : (
-            <ChevronRight className="icon-sm shrink-0 text-text-secondary" />
+            <ChevronRight className="icon-sm text-text-secondary shrink-0" />
           )}
           <span
             className={`min-w-0 flex-1 truncate text-sm font-medium ${isServerChecked ? 'text-brand-primary' : 'text-text-primary'}`}
@@ -84,15 +111,15 @@ function PermissionServerRow({
             {server.name}
           </span>
           <span
-            className={`shrink-0 whitespace-nowrap text-xs ${isServerChecked ? 'text-brand-primary' : 'text-text-secondary'}`}
+            className={`shrink-0 text-xs whitespace-nowrap ${isServerChecked ? 'text-brand-primary' : 'text-text-secondary'}`}
           >
             {selectionLabel}
           </span>
         </button>
-        <span className="text-right text-xs text-text-secondary">{server.tool_count ?? 0}</span>
+        <span className="text-text-secondary text-right text-xs">{server.tool_count ?? 0}</span>
       </div>
       {isExpanded && (
-        <ul className="space-y-1 bg-surface-secondary px-4 py-2 sm:px-6">
+        <ul className="bg-surface-secondary space-y-1 px-4 py-2 sm:px-6">
           {isLoading && (
             <li>
               <Spinner className="icon-sm" />
@@ -105,7 +132,7 @@ function PermissionServerRow({
                 ((checkedTools?.size ?? 0) === 0 || checkedTools?.has(tool.id) === true);
               return (
                 <li key={tool.id}>
-                  <div className="flex items-start gap-2 rounded-lg px-2 py-2 hover:bg-surface-hover">
+                  <div className="hover:bg-surface-hover flex items-start gap-2 rounded-lg px-2 py-2">
                     <Checkbox
                       aria-label={tool.name}
                       checked={isToolChecked}
@@ -125,7 +152,7 @@ function PermissionServerRow({
                         {tool.name}
                       </span>
                       {tool.description != null && tool.description !== '' && (
-                        <p className="mt-1 whitespace-normal break-words text-xs text-text-secondary">
+                        <p className="text-text-secondary mt-1 text-xs break-words whitespace-normal">
                           {tool.description}
                         </p>
                       )}
@@ -135,7 +162,7 @@ function PermissionServerRow({
               );
             })}
           {!isLoading && tools.length === 0 && (
-            <li className="text-xs text-text-secondary">{localize('com_ui_tars_mcp_no_tools')}</li>
+            <li className="text-text-secondary text-xs">{localize('com_ui_tars_mcp_no_tools')}</li>
           )}
         </ul>
       )}
@@ -144,20 +171,63 @@ function PermissionServerRow({
 }
 
 /**
- * Domain↔MCP binding editor mirroring pwc_tars's 權限設定 tab: pick domains,
- * check servers/tools, save via the full-overwrite `POST domains/save` proxy.
+ * The tools a server grants right now: none while it is unchecked (`undefined`),
+ * every tool when stored as "whole server" (an empty set), else the stored subset.
+ */
+const grantedToolIds = (current: Set<string> | undefined, allToolIds: string[]): Set<string> => {
+  if (current == null) {
+    return new Set();
+  }
+  return new Set(current.size === 0 ? allToolIds : current);
+};
+
+const toPrincipalType = (principal: TPrincipal): TTarsMcpPrincipalType =>
+  principal.type === PrincipalType.GROUP ? 'group' : 'user';
+
+/** Directory principals carry the pwc_tars id as `idOnTheSource`; LibreChat's own `id` is unset. */
+const tarsIdOf = (principal: TPrincipal): string => principal.idOnTheSource ?? '';
+
+const toSelection = (rows: TTarsMcpPermission[]): Selection =>
+  new Map(
+    rows
+      .filter((row) => row.is_enabled)
+      .map((row) => [row.mcp_server_id, new Set(row.mcp_tool_ids ?? [])]),
+  );
+
+/** An overview row as a share-dialog principal, enriched from the directory when it is there. */
+const toEditTarget = (
+  principal: TTarsMcpPermissionPrincipal,
+  directoryEntry: TPrincipalSearchResult | undefined,
+): TPrincipal => ({
+  type: principal.principal_type === 'group' ? PrincipalType.GROUP : PrincipalType.USER,
+  name: principal.name,
+  email: principal.email ?? undefined,
+  source: 'tars',
+  idOnTheSource: principal.principal_id,
+  avatar: directoryEntry?.avatar,
+  memberCount: directoryEntry?.memberCount,
+});
+
+/**
+ * Assigns MCP servers / tools to pwc_tars users and groups (`sys_mcp_permission`):
+ * pick the people like in the share dialog, check servers/tools, and save — a full
+ * overwrite of every picked user's and group's grants.
  */
 export default function McpPermissionsTab() {
   const localize = useLocalize();
   const { showToast } = useToastContext();
-  const { data: prepareData, isLoading: domainsLoading } = useTarsDomainPrepareDataQuery();
   const { data: servers = [], isLoading: serversLoading } = useTarsMcpServersQuery();
+  const { data: principals = [], isLoading: principalsLoading } =
+    useTarsMcpPermissionPrincipalsQuery();
+  const { data: directory } = usePrincipalDirectoryQuery();
 
-  const [selectedDomainIds, setSelectedDomainIds] = useState<Set<number>>(new Set());
+  const [targets, setTargets] = useState<TPrincipal[]>([]);
   const [selection, setSelection] = useState<Selection>(new Map());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  /** The single target whose saved grants are on the tree; later refetches keep the admin's edits. */
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<TTarsMcpPermissionPrincipal | null>(null);
 
-  const domains = useMemo(() => prepareData?.sys_domains ?? [], [prepareData]);
   const managedServers = useMemo(
     () => servers.filter((server) => MANAGED_TYPES.has(server.type)),
     [servers],
@@ -170,46 +240,57 @@ export default function McpPermissionsTab() {
     pageCount,
     pageItems: pageServers,
   } = useClientPagination(managedServers);
-  const domainOptions: PickerOption[] = useMemo(
-    () => domains.map((domain) => ({ value: String(domain.id), label: domain.name })),
-    [domains],
-  );
-  const selectedDomains = useMemo(
-    () => domains.filter((domain) => selectedDomainIds.has(domain.id)),
-    [domains, selectedDomainIds],
-  );
 
-  const singleDomainId = selectedDomainIds.size === 1 ? [...selectedDomainIds][0] : null;
-  const { data: existingRelations } = useTarsDomainMcpServersQuery(singleDomainId);
+  const directoryById = useMemo(() => {
+    const map = new Map<string, TPrincipalSearchResult>();
+    for (const entry of [...(directory?.users ?? []), ...(directory?.groups ?? [])]) {
+      if (entry.idOnTheSource) {
+        map.set(entry.idOnTheSource, entry);
+      }
+    }
+    return map;
+  }, [directory]);
+
+  const singleTarget = targets.length === 1 ? targets[0] : null;
+  const singleKey = singleTarget ? principalKey(singleTarget) : null;
+  const singlePrincipal = useMemo(
+    () =>
+      singleTarget ? { type: toPrincipalType(singleTarget), id: tarsIdOf(singleTarget) } : null,
+    [singleTarget],
+  );
+  const { data: savedRows, isFetching: savedLoading } = useTarsMcpPermissionsQuery(singlePrincipal);
+  const isLoadingTarget = singleKey != null && singleKey !== loadedKey;
 
   useEffect(() => {
-    if (singleDomainId == null || existingRelations == null) {
+    if (!isLoadingTarget || savedRows == null || savedLoading) {
       return;
     }
-    const next: Selection = new Map();
-    for (const relation of existingRelations) {
-      if (!relation.is_enabled) {
-        continue;
-      }
-      next.set(relation.mcp_server_id, new Set(relation.mcp_tool_ids ?? []));
-    }
-    setSelection(next);
-  }, [singleDomainId, existingRelations]);
+    setSelection(toSelection(savedRows));
+    setLoadedKey(singleKey);
+  }, [isLoadingTarget, savedRows, savedLoading, singleKey]);
 
-  const applyDomainSelection = (ids: number[]) => {
-    const next = new Set(ids);
-    setSelectedDomainIds(next);
-    /** No domain selected — the checked servers/tools belonged to the deselected one. */
-    if (next.size === 0) {
+  const updateTargets = (next: TPrincipal[]) => {
+    setTargets(next);
+    /** No target left — the checked servers/tools belonged to the one just removed. */
+    if (next.length === 0) {
       setSelection(new Map());
+      setLoadedKey(null);
     }
   };
 
-  const handleDomainSelectionChange = (values: string[]) =>
-    applyDomainSelection(values.map(Number));
+  const handleAddPeople = (people: TPrincipal[]) => {
+    const known = new Set(targets.map(principalKey));
+    updateTargets([...targets, ...people.filter((person) => !known.has(principalKey(person)))]);
+  };
 
-  const removeDomain = (domainId: number) =>
-    applyDomainSelection([...selectedDomainIds].filter((id) => id !== domainId));
+  const removeTarget = (key: string) =>
+    updateTargets(targets.filter((target) => principalKey(target) !== key));
+
+  /** Editing always starts from what is saved, even for the principal already on the tree. */
+  const editPrincipal = (principal: TTarsMcpPermissionPrincipal) => {
+    setTargets([toEditTarget(principal, directoryById.get(principal.principal_id))]);
+    setLoadedKey(null);
+  };
 
   const toggleServer = useCallback((serverId: string, checked: boolean) => {
     setSelection((prev) => {
@@ -226,9 +307,7 @@ export default function McpPermissionsTab() {
   const toggleTool = useCallback<ToggleTool>((serverId, allToolIds, toolId, checked) => {
     setSelection((prev) => {
       const next = new Map(prev);
-      const current = next.get(serverId);
-      /** An empty stored set means "whole server", so expand it before editing. */
-      const effective = new Set(current == null || current.size === 0 ? allToolIds : current);
+      const effective = grantedToolIds(next.get(serverId), allToolIds);
       if (checked) {
         effective.add(toolId);
       } else {
@@ -257,20 +336,40 @@ export default function McpPermissionsTab() {
     });
   };
 
-  const saveMutation = useSaveTarsDomainMcpMutation({
+  const showError = (error: unknown) =>
+    showToast({
+      message: errorMessage(error) ?? (error as Error)?.message ?? 'Error',
+      status: 'error',
+    });
+
+  const saveMutation = useSaveTarsMcpPermissionsMutation({
     onSuccess: () =>
       showToast({ message: localize('com_ui_tars_mcp_permissions_saved'), status: 'success' }),
-    onError: (error) =>
-      showToast({ message: (error as Error)?.message ?? 'Error', status: 'error' }),
+    onError: showError,
+  });
+
+  const deleteMutation = useDeleteTarsMcpPermissionsMutation({
+    onSuccess: (_data, target) => {
+      showToast({ message: localize('com_ui_tars_mcp_permission_removed'), status: 'success' });
+      /** The principal on the tree now holds nothing; its stale checks must not be re-saved. */
+      if (`${target.type}-${target.id}` === loadedKey && loadedKey === singleKey) {
+        setSelection(new Map());
+      }
+      setRemoving(null);
+    },
+    onError: showError,
   });
 
   const handleSave = () => {
-    if (selectedDomainIds.size === 0) {
-      showToast({ message: localize('com_ui_tars_mcp_domain_required'), status: 'error' });
+    if (targets.length === 0) {
+      showToast({ message: localize('com_ui_tars_mcp_principal_required'), status: 'error' });
       return;
     }
+    const idsOf = (type: TTarsMcpPrincipalType) =>
+      targets.filter((target) => toPrincipalType(target) === type).map(tarsIdOf);
     saveMutation.mutate({
-      domain_ids: [...selectedDomainIds],
+      user_ids: idsOf('user'),
+      user_group_ids: idsOf('group'),
       servers: [...selection.entries()].map(([serverId, toolIds]) => ({
         mcp_server_id: serverId,
         mcp_tool_ids: [...toolIds],
@@ -278,7 +377,7 @@ export default function McpPermissionsTab() {
     });
   };
 
-  if (domainsLoading || serversLoading) {
+  if (serversLoading) {
     return (
       <div className="flex h-40 items-center justify-center">
         <Spinner />
@@ -287,89 +386,113 @@ export default function McpPermissionsTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        {domains.length === 0 ? (
-          <p className="text-sm text-text-secondary">{localize('com_ui_tars_mcp_no_domains')}</p>
-        ) : (
-          <Picker
-            id="tars-mcp-permissions-domain-picker"
-            label={localize('com_ui_tars_mcp_select_domains')}
-            options={domainOptions}
-            selected={[...selectedDomainIds].map(String)}
-            onChange={handleDomainSelectionChange}
-            placeholder={localize('com_ui_tars_mcp_domain_placeholder')}
-          />
+    <div className="space-y-6">
+      <section
+        className="border-border-light space-y-3 rounded-lg border p-4"
+        aria-labelledby="tars-mcp-assignees-title"
+      >
+        <h2 id="tars-mcp-assignees-title" className="text-text-primary text-sm font-medium">
+          {localize('com_ui_tars_mcp_assignees')}
+        </h2>
+        <DirectoryPeoplePicker onAddPeople={handleAddPeople} excludeIds={targets.map(tarsIdOf)} />
+        <SelectedPrincipalsList principles={targets} onRemoveHandler={removeTarget} />
+        {targets.length > 1 && (
+          <p className="text-status-warning text-xs">
+            {localize('com_ui_tars_mcp_multi_principal_warning')}
+          </p>
         )}
-        {selectedDomains.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {selectedDomains.map((domain) => (
-              <span
-                key={domain.id}
-                className="inline-flex items-center gap-1.5 rounded-full border border-brand-primary bg-brand-primary-subtle px-3 py-1 text-sm text-brand-primary"
-              >
-                {domain.name}
-                <button
-                  type="button"
-                  onClick={() => removeDomain(domain.id)}
-                  aria-label={localize('com_ui_tars_mcp_domain_remove', { name: domain.name })}
-                  className="rounded-full hover:bg-brand-primary/20"
-                >
-                  <X className="icon-sm" />
-                </button>
-              </span>
-            ))}
+      </section>
+
+      <div className="space-y-4">
+        <div className="border-border-light relative overflow-hidden rounded-lg border">
+          <div
+            className={`${PERMISSIONS_ROW_GRID} border-border-light bg-surface-secondary text-text-secondary border-b text-sm font-medium`}
+          >
+            <span aria-hidden="true" />
+            <span className="flex items-center gap-2">
+              {localize('com_ui_name')}
+              {isLoadingTarget && <Spinner className="icon-sm" />}
+            </span>
+            <span className="text-right">
+              {localize('com_ui_tars_mcp_permissions_tools_header')}
+            </span>
           </div>
-        )}
-        {selectedDomainIds.size > 1 && (
-          <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-            {localize('com_ui_tars_mcp_multi_domain_warning')}
-          </p>
-        )}
-      </div>
-
-      <div className="overflow-hidden rounded-lg border border-border-light">
-        <div
-          className={`${PERMISSIONS_ROW_GRID} border-b border-border-light bg-surface-secondary text-sm font-medium text-text-secondary`}
-        >
-          <span aria-hidden="true" />
-          <span>{localize('com_ui_name')}</span>
-          <span className="text-right">{localize('com_ui_tars_mcp_permissions_tools_header')}</span>
+          {pageServers.map((server) => (
+            <PermissionServerRow
+              key={server.id}
+              server={server}
+              checkedTools={selection.get(server.id)}
+              isExpanded={expanded.has(server.id)}
+              onToggleExpanded={() => toggleExpanded(server.id)}
+              onToggleServer={(checked) => toggleServer(server.id, checked)}
+              onToggleTool={toggleTool}
+            />
+          ))}
+          {managedServers.length === 0 && (
+            <p className="text-text-secondary py-8 text-center text-sm">
+              {localize('com_ui_tars_mcp_empty')}
+            </p>
+          )}
         </div>
-        {pageServers.map((server) => (
-          <PermissionServerRow
-            key={server.id}
-            server={server}
-            checkedTools={selection.get(server.id)}
-            isExpanded={expanded.has(server.id)}
-            onToggleExpanded={() => toggleExpanded(server.id)}
-            onToggleServer={(checked) => toggleServer(server.id, checked)}
-            onToggleTool={toggleTool}
+
+        {managedServers.length > 0 && (
+          <McpPaginationControls
+            labelId="tars-mcp-permissions-page-size-label"
+            page={page}
+            pageCount={pageCount}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
           />
-        ))}
-        {managedServers.length === 0 && (
-          <p className="py-8 text-center text-sm text-text-secondary">
-            {localize('com_ui_tars_mcp_empty')}
-          </p>
         )}
+
+        <div className="flex justify-end">
+          <Button
+            variant="submit"
+            onClick={handleSave}
+            disabled={saveMutation.isLoading || isLoadingTarget}
+          >
+            {saveMutation.isLoading ? <Spinner /> : localize('com_ui_save')}
+          </Button>
+        </div>
       </div>
 
-      {managedServers.length > 0 && (
-        <McpPaginationControls
-          labelId="tars-mcp-permissions-page-size-label"
-          page={page}
-          pageCount={pageCount}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
+      <McpPermissionPrincipals
+        principals={principals}
+        isLoading={principalsLoading}
+        editingKey={loadedKey != null && loadedKey === singleKey ? loadedKey : null}
+        onEdit={editPrincipal}
+        onRemove={setRemoving}
+      />
+
+      {removing != null && (
+        <OGDialog open={removing != null} onOpenChange={(open) => !open && setRemoving(null)}>
+          <OGDialogTemplate
+            title={localize('com_ui_tars_mcp_permission_remove')}
+            className="w-11/12 max-w-md"
+            showCloseButton={true}
+            main={
+              <p className="text-text-secondary text-sm">
+                {localize('com_ui_tars_mcp_permission_remove_confirm', { name: removing.name })}
+              </p>
+            }
+            buttons={
+              <Button
+                variant="destructive"
+                onClick={() =>
+                  deleteMutation.mutate({
+                    type: removing.principal_type,
+                    id: removing.principal_id,
+                  })
+                }
+                disabled={deleteMutation.isLoading}
+              >
+                {deleteMutation.isLoading ? <Spinner /> : localize('com_ui_delete')}
+              </Button>
+            }
+          />
+        </OGDialog>
       )}
-
-      <div className="flex justify-end">
-        <Button variant="submit" onClick={handleSave} disabled={saveMutation.isLoading}>
-          {saveMutation.isLoading ? <Spinner /> : localize('com_ui_save')}
-        </Button>
-      </div>
     </div>
   );
 }

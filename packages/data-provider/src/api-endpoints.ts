@@ -610,6 +610,14 @@ export const tarsMcpAdminDomainServers = (domainId: number) =>
 export const tarsMcpAdminDomainAvailableServers = (domainId: number) =>
   `${BASE_URL}/api/tars/mcp/admin/domains/${domainId}/available-servers`;
 export const tarsMcpAdminDomainSave = () => `${BASE_URL}/api/tars/mcp/admin/domains/save`;
+export const tarsMcpAdminPermissionPrincipals = () =>
+  `${BASE_URL}/api/tars/mcp/admin/permissions/principals`;
+export const tarsMcpAdminPermissionSave = () => `${BASE_URL}/api/tars/mcp/admin/permissions/save`;
+/** One user's or group's own grants (`user_id` / `user_group_id` query). */
+export const tarsMcpAdminPermissions = (principalType: 'user' | 'group', principalId: string) => {
+  const key = principalType === 'group' ? 'user_group_id' : 'user_id';
+  return `${BASE_URL}/api/tars/mcp/admin/permissions?${key}=${encodeURIComponent(principalId)}`;
+};
 export const tarsMcpAdminSystemVariables = () => `${BASE_URL}/api/tars/mcp/admin/system-variables`;
 export const tarsMcpAdminLogs = (query?: { conversationId?: string; limit?: number }) => {
   const params = new URLSearchParams();
@@ -623,8 +631,7 @@ export const tarsMcpAdminLogs = (query?: { conversationId?: string; limit?: numb
   return qs ? `${BASE_URL}/api/tars/mcp/admin/logs?${qs}` : `${BASE_URL}/api/tars/mcp/admin/logs`;
 };
 export const tarsMcpUserSettings = () => `${BASE_URL}/api/tars/mcp/user/settings`;
-export const tarsMcpUserDomainTools = (domainId: string | number) =>
-  `${BASE_URL}/api/tars/mcp/user/domains/${encodeURIComponent(String(domainId))}/tools`;
+export const tarsMcpUserTools = () => `${BASE_URL}/api/tars/mcp/user/tools`;
 export const tarsMcpUserServer = (id: string) =>
   `${BASE_URL}/api/tars/mcp/user/servers/${encodeURIComponent(id)}`;
 export const tarsMcpUserServerCredentials = (id: string) => `${tarsMcpUserServer(id)}/credentials`;

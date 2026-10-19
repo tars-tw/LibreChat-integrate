@@ -129,7 +129,7 @@ function entryNameFor(server: TarsMcpServerDetail, taken: Set<string>): string {
  * base-config load so every `getAppConfig` consumer (MCP registry, per-tool
  * domain checks, agent init) sees the same entries. The `{{LIBRECHAT_USER_ID}}`
  * header makes connections user-scoped, so each user's tool list reflects their
- * own pwc_tars domain permissions. Pre-existing entries of the same name
+ * own pwc_tars MCP permissions (assigned to them or their groups). Pre-existing entries of the same name
  * (admin-managed YAML) always win. When pwc_tars is unreachable nothing is
  * injected and {@link tarsMcpInjectionFailed} flips true so the caller can
  * schedule a retry. No-op when disabled.

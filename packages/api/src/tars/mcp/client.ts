@@ -30,8 +30,9 @@ interface TarsMcpEnvelope<T> {
 
 /**
  * One row of pwc_tars `GET /api/mcp/available-tools?user_id=` — already filtered
- * server- and tool-level by the user's domain grants (`sys_domain_mcp` incl.
- * `mcp_tool_ids` whitelists) and per-user settings (`sys_user_mcp`).
+ * server- and tool-level by the user's grants (`sys_mcp_permission` for the user
+ * and their active groups, incl. `mcp_tool_ids` whitelists) and per-user settings
+ * (`sys_user_mcp`).
  */
 export interface TarsAvailableToolRow {
   server_id: string;
@@ -260,7 +261,7 @@ function scopeOf(entry: ToolsCacheEntry, serverId?: string): ScopedTools {
  * The pwc_tars tools the user may access, scoped to one server when `serverId`
  * is given (per-server gateway entries) or aggregated across all servers
  * (legacy single-entry gateway). pwc_tars applies the full permission stack
- * server-side (domain grants, `mcp_tool_ids` tool whitelists, per-user
+ * server-side (user/group grants, `mcp_tool_ids` tool whitelists, per-user
  * enable/disable and tool overrides). Cached briefly so the MCP handshake
  * (initialize + tools/list) doesn't hammer pwc_tars.
  */
