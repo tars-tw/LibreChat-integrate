@@ -4202,7 +4202,7 @@
   "com_ui_tars_mcp_auth_login_hint": "Field names are what the login endpoint expects; leave values empty to require per-user credentials",
   "com_ui_tars_mcp_my_tools": "TARS Tools",
   "com_ui_tars_mcp_card_hint": "pwc_tars OpenAPI / custom API tools — catalog, toggles, credentials",
-  "com_ui_tars_mcp_my_tools_hint": "Tools available to you through pwc_tars. Servers are OFF by default — enable the ones you want (and supply credentials where required); changes apply to chat within seconds.",
+  "com_ui_tars_mcp_my_tools_hint": "These are the MCP tools available to you, assigned to you or your groups by an administrator. Servers are off by default — enable the ones you need and provide credentials where required; changes apply to chat within seconds.",
   "com_ui_tars_mcp_no_servers": "No MCP servers are available to your account",
   "com_ui_tars_mcp_no_tools": "No tools available on this server",
   "com_ui_tars_mcp_params": "Parameters",
