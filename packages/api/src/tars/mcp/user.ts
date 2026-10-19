@@ -1,5 +1,4 @@
 import { Constants } from 'librechat-data-provider';
-import type { TarsDomainMcpRelation } from './admin';
 import type { TarsAvailableToolRow } from './client';
 import {
   tarsMcpFetch,
@@ -7,12 +6,12 @@ import {
   PROXIED_SERVER_TYPES,
   invalidateTarsMcpToolsCache,
 } from './client';
-import { fetchTarsDomainsForUser } from '~/tars/domains';
 import { gatewayNameFor } from './names';
 
 /**
  * Per-user proxy for the pwc_tars MCP user panel: aggregated settings
- * (domain-visible servers/tools with the user's enable states), server/tool
+ * (servers/tools assigned to the user or their groups via `sys_mcp_permission`,
+ * with the user's enable states), server/tool
  * toggles, and credential save/clear with pwc_tars-side verification. All
  * writes invalidate the gateway tool cache so chat reflects changes
  * immediately instead of after the 30s TTL.
@@ -64,54 +63,40 @@ export interface TarsMcpDomainServer {
   gateway_name: string;
   /**
    * Whether the user has opted this server in (`sys_user_mcp.is_enabled`).
-   * pwc_tars defaults servers to OFF, so a brain-approved server stays unusable
+   * pwc_tars defaults servers to OFF, so an assigned server stays unusable
    * until the user enables it — `false` entries carry no `tools` and exist so
    * the chat menu can offer that opt-in instead of hiding the server.
    */
   user_enabled: boolean;
-  /** Tools the brain grants; only populated once `user_enabled` is true. */
+  /** Tools the assignment grants; only populated once `user_enabled` is true. */
   tools: TarsMcpDomainTool[];
-  /** How many tools the brain grants, known even while the server is opted out. */
+  /** How many tools the assignment grants, known even while the server is opted out. */
   tool_count?: number;
 }
 
 /**
- * The MCP servers one domain (腦袋) grants, split by the user's opt-in state.
+ * The MCP servers assigned to the user (directly or through an active group),
+ * split by the user's opt-in state. No brain (domain) is involved any more.
  *
- * Opted-in servers come from `available-tools?user_id&domain_id`, so their tool
- * lists are exactly what pwc_tars authorizes (domain whitelist incl.
- * `mcp_tool_ids`, plus the user's own `sys_user_mcp` server/tool toggles) —
- * no filtering is reimplemented here. Each tool carries the full LibreChat tool
- * key (`<scoped name>_mcp_<gateway name>`), matching what the per-server gateway
+ * Opted-in servers come from `available-tools?user_id`, so their tool lists are
+ * exactly what pwc_tars authorizes (the `sys_mcp_permission` grants incl.
+ * `mcp_tool_ids`, plus the user's own server/tool toggles) — no filtering is
+ * reimplemented here. Each tool carries the full LibreChat tool key
+ * (`<scoped name>_mcp_<gateway name>`), matching what the per-server gateway
  * advertises, so the chat frontend can whitelist tools on the ephemeral agent
  * without further mapping.
  *
- * The brain's raw bindings are read separately to surface servers the user has
- * NOT opted into (pwc_tars defaults them off and drops them from
- * `available-tools`), which would otherwise vanish from chat with no hint that
- * the brain allows them. That read is unscoped to the user, so it is gated on
- * the domain being one of the user's own — an unauthorized id yields nothing.
+ * Servers the user has NOT opted into are dropped from `available-tools`, so they
+ * are read from the user's own settings (already limited to their grants) —
+ * otherwise an assigned server would vanish from chat with no hint it exists.
  */
-export async function getUserTarsDomainMcpTools(
-  tarsUserId: string,
-  domainId: number,
-): Promise<TarsMcpDomainServer[]> {
-  const [domains, rows, relations, settings] = await Promise.all([
-    fetchTarsDomainsForUser(tarsUserId),
+export async function getUserTarsMcpTools(tarsUserId: string): Promise<TarsMcpDomainServer[]> {
+  const [rows, settings] = await Promise.all([
     tarsMcpFetch<TarsAvailableToolRow[]>('/api/mcp/available-tools', {
-      query: { user_id: tarsUserId, domain_id: domainId },
+      query: { user_id: tarsUserId },
     }),
-    tarsMcpFetch<TarsDomainMcpRelation[]>(`/api/mcp/domain/${domainId}/servers`).catch(() => []),
     getUserTarsMcpSettings(tarsUserId).catch(() => []),
   ]);
-  if (!domains.some((domain) => domain.id === domainId)) {
-    return [];
-  }
-  /** Authoritative opt-in state: a server can be enabled yet contribute no rows
-   *  above (every tool individually disabled), and that is not a pending server. */
-  const optedIn = new Set(
-    settings.filter((server) => server.user_enabled).map((server) => server.id),
-  );
 
   const servers = new Map<string, TarsMcpDomainServer>();
   const takenByServer = new Map<string, Set<string>>();
@@ -152,32 +137,27 @@ export async function getUserTarsDomainMcpTools(
     });
   }
 
-  for (const relation of relations ?? []) {
-    const detail = relation.server;
-    if (!relation.is_enabled || detail == null || servers.has(relation.mcp_server_id)) {
+  /** Authoritative opt-in state: a server can be enabled yet contribute no rows
+   *  above (every tool individually disabled), and that is not a pending server. */
+  for (const setting of settings) {
+    if (setting.user_enabled || servers.has(setting.id)) {
       continue;
     }
-    if (optedIn.has(relation.mcp_server_id)) {
+    if (setting.is_enabled === false || !PROXIED_SERVER_TYPES.has(setting.type)) {
       continue;
     }
-    if (detail.is_enabled === false || !PROXIED_SERVER_TYPES.has(detail.type)) {
+    if (setting.gateway_name == null) {
       continue;
     }
-    const gatewayName = gatewayNameFor(relation.mcp_server_id, detail.code);
-    if (gatewayName == null) {
-      continue;
-    }
-    /** An empty whitelist means the brain grants the whole server. */
-    const whitelisted = relation.mcp_tool_ids?.length ?? 0;
-    servers.set(relation.mcp_server_id, {
-      id: relation.mcp_server_id,
-      name: detail.name,
-      code: detail.code ?? null,
-      type: detail.type,
-      gateway_name: gatewayName,
+    servers.set(setting.id, {
+      id: setting.id,
+      name: setting.name,
+      code: setting.code ?? null,
+      type: setting.type,
+      gateway_name: setting.gateway_name,
       user_enabled: false,
       tools: [],
-      tool_count: whitelisted > 0 ? whitelisted : (detail.tool_count ?? undefined),
+      tool_count: setting.tools.length,
     });
   }
 

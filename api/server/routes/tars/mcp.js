@@ -16,7 +16,7 @@ const {
   adminSyncTarsMcpServer,
   adminParseTarsOpenapi,
   getUserTarsMcpSettings,
-  getUserTarsDomainMcpTools,
+  getUserTarsMcpTools,
   updateUserTarsMcpServer,
   saveUserTarsMcpCredentials,
   clearUserTarsMcpCredentials,
@@ -26,6 +26,10 @@ const {
   adminListTarsDomainMcpServers,
   adminListTarsDomainAvailableServers,
   adminSaveTarsDomainMcp,
+  adminListTarsMcpPermissionPrincipals,
+  adminGetTarsMcpPermissions,
+  adminSaveTarsMcpPermissions,
+  adminDeleteTarsMcpPermissions,
   adminGetTarsMcpLogs,
   adminListTarsMcpSystemVariables,
 } = require('@librechat/api');
@@ -311,6 +315,43 @@ router.post(
   }),
 );
 
+/** MCP grants assigned to users / groups (`sys_mcp_permission`); pwc_tars validates every payload. */
+router.get(
+  '/mcp/admin/permissions/principals',
+  adminMiddleware,
+  adminHandler('GET /api/tars/mcp/admin/permissions/principals', async (req) => ({
+    principals: await adminListTarsMcpPermissionPrincipals(req.user.tarsId),
+  })),
+);
+
+router.get(
+  '/mcp/admin/permissions',
+  adminMiddleware,
+  adminHandler('GET /api/tars/mcp/admin/permissions', async (req) => ({
+    permissions: await adminGetTarsMcpPermissions(req.query ?? {}, req.user.tarsId),
+  })),
+);
+
+router.post(
+  '/mcp/admin/permissions/save',
+  adminMiddleware,
+  adminHandler('POST /api/tars/mcp/admin/permissions/save', async (req) => {
+    const result = await adminSaveTarsMcpPermissions(req.body ?? {}, req.user.tarsId);
+    await invalidateMcpCaches('POST /api/tars/mcp/admin/permissions/save');
+    return { result };
+  }),
+);
+
+router.delete(
+  '/mcp/admin/permissions',
+  adminMiddleware,
+  adminHandler('DELETE /api/tars/mcp/admin/permissions', async (req) => {
+    const deleted = await adminDeleteTarsMcpPermissions(req.query ?? {}, req.user.tarsId);
+    await invalidateMcpCaches('DELETE /api/tars/mcp/admin/permissions');
+    return { deleted };
+  }),
+);
+
 router.get(
   '/mcp/admin/logs',
   adminMiddleware,
@@ -349,16 +390,13 @@ router.get(
   })),
 );
 
+/** The chat menu's MCP servers: everything assigned to the user or their groups, no brain scoping. */
 router.get(
-  '/mcp/user/domains/:domainId/tools',
+  '/mcp/user/tools',
   userMiddleware,
-  userHandler('GET /api/tars/mcp/user/domains/:domainId/tools', async (req, tarsId) => {
-    const domainId = Number(req.params.domainId);
-    if (!Number.isInteger(domainId) || domainId <= 0) {
-      return { servers: [] };
-    }
-    return { servers: await getUserTarsDomainMcpTools(tarsId, domainId) };
-  }),
+  userHandler('GET /api/tars/mcp/user/tools', async (req, tarsId) => ({
+    servers: await getUserTarsMcpTools(tarsId),
+  })),
 );
 
 router.put(
