@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { MCPIcon, AttachmentIcon, OpenAIMinimalIcon } from '@librechat/client';
+import { AttachmentIcon, OpenAIMinimalIcon } from '@librechat/client';
 import { Bot, NotebookPen, ScrollText, CalendarClock, ArrowRightToLine } from 'lucide-react';
 import {
   Permissions,
@@ -10,12 +9,7 @@ import {
 } from 'librechat-data-provider';
 import type { TInterfaceConfig, TEndpointsConfig } from 'librechat-data-provider';
 import type { NavLink } from '~/common';
-import {
-  useAgentCapabilities,
-  useMCPServerManager,
-  useGetAgentsConfig,
-  useHasAccess,
-} from '~/hooks';
+import { useAgentCapabilities, useGetAgentsConfig, useHasAccess } from '~/hooks';
 import AgentPanelSwitch from '~/components/SidePanel/Agents/AgentPanelSwitch';
 import PanelSwitch from '~/components/SidePanel/Builder/PanelSwitch';
 import { SchedulePanel } from '~/components/SidePanel/Schedules';
@@ -38,8 +32,6 @@ export default function useSideNavLinks({
   endpointsConfig: TEndpointsConfig;
   includeHidePanel?: boolean;
 }) {
-  const navigate = useNavigate();
-  const location = useLocation();
   const hasAccessToPrompts = useHasAccess({
     permissionType: PermissionTypes.PROMPTS,
     permission: Permissions.USE,
@@ -56,19 +48,10 @@ export default function useSideNavLinks({
     permissionType: PermissionTypes.AGENTS,
     permission: Permissions.CREATE,
   });
-  const hasAccessToUseMCPSettings = useHasAccess({
-    permissionType: PermissionTypes.MCP_SERVERS,
-    permission: Permissions.USE,
-  });
-  const hasAccessToCreateMCP = useHasAccess({
-    permissionType: PermissionTypes.MCP_SERVERS,
-    permission: Permissions.CREATE,
-  });
   const hasAccessToSchedules = useHasAccess({
     permissionType: PermissionTypes.SCHEDULES,
     permission: Permissions.USE,
   });
-  const { availableMCPServers } = useMCPServerManager();
 
   const { agentsConfig } = useGetAgentsConfig({ endpointsConfig });
   const { skillsEnabled } = useAgentCapabilities(agentsConfig?.capabilities);
@@ -158,23 +141,6 @@ export default function useSideNavLinks({
       });
     }
 
-    if (
-      (hasAccessToUseMCPSettings && availableMCPServers && availableMCPServers.length > 0) ||
-      hasAccessToCreateMCP
-    ) {
-      links.push({
-        title: 'com_nav_setting_mcp',
-        label: '',
-        icon: MCPIcon,
-        id: 'mcp-builder',
-        onClick: () => {
-          if (!location.pathname.startsWith('/mcp-settings')) {
-            navigate('/mcp-settings');
-          }
-        },
-      });
-    }
-
     if (includeHidePanel && hidePanel) {
       links.push({
         title: 'com_sidepanel_hide_panel',
@@ -197,13 +163,8 @@ export default function useSideNavLinks({
     skillsEnabled,
     hasAccessToSchedules,
     interfaceConfig.schedules,
-    availableMCPServers,
-    hasAccessToUseMCPSettings,
-    hasAccessToCreateMCP,
     includeHidePanel,
     hidePanel,
-    navigate,
-    location.pathname,
   ]);
 
   return Links;
