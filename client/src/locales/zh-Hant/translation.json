@@ -2414,7 +2414,7 @@
   "com_ui_tars_mcp_auth_login_hint": "欄位名稱需符合登入端點的要求；留空值則要求每位使用者自行提供憑證",
   "com_ui_tars_mcp_my_tools": "TARS 工具",
   "com_ui_tars_mcp_card_hint": "pwc_tars 的 OpenAPI／自訂 API 工具 — 目錄、開關與憑證",
-  "com_ui_tars_mcp_my_tools_hint": "您可透過 pwc_tars 使用的工具。伺服器預設為關閉 — 請啟用需要的項目（必要時提供憑證）；變更會在數秒內套用至聊天。",
+  "com_ui_tars_mcp_my_tools_hint": "此處為您可選用的 MCP 工具，由管理員指派給您或您所屬的群組。伺服器預設為關閉，請啟用需要的項目，必要時提供憑證；變更會在數秒內套用至聊天。",
   "com_ui_tars_mcp_no_servers": "您的帳號目前沒有可用的 MCP 伺服器",
   "com_ui_tars_mcp_no_tools": "此伺服器沒有可用的工具",
   "com_ui_tars_mcp_params": "參數",
