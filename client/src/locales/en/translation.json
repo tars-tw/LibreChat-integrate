@@ -4242,7 +4242,6 @@
   "com_ui_tars_mcp_env_vars_json": "Environment variables (JSON)",
   "com_ui_tars_mcp_permissions_hint": "Assign MCP servers and tools to users or groups. Saving overwrites the selected users' and groups' permissions: unchecked servers are removed.",
   "com_ui_tars_mcp_tools_selected": "{{count}} tools selected",
-  "com_ui_tars_mcp_available_servers": "Allowed by this brain",
   "com_ui_tars_mcp_enable_server": "Enable this server",
   "com_ui_tars_mcp_enable_hint": "Click to enable",
   "com_ui_tars_mcp_enable_hint_count": "{{count}} tools · click to enable",

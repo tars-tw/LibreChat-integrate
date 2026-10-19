@@ -1812,24 +1812,6 @@ export const deleteTarsMcpTool = (id: string): Promise<{ success: boolean }> => 
   return request.delete(endpoints.tarsMcpAdminTool(id));
 };
 
-export const getTarsDomainMcpServers = (
-  domainId: number,
-): Promise<t.TTarsDomainMcpServersResponse> => {
-  return request.get(endpoints.tarsMcpAdminDomainServers(domainId));
-};
-
-export const getTarsDomainMcpAvailableServers = (
-  domainId: number,
-): Promise<t.TTarsMcpServersResponse> => {
-  return request.get(endpoints.tarsMcpAdminDomainAvailableServers(domainId));
-};
-
-export const saveTarsDomainMcp = (
-  data: t.TTarsDomainMcpSavePayload,
-): Promise<{ success: boolean }> => {
-  return request.post(endpoints.tarsMcpAdminDomainSave(), data);
-};
-
 export const getTarsMcpPermissionPrincipals =
   (): Promise<t.TTarsMcpPermissionPrincipalsResponse> => {
     return request.get(endpoints.tarsMcpAdminPermissionPrincipals());
