@@ -10,9 +10,9 @@ jest.mock('@librechat/data-schemas', () => ({
 import jwt from 'jsonwebtoken';
 import type { JwtPayload } from 'jsonwebtoken';
 import {
-  adminSaveTarsDomainMcp,
   adminUpdateTarsMcpServer,
   adminListTarsMcpServers,
+  adminSaveTarsMcpPermissions,
   adminListTarsMcpSystemVariables,
 } from './mcp/admin';
 import { tarsFetch, TarsRequestError } from './client';
@@ -93,7 +93,10 @@ describe('pwc_tars admin bearer', () => {
       .mockResolvedValue(okResponse({ success: true, data: { id: 'srv-1' } }));
 
     await adminUpdateTarsMcpServer('srv-1', { name: 'CRM' }, 'tars-admin-1');
-    await adminSaveTarsDomainMcp({ domain_ids: [3], servers: [] }, 'tars-admin-2');
+    await adminSaveTarsMcpPermissions(
+      { user_ids: ['u-3'], user_group_ids: [], servers: [] },
+      'tars-admin-2',
+    );
 
     expect(decodeBearer(authorizationOf(fetchMock, 0)).user_id).toBe('tars-admin-1');
     expect(decodeBearer(authorizationOf(fetchMock, 1)).user_id).toBe('tars-admin-2');

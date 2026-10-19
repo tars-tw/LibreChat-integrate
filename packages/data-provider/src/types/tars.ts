@@ -793,29 +793,6 @@ export type TTarsMcpToolUpdate = {
   input_schema?: Record<string, unknown>;
 };
 
-/** One `sys_domain_mcp` binding row (+ joined server) for the permissions tab. */
-export type TTarsDomainMcpRelation = {
-  id: string;
-  sys_domain_id: number;
-  mcp_server_id: string;
-  is_enabled: boolean;
-  mcp_tool_ids?: string[] | null;
-  config?: Record<string, unknown> | null;
-  server?: TTarsMcpServer | null;
-};
-
-export type TTarsDomainMcpServersResponse = { servers: TTarsDomainMcpRelation[] };
-
-/**
- * Full-overwrite domain↔MCP binding payload: for every listed domain, unlisted
- * servers get unbound and each server's tool whitelist is replaced
- * (`mcp_tool_ids: []` = whole server).
- */
-export type TTarsDomainMcpSavePayload = {
-  domain_ids: number[];
-  servers: Array<{ mcp_server_id: string; mcp_tool_ids?: string[] }>;
-};
-
 /** Who a `sys_mcp_permission` grant is assigned to. */
 export type TTarsMcpPrincipalType = 'user' | 'group';
 

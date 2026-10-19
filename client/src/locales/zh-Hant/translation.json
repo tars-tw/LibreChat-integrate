@@ -1701,7 +1701,6 @@
   "com_ui_tars_keys_set": "已設定",
   "com_ui_tars_keys_tab": "API 金鑰",
   "com_ui_tars_keys_unset": "尚未設定",
-  "com_ui_tars_mcp_available_servers": "此專用腦允許的伺服器",
   "com_ui_tars_mcp_enable_hint": "點擊以啟用",
   "com_ui_tars_mcp_enable_hint_count": "{{count}} 個工具 · 點擊以啟用",
   "com_ui_tars_mcp_enable_server": "啟用此伺服器",

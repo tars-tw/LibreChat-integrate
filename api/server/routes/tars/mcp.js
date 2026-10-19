@@ -23,9 +23,6 @@ const {
   invalidateTarsMcpToolsCache,
   adminUpdateTarsMcpTool,
   adminDeleteTarsMcpTool,
-  adminListTarsDomainMcpServers,
-  adminListTarsDomainAvailableServers,
-  adminSaveTarsDomainMcp,
   adminListTarsMcpPermissionPrincipals,
   adminGetTarsMcpPermissions,
   adminSaveTarsMcpPermissions,
@@ -280,39 +277,6 @@ router.get(
   adminHandler('GET /api/tars/mcp/admin/system-variables', async (req) => ({
     variables: await adminListTarsMcpSystemVariables(req.user.tarsId),
   })),
-);
-
-router.get(
-  '/mcp/admin/domains/:domainId/servers',
-  adminMiddleware,
-  adminHandler('GET /api/tars/mcp/admin/domains/:domainId/servers', async (req) => ({
-    servers: await adminListTarsDomainMcpServers(Number(req.params.domainId)),
-  })),
-);
-
-router.get(
-  '/mcp/admin/domains/:domainId/available-servers',
-  adminMiddleware,
-  adminHandler('GET /api/tars/mcp/admin/domains/:domainId/available-servers', async (req) => ({
-    servers: await adminListTarsDomainAvailableServers(Number(req.params.domainId)),
-  })),
-);
-
-router.post(
-  '/mcp/admin/domains/save',
-  adminMiddleware,
-  adminHandler('POST /api/tars/mcp/admin/domains/save', async (req) => {
-    const { domain_ids, servers } = req.body ?? {};
-    if (!Array.isArray(domain_ids) || domain_ids.length === 0 || !Array.isArray(servers)) {
-      const error = new Error('domain_ids and servers are required');
-      error.status = 400;
-      error.serverMessage = 'domain_ids and servers are required';
-      throw error;
-    }
-    await adminSaveTarsDomainMcp({ domain_ids, servers }, req.user.tarsId);
-    await invalidateMcpCaches('POST /api/tars/mcp/admin/domains/save');
-    return { success: true };
-  }),
 );
 
 /** MCP grants assigned to users / groups (`sys_mcp_permission`); pwc_tars validates every payload. */
