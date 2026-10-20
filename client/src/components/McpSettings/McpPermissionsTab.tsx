@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 import { PrincipalType } from 'librechat-data-provider';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
@@ -8,6 +8,9 @@ import {
   OGDialog,
   OGDialogTemplate,
   useToastContext,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
 } from '@librechat/client';
 import type {
   TPrincipal,
@@ -35,6 +38,7 @@ import McpPermissionPrincipals from './McpPermissionPrincipals';
 import McpPaginationControls from './McpPaginationControls';
 import { useClientPagination } from './useClientPagination';
 import { useLocalize } from '~/hooks';
+import { cn } from '~/utils';
 
 /** Selection state: serverId → checked toolId set; empty set = whole server (`mcp_tool_ids: []`). */
 type Selection = Map<string, Set<string>>;
@@ -227,6 +231,9 @@ export default function McpPermissionsTab() {
   /** The single target whose saved grants are on the tree; later refetches keep the admin's edits. */
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [removing, setRemoving] = useState<TTarsMcpPermissionPrincipal | null>(null);
+  /** The editor starts folded so the page opens on who already holds grants. */
+  const [editorOpen, setEditorOpen] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const managedServers = useMemo(
     () => servers.filter((server) => MANAGED_TYPES.has(server.type)),
@@ -290,6 +297,15 @@ export default function McpPermissionsTab() {
   const editPrincipal = (principal: TTarsMcpPermissionPrincipal) => {
     setTargets([toEditTarget(principal, directoryById.get(principal.principal_id))]);
     setLoadedKey(null);
+    setEditorOpen(true);
+    requestAnimationFrame(() =>
+      editorRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }),
+    );
+  };
+
+  const cancelEditing = () => {
+    updateTargets([]);
+    setEditorOpen(false);
   };
 
   const toggleServer = useCallback((serverId: string, checked: boolean) => {
@@ -387,74 +403,98 @@ export default function McpPermissionsTab() {
 
   return (
     <div className="space-y-6">
-      <section
-        className="border-border-light space-y-3 rounded-lg border p-4"
-        aria-labelledby="tars-mcp-assignees-title"
-      >
-        <h2 id="tars-mcp-assignees-title" className="text-text-primary text-sm font-medium">
-          {localize('com_ui_tars_mcp_assignees')}
-        </h2>
-        <DirectoryPeoplePicker onAddPeople={handleAddPeople} excludeIds={targets.map(tarsIdOf)} />
-        <SelectedPrincipalsList principles={targets} onRemoveHandler={removeTarget} />
-        {targets.length > 1 && (
-          <p className="text-status-warning text-xs">
-            {localize('com_ui_tars_mcp_multi_principal_warning')}
-          </p>
-        )}
-      </section>
-
-      <div className="space-y-4">
-        <div className="border-border-light relative overflow-hidden rounded-lg border">
-          <div
-            className={`${PERMISSIONS_ROW_GRID} border-border-light bg-surface-secondary text-text-secondary border-b text-sm font-medium`}
-          >
-            <span aria-hidden="true" />
-            <span className="flex items-center gap-2">
-              {localize('com_ui_name')}
-              {isLoadingTarget && <Spinner className="icon-sm" />}
+      <div ref={editorRef} className="border-border-light rounded-lg border">
+        <Collapsible open={editorOpen} onOpenChange={setEditorOpen}>
+          <CollapsibleTrigger className="w-full text-left">
+            <span className="hover:bg-surface-hover flex items-center gap-2 rounded-lg px-4 py-3">
+              <ChevronRight
+                aria-hidden="true"
+                className={cn(
+                  'icon-sm text-text-secondary shrink-0 transition-transform duration-200 motion-reduce:transition-none',
+                  editorOpen && 'rotate-90',
+                )}
+              />
+              <span className="text-text-primary text-sm font-medium">
+                {localize('com_ui_tars_mcp_permission_editor')}
+              </span>
             </span>
-            <span className="text-right">
-              {localize('com_ui_tars_mcp_permissions_tools_header')}
-            </span>
-          </div>
-          {pageServers.map((server) => (
-            <PermissionServerRow
-              key={server.id}
-              server={server}
-              checkedTools={selection.get(server.id)}
-              isExpanded={expanded.has(server.id)}
-              onToggleExpanded={() => toggleExpanded(server.id)}
-              onToggleServer={(checked) => toggleServer(server.id, checked)}
-              onToggleTool={toggleTool}
-            />
-          ))}
-          {managedServers.length === 0 && (
-            <p className="text-text-secondary py-8 text-center text-sm">
-              {localize('com_ui_tars_mcp_empty')}
-            </p>
-          )}
-        </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="border-border-light space-y-6 border-t p-4">
+              <section className="space-y-3" aria-labelledby="tars-mcp-assignees-title">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2
+                    id="tars-mcp-assignees-title"
+                    className="text-text-primary text-sm font-medium"
+                  >
+                    {localize('com_ui_tars_mcp_assignees')}
+                  </h2>
+                  <Button
+                    variant="submit"
+                    onClick={handleSave}
+                    disabled={saveMutation.isLoading || isLoadingTarget}
+                  >
+                    {saveMutation.isLoading ? <Spinner /> : localize('com_ui_save')}
+                  </Button>
+                </div>
+                <DirectoryPeoplePicker
+                  onAddPeople={handleAddPeople}
+                  excludeIds={targets.map(tarsIdOf)}
+                />
+                <SelectedPrincipalsList principles={targets} onRemoveHandler={removeTarget} />
+                {targets.length > 1 && (
+                  <p className="text-status-warning text-xs">
+                    {localize('com_ui_tars_mcp_multi_principal_warning')}
+                  </p>
+                )}
+              </section>
 
-        {managedServers.length > 0 && (
-          <McpPaginationControls
-            labelId="tars-mcp-permissions-page-size-label"
-            page={page}
-            pageCount={pageCount}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
-        )}
+              <div className="space-y-4">
+                <div className="border-border-light relative overflow-hidden rounded-lg border">
+                  <div
+                    className={`${PERMISSIONS_ROW_GRID} border-border-light bg-surface-secondary text-text-secondary border-b text-sm font-medium`}
+                  >
+                    <span aria-hidden="true" />
+                    <span className="flex items-center gap-2">
+                      {localize('com_ui_name')}
+                      {isLoadingTarget && <Spinner className="icon-sm" />}
+                    </span>
+                    <span className="text-right">
+                      {localize('com_ui_tars_mcp_permissions_tools_header')}
+                    </span>
+                  </div>
+                  {pageServers.map((server) => (
+                    <PermissionServerRow
+                      key={server.id}
+                      server={server}
+                      checkedTools={selection.get(server.id)}
+                      isExpanded={expanded.has(server.id)}
+                      onToggleExpanded={() => toggleExpanded(server.id)}
+                      onToggleServer={(checked) => toggleServer(server.id, checked)}
+                      onToggleTool={toggleTool}
+                    />
+                  ))}
+                  {managedServers.length === 0 && (
+                    <p className="text-text-secondary py-8 text-center text-sm">
+                      {localize('com_ui_tars_mcp_empty')}
+                    </p>
+                  )}
+                </div>
 
-        <div className="flex justify-end">
-          <Button
-            variant="submit"
-            onClick={handleSave}
-            disabled={saveMutation.isLoading || isLoadingTarget}
-          >
-            {saveMutation.isLoading ? <Spinner /> : localize('com_ui_save')}
-          </Button>
-        </div>
+                {managedServers.length > 0 && (
+                  <McpPaginationControls
+                    labelId="tars-mcp-permissions-page-size-label"
+                    page={page}
+                    pageCount={pageCount}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={setPageSize}
+                  />
+                )}
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       <McpPermissionPrincipals
@@ -462,6 +502,7 @@ export default function McpPermissionsTab() {
         isLoading={principalsLoading}
         editingKey={loadedKey != null && loadedKey === singleKey ? loadedKey : null}
         onEdit={editPrincipal}
+        onCancelEdit={cancelEditing}
         onRemove={setRemoving}
       />
 

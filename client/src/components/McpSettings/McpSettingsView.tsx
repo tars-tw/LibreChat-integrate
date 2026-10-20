@@ -41,6 +41,7 @@ import McpPermissionsTab from './McpPermissionsTab';
 import ServerTypeBadge from './ServerTypeBadge';
 import McpUserToolsTab from './McpUserToolsTab';
 import McpServerModal from './McpServerModal';
+import { mcpActionClass } from './actions';
 import McpLogsTab from './McpLogsTab';
 
 const MANAGED_TYPES = new Set(['openapi', 'custom_api', 'external']);
@@ -220,9 +221,9 @@ export default function McpSettingsView() {
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-presentation">
+    <div className="bg-presentation h-full w-full overflow-y-auto">
       <div className="mx-auto max-w-7xl space-y-8 p-6">
-        <h1 className="text-2xl font-semibold text-text-primary">
+        <h1 className="text-text-primary text-2xl font-semibold">
           {localize('com_ui_tars_mcp_settings')}
         </h1>
 
@@ -248,7 +249,7 @@ export default function McpSettingsView() {
             )}
           </TabsList>
 
-          <p className="mt-4 text-sm text-text-secondary">{localize(TAB_HINT_KEYS[tab])}</p>
+          <p className="text-text-secondary mt-4 text-sm">{localize(TAB_HINT_KEYS[tab])}</p>
 
           <TabsContent value="mytools" className={TAB_PANEL}>
             <McpUserToolsTab />
@@ -271,7 +272,7 @@ export default function McpSettingsView() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative w-64 max-w-full">
-                    <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                    <Search className="icon-sm text-text-secondary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
                     <Input
                       value={search}
                       onChange={(e) => {
@@ -309,15 +310,15 @@ export default function McpSettingsView() {
                 </div>
               )}
               {!isLoading && rows.length === 0 && (
-                <p className="py-12 text-center text-sm text-text-secondary">
+                <p className="text-text-secondary py-12 text-center text-sm">
                   {localize('com_ui_tars_mcp_empty')}
                 </p>
               )}
               {!isLoading && rows.length > 0 && (
                 <>
-                  <div className="overflow-x-auto rounded-lg border border-border-light">
+                  <div className="border-border-light overflow-x-auto rounded-lg border">
                     <table className="w-full min-w-[72rem] table-fixed text-sm">
-                      <thead className="bg-surface-secondary text-left text-text-secondary">
+                      <thead className="bg-surface-secondary text-text-secondary text-left">
                         <tr>
                           <th className="w-10 px-3 py-2">
                             <Checkbox
@@ -360,7 +361,7 @@ export default function McpSettingsView() {
                           return (
                             <Fragment key={server.id}>
                               <tr
-                                className={`border-t border-border-light ${
+                                className={`border-border-light border-t ${
                                   isSelected
                                     ? 'bg-brand-primary-subtle/40'
                                     : 'hover:bg-surface-hover'
@@ -386,7 +387,7 @@ export default function McpSettingsView() {
                                           prev === server.id ? null : server.id,
                                         )
                                       }
-                                      className="rounded p-0.5 text-text-secondary hover:text-text-primary"
+                                      className="text-text-secondary hover:text-text-primary rounded p-0.5"
                                     >
                                       {expandedServerId === server.id ? (
                                         <ChevronDown className="icon-sm text-brand-primary" />
@@ -396,31 +397,31 @@ export default function McpSettingsView() {
                                     </button>
                                     <div className="min-w-0">
                                       <span
-                                        className="block truncate font-medium text-text-primary"
+                                        className="text-text-primary block truncate font-medium"
                                         title={server.name}
                                       >
                                         {server.name}
                                       </span>
                                       {server.code != null && server.code !== '' && (
-                                        <span className="block truncate font-mono text-xs text-text-secondary">
+                                        <span className="text-text-secondary block truncate font-mono text-xs">
                                           {server.code}
                                         </span>
                                       )}
                                     </div>
                                   </div>
                                 </td>
-                                <td className="whitespace-nowrap px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   <ServerTypeBadge type={server.type} />
                                 </td>
-                                <td className="px-3 py-2 text-text-secondary">
+                                <td className="text-text-secondary px-3 py-2">
                                   <span className="block truncate" title={server.description ?? ''}>
                                     {server.description ?? '—'}
                                   </span>
                                 </td>
-                                <td className="px-3 py-2 text-text-secondary">
+                                <td className="text-text-secondary px-3 py-2">
                                   {server.tool_count ?? 0}
                                 </td>
-                                <td className="px-3 py-2 text-text-secondary">
+                                <td className="text-text-secondary px-3 py-2">
                                   {server.priority ?? 0}
                                 </td>
                                 <td className="px-3 py-2">
@@ -431,13 +432,13 @@ export default function McpSettingsView() {
                                       {tags.slice(0, MAX_TAG_BADGES).map((tag) => (
                                         <span
                                           key={tag}
-                                          className="inline-block whitespace-nowrap rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary"
+                                          className="bg-surface-tertiary text-text-secondary inline-block rounded-full px-2 py-0.5 text-xs whitespace-nowrap"
                                         >
                                           {tag}
                                         </span>
                                       ))}
                                       {tags.length > MAX_TAG_BADGES && (
-                                        <span className="inline-block whitespace-nowrap rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
+                                        <span className="bg-surface-tertiary text-text-secondary inline-block rounded-full px-2 py-0.5 text-xs whitespace-nowrap">
                                           +{tags.length - MAX_TAG_BADGES}
                                         </span>
                                       )}
@@ -462,7 +463,7 @@ export default function McpSettingsView() {
                                           aria-label={localize('com_ui_tars_mcp_test')}
                                           title={localize('com_ui_tars_mcp_test')}
                                           onClick={() => handleTest(server)}
-                                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                                          className={mcpActionClass('neutral')}
                                         >
                                           <PlugZap className="icon-sm" />
                                         </button>
@@ -471,7 +472,7 @@ export default function McpSettingsView() {
                                           aria-label={localize('com_ui_tars_mcp_sync')}
                                           title={localize('com_ui_tars_mcp_sync')}
                                           onClick={() => handleSync(server)}
-                                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                                          className={mcpActionClass('neutral')}
                                         >
                                           <RefreshCw className="icon-sm" />
                                         </button>
@@ -480,7 +481,7 @@ export default function McpSettingsView() {
                                           aria-label={localize('com_ui_edit')}
                                           title={localize('com_ui_edit')}
                                           onClick={() => setEditing(server)}
-                                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                                          className={mcpActionClass('neutral')}
                                         >
                                           <Pencil className="icon-sm" />
                                         </button>
@@ -489,7 +490,7 @@ export default function McpSettingsView() {
                                           aria-label={localize('com_ui_delete')}
                                           title={localize('com_ui_delete')}
                                           onClick={() => setDeleting(server)}
-                                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                                          className={mcpActionClass('danger')}
                                         >
                                           <Trash2 className="icon-sm" />
                                         </button>
@@ -499,11 +500,11 @@ export default function McpSettingsView() {
                                 </td>
                               </tr>
                               {expandedServerId === server.id && (
-                                <tr className="border-t border-border-light">
+                                <tr className="border-border-light border-t">
                                   {/* `w-0` keeps this cell's long tool descriptions from
                                       inflating the table's auto column widths — the row still
                                       renders at the table's real (header-driven) width. */}
-                                  <td colSpan={9} className="w-0 bg-surface-secondary px-6 py-2">
+                                  <td colSpan={9} className="bg-surface-secondary w-0 px-6 py-2">
                                     <McpServerToolsPanel serverId={server.id} />
                                   </td>
                                 </tr>
@@ -550,7 +551,7 @@ export default function McpSettingsView() {
             className="w-11/12 max-w-md"
             showCloseButton={true}
             main={
-              <p className="text-sm text-text-secondary">
+              <p className="text-text-secondary text-sm">
                 {localize('com_ui_tars_mcp_delete_confirm', { name: deleting.name })}
               </p>
             }
