@@ -50,7 +50,7 @@
   },
   "client/src/components/Admin/Tars/Audit/Table.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 3
+      "count": 2
     }
   },
   "client/src/components/Admin/Tars/Databases/Manager.tsx": {
@@ -68,7 +68,7 @@
   },
   "client/src/components/Admin/Tars/Databases/Table.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 4
+      "count": 2
     },
     "shadcn/no-restyle": {
       "count": 5
@@ -76,7 +76,7 @@
   },
   "client/src/components/Admin/Tars/Domains/Manager.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 5
+      "count": 4
     },
     "shadcn/no-restyle": {
       "count": 1
@@ -97,7 +97,7 @@
   },
   "client/src/components/Admin/Tars/FileSystems/Table.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 4
+      "count": 2
     },
     "shadcn/no-restyle": {
       "count": 5
@@ -108,7 +108,7 @@
       "count": 2
     },
     "shadcn/no-raw-colors": {
-      "count": 4
+      "count": 2
     },
     "shadcn/no-restyle": {
       "count": 1
@@ -139,7 +139,7 @@
   },
   "client/src/components/Admin/Tars/Knowledge/Cards.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 5
+      "count": 3
     },
     "shadcn/no-restyle": {
       "count": 6
@@ -285,7 +285,7 @@
   },
   "client/src/components/Admin/Tars/Knowledge/Table.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 4
+      "count": 2
     },
     "shadcn/no-restyle": {
       "count": 6
@@ -345,11 +345,6 @@
       "count": 1
     }
   },
-  "client/src/components/Admin/Tars/Operations/Table.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 1
-    }
-  },
   "client/src/components/Admin/Tars/Roles/Details.tsx": {
     "shadcn/no-raw-colors": {
       "count": 1
@@ -360,7 +355,7 @@
       "count": 6
     },
     "shadcn/no-raw-colors": {
-      "count": 5
+      "count": 3
     },
     "shadcn/no-restyle": {
       "count": 1
@@ -438,7 +433,7 @@
       "count": 1
     },
     "shadcn/no-raw-colors": {
-      "count": 7
+      "count": 6
     }
   },
   "client/src/components/Admin/Tars/TokenQuota/ConfigModal.tsx": {
@@ -528,7 +523,7 @@
       "count": 2
     },
     "shadcn/no-raw-colors": {
-      "count": 5
+      "count": 3
     },
     "shadcn/no-restyle": {
       "count": 1
@@ -549,7 +544,7 @@
       "count": 2
     },
     "shadcn/no-raw-colors": {
-      "count": 4
+      "count": 2
     },
     "shadcn/no-restyle": {
       "count": 9
@@ -1690,11 +1685,6 @@
       "count": 3
     }
   },
-  "client/src/components/McpSettings/McpCustomApiTools.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 1
-    }
-  },
   "client/src/components/McpSettings/McpLogsTab.tsx": {
     "shadcn/no-raw-colors": {
       "count": 9
@@ -1718,7 +1708,7 @@
   },
   "client/src/components/McpSettings/McpSettingsView.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 4
+      "count": 3
     },
     "shadcn/no-restyle": {
       "count": 10
@@ -1726,7 +1716,7 @@
   },
   "client/src/components/McpSettings/McpToolEditorModal.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 3
+      "count": 1
     }
   },
   "client/src/components/McpSettings/ServerTypeBadge.tsx": {

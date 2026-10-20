@@ -9,12 +9,14 @@ import { usePrincipalDirectoryQuery } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 
-/** Rows rendered per section before the viewer narrows the list by typing. */
-const SECTION_LIMIT = 50;
+/** Rows rendered per column before the viewer narrows the list by typing — enough to
+ *  scroll through a typical directory, while an AD import of thousands stays responsive. */
+const SECTION_LIMIT = 200;
 
 /** The panel renders in the dialog's flow rather than floating: a floating list is
- *  clipped by the dialog's own scroll area, while an in-flow one grows the dialog. */
-const LIST_HEIGHT = 'max-h-[min(28rem,50dvh)]';
+ *  clipped by the dialog's own scroll area, while an in-flow one grows the dialog. Each
+ *  column (groups, users) scrolls on its own so either can be browsed without the other. */
+const COLUMN_HEIGHT = 'max-h-[min(24rem,45dvh)]';
 
 const optionKey = (principal: TPrincipalSearchResult) =>
   `${principal.type}:${principal.idOnTheSource ?? principal.id ?? principal.name}`;
@@ -45,9 +47,10 @@ interface DirectoryPeoplePickerProps {
 }
 
 /**
- * The share dialog's people picker when a directory (pwc_tars) is configured: every
- * user and group is listed like an address book, several can be checked at once and
- * show as removable tags, and Add moves them onto the share list below.
+ * The people picker when a directory (pwc_tars) is configured — the share dialog and
+ * MCP 權限設定 both use it: groups and users are listed like an address book in two
+ * side-by-side columns that scroll independently (one search filters both), several
+ * can be checked at once and show as removable tags, and Add hands them to the caller.
  */
 export default function DirectoryPeoplePicker({
   onAddPeople,
@@ -139,60 +142,65 @@ export default function DirectoryPeoplePicker({
     return principal.email || principal.username || localize('com_ui_user');
   };
 
-  const renderSection = (
+  const renderColumn = (
     labelKey: 'com_ui_share_directory_groups' | 'com_ui_share_directory_users',
     principals: TPrincipalSearchResult[],
+    testId: string,
   ) => {
-    if (principals.length === 0) {
-      return null;
-    }
     const shown = principals.slice(0, SECTION_LIMIT);
     return (
-      <Ariakit.ComboboxGroup className="pb-1">
-        <Ariakit.ComboboxGroupLabel className="border-border-light bg-surface-primary text-text-secondary sticky top-0 z-10 border-b px-4 py-2 text-xs font-semibold">
+      <Ariakit.ComboboxGroup className="flex min-w-0 flex-col" data-testid={testId}>
+        <Ariakit.ComboboxGroupLabel className="border-border-light bg-surface-primary text-text-secondary border-b px-4 py-2 text-xs font-semibold">
           {localize(labelKey)} ({principals.length})
         </Ariakit.ComboboxGroupLabel>
-        {shown.map((principal) => {
-          const key = optionKey(principal);
-          const isChecked = selectedKeys.includes(key);
-          return (
-            <Ariakit.ComboboxItem
-              key={key}
-              value={key}
-              focusOnHover
-              hideOnClick={false}
-              className={cn(
-                'text-text-primary flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm',
-                'hover:bg-surface-hover data-[active-item]:bg-surface-hover',
-                isChecked && 'bg-surface-active-alt',
-              )}
-            >
-              <PrincipalAvatar principal={toPrincipal(principal)} size="md" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{principal.name}</span>
-                <span className="text-text-secondary block truncate text-xs">
-                  {subtitleFor(principal)}
-                </span>
-              </span>
-              <span
+        <div className={cn('overflow-y-auto overscroll-contain pb-1', COLUMN_HEIGHT)}>
+          {shown.length === 0 && (
+            <div className="text-text-secondary px-4 py-6 text-center text-sm">
+              {localize('com_ui_no_results_found')}
+            </div>
+          )}
+          {shown.map((principal) => {
+            const key = optionKey(principal);
+            const isChecked = selectedKeys.includes(key);
+            return (
+              <Ariakit.ComboboxItem
+                key={key}
+                value={key}
+                focusOnHover
+                hideOnClick={false}
                 className={cn(
-                  'flex size-5 shrink-0 items-center justify-center rounded border',
-                  isChecked
-                    ? 'border-text-primary bg-text-primary text-surface-primary'
-                    : 'border-border-medium',
+                  'text-text-primary flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm',
+                  'hover:bg-surface-hover data-[active-item]:bg-surface-hover',
+                  isChecked && 'bg-surface-active-alt',
                 )}
-                aria-hidden="true"
               >
-                {isChecked && <Check className="size-3.5" />}
-              </span>
-            </Ariakit.ComboboxItem>
-          );
-        })}
-        {principals.length > shown.length && (
-          <div className="text-text-secondary px-4 py-2 text-xs">
-            {localize('com_ui_share_directory_more', { 0: principals.length - shown.length })}
-          </div>
-        )}
+                <PrincipalAvatar principal={toPrincipal(principal)} size="md" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{principal.name}</span>
+                  <span className="text-text-secondary block truncate text-xs">
+                    {subtitleFor(principal)}
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    'flex size-5 shrink-0 items-center justify-center rounded border',
+                    isChecked
+                      ? 'border-text-primary bg-text-primary text-surface-primary'
+                      : 'border-border-medium',
+                  )}
+                  aria-hidden="true"
+                >
+                  {isChecked && <Check className="size-3.5" />}
+                </span>
+              </Ariakit.ComboboxItem>
+            );
+          })}
+          {principals.length > shown.length && (
+            <div className="text-text-secondary px-4 py-2 text-xs">
+              {localize('com_ui_share_directory_more', { 0: principals.length - shown.length })}
+            </div>
+          )}
+        </div>
       </Ariakit.ComboboxGroup>
     );
   };
@@ -206,18 +214,12 @@ export default function DirectoryPeoplePicker({
         </div>
       );
     }
-    if (sections.groups.length === 0 && sections.users.length === 0) {
-      return (
-        <div className="text-text-secondary px-4 py-6 text-center text-sm">
-          {localize('com_ui_no_results_found')}
-        </div>
-      );
-    }
+    /** Groups left, users right; stacked (groups first) where the panel is too narrow. */
     return (
-      <>
-        {renderSection('com_ui_share_directory_groups', sections.groups)}
-        {renderSection('com_ui_share_directory_users', sections.users)}
-      </>
+      <div className="divide-border-light grid grid-cols-1 divide-y md:grid-cols-2 md:divide-x md:divide-y-0">
+        {renderColumn('com_ui_share_directory_groups', sections.groups, 'directory-picker-groups')}
+        {renderColumn('com_ui_share_directory_users', sections.users, 'directory-picker-users')}
+      </div>
     );
   };
 
@@ -303,12 +305,7 @@ export default function DirectoryPeoplePicker({
             className="border-border-light bg-surface-primary overflow-hidden rounded-xl border shadow-sm"
             data-testid="directory-picker-panel"
           >
-            <Ariakit.ComboboxList
-              alwaysVisible
-              className={cn('overflow-y-auto overscroll-contain', LIST_HEIGHT)}
-            >
-              {renderList()}
-            </Ariakit.ComboboxList>
+            <Ariakit.ComboboxList alwaysVisible>{renderList()}</Ariakit.ComboboxList>
             <div className="border-border-light bg-surface-secondary flex items-center justify-between gap-2 border-t px-4 py-2">
               <span className="text-text-secondary text-xs">
                 {localize('com_ui_selected_count', { count: selected.length })}
