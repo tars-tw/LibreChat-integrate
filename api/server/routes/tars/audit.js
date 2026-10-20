@@ -21,7 +21,7 @@ router.use('/audit/messages', requireJwtAuth);
  */
 router.get('/audit/messages/options', requireTarsAdmin, async (req, res) => {
   try {
-    const options = await fetchTarsAuditFilterOptions();
+    const options = await fetchTarsAuditFilterOptions(req.user.tarsId);
     return res.json(options);
   } catch (error) {
     logger.error('[GET /api/tars/audit/messages/options] Failed', error);

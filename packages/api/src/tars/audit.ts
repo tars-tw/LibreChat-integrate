@@ -142,13 +142,17 @@ const toOptions = (rows: RawOption[] | undefined): { id: string; label: string }
  * pwc_tars returns every user regardless of status but only enabled brains and
  * knowledge bases, which matches auditing: a disabled account's past messages
  * still need to be findable.
+ *
+ * pwc_tars gates the route behind `@admin_required`, so it is called as the
+ * acting admin.
  */
 export async function fetchTarsAuditFilterOptions(
+  tarsId: string,
   baseUrl?: string,
 ): Promise<TarsAuditFilterOptions> {
   const response = await tarsFetch<TarsAuditEnvelope<RawFilterOptions>>(
     '/api/settings/prepare_audit_data',
-    { baseUrl },
+    { baseUrl, asUser: tarsId },
   );
   const data = response?.data ?? {};
   return {
@@ -163,7 +167,8 @@ export async function fetchTarsAuditFilterOptions(
  * — the period summary and the per-brain rollup — and its `bar_chart`/`pie_chart`
  * arrays are dropped, since they only restate `details` in plotting order.
  *
- * `user_id` records who ran the query; it never narrows the result.
+ * `user_id` records who ran the query; it never narrows the result. pwc_tars
+ * gates the route behind `@admin_required`, so it is called as that admin.
  */
 export async function fetchTarsAuditReport(
   tarsId: string,
@@ -176,6 +181,7 @@ export async function fetchTarsAuditReport(
       method: 'POST',
       timeoutMs: REPORT_TIMEOUT_MS,
       baseUrl,
+      asUser: tarsId,
       body: {
         user_id: tarsId,
         filter_user_ids: query.filter_user_ids ?? [],
