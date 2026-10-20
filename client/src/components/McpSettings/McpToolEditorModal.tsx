@@ -10,6 +10,7 @@ import {
   OGDialogTemplate,
 } from '@librechat/client';
 import { useTarsMcpSystemVariablesQuery } from '~/data-provider';
+import { mcpActionClass } from './actions';
 import { useLocalize } from '~/hooks';
 
 export type ParamLocation = 'path' | 'query' | 'header' | 'cookie';
@@ -190,7 +191,7 @@ function SystemVariablesHint() {
   const toggleLabel = localize('com_ui_tars_mcp_fixed_value_preview');
 
   return (
-    <div className="space-y-1 rounded-lg bg-surface-secondary p-2 text-xs text-text-secondary">
+    <div className="bg-surface-secondary text-text-secondary space-y-1 rounded-lg p-2 text-xs">
       <div className="flex items-start justify-between gap-2">
         <p>{localize('com_ui_tars_mcp_fixed_value_hint')}</p>
         {variables.length > 0 && (
@@ -200,7 +201,7 @@ function SystemVariablesHint() {
             aria-pressed={showValues}
             title={toggleLabel}
             onClick={() => setShowValues((prev) => !prev)}
-            className="shrink-0 rounded p-1 hover:bg-surface-tertiary hover:text-text-primary"
+            className="hover:bg-surface-tertiary hover:text-text-primary shrink-0 rounded p-1"
           >
             {showValues ? <Eye className="icon-sm" /> : <EyeOff className="icon-sm" />}
           </button>
@@ -210,7 +211,7 @@ function SystemVariablesHint() {
         <ul className="space-y-0.5">
           {variables.map(({ name, value }) => (
             <li key={name} className="break-all">
-              <code className="rounded bg-surface-tertiary px-1 text-text-primary">{`{{${name}}}`}</code>
+              <code className="bg-surface-tertiary text-text-primary rounded px-1">{`{{${name}}}`}</code>
               {showValues && <span className="ml-1">= {value ?? '-'}</span>}
             </li>
           ))}
@@ -329,7 +330,7 @@ export default function McpToolEditorModal({
                 onChange={(e) => set('path', e.target.value)}
                 placeholder="/issues/{id}"
               />
-              <p className="mt-1 text-xs text-text-secondary">
+              <p className="text-text-secondary mt-1 text-xs">
                 {localize('com_ui_tars_mcp_tool_path_hint')}
               </p>
             </div>
@@ -345,7 +346,7 @@ export default function McpToolEditorModal({
 
             <SystemVariablesHint />
 
-            <div className="space-y-2 rounded-lg border border-border-light p-3">
+            <div className="border-border-light space-y-2 rounded-lg border p-3">
               <div className="flex items-center justify-between">
                 <Label>{localize('com_ui_tars_mcp_params')}</Label>
                 <Button variant="outline" onClick={addParam}>
@@ -355,7 +356,7 @@ export default function McpToolEditorModal({
               </div>
               {draft.parameters.length > 0 && (
                 <div className="space-y-2">
-                  <div className={`${PARAM_ROW} text-xs font-medium text-text-secondary`}>
+                  <div className={`${PARAM_ROW} text-text-secondary text-xs font-medium`}>
                     <span>{localize('com_ui_name')}</span>
                     <span>{localize('com_ui_tars_mcp_param_location')}</span>
                     <span>{localize('com_ui_tars_mcp_param_type')}</span>
@@ -413,7 +414,7 @@ export default function McpToolEditorModal({
                         aria-label={localize('com_ui_delete')}
                         title={localize('com_ui_delete')}
                         onClick={() => removeParam(index)}
-                        className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                        className={mcpActionClass('danger')}
                       >
                         <Trash2 className="icon-sm" />
                       </button>
@@ -424,7 +425,7 @@ export default function McpToolEditorModal({
             </div>
 
             {showBody && (
-              <div className="space-y-3 rounded-lg border border-border-light p-3">
+              <div className="border-border-light space-y-3 rounded-lg border p-3">
                 <div className="flex items-center justify-between">
                   <Label>{localize('com_ui_tars_mcp_body')}</Label>
                   <Button variant="outline" onClick={addBodyProp}>
@@ -455,12 +456,12 @@ export default function McpToolEditorModal({
                     />
                   </div>
                 </div>
-                <p className="text-xs text-text-secondary">
+                <p className="text-text-secondary text-xs">
                   {localize('com_ui_tars_mcp_body_wrap_hint')}
                 </p>
                 {draft.bodyProperties.length > 0 && (
                   <div className="space-y-2">
-                    <div className={`${BODY_ROW} text-xs font-medium text-text-secondary`}>
+                    <div className={`${BODY_ROW} text-text-secondary text-xs font-medium`}>
                       <span>{localize('com_ui_name')}</span>
                       <span>{localize('com_ui_tars_mcp_param_type')}</span>
                       <span>{localize('com_ui_tars_mcp_param_required')}</span>
@@ -506,7 +507,7 @@ export default function McpToolEditorModal({
                           aria-label={localize('com_ui_delete')}
                           title={localize('com_ui_delete')}
                           onClick={() => removeBodyProp(index)}
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                          className={mcpActionClass('danger')}
                         >
                           <Trash2 className="icon-sm" />
                         </button>
