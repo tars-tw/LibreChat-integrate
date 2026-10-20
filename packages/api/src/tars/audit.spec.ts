@@ -7,9 +7,28 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
+import jwt from 'jsonwebtoken';
+import type { JwtPayload } from 'jsonwebtoken';
 import { fetchTarsAuditReport, fetchTarsAuditFilterOptions } from './audit';
 
 const BASE_URL = 'http://tars.test';
+const SECRET = 'pwc-tars-test-secret';
+const ADMIN = 'tars-admin-1';
+
+let savedSecret: string | undefined;
+
+beforeEach(() => {
+  savedSecret = process.env.TARS_JWT_SECRET;
+  process.env.TARS_JWT_SECRET = SECRET;
+});
+
+afterEach(() => {
+  if (savedSecret === undefined) {
+    delete process.env.TARS_JWT_SECRET;
+  } else {
+    process.env.TARS_JWT_SECRET = savedSecret;
+  }
+});
 
 const buildResponse = (status: number, body: unknown): Response =>
   ({
@@ -20,6 +39,42 @@ const buildResponse = (status: number, body: unknown): Response =>
 
 const bodyOf = (fetchMock: jest.SpyInstance): Record<string, unknown> =>
   JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+
+const actingUserOf = (fetchMock: jest.SpyInstance): string => {
+  const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+  return (
+    jwt.verify(headers.Authorization.slice('Bearer '.length), SECRET, {
+      algorithms: ['HS256'],
+    }) as JwtPayload
+  ).user_id;
+};
+
+/** pwc_tars gates both audit routes behind `@admin_required`. */
+describe('audit requests carry the acting admin', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('signs the filter-options request as the admin', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { success: true, data: {} }));
+    await fetchTarsAuditFilterOptions(ADMIN, BASE_URL);
+    expect(actingUserOf(fetchMock)).toBe(ADMIN);
+  });
+
+  it('signs the report request as the admin', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { success: true, data: { data: [] } }));
+    await fetchTarsAuditReport(
+      ADMIN,
+      { start_date: '2026-08-01', end_date: '2026-08-08' },
+      BASE_URL,
+    );
+    expect(actingUserOf(fetchMock)).toBe(ADMIN);
+  });
+});
 
 describe('fetchTarsAuditFilterOptions', () => {
   afterEach(() => {
@@ -38,7 +93,7 @@ describe('fetchTarsAuditFilterOptions', () => {
         },
       }),
     );
-    await expect(fetchTarsAuditFilterOptions(BASE_URL)).resolves.toEqual({
+    await expect(fetchTarsAuditFilterOptions(ADMIN, BASE_URL)).resolves.toEqual({
       users: [{ id: '3', username: 'ada' }],
       domains: [{ id: '8', name: 'Finance' }],
       knowledge_bases: [{ id: '21', name: 'Tax rules' }],
@@ -47,7 +102,7 @@ describe('fetchTarsAuditFilterOptions', () => {
 
   it('returns empty pickers when pwc_tars omits them', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { success: true, data: {} }));
-    await expect(fetchTarsAuditFilterOptions(BASE_URL)).resolves.toEqual({
+    await expect(fetchTarsAuditFilterOptions(ADMIN, BASE_URL)).resolves.toEqual({
       users: [],
       domains: [],
       knowledge_bases: [],
@@ -62,7 +117,7 @@ describe('fetchTarsAuditFilterOptions', () => {
         data: { domains: [{ name: 'orphan' }, { id: 1, name: 'Finance' }] },
       }),
     );
-    const options = await fetchTarsAuditFilterOptions(BASE_URL);
+    const options = await fetchTarsAuditFilterOptions(ADMIN, BASE_URL);
     expect(options.domains).toEqual([{ id: '1', name: 'Finance' }]);
   });
 });
@@ -219,7 +274,7 @@ describe('fetchTarsAuditFilterOptions blank names', () => {
       }),
     );
 
-    const options = await fetchTarsAuditFilterOptions(BASE_URL);
+    const options = await fetchTarsAuditFilterOptions(ADMIN, BASE_URL);
 
     expect(options.users).toEqual([
       { id: '7', username: '7' },
