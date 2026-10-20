@@ -238,4 +238,77 @@ describe('DirectoryPeoplePicker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'com_ui_retry' }));
     expect(refetch).toHaveBeenCalled();
   });
+
+  describe('two columns', () => {
+    const manyUsers = (count: number): PrincipalDirectoryResponse => ({
+      ...directory,
+      users: Array.from({ length: count }, (_, index) => ({
+        id: null,
+        type: PrincipalType.USER,
+        name: `User ${String(index + 1).padStart(3, '0')}`,
+        source: 'tars' as const,
+        idOnTheSource: `u-${index + 1}`,
+      })),
+    });
+
+    const withDirectory = (data: PrincipalDirectoryResponse) =>
+      mockUsePrincipalDirectoryQuery.mockReturnValue({
+        data,
+        isLoading: false,
+        isError: false,
+        isFetching: false,
+        refetch: jest.fn(),
+      });
+
+    it('lists groups and users in separate columns', () => {
+      render(<DirectoryPeoplePicker onAddPeople={jest.fn()} />);
+      openList();
+
+      const groups = screen.getByTestId('directory-picker-groups');
+      const users = screen.getByTestId('directory-picker-users');
+      expect(within(groups).getByText('com_ui_share_directory_groups (1)')).toBeInTheDocument();
+      expect(within(groups).getByText('Finance')).toBeInTheDocument();
+      expect(within(groups).queryByText('Alice Chen')).not.toBeInTheDocument();
+      expect(within(users).getByText('com_ui_share_directory_users (2)')).toBeInTheDocument();
+      expect(within(users).getByText('Alice Chen')).toBeInTheDocument();
+      expect(within(users).queryByText('Finance')).not.toBeInTheDocument();
+    });
+
+    it('keeps both columns while searching, with an empty one saying so', () => {
+      render(<DirectoryPeoplePicker onAddPeople={jest.fn()} />);
+      const input = openList();
+
+      act(() => {
+        fireEvent.change(input, { target: { value: 'bob' } });
+      });
+
+      const groups = screen.getByTestId('directory-picker-groups');
+      expect(within(groups).getByText('com_ui_share_directory_groups (0)')).toBeInTheDocument();
+      expect(within(groups).getByText('com_ui_no_results_found')).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('directory-picker-users')).getByText('Bob Lin'),
+      ).toBeVisible();
+    });
+
+    it('lets every user of a mid-sized directory be reached by scrolling', () => {
+      withDirectory(manyUsers(60));
+      render(<DirectoryPeoplePicker onAddPeople={jest.fn()} />);
+      openList();
+
+      const users = screen.getByTestId('directory-picker-users');
+      expect(within(users).getByText('User 060')).toBeInTheDocument();
+      expect(within(users).queryByText(/com_ui_share_directory_more/)).not.toBeInTheDocument();
+    });
+
+    it('caps a very large column at 200 rows and asks to narrow by typing', () => {
+      withDirectory(manyUsers(205));
+      render(<DirectoryPeoplePicker onAddPeople={jest.fn()} />);
+      openList();
+
+      const users = screen.getByTestId('directory-picker-users');
+      expect(within(users).getByText('User 200')).toBeInTheDocument();
+      expect(within(users).queryByText('User 201')).not.toBeInTheDocument();
+      expect(within(users).getByText('com_ui_share_directory_more:5')).toBeInTheDocument();
+    });
+  });
 });

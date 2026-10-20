@@ -90,6 +90,15 @@ const pick = (...people: TPrincipal[]) => {
 
 const serverCheckbox = (name: string) => screen.getByRole('checkbox', { name });
 
+const editorToggle = () =>
+  screen.getByRole('button', { name: 'com_ui_tars_mcp_permission_editor' });
+
+/** The editor starts folded; most cases work inside it. */
+const renderOpen = () => {
+  render(<McpPermissionsTab />);
+  fireEvent.click(editorToggle());
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockPicked = [];
@@ -101,8 +110,33 @@ beforeEach(() => {
 });
 
 describe('McpPermissionsTab', () => {
-  it("loads a single target's saved grants into the tree", () => {
+  it('opens folded, so the assigned list is what the page shows first', () => {
+    mockPrincipals = [
+      {
+        principal_type: 'group',
+        principal_id: 'g1',
+        name: 'BOSS專用',
+        email: null,
+        is_active: true,
+        mcp_server_ids: ['s1'],
+        server_count: 1,
+      },
+    ];
     render(<McpPermissionsTab />);
+
+    expect(editorToggle()).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('pick-people')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'com_ui_save' })).toBeNull();
+    expect(screen.getByText('BOSS專用')).toBeInTheDocument();
+
+    fireEvent.click(editorToggle());
+
+    expect(screen.getByTestId('pick-people')).toBeInTheDocument();
+    expect(serverCheckbox('Github-repo')).toBeInTheDocument();
+  });
+
+  it("loads a single target's saved grants into the tree", () => {
+    renderOpen();
     pick(amy);
 
     expect(mockPermissionsQuery).toHaveBeenLastCalledWith({ type: 'user', id: 'u1' });
@@ -112,7 +146,7 @@ describe('McpPermissionsTab', () => {
   });
 
   it('saves every picked user and group with the checked servers', () => {
-    render(<McpPermissionsTab />);
+    renderOpen();
     pick(amy, boss);
 
     expect(screen.getByText('com_ui_tars_mcp_multi_principal_warning')).toBeInTheDocument();
@@ -129,7 +163,7 @@ describe('McpPermissionsTab', () => {
   });
 
   it('refuses to save without a user or group', () => {
-    render(<McpPermissionsTab />);
+    renderOpen();
     fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
 
     expect(mockSave).not.toHaveBeenCalled();
@@ -140,7 +174,7 @@ describe('McpPermissionsTab', () => {
   });
 
   it('clears the tree once the last target is removed', () => {
-    render(<McpPermissionsTab />);
+    renderOpen();
     pick(amy);
     expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'true');
 
@@ -163,11 +197,132 @@ describe('McpPermissionsTab', () => {
     ];
     render(<McpPermissionsTab />);
 
+    expect(editorToggle()).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(screen.getByRole('button', { name: 'com_ui_edit Amy' }));
 
+    expect(editorToggle()).toHaveAttribute('aria-expanded', 'true');
     expect(mockPermissionsQuery).toHaveBeenLastCalledWith({ type: 'user', id: 'u1' });
     expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByText('com_ui_tars_mcp_principal_editing')).toBeInTheDocument();
+  });
+
+  it('cancels editing back to no target and an empty tree', () => {
+    mockPrincipals = [
+      {
+        principal_type: 'user',
+        principal_id: 'u1',
+        name: 'Amy',
+        email: 'amy@x',
+        is_active: true,
+        mcp_server_ids: ['s1'],
+        server_count: 1,
+      },
+    ];
+    render(<McpPermissionsTab />);
+    fireEvent.click(screen.getByRole('button', { name: 'com_ui_edit Amy' }));
+    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'com_ui_tars_mcp_cancel_editing Amy' }));
+
+    expect(screen.queryByText('com_ui_tars_mcp_principal_editing')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'com_ui_edit Amy' })).toBeInTheDocument();
+    expect(editorToggle()).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('checkbox', { name: 'Github-repo' })).toBeNull();
+
+    fireEvent.click(editorToggle());
+    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('pages a long list of assigned users and groups', () => {
+    mockPrincipals = Array.from({ length: 12 }, (_, index) => ({
+      principal_type: 'user' as const,
+      principal_id: `u-${index + 1}`,
+      name: `Member ${String(index + 1).padStart(2, '0')}`,
+      email: null,
+      is_active: true,
+      mcp_server_ids: ['s1'],
+      server_count: 1,
+    }));
+    render(<McpPermissionsTab />);
+
+    expect(screen.getByText('Member 10')).toBeInTheDocument();
+    expect(screen.queryByText('Member 11')).not.toBeInTheDocument();
+
+    const nextButtons = screen.getAllByRole('button', { name: 'com_ui_tars_mcp_next_page' });
+    fireEvent.click(nextButtons[nextButtons.length - 1]);
+
+    expect(screen.getByText('Member 12')).toBeInTheDocument();
+    expect(screen.queryByText('Member 01')).not.toBeInTheDocument();
+  });
+
+  describe('assigned list', () => {
+    const principal = (
+      principal_type: 'user' | 'group',
+      principal_id: string,
+      name: string,
+      server_count: number,
+    ) => ({
+      principal_type,
+      principal_id,
+      name,
+      email: null,
+      is_active: true,
+      mcp_server_ids: [],
+      server_count,
+    });
+
+    /** Names in the assigned table, top to bottom. */
+    const assignedNames = () =>
+      screen
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0].textContent);
+
+    beforeEach(() => {
+      mockPrincipals = [
+        principal('group', 'g1', 'BOSS專用', 1),
+        principal('user', 'u1', 'Amy', 3),
+        principal('user', 'u2', 'Cathy', 2),
+      ];
+    });
+
+    it('sorts by a clicked column and reverses on a second click', () => {
+      render(<McpPermissionsTab />);
+      expect(assignedNames()).toEqual(['BOSS專用', 'Amy', 'Cathy']);
+
+      const header = screen.getByRole('button', { name: 'com_ui_tars_mcp_server_count' });
+      fireEvent.click(header);
+      expect(assignedNames()).toEqual(['BOSS專用', 'Cathy', 'Amy']);
+      expect(header.closest('th')).toHaveAttribute('aria-sort', 'ascending');
+
+      fireEvent.click(header);
+      expect(assignedNames()).toEqual(['Amy', 'Cathy', 'BOSS專用']);
+      expect(header.closest('th')).toHaveAttribute('aria-sort', 'descending');
+
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_name' }));
+      expect(assignedNames()).toEqual(['Amy', 'BOSS專用', 'Cathy']);
+    });
+
+    it('colors users and groups apart and uses the shared action tones', () => {
+      render(<McpPermissionsTab />);
+
+      const groupRow = screen.getByText('BOSS專用').closest('tr') as HTMLElement;
+      const userRow = screen.getByText('Amy').closest('tr') as HTMLElement;
+      const groupLabel = within(groupRow).getByText('com_ui_group');
+      const userLabel = within(userRow).getByText('com_ui_user');
+      expect(groupLabel).toHaveClass('text-text-primary');
+      expect(userLabel).toHaveClass('text-text-primary');
+      expect(groupLabel.querySelector('svg')).toHaveClass('text-series-5');
+      expect(userLabel.querySelector('svg')).toHaveClass('text-series-2');
+      expect(within(userRow).getByRole('button', { name: 'com_ui_edit Amy' })).toHaveClass(
+        'text-text-secondary',
+      );
+      expect(
+        within(userRow).getByRole('button', { name: 'com_ui_tars_mcp_permission_remove Amy' }),
+      ).toHaveClass('text-text-destructive');
+    });
   });
 
   it('only lets a disabled group be removed, after confirming', () => {
@@ -202,7 +357,7 @@ describe('McpPermissionsTab', () => {
     const save = () => fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
 
     it('checks only the clicked tool on an unchecked server', () => {
-      render(<McpPermissionsTab />);
+      renderOpen();
       pick(bob);
       expandGithub();
 
@@ -219,7 +374,7 @@ describe('McpPermissionsTab', () => {
     });
 
     it('keeps the other tools when one is unchecked from a whole server', () => {
-      render(<McpPermissionsTab />);
+      renderOpen();
       pick(amy);
       expandGithub();
 
@@ -236,7 +391,7 @@ describe('McpPermissionsTab', () => {
     });
 
     it('becomes the whole server once every tool is checked one by one', () => {
-      render(<McpPermissionsTab />);
+      renderOpen();
       pick(bob);
       expandGithub();
 
@@ -252,7 +407,7 @@ describe('McpPermissionsTab', () => {
     });
 
     it('unchecks the server when its last tool is unchecked', () => {
-      render(<McpPermissionsTab />);
+      renderOpen();
       pick(bob);
       expandGithub();
 
@@ -263,7 +418,7 @@ describe('McpPermissionsTab', () => {
     });
 
     it('selects the whole server when a half-selected server is clicked', () => {
-      render(<McpPermissionsTab />);
+      renderOpen();
       pick(bob);
       expandGithub();
       fireEvent.click(toolCheckbox('list_repos'));

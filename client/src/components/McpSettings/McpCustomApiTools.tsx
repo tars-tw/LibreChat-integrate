@@ -7,6 +7,7 @@ import McpToolEditorModal, {
   validateToolDraft,
   toolDraftToStored,
 } from './McpToolEditorModal';
+import { mcpActionClass } from './actions';
 import { useLocalize } from '~/hooks';
 
 const asRecord = (value: unknown): Record<string, unknown> =>
@@ -92,7 +93,7 @@ export default function McpCustomApiTools({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-text-secondary">{localize('com_ui_tars_mcp_tools_json_hint')}</p>
+        <p className="text-text-secondary text-xs">{localize('com_ui_tars_mcp_tools_json_hint')}</p>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Code className="icon-sm mr-1" />
@@ -106,13 +107,13 @@ export default function McpCustomApiTools({
       </div>
 
       {value.length === 0 ? (
-        <p className="rounded-lg border border-border-light py-8 text-center text-sm text-text-secondary">
+        <p className="border-border-light text-text-secondary rounded-lg border py-8 text-center text-sm">
           {localize('com_ui_tars_mcp_tool_empty')}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border-light">
+        <div className="border-border-light overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[36rem] text-sm">
-            <thead className="bg-surface-secondary text-left text-text-secondary">
+            <thead className="bg-surface-secondary text-text-secondary text-left">
               <tr>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_name')}</th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_mcp_tool_method')}</th>
@@ -127,19 +128,19 @@ export default function McpCustomApiTools({
               {value.map((tool, index) => {
                 const record = asRecord(tool);
                 return (
-                  <tr key={index} className="border-t border-border-light hover:bg-surface-hover">
-                    <td className="px-3 py-2 font-mono text-xs text-text-primary">
+                  <tr key={index} className="border-border-light hover:bg-surface-hover border-t">
+                    <td className="text-text-primary px-3 py-2 font-mono text-xs">
                       {String(record.name ?? '')}
                     </td>
                     <td className="px-3 py-2">
-                      <span className="inline-block rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
+                      <span className="bg-surface-tertiary text-text-secondary inline-block rounded-full px-2 py-0.5 text-xs">
                         {String(record.method ?? 'GET')}
                       </span>
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs text-text-secondary">
+                    <td className="text-text-secondary px-3 py-2 font-mono text-xs">
                       {String(record.path ?? '')}
                     </td>
-                    <td className="px-3 py-2 text-text-secondary">{paramsCount(record)}</td>
+                    <td className="text-text-secondary px-3 py-2">{paramsCount(record)}</td>
                     <td className="px-3 py-2">
                       <div className="flex justify-end gap-1">
                         <button
@@ -147,7 +148,7 @@ export default function McpCustomApiTools({
                           aria-label={localize('com_ui_edit')}
                           title={localize('com_ui_edit')}
                           onClick={() => setEditingIndex(index)}
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                          className={mcpActionClass('neutral')}
                         >
                           <Pencil className="icon-sm" />
                         </button>
@@ -156,7 +157,7 @@ export default function McpCustomApiTools({
                           aria-label={localize('com_ui_delete')}
                           title={localize('com_ui_delete')}
                           onClick={() => onChange(value.filter((_, i) => i !== index))}
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                          className={mcpActionClass('danger')}
                         >
                           <Trash2 className="icon-sm" />
                         </button>
@@ -196,7 +197,7 @@ export default function McpCustomApiTools({
                   rows={12}
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
-                  className="w-full resize-none rounded-lg border border-border-light bg-transparent px-3 py-2 font-mono text-xs text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-heavy"
+                  className="border-border-light text-text-primary focus-visible:ring-border-heavy w-full resize-none rounded-lg border bg-transparent px-3 py-2 font-mono text-xs focus-visible:ring-1 focus-visible:outline-none"
                   placeholder={
                     '[\n  {\n    "name": "create_issue",\n    "description": "...",\n    "method": "POST",\n    "path": "/issues",\n    "parameters": [],\n    "request_body": { "content_type": "application/json", "properties": [] }\n  }\n]'
                   }
