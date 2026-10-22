@@ -70,6 +70,7 @@ export enum QueryKeys {
   tarsOperationLogsByUser = 'tarsOperationLogsByUser',
   tarsOperationLogDetail = 'tarsOperationLogDetail',
   tarsAuditOptions = 'tarsAuditOptions',
+  tarsAuditMessageTrace = 'tarsAuditMessageTrace',
   tarsProviderUsage = 'tarsProviderUsage',
   tarsTokenPrepareData = 'tarsTokenPrepareData',
   tarsTokenUsers = 'tarsTokenUsers',

@@ -10,6 +10,8 @@ jest.mock('@librechat/data-schemas', () => ({
 import type { TarsDataFile } from '~/tars/files/sign';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
+import { getTarsToolUsage } from '~/tars/tools/usage';
+import { isTarsToolFailureOutput } from '~/tars/failure';
 import { createTarsDataTool } from './data';
 
 const BASE_URL = 'http://tars.test';
@@ -125,6 +127,32 @@ describe('createTarsDataTool', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  /** pwc_tars counts a tool's own model calls in the message totals; the mirror reads them here. */
+  it('keeps the tokens pwc_tars reports by call id when the request will be mirrored', async () => {
+    mockBackend({
+      status: 200,
+      body: {
+        success: true,
+        data: { answer: '共 42 列', tokens: { total: 130, prompt: 120, completion: 10 } },
+      },
+    });
+    const req = {};
+    const dataTool = createTarsDataTool({
+      tarsUserId: USER_ID,
+      librechatUserId: LIBRECHAT_USER_ID,
+      dataFiles,
+      auditTraceOwner: req,
+    });
+
+    await dataTool.invoke({
+      id: 'call-1',
+      name: 'data_query',
+      type: 'tool_call',
+      args: { question: 'q' },
+    });
+    expect(getTarsToolUsage(req).get('call-1')).toEqual({ input_tokens: 120, output_tokens: 10 });
+  });
+
   it('reports pwc_tars data errors as tool output', async () => {
     mockBackend({ status: 410, body: { message: '資料檔已不存在' } });
     const dataTool = createTarsDataTool({
@@ -132,8 +160,9 @@ describe('createTarsDataTool', () => {
       librechatUserId: LIBRECHAT_USER_ID,
       dataFiles,
     });
-    await expect(dataTool.invoke({ question: 'q' })).resolves.toBe(
-      'The data query failed: 資料檔已不存在',
-    );
+    const output = await dataTool.invoke({ question: 'q' });
+    expect(output).toBe('The data query failed: 資料檔已不存在');
+    // The execution trace records the call as failed.
+    expect(isTarsToolFailureOutput(output)).toBe(true);
   });
 });

@@ -500,6 +500,10 @@ export const tarsSsoSchedule = (id: string) => `${tarsSsoConfig(id)}/schedule`;
 
 export const tarsAuditMessages = () => `${BASE_URL}/api/tars/audit/messages`;
 export const tarsAuditMessageOptions = () => `${BASE_URL}/api/tars/audit/messages/options`;
+export const tarsAuditMessageTrace = (messageId: string) =>
+  `${BASE_URL}/api/tars/audit/messages/${encodeURIComponent(messageId)}/trace`;
+export const tarsAuditMemoryDocument = (documentId: string, messageId: string) =>
+  `${BASE_URL}/api/tars/audit/memory-documents/${encodeURIComponent(documentId)}?messageId=${encodeURIComponent(messageId)}`;
 
 export const tarsOperationLogs = () => `${BASE_URL}/api/tars/audit/operations`;
 export const tarsOperationLogOptions = () => `${BASE_URL}/api/tars/audit/operations/options`;
