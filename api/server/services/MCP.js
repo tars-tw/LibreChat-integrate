@@ -1418,6 +1418,8 @@ function createToolInstance({
         oboIdentityContext: capturedOboIdentityContext,
         mcpApps: capturedMCPApps,
       });
+      /** TARS: ties an `isError` result to its call id for the audit trace; keep before any return. */
+      require('@librechat/api').noteTarsMcpToolCall?.(config?.toolCall?.id, result);
       return result;
     } catch (error) {
       /** A user Stop aborts every in-flight call at once, and that rejection is

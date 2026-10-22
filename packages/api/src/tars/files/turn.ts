@@ -10,6 +10,7 @@ import { isTarsSpreadsheet } from './sign';
 export interface TarsStoredFile {
   file_id: string;
   filename?: string;
+  type?: string;
   llmDeliveryPath?: string;
   text?: string;
 }
@@ -17,6 +18,14 @@ export interface TarsStoredFile {
 /** The spreadsheets and text attachments in reach of this turn. */
 export interface TarsTurnFiles {
   dataFiles: TarsDataFile[];
+  /** The text attachments whose extracted text reaches the model. */
+  textFiles: TarsDataFile[];
+  /** The documents the provider reads as the file itself, such as a PDF. */
+  providerFiles: TarsDataFile[];
+  /** Images, whichever way they reach the model. */
+  imageFiles: TarsDataFile[];
+  /** Attachments kept out of the prompt (`llmDeliveryPath: none` or unset), read by tools if at all. */
+  otherFiles: TarsDataFile[];
   /**
    * The thread's text attachments' extracted text, joined for a plugin's
    * `file_input`; read only when a plugin actually runs.
@@ -35,7 +44,14 @@ export interface TarsTurnFilesSource {
   getThreadMessages?: (conversationId: string) => Promise<ThreadMessage[] | null>;
 }
 
-const EMPTY: TarsTurnFiles = { dataFiles: [], loadFileInput: async () => '' };
+const EMPTY: TarsTurnFiles = {
+  dataFiles: [],
+  textFiles: [],
+  providerFiles: [],
+  imageFiles: [],
+  otherFiles: [],
+  loadFileInput: async () => '',
+};
 
 const filesByRequest = new WeakMap<object, TarsTurnFiles>();
 const primeByRequest = new WeakMap<object, Promise<TarsTurnFiles>>();
@@ -61,7 +77,9 @@ async function readThreadFileIds(source: TarsTurnFilesSource): Promise<string[]>
  * Attachments stay in reach for the rest of the thread, as the memory area's
  * files did: the message being answered plus every earlier one up its parent
  * chain (never a sibling branch). Spreadsheets go to pwc_tars's data tools;
- * files whose text the model reads feed a plugin's `file_input`.
+ * files whose text the model reads feed a plugin's `file_input`. Every
+ * attachment lands in exactly one kind, so the audit trace lists — and an admin
+ * can download — each file the turn could see.
  */
 export async function resolveTarsTurnFiles(source: TarsTurnFilesSource): Promise<TarsTurnFiles> {
   const threadFileIds = await readThreadFileIds(source);
@@ -73,18 +91,29 @@ export async function resolveTarsTurnFiles(source: TarsTurnFilesSource): Promise
     (await source.findOwnedFiles(fileIds, false)).map((file) => [file.file_id, file]),
   );
   const dataFiles: TarsDataFile[] = [];
-  const textFileIds: string[] = [];
+  const textFiles: TarsDataFile[] = [];
+  const providerFiles: TarsDataFile[] = [];
+  const imageFiles: TarsDataFile[] = [];
+  const otherFiles: TarsDataFile[] = [];
   for (const fileId of fileIds) {
     const file = byId.get(fileId);
     if (!file) {
       continue;
     }
+    const ref = { id: file.file_id, filename: file.filename ?? file.file_id };
     if (isTarsSpreadsheet(file.filename)) {
-      dataFiles.push({ id: file.file_id, filename: file.filename ?? file.file_id });
+      dataFiles.push(ref);
+    } else if (typeof file.type === 'string' && file.type.startsWith('image/')) {
+      imageFiles.push(ref);
     } else if (file.llmDeliveryPath === 'text') {
-      textFileIds.push(file.file_id);
+      textFiles.push(ref);
+    } else if (file.llmDeliveryPath === 'provider') {
+      providerFiles.push(ref);
+    } else {
+      otherFiles.push(ref);
     }
   }
+  const textFileIds = textFiles.map((file) => file.id);
   const loadFileInput = async (): Promise<string> => {
     if (textFileIds.length === 0) {
       return '';
@@ -97,7 +126,7 @@ export async function resolveTarsTurnFiles(source: TarsTurnFilesSource): Promise
       .filter(Boolean)
       .join('\n\n');
   };
-  return { dataFiles, loadFileInput };
+  return { dataFiles, textFiles, providerFiles, imageFiles, otherFiles, loadFileInput };
 }
 
 /**

@@ -65,6 +65,7 @@ import { RecoveredSteerPayloadMismatchError } from '~/stream/SteerRecovery';
 import { SCHEDULE_MCP_FAILURE_PATCH_LUA } from '../scheduleFailure';
 import { createCheckpointNamespace } from '~/stream/checkpoints';
 import { createToolTimingTracker } from '~/agents/toolTiming';
+import { stampTarsStepTiming } from '~/tars/trace';
 import { evalScript } from '~/cache/redisScript';
 
 const CLIENT_REQUEST_ID_PATTERN = /^[A-Za-z0-9:_-]{1,128}$/;
@@ -4568,6 +4569,8 @@ export class RedisJobStore implements IJobStoreV2 {
             part.tool_call.runStepDurationMs = durationMs;
           }
         }
+        /** TARS: thinking/answer timing for the audit trace (ignores tool calls). */
+        stampTarsStepTiming(part, closed);
         continue;
       }
 

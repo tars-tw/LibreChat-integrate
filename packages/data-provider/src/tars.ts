@@ -1,3 +1,9 @@
+import type {
+  TTarsTraceRow,
+  TTarsJsonField,
+  TTarsMessageTrace,
+  TTarsTracePayload,
+} from './types/tars';
 import { Tools } from './types/tools';
 
 /**
@@ -364,3 +370,324 @@ export const TARS_LANGFLOW_AGENT_ID_PREFIX = 'agent_langflow_';
 /** Whether an agent id names a Workflow agent mirrored from a Langflow flow. */
 export const isTarsLangflowAgentId = (agentId: string | null | undefined): boolean =>
   agentId?.startsWith(TARS_LANGFLOW_AGENT_ID_PREFIX) === true;
+
+/**
+ * pwc_tars `SysConst` message statuses: how a message ended. LibreChat writes them
+ * when it mirrors a turn and the audit report reads them back.
+ */
+export const TARS_MESSAGE_STATUS = { success: 1, failed: 2, interrupted: 3 } as const;
+
+/**
+ * `message_execution_trace.event_type` values (pwc_tars `agent_core/events.py`).
+ * LibreChat builds these rows for the chats it mirrors and the audit timeline
+ * reads them, so both sides name them from here.
+ */
+export const TARS_TRACE_EVENT = {
+  request: 'request',
+  requestRaw: 'request_raw',
+  provenance: 'provenance',
+  memoryContext: 'memory_context',
+  longTermMemory: 'long_term_memory',
+  toolContextReplay: 'tool_context_replay',
+  turn: 'turn',
+  thinking: 'thinking',
+  text: 'text',
+  toolCall: 'tool_call',
+  toolResult: 'tool_result',
+  usage: 'usage',
+  messageStop: 'message_stop',
+  status: 'status',
+  error: 'error',
+  langflowRoute: 'langflow_route',
+  ragRetrieval: 'rag_retrieval',
+  plan: 'plan',
+  clarification: 'clarification',
+  suggestedQuestions: 'suggested_questions',
+  regenerateNotApplied: 'regenerate_not_applied',
+} as const;
+
+/**
+ * How a trace field is read: `text` takes a string (a number is stringified,
+ * as ids may be numeric), `scalar` a string or number, `texts` a list of
+ * those, `object` any plain object as-is, `json` any value, `list` / `item`
+ * plain objects read by their own fields. A value of the wrong kind is dropped.
+ */
+type TraceFieldKind =
+  | 'text'
+  | 'number'
+  | 'boolean'
+  | 'scalar'
+  | 'texts'
+  | 'object'
+  | 'json'
+  | { list: TraceSchema }
+  | { item: TraceSchema };
+
+type TraceSchema = { readonly [key: string]: TraceFieldKind };
+
+type PlainObject = { [key: string]: TTarsJsonField };
+
+const isPlainObject = (value: unknown): value is PlainObject =>
+  value != null && typeof value === 'object' && !Array.isArray(value);
+
+const traceText = (value: unknown): string | undefined => {
+  if (typeof value === 'string') {
+    return value;
+  }
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : undefined;
+};
+
+const traceNumber = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+function readTraceField(kind: TraceFieldKind, value: unknown): TTarsJsonField | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  switch (kind) {
+    case 'text':
+      return traceText(value);
+    case 'number':
+      return traceNumber(value);
+    case 'boolean':
+      return typeof value === 'boolean' ? value : undefined;
+    case 'scalar':
+      return typeof value === 'string' ? value : traceNumber(value);
+    case 'texts':
+      return Array.isArray(value)
+        ? value.map(traceText).filter((item): item is string => item !== undefined)
+        : undefined;
+    case 'object':
+      return isPlainObject(value) ? (value as TTarsJsonField) : undefined;
+    case 'json':
+      return value as TTarsJsonField;
+    default:
+      if ('list' in kind) {
+        return Array.isArray(value)
+          ? value.filter(isPlainObject).map((item) => readTraceFields(item, kind.list))
+          : undefined;
+      }
+      return isPlainObject(value) ? readTraceFields(value, kind.item) : undefined;
+  }
+}
+
+/** A copy of `source` whose schema fields have the kind the schema names; other keys pass through. */
+function readTraceFields(
+  source: PlainObject,
+  schema: TraceSchema,
+): { [key: string]: TTarsJsonField } {
+  const result: { [key: string]: TTarsJsonField } = {};
+  for (const [key, value] of Object.entries(source)) {
+    const kind = schema[key];
+    const read =
+      kind && Object.prototype.hasOwnProperty.call(schema, key)
+        ? readTraceField(kind, value)
+        : value;
+    if (read !== undefined && read !== null) {
+      result[key] = read;
+    }
+  }
+  return result;
+}
+
+const TRACE_REQUEST_BODY_SCHEMA: TraceSchema = {
+  reasoning_effort: 'text',
+  upload_filename: 'text',
+  upload_files: { list: { file_id: 'text', filename: 'text' } },
+  is_database_bound: 'boolean',
+  is_enable_web_search: 'boolean',
+  is_file_generate_active: 'boolean',
+  file_generate_type: 'text',
+  file_generate_extra_prompt: 'text',
+  file_generate_footer_text: 'text',
+  file_generate_style_spec: 'json',
+  is_enable_suggested_questions: 'boolean',
+  is_mcp_enabled: 'boolean',
+  is_enable_langflow: 'boolean',
+  is_regenerate: 'boolean',
+};
+
+/** Every `TTarsTracePayload` field the audit panel reads, by the kind its type declares. */
+const TRACE_PAYLOAD_SCHEMA: TraceSchema = {
+  ...Object.fromEntries(
+    [
+      'type',
+      'source',
+      'timing',
+      'text',
+      'output',
+      'summary',
+      'error_message',
+      'query',
+      'domain_name',
+      'system_version',
+      'sql_schema_injected',
+      'model_name',
+      'model_endpoint',
+      'milvus_url',
+      'rerank_backend',
+      'rerank_model_name',
+      'question',
+      'finish_reason',
+      'error_code',
+      'message',
+      'kind',
+    ].map((key) => [key, 'text']),
+  ),
+  ...Object.fromEntries(
+    [
+      'model_output_limit',
+      'output_len_chars',
+      'status',
+      'input_tokens',
+      'output_tokens',
+      'payload_original_chars',
+      'temperature',
+      'image_input_count',
+      'retrieval_ms',
+      'entry_count',
+      'total_documents',
+      'count',
+      'wait_ms',
+      'invoke_ms',
+      'total_ms',
+      'join_ms',
+    ].map((key) => [key, 'number']),
+  ),
+  ...Object.fromEntries(
+    ['truncated', 'aborted', 'payload_truncated', 'native_tool_calling', 'context_available'].map(
+      (key) => [key, 'boolean'],
+    ),
+  ),
+  ...Object.fromEntries(
+    [
+      'sources',
+      'database_names',
+      'knowledge_base_names',
+      'langflow_names',
+      'available_tools',
+      'data_files',
+      'degradation_notes',
+    ].map((key) => [key, 'texts']),
+  ),
+  input: 'json',
+  milvus_port: 'scalar',
+  model_kwargs: 'object',
+  channel_weights: 'object',
+  payload: { item: TRACE_REQUEST_BODY_SCHEMA },
+  retrieval_params: {
+    item: { rerank_floor_ratio: 'number', score_threshold: 'number', default_limit: 'number' },
+  },
+  floor_filter: { item: { threshold: 'scalar' } },
+  mcp_servers: { list: { name: 'text' } },
+  embedding_profiles: {
+    list: {
+      kb_id: 'text',
+      kb_name: 'text',
+      embedding_model_name: 'text',
+      embedding_dims: 'number',
+    },
+  },
+  records: {
+    list: { memory_type: 'text', score: 'scalar', content: 'text', created_at: 'text' },
+  },
+  documents: {
+    list: {
+      id: 'text',
+      file_id: 'text',
+      filename: 'text',
+      injected_as: 'text',
+      milvus_pk: 'scalar',
+    },
+  },
+  websites: { list: { name: 'text' } },
+  rerank_by_kb: { list: { candidates_in: 'number', backend: 'text' } },
+  channel_hits: { list: { milvus_pk: 'scalar' } },
+  options: { list: { label: 'text' } },
+  items: { list: { status: 'text', content: 'text' } },
+};
+
+const nullableText = (value: unknown): string | null => traceText(value) ?? null;
+
+/** One trace row, or null when it is not an object; a missing id or order falls back to its position. */
+function normalizeTraceRow(raw: unknown, index: number): TTarsTraceRow | null {
+  if (!isPlainObject(raw)) {
+    return null;
+  }
+  const row: TTarsTraceRow = {
+    id: traceText(raw.id) ?? `row-${index}`,
+    seq: traceNumber(raw.seq) ?? index,
+    message_id: traceText(raw.message_id) ?? '',
+    event_type: traceText(raw.event_type) ?? '',
+    turn: traceNumber(raw.turn) ?? null,
+    tool_name: nullableText(raw.tool_name),
+    tool_use_id: nullableText(raw.tool_use_id),
+    parent_id: nullableText(raw.parent_id),
+    attempt: traceNumber(raw.attempt) ?? 1,
+    retry_of: nullableText(raw.retry_of),
+    started_at: nullableText(raw.started_at),
+    ended_at: nullableText(raw.ended_at),
+    duration_ms: traceNumber(raw.duration_ms) ?? null,
+    ok: typeof raw.ok === 'boolean' ? raw.ok : null,
+    payload: isPlainObject(raw.payload)
+      ? (readTraceFields(raw.payload, TRACE_PAYLOAD_SCHEMA) as TTarsTracePayload)
+      : null,
+  };
+  for (const key of ['created_at', 'user_id', 'conversation_id', 'domain_id'] as const) {
+    if (raw[key] !== undefined) {
+      row[key] = nullableText(raw[key]);
+    }
+  }
+  return row;
+}
+
+/**
+ * A message trace as pwc_tars serves it (`get_message_execution_trace` → `data`),
+ * with every field the audit panel reads held to the kind its type declares:
+ * rows that are not objects are dropped, and a field of the wrong kind is
+ * dropped or defaulted, so a reader can trust the types instead of re-checking
+ * each value. Null when there is no message at all.
+ */
+export function normalizeTarsMessageTrace(raw: unknown): TTarsMessageTrace | null {
+  if (!isPlainObject(raw) || !isPlainObject(raw.message)) {
+    return null;
+  }
+  const message = raw.message;
+  const user = raw.user;
+  return {
+    message: {
+      id: traceText(message.id) ?? '',
+      conversation_id: nullableText(message.conversation_id),
+      model_name: nullableText(message.model_name),
+      created_at: nullableText(message.created_at),
+      ip_addr: nullableText(message.ip_addr),
+      query: nullableText(message.query),
+      response: nullableText(message.response),
+      status: traceNumber(message.status) ?? null,
+      error_message: nullableText(message.error_message),
+      response_latency: traceNumber(message.response_latency) ?? null,
+    },
+    user: isPlainObject(user)
+      ? {
+          id: traceText(user.id) ?? '',
+          username: nullableText(user.username),
+          email: nullableText(user.email),
+          user_groups: Array.isArray(user.user_groups)
+            ? user.user_groups.filter(isPlainObject).map((group) => ({
+                id: traceText(group.id) ?? '',
+                name: traceText(group.name) ?? '',
+              }))
+            : [],
+        }
+      : null,
+    trace: Array.isArray(raw.trace)
+      ? raw.trace.map(normalizeTraceRow).filter((row): row is TTarsTraceRow => row !== null)
+      : [],
+    unapplied_regenerate_count: traceNumber(raw.unapplied_regenerate_count) ?? 0,
+    conversation_history: Array.isArray(raw.conversation_history)
+      ? raw.conversation_history
+          .filter(isPlainObject)
+          .map((entry) => ({ role: traceText(entry.role) ?? '', content: entry.content ?? null }))
+      : [],
+  };
+}

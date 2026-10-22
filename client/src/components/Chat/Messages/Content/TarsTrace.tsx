@@ -78,7 +78,8 @@ type TraceView = {
   clarification?: string;
 };
 
-const TOOL_LABEL_KEYS: Record<string, TranslationKeys> = {
+/** pwc_tars agent tools by their pwc_tars name; the audit trace names them the same way. */
+export const TOOL_LABEL_KEYS: Record<string, TranslationKeys> = {
   knowledge_search: 'com_ui_tars_trace_tool_knowledge_search',
   sql_schema: 'com_ui_tars_trace_tool_sql_schema',
   sql_query: 'com_ui_tars_trace_tool_sql_query',
@@ -94,7 +95,7 @@ const TOOL_LABEL_KEYS: Record<string, TranslationKeys> = {
   langflow_run: 'com_ui_tars_trace_tool_langflow_run',
 };
 
-const TOOL_ICONS: Record<string, LucideIcon> = {
+export const TOOL_ICONS: Record<string, LucideIcon> = {
   knowledge_search: BookOpen,
   sql_schema: Database,
   sql_query: Database,
@@ -267,19 +268,19 @@ function TraceToolCard({ block, depth = 0 }: { block: TraceToolBlock; depth?: nu
   const StatusIcon = block.ok === false ? CircleX : CircleCheck;
 
   return (
-    <div className={cn('py-0.5', depth > 0 && 'ml-4 border-l border-border-light pl-2')}>
+    <div className={cn('py-0.5', depth > 0 && 'border-border-light ml-4 border-l pl-2')}>
       <Button
         variant="ghost"
-        className="group/disclosure h-auto w-full min-w-0 justify-start gap-2 rounded-md px-1 py-1 text-left text-xs font-normal text-text-primary hover:bg-surface-hover"
+        className="group/disclosure text-text-primary hover:bg-surface-hover h-auto w-full min-w-0 justify-start gap-2 rounded-md px-1 py-1 text-left text-xs font-normal"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         aria-controls={contentId}
       >
-        <Icon className="size-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
+        <Icon className="text-text-secondary size-3.5 shrink-0" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate" title={block.title || block.name}>
           {label}
         </span>
-        {meta && <span className="shrink-0 text-[11px] text-text-secondary">{meta}</span>}
+        {meta && <span className="text-text-secondary shrink-0 text-[11px]">{meta}</span>}
         <StatusIcon
           className={cn(
             'size-3.5 shrink-0',
@@ -300,7 +301,7 @@ function TraceToolCard({ block, depth = 0 }: { block: TraceToolBlock; depth?: nu
         </div>
       )}
       {open && (
-        <div id={contentId} className="px-1 pb-1 text-xs text-text-secondary">
+        <div id={contentId} className="text-text-secondary px-1 pb-1 text-xs">
           {hasInput && (
             <section>
               <div className="mt-1 font-medium">{localize('com_ui_tars_trace_tool_input')}</div>
@@ -339,7 +340,7 @@ function TraceBlockView({ block }: { block: TraceBlock }) {
       return <TraceToolCard block={block} />;
     case 'thinking':
       return (
-        <details className="py-1 text-xs text-text-secondary">
+        <details className="text-text-secondary py-1 text-xs">
           <summary className="flex cursor-pointer items-center gap-2">
             <Brain className={ITEM_ICON_CLASSES} aria-hidden="true" />
             {localize('com_ui_tars_trace_thinking')}
@@ -351,7 +352,7 @@ function TraceBlockView({ block }: { block: TraceBlock }) {
       return (
         <div className={ITEM_CLASSES}>
           <MessageSquareText className={ITEM_ICON_CLASSES} aria-hidden="true" />
-          <span className="whitespace-pre-wrap break-words">{block.text}</span>
+          <span className="break-words whitespace-pre-wrap">{block.text}</span>
         </div>
       );
     case 'status':
@@ -363,7 +364,7 @@ function TraceBlockView({ block }: { block: TraceBlock }) {
       );
     case 'plan':
       return (
-        <div className="py-1 text-xs text-text-secondary">
+        <div className="text-text-secondary py-1 text-xs">
           <div className="flex items-center gap-2 font-medium">
             <ListChecks className={ITEM_ICON_CLASSES} aria-hidden="true" />
             {localize('com_ui_tars_trace_plan')}
@@ -415,7 +416,7 @@ function TraceDisclosure({ artifact }: { artifact: TTarsTraceArtifact }) {
       <div className="relative flex h-5 items-center gap-1.5">
         <Button
           variant="ghost"
-          className="tool-status-text group/disclosure h-5 min-w-0 justify-start gap-2 rounded-full p-0 font-normal text-text-secondary transition-none hover:bg-transparent"
+          className="tool-status-text group/disclosure text-text-secondary h-5 min-w-0 justify-start gap-2 rounded-full p-0 font-normal transition-none hover:bg-transparent"
           onClick={handleToggle}
           aria-expanded={open}
           aria-controls={contentId}
@@ -445,7 +446,7 @@ function TraceDisclosure({ artifact }: { artifact: TTarsTraceArtifact }) {
             <div
               className={cn(
                 toolPanelSpacingClassName,
-                'mt-1.5 rounded-lg border border-border-light bg-surface-secondary px-3 py-2',
+                'border-border-light bg-surface-secondary mt-1.5 rounded-lg border px-3 py-2',
               )}
             >
               {view.blocks.map((block, index) => (
@@ -464,7 +465,7 @@ function TraceDisclosure({ artifact }: { artifact: TTarsTraceArtifact }) {
                 </div>
               )}
               {artifact.sql && (
-                <section className="py-1 text-xs text-text-secondary">
+                <section className="text-text-secondary py-1 text-xs">
                   <div className="flex items-center gap-2 font-medium">
                     <Database className={ITEM_ICON_CLASSES} aria-hidden="true" />
                     {localize('com_ui_tars_trace_sql')}

@@ -517,6 +517,7 @@ const loadTools = async ({
           domainId: options.req?.body?.domain_id,
           model: agent?.model,
           librechatUserId: user,
+          auditTraceOwner: options.req,
         });
       continue;
     } else if (tool === Tools.rag_agent) {
@@ -526,6 +527,7 @@ const loadTools = async ({
           domainId: options.req?.body?.domain_id,
           model: agent?.model,
           librechatUserId: user,
+          auditTraceOwner: options.req,
         });
       continue;
     } else if (tool === Tools.tars_agent) {
@@ -540,6 +542,7 @@ const loadTools = async ({
           }),
           model: agent?.model,
           librechatUserId: user,
+          auditTraceOwner: options.req,
         });
       continue;
     } else if (tool === Tools.chart_agent) {
@@ -547,6 +550,7 @@ const loadTools = async ({
         createTarsChartTool({
           model: agent?.model,
           librechatUserId: user,
+          auditTraceOwner: options.req,
         });
       continue;
     } else if (isTarsPluginToolName(tool)) {
@@ -567,6 +571,7 @@ const loadTools = async ({
         librechatUserId: user,
         question: options.req?.body?.text,
         reportProgress: options.tarsProgress,
+        auditTraceOwner: options.req,
       });
       if (!pluginTool) {
         continue;
@@ -584,6 +589,7 @@ const loadTools = async ({
         librechatUserId: user,
         question: options.req?.body?.text,
         reportProgress: options.tarsProgress,
+        auditTraceOwner: options.req,
       });
       if (!builtinTool) {
         continue;
@@ -597,6 +603,7 @@ const loadTools = async ({
           dataFiles: getTarsTurnFiles(options.req)?.dataFiles,
           model: agent?.model,
           librechatUserId: user,
+          auditTraceOwner: options.req,
         });
       continue;
     } else if (tool === Tools.table_task) {
@@ -607,6 +614,7 @@ const loadTools = async ({
           dataFiles: getTarsTurnFiles(options.req)?.dataFiles,
           model: agent?.model,
           librechatUserId: user,
+          auditTraceOwner: options.req,
         });
       continue;
     } else if (tool === ASK_USER_QUESTION_TOOL_NAME) {

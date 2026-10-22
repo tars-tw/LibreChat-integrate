@@ -22,6 +22,50 @@ export interface TarsFileRouteDeps<TFile extends TarsDownloadableFile> {
 
 const queryString = (value: unknown): string => (typeof value === 'string' ? value : '');
 
+/** Used when a stored file has no name, or one `encodeURIComponent` rejects (a lone surrogate). */
+const FALLBACK_FILENAME = 'download';
+
+/** The `Content-Disposition` of a download named `filename`. */
+export function tarsAttachmentDisposition(filename: unknown): string {
+  let encoded = FALLBACK_FILENAME;
+  if (typeof filename === 'string' && filename) {
+    try {
+      encoded = encodeURIComponent(filename);
+    } catch {
+      encoded = FALLBACK_FILENAME;
+    }
+  }
+  return `attachment; filename*=UTF-8''${encoded}`;
+}
+
+/** Streams a stored file as a download; a storage failure mid-stream ends the response. */
+export function sendTarsFileStream(
+  res: Response,
+  stream: NodeJS.ReadableStream,
+  filename: unknown,
+  logTag: string,
+): void {
+  stream.on('error', (error) => {
+    logger.error(`${logTag} Stream failed`, error);
+    if (res.headersSent) {
+      res.destroy();
+      return;
+    }
+    res.status(500).end();
+  });
+  /** `pipe` keeps the storage stream open when the download is cancelled mid-way. */
+  res.on('close', () => {
+    if (!res.writableFinished) {
+      (stream as { destroy?: () => void }).destroy?.();
+    }
+  });
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Disposition', tarsAttachmentDisposition(filename));
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'no-store');
+  stream.pipe(res);
+}
+
 /**
  * Serves one spreadsheet to pwc_tars's data tools. pwc_tars holds no
  * LibreChat session, so the signed reference is the whole authorization: it
@@ -54,23 +98,7 @@ export function createTarsFileHandler<TFile extends TarsDownloadableFile>(
         res.status(404).end();
         return;
       }
-      const stream = await deps.openStream(req, file);
-      stream.on('error', (error) => {
-        logger.error('[tars-files] Stream failed', error);
-        if (res.headersSent) {
-          res.destroy();
-          return;
-        }
-        res.status(500).end();
-      });
-      res.setHeader('Content-Type', 'application/octet-stream');
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
-      );
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('Cache-Control', 'no-store');
-      stream.pipe(res);
+      sendTarsFileStream(res, await deps.openStream(req, file), file.filename, '[tars-files]');
     } catch (error) {
       logger.error('[tars-files] Could not serve a data file', error);
       if (!res.headersSent) {
