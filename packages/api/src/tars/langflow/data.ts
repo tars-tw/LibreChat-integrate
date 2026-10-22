@@ -3,6 +3,7 @@ import { Tools } from 'librechat-data-provider';
 import { logger } from '@librechat/data-schemas';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
+import type { TarsToolRunConfig } from '~/tars/tools/progress';
 import type { TarsDataFile } from '~/tars/files/sign';
 import type { LangflowToolResult } from './client';
 import {
@@ -14,7 +15,9 @@ import {
   LANGFLOW_TOOL_RESPONSE_FORMAT,
   TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
 } from './client';
+import { TARS_NOT_LINKED, tarsToolFailureText } from '~/tars/failure';
 import { toTarsDataFileRefsContext } from '~/tars/files/sign';
+import { recordTarsCallUsage } from '~/tars/tools/usage';
 import { TarsRequestError } from '~/tars/client';
 
 export const TARS_DATA_TOOL_NAME: Tools = Tools.data_query;
@@ -82,10 +85,11 @@ export interface TarsDataToolOptions {
   dataFiles?: TarsDataFile[];
   model?: string;
   librechatUserId?: string;
+  /** The request this tool's own model usage is kept on, for the mirrored turn's totals. */
+  auditTraceOwner?: object;
 }
 
-const NOT_LINKED =
-  'This LibreChat account is not linked to pwc_tars, so no attached file can be queried.';
+const NOT_LINKED = `${TARS_NOT_LINKED}, so no attached file can be queried.`;
 const NO_FILES =
   'No spreadsheet file (csv/xlsx) is attached to this conversation, so there is nothing to query.';
 
@@ -125,7 +129,10 @@ function selectFiles(files: TarsDataFile[], requested?: string[]): TarsDataFile[
 export function createTarsDataTool(options: TarsDataToolOptions): DynamicStructuredTool {
   const files = options.dataFiles ?? [];
   return tool(
-    async (input: z.infer<typeof dataQuerySchema>): Promise<LangflowToolResult> => {
+    async (
+      input: z.infer<typeof dataQuerySchema>,
+      config?: TarsToolRunConfig,
+    ): Promise<LangflowToolResult> => {
       if (!options.tarsUserId) {
         return langflowToolResult(NOT_LINKED);
       }
@@ -157,12 +164,13 @@ export function createTarsDataTool(options: TarsDataToolOptions): DynamicStructu
             `used=${data.model_name ?? '(unreported)'} tokens=${data.tokens?.total ?? 0} ` +
             'gateway=requested',
         );
+        recordTarsCallUsage(options.auditTraceOwner, config, data.tokens);
         return langflowToolResult(
           data.answer?.trim() || '(pwc_tars returned no answer.)',
           toTarsTraceArtifact(data),
         );
       } catch (error) {
-        return langflowToolResult(`The data query failed: ${toErrorMessage(error)}`);
+        return langflowToolResult(tarsToolFailureText('The data query', toErrorMessage(error)));
       }
     },
     {

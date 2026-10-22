@@ -1,7 +1,15 @@
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
-const { fetchTarsAuditReport, fetchTarsAuditFilterOptions } = require('@librechat/api');
-const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const {
+  fetchTarsAuditReport,
+  fetchTarsMessageTrace,
+  sendTarsAuditError,
+  fetchTarsAuditFilterOptions,
+  createTarsAuditDocumentHandler,
+} = require('@librechat/api');
+const { requireJwtAuth, requireTarsAdmin, configMiddleware } = require('~/server/middleware');
+const { getStrategyFunctions } = require('~/server/services/Files/strategies');
+const db = require('~/models');
 const { relayTarsError } = require('./relay');
 
 const router = express.Router();
@@ -13,6 +21,7 @@ const toIdList = (value) =>
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 router.use('/audit/messages', requireJwtAuth);
+router.use('/audit/memory-documents', requireJwtAuth);
 
 /**
  * @route GET /api/tars/audit/messages/options
@@ -62,5 +71,39 @@ router.post('/audit/messages', requireTarsAdmin, async (req, res) => {
     return relayTarsError(res, error, 'Failed to run the message audit report');
   }
 });
+
+/**
+ * @route GET /api/tars/audit/messages/:messageId/trace
+ * @desc One message's execution trace for the audit timeline.
+ * @access Admin (pwc_tars)
+ */
+router.get('/audit/messages/:messageId/trace', requireTarsAdmin, async (req, res) => {
+  try {
+    const trace = await fetchTarsMessageTrace(req.user.tarsId, req.params.messageId);
+    return res.json(trace);
+  } catch (error) {
+    logger.error('[GET /api/tars/audit/messages/:messageId/trace] Failed', error);
+    return sendTarsAuditError(res, error, 'message_not_found');
+  }
+});
+
+const sendAuditDocument = createTarsAuditDocumentHandler({
+  findFile: async (fileId) => (await db.getFiles({ file_id: fileId }))?.[0] ?? null,
+  readText: async (file) => (await db.getFiles({ _id: file._id }, null, { text: 1 }))?.[0]?.text,
+  getDownloadStream: (source) => getStrategyFunctions(source).getDownloadStream,
+});
+
+/**
+ * @route GET /api/tars/audit/memory-documents/:documentId
+ * @desc A file an audited trace names: a LibreChat attachment by its `file_id`,
+ *       else a pwc_tars long-term-memory document. Storage reads the app config.
+ * @access Admin (pwc_tars)
+ */
+router.get(
+  '/audit/memory-documents/:documentId',
+  requireTarsAdmin,
+  configMiddleware,
+  sendAuditDocument,
+);
 
 module.exports = router;

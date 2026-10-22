@@ -1117,6 +1117,20 @@ export const getTarsAuditReport = (query: t.TTarsAuditQuery): Promise<t.TTarsAud
   return request.post(endpoints.tarsAuditMessages(), query);
 };
 
+export const getTarsAuditMessageTrace = (messageId: string): Promise<t.TTarsMessageTrace> => {
+  return request.get(endpoints.tarsAuditMessageTrace(messageId));
+};
+
+/** A file the audited message's trace names, for an auditor to open. */
+export const downloadTarsAuditMemoryDocument = (
+  documentId: string,
+  messageId: string,
+): Promise<Blob> => {
+  return request.get(endpoints.tarsAuditMemoryDocument(documentId, messageId), {
+    responseType: 'blob',
+  });
+};
+
 /** Admin: one month of provider spend, straight from the provider's admin API. */
 export const getTarsProviderUsage = (query: t.TTarsUsageQuery): Promise<t.TTarsProviderUsage> => {
   const params = new URLSearchParams({ month: query.month });

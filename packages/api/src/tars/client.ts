@@ -69,6 +69,12 @@ export function tarsErrorReply(error: unknown, fallback: string): TarsErrorReply
   return { status: 500, error: fallback };
 }
 
+/** Thrown by {@link getTarsBaseUrl} when `TARS_AUTH_URL` is unset. */
+export const TARS_NOT_CONFIGURED_MESSAGE = 'TARS_AUTH_URL is not configured';
+
+/** The `serverMessage` of the 503 {@link bearerHeaders} throws when `TARS_JWT_SECRET` is unset. */
+export const TARS_SECRET_MISSING_MESSAGE = 'TARS_JWT_SECRET is not configured';
+
 /** Whether the pwc_tars integration is configured (env `TARS_AUTH_URL` is set). */
 export function isTarsConfigured(baseUrl: string | undefined = process.env.TARS_AUTH_URL): boolean {
   return !!baseUrl?.trim();
@@ -77,7 +83,7 @@ export function isTarsConfigured(baseUrl: string | undefined = process.env.TARS_
 /** Returns the trailing-slash-normalized pwc_tars base URL or throws when unconfigured. */
 export function getTarsBaseUrl(baseUrl: string | undefined = process.env.TARS_AUTH_URL): string {
   if (!baseUrl?.trim()) {
-    throw new Error('TARS_AUTH_URL is not configured');
+    throw new Error(TARS_NOT_CONFIGURED_MESSAGE);
   }
   return baseUrl.replace(/\/+$/, '');
 }
@@ -97,7 +103,7 @@ function buildUrl(base: string, path: string, query?: TarsQuery): string {
   return queryString ? `${base}${normalizedPath}?${queryString}` : `${base}${normalizedPath}`;
 }
 
-function bearerHeaders(
+export function bearerHeaders(
   path: string,
   asUser: string | undefined,
   secret: string | undefined = process.env.TARS_JWT_SECRET,
@@ -106,7 +112,7 @@ function bearerHeaders(
     return {};
   }
   if (!secret?.trim()) {
-    throw new TarsRequestError(503, path, 'TARS_JWT_SECRET is not configured');
+    throw new TarsRequestError(503, path, TARS_SECRET_MISSING_MESSAGE);
   }
   return { Authorization: `Bearer ${signTarsBearer(asUser, secret)}` };
 }

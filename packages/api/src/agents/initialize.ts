@@ -1286,7 +1286,8 @@ export async function initializeAgent(
                 }),
               },
               {},
-              withText ? 'file_id text' : 'file_id filename llmDeliveryPath',
+              /** TARS: `type` lists images as their own kind in the audit trace's attachments. */
+              withText ? 'file_id text' : 'file_id filename type llmDeliveryPath',
             )) as TarsStoredFile[] | null) ?? [],
           getThreadMessages: db.getMessages
             ? (id) => db.getMessages!({ conversationId: id }, 'messageId parentMessageId files')
