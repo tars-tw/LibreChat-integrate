@@ -1,6 +1,15 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Button, Dropdown, Spinner } from '@librechat/client';
-import { Check, Database, Download, Eye, Globe, Inbox, SlidersHorizontal } from 'lucide-react';
+import {
+  Eye,
+  Check,
+  Globe,
+  Inbox,
+  Database,
+  Download,
+  ChartGantt,
+  SlidersHorizontal,
+} from 'lucide-react';
 import type { AuditColumn, AuditRow } from './helpers';
 import type { ResponsePair } from './ResponseDialog';
 import { cellText, commentLines, PAGE_SIZE_OPTIONS, PAGE_SIZES } from './helpers';
@@ -23,6 +32,7 @@ export default function AuditTable({
   isLoading,
   locale,
   onViewResponse,
+  onViewTrace,
   exportName,
   emptyHint,
 }: {
@@ -33,6 +43,7 @@ export default function AuditTable({
   isLoading: boolean;
   locale: string;
   onViewResponse: (pair: ResponsePair) => void;
+  onViewTrace?: (messageId: string) => void;
   exportName: string;
   emptyHint: string;
 }) {
@@ -72,7 +83,7 @@ export default function AuditTable({
 
   const renderCell = (row: AuditRow, column: AuditColumn) => {
     if (column.kind === 'response') {
-      return (
+      const viewResponse = (
         <Button
           type="button"
           variant="ghost"
@@ -81,8 +92,26 @@ export default function AuditTable({
           aria-label={localize('com_ui_tars_audit_view_response')}
           title={localize('com_ui_tars_audit_view_response')}
         >
-          <Eye className="size-4 text-pwc-info" aria-hidden />
+          <Eye className="text-pwc-info size-4" aria-hidden />
         </Button>
+      );
+      if (!onViewTrace) {
+        return viewResponse;
+      }
+      return (
+        <div className="flex gap-1">
+          {viewResponse}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => onViewTrace(row.message_id)}
+            aria-label={localize('com_ui_tars_audit_trace_view_button')}
+            title={localize('com_ui_tars_audit_trace_view_button')}
+          >
+            <ChartGantt className="text-text-secondary size-4" aria-hidden />
+          </Button>
+        </div>
       );
     }
 
@@ -92,13 +121,13 @@ export default function AuditTable({
         return <span className="text-text-secondary">—</span>;
       }
       const Icon = column.field === 'is_web_search' ? Globe : Database;
-      return <Icon className="size-4 text-brand-primary" aria-label={localize(column.labelKey)} />;
+      return <Icon className="text-brand-primary size-4" aria-label={localize(column.labelKey)} />;
     }
 
     if (column.kind === 'deleted') {
       return row.is_deleted ? (
         <Check
-          className="mt-1.5 size-4 text-pwc-danger"
+          className="text-pwc-danger mt-1.5 size-4"
           aria-label={localize('com_ui_tars_audit_col_deleted')}
         />
       ) : null;
@@ -112,7 +141,7 @@ export default function AuditTable({
       return (
         <ul className="w-[18rem] list-disc space-y-0.5 pl-4">
           {lines.map((line, index) => (
-            <li key={index} className="whitespace-normal break-words">
+            <li key={index} className="break-words whitespace-normal">
               {line}
             </li>
           ))}
@@ -142,7 +171,7 @@ export default function AuditTable({
           aria-label={localize('com_ui_tars_audit_columns')}
           title={localize('com_ui_tars_audit_columns')}
         >
-          <SlidersHorizontal className="size-4 text-text-primary dark:text-white" aria-hidden />
+          <SlidersHorizontal className="text-text-primary size-4 dark:text-white" aria-hidden />
         </Button>
         <Button
           type="button"
@@ -153,23 +182,23 @@ export default function AuditTable({
           aria-label={localize('com_ui_tars_audit_export')}
           title={localize('com_ui_tars_audit_export')}
         >
-          <Download className="size-4 text-text-primary dark:text-white" aria-hidden />
+          <Download className="text-text-primary size-4 dark:text-white" aria-hidden />
         </Button>
       </div>
 
       {/* Bounded so the horizontal scrollbar rides at the bottom of a box that is
           always on screen. Left to grow with the page, it sits below a full page of
           rows and can only be reached by scrolling past every one of them. */}
-      <div className="data-table-scroll max-h-[70vh] overflow-auto rounded-lg border border-border-light">
+      <div className="data-table-scroll border-border-light max-h-[70vh] overflow-auto rounded-lg border">
         {isLoading && (
-          <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
+          <div className="text-text-secondary flex items-center justify-center gap-2 py-10 text-sm">
             <Spinner className="size-4" />
             {localize('com_ui_loading')}
           </div>
         )}
 
         {!isLoading && rows.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-10 text-sm text-text-secondary">
+          <div className="text-text-secondary flex flex-col items-center gap-2 py-10 text-sm">
             <Inbox className="size-6" aria-hidden />
             {emptyHint}
           </div>
@@ -179,13 +208,13 @@ export default function AuditTable({
             shown; `min-w-full` keeps a narrow selection filling the card instead. */}
         {!isLoading && rows.length > 0 && (
           <table className="w-max min-w-full border-collapse text-sm">
-            <thead className="sticky top-0 z-10 bg-surface-secondary">
+            <thead className="bg-surface-secondary sticky top-0 z-10">
               <tr>
                 {shown.map((column) => (
                   <th
                     key={column.field}
                     scope="col"
-                    className="whitespace-nowrap px-3 py-2 text-left font-medium text-text-secondary"
+                    className="text-text-secondary px-3 py-2 text-left font-medium whitespace-nowrap"
                   >
                     {localize(column.labelKey)}
                   </th>
@@ -196,10 +225,10 @@ export default function AuditTable({
               {paged.map((row) => (
                 <tr
                   key={row.message_id}
-                  className="border-t border-border-light align-top hover:bg-surface-tertiary"
+                  className="border-border-light hover:bg-surface-tertiary border-t align-top"
                 >
                   {shown.map((column) => (
-                    <td key={column.field} className="px-3 py-1.5 text-text-primary">
+                    <td key={column.field} className="text-text-primary px-3 py-1.5">
                       {renderCell(row, column)}
                     </td>
                   ))}
@@ -211,7 +240,7 @@ export default function AuditTable({
       </div>
 
       {rows.length > 0 && (
-        <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
+        <footer className="text-text-secondary flex flex-wrap items-center justify-between gap-3 text-sm">
           <div className="flex items-center gap-2">
             <span id={pageSizeLabelId}>{localize('com_ui_tars_audit_rows_per_page')}</span>
             <Dropdown

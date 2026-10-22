@@ -171,6 +171,9 @@ class ModelEndHandler {
       }
 
       this.collectedUsage.push(taggedUsage);
+      /** TARS: why this model call stopped, for the audit trace's `message_stop` rows. Keep it
+       *  one standalone line after the push; `?.` because upstream specs mock `@librechat/api`. */
+      require('@librechat/api').noteTarsFinishReason?.(taggedUsage, data?.output);
 
       if (this.emitUsage) {
         /** Normalize Anthropic/Bedrock top-level and OpenAI GPT-5.6
@@ -559,6 +562,9 @@ function getDefaultHandlers({
               part.tool_call.runStepDurationMs = durationMs;
             }
           }
+          /** TARS: thinking/answer timing for the audit trace (ignores tool calls). One self-contained
+           *  line so rebases keep it intact; `?.` because upstream specs mock `@librechat/api`. */
+          require('@librechat/api').stampTarsStepTiming?.(part, data);
         }
         await emitForJob({ event, data });
       },

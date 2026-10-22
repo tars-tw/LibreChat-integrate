@@ -11,8 +11,10 @@ import type { TarsDataFile } from '~/tars/files/sign';
 import type { TarsHistoryMessage } from './context';
 import { getTarsPluginManifest, primeTarsPluginManifests, runTarsPluginTool } from './client';
 import { langflowToolResult, LANGFLOW_TOOL_RESPONSE_FORMAT } from '~/tars/langflow/client';
+import { TARS_NOT_LINKED, tarsPluginToolFailureText } from '~/tars/failure';
 import { normalizeJsonSchema, resolveJsonSchemaRefs } from '~/mcp/zod';
 import { toTarsDataFileRefsContext } from '~/tars/files/sign';
+import { recordTarsCallUsage } from '~/tars/tools/usage';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
 import { TarsRequestError } from '~/tars/client';
 
@@ -68,9 +70,11 @@ export interface TarsPluginToolOptions {
   loadHistory?: () => Promise<TarsHistoryMessage[]>;
   /** Relays the progress the tool reports to its card while it runs (host-bound). */
   reportProgress?: TarsProgressReporter;
+  /** The request the call's token usage is kept on, for the mirror's totals. */
+  auditTraceOwner?: object;
 }
 
-const NOT_LINKED = 'This LibreChat account is not linked to pwc_tars, so plugin tools cannot run.';
+const NOT_LINKED = `${TARS_NOT_LINKED}, so plugin tools cannot run.`;
 
 type ArtifactUrl = { url?: string; title?: string } | string;
 
@@ -240,13 +244,14 @@ export async function createTarsPluginTool(
           onProgress: (message) => options.reportProgress?.(message, config),
           signal: config?.signal,
         });
+        recordTarsCallUsage(options.auditTraceOwner, config, result.tokens);
         return langflowToolResult(formatTarsPluginResult(result), {
           trace: [],
           step: toTarsPluginStep(pluginName, manifest, result),
         });
       } catch (error) {
         return langflowToolResult(
-          `The plugin tool "${manifest.display_name}" failed: ${toErrorMessage(error)}`,
+          tarsPluginToolFailureText(manifest.display_name, toErrorMessage(error)),
         );
       }
     },

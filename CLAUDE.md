@@ -216,8 +216,20 @@ not semantic success. The load-bearing ones: `primeTarsTurnFiles` in
 `packages/api/src/agents/initialize.ts`, the TARS tool gates in
 `api/server/services/ToolService.js`, the tool construction in `handleTools.js`,
 `mirrorChatToTars` in `agents/request.js`,
-`withTarsMcpConfig` in `api/server/services/Config/app.js`, and on the frontend
-`TarsPromptsButton`.
+`withTarsMcpConfig` in `api/server/services/Config/app.js`, `stampTarsStepTiming`
+in the `ON_RUN_STEP_CLOSED` handler of `agents/callbacks.js` and in the
+`on_run_step_closed` replay of `RedisJobStore.ts` (one standalone line after
+upstream's tool-call branch in each; keep it as its own statement when resolving,
+never fold it back into upstream's `if`. `agents/__tests__/tarsStepTiming.spec.js`
+and `stream/__tests__/RedisJobStore.tarsStepTiming.spec.ts` fail if either is
+lost), `noteTarsFinishReason` after `collectedUsage.push` in `ModelEndHandler`
+(`agents/callbacks.js`; same standalone-line rule, guarded by the same
+`tarsStepTiming.spec.js`), `noteTarsMcpToolError` after `formatToolContent` in
+`MCPManager.callTool` and `noteTarsMcpToolCall` right after `mcpManager.callTool` in
+`services/MCP.js` (an MCP `isError` reaches the audit trace only through these two;
+`mcp/__tests__/MCPManager.tarsToolError.spec.ts` and
+`services/__tests__/MCP.tarsToolError.spec.js` fail if either is lost), and on the
+frontend `TarsPromptsButton`.
 
 ---
 
