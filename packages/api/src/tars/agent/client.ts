@@ -48,6 +48,8 @@ export interface TarsAgentResult {
   answer: string;
   modelName: string;
   totalTokens: number;
+  /** What the nested run's model calls used, as the provider reported it. */
+  tokens?: { prompt?: number; completion?: number };
   knowledgeBaseIds: string[];
   databaseKnowledgeBaseId?: string;
   documentIds: string[];
@@ -187,6 +189,7 @@ export async function runTarsAgent(
     answer: withGeneratedLinks(answer, data) || '(pwc_tars returned no answer.)',
     modelName: data?.model_name ?? '',
     totalTokens: data?.tokens?.total ?? 0,
+    tokens: data?.tokens,
     knowledgeBaseIds,
     documentIds,
     ...(databaseKnowledgeBaseId ? { databaseKnowledgeBaseId } : {}),

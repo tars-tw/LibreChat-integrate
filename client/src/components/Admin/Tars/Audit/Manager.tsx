@@ -15,6 +15,7 @@ import {
 import { useTarsAuditOptionsQuery, useTarsAuditReportQuery } from '~/data-provider';
 import Filters, { initialFilters } from './Filters';
 import ResponseDialog from './ResponseDialog';
+import { TraceDialog } from './Trace';
 import Statistics from './Statistics';
 import { useLocalize } from '~/hooks';
 import AuditTable from './Table';
@@ -44,6 +45,7 @@ export default function AuditManager() {
   const [submitted, setSubmitted] = useState<TTarsAuditQuery | null>(null);
   const [feedbackOnly, setFeedbackOnly] = useState(false);
   const [pair, setPair] = useState<ResponsePair | null>(null);
+  const [traceMessageId, setTraceMessageId] = useState<string | null>(null);
   const [reportColumns, setReportColumns] = useState<string[]>(DEFAULT_REPORT_COLUMNS);
   const [feedbackColumns, setFeedbackColumns] = useState<string[]>(DEFAULT_FEEDBACK_COLUMNS);
 
@@ -136,6 +138,7 @@ export default function AuditManager() {
             isLoading={isLoading}
             locale={i18n.language}
             onViewResponse={setPair}
+            onViewTrace={setTraceMessageId}
             exportName="AuditReport"
             emptyHint={emptyHint}
           />
@@ -150,6 +153,7 @@ export default function AuditManager() {
             isLoading={isLoading}
             locale={i18n.language}
             onViewResponse={setPair}
+            onViewTrace={setTraceMessageId}
             exportName="FeedbackReport"
             emptyHint={emptyHint}
           />
@@ -164,12 +168,15 @@ export default function AuditManager() {
               dislikes={totals.dislikes}
             />
           ) : (
-            <div className="py-12 text-center text-sm text-text-secondary">{emptyHint}</div>
+            <div className="text-text-secondary py-12 text-center text-sm">{emptyHint}</div>
           )}
         </TabsContent>
       </Tabs>
 
       <ResponseDialog pair={pair} onClose={() => setPair(null)} />
+      {traceMessageId != null && (
+        <TraceDialog messageId={traceMessageId} onClose={() => setTraceMessageId(null)} />
+      )}
     </div>
   );
 }

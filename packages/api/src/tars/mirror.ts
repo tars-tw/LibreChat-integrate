@@ -1,6 +1,15 @@
-import { Tools, ContentTypes, TARS_SWITCH_TOOLS } from 'librechat-data-provider';
+import {
+  Tools,
+  ContentTypes,
+  TARS_SWITCH_TOOLS,
+  TARS_MESSAGE_STATUS,
+} from 'librechat-data-provider';
 import type { TMessageContentParts, TextData, TMessage, TFile } from 'librechat-data-provider';
+import type { TarsHistoryMessage, TarsPluginHistorySource } from './plugins/context';
 import type { UsageMetadata } from '~/stream/interfaces/IJobStore';
+import type { TarsTraceRecord, TarsTraceInput } from './trace';
+import { tarsContentErrors, TARS_MIRROR_SOURCE } from './trace';
+import { loadTarsPluginHistory } from './plugins/context';
 import { tarsFetch } from './client';
 
 export interface TarsConversationInput {
@@ -9,9 +18,6 @@ export interface TarsConversationInput {
   modelName?: string | null;
   systemInstruction?: string | null;
 }
-
-/** pwc_tars `SysConst` message statuses. */
-export const TARS_MESSAGE_STATUS = { success: 1, failed: 2, interrupted: 3 } as const;
 
 /** The per-turn columns of a pwc_tars `message` row that LibreChat can supply. */
 export interface TarsTurnFields {
@@ -37,12 +43,18 @@ export interface TarsMessageInput extends Partial<TarsTurnFields> {
   query: string;
   modelName?: string | null;
   ipAddr?: string | null;
+  /** Seconds from the turn starting to the response being complete. */
+  responseLatency?: number;
+  /** The turn's execution trace, which pwc_tars stores for the audit report's timeline. */
+  trace?: TarsTraceRecord[];
+  /** Earlier turns of the thread, oldest first (see {@link loadTarsMirrorHistory}). */
+  history?: TarsHistoryMessage[];
 }
 
 /** What LibreChat knows about a finished, stopped or failed turn. */
 export interface TarsTurnSource {
   response?: Partial<Pick<TMessage, 'text' | 'content'>> | null;
-  files?: Partial<Pick<TFile, 'filename'>>[] | null;
+  files?: Partial<Pick<TFile, 'file_id' | 'filename' | 'type'>>[] | null;
   usage?: UsageMetadata[] | null;
   unfinished?: boolean;
   errorText?: string | null;
@@ -53,17 +65,29 @@ type TarsToolCall = Extract<TMessageContentParts, { type: ContentTypes.TOOL_CALL
 /** The tools that stand for pwc_tars's 資料庫查詢 switch. */
 const SQL_TOOL_NAMES = new Set<string>([Tools.sql_agent, ...TARS_SWITCH_TOOLS.sql_agent]);
 
-const partText = (text: string | TextData): string =>
-  typeof text === 'string' ? text : (text?.value ?? '');
+const partText = (text: string | TextData): string => {
+  if (typeof text === 'string') {
+    return text;
+  }
+  return typeof text?.value === 'string' ? text.value : '';
+};
+
+/** A list field of the turn, or none when it holds anything else. */
+const listOf = <T>(value: readonly T[] | null | undefined): readonly T[] =>
+  Array.isArray(value) ? value : [];
+
+const tokens = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
 
 const toolCallName = (toolCall: TarsToolCall | undefined): string | undefined => {
-  if (toolCall == null) {
+  if (toolCall == null || typeof toolCall !== 'object') {
     return undefined;
   }
   if ('name' in toolCall && typeof toolCall.name === 'string') {
     return toolCall.name;
   }
-  return 'function' in toolCall ? toolCall.function?.name : undefined;
+  const name = 'function' in toolCall ? toolCall.function?.name : undefined;
+  return typeof name === 'string' ? name : undefined;
 };
 
 /**
@@ -75,15 +99,18 @@ export function buildTarsTurnFields(source: TarsTurnSource): TarsTurnFields {
   const texts: string[] = [];
   let isWebSearch = false;
   let isSqlAgent = false;
-  for (const part of source.response?.content ?? []) {
-    if (part?.type === ContentTypes.TEXT) {
+  for (const part of listOf(source.response?.content)) {
+    if (part == null || typeof part !== 'object') {
+      continue;
+    }
+    if (part.type === ContentTypes.TEXT) {
       const text = part.text != null ? partText(part.text) : '';
       if (text) {
         texts.push(text);
       }
       continue;
     }
-    if (part?.type !== ContentTypes.TOOL_CALL) {
+    if (part.type !== ContentTypes.TOOL_CALL) {
       continue;
     }
     const name = toolCallName(part.tool_call);
@@ -93,14 +120,14 @@ export function buildTarsTurnFields(source: TarsTurnSource): TarsTurnFields {
 
   let messageTokens = 0;
   let responseTokens = 0;
-  for (const usage of source.usage ?? []) {
-    messageTokens += usage?.input_tokens ?? 0;
-    responseTokens += usage?.output_tokens ?? 0;
+  for (const usage of listOf(source.usage)) {
+    messageTokens += tokens(usage?.input_tokens);
+    responseTokens += tokens(usage?.output_tokens);
   }
 
-  const filenames = (source.files ?? [])
+  const filenames = listOf(source.files)
     .map((file) => file?.filename)
-    .filter((filename): filename is string => !!filename);
+    .filter((filename): filename is string => typeof filename === 'string' && filename !== '');
 
   let status: number = TARS_MESSAGE_STATUS.success;
   if (source.errorText != null) {
@@ -110,15 +137,87 @@ export function buildTarsTurnFields(source: TarsTurnSource): TarsTurnFields {
   }
 
   return {
-    response: source.response?.text || texts.join('\n'),
+    response:
+      (typeof source.response?.text === 'string' && source.response.text) || texts.join('\n'),
     uploadFilename: filenames.length > 0 ? filenames.join(',') : null,
     isWebSearch,
     isSqlAgent,
     messageTokens,
     responseTokens,
     status,
-    errorMessage: source.errorText ?? null,
+    errorMessage: typeof source.errorText === 'string' ? source.errorText : null,
   };
+}
+
+/**
+ * The `error_message` pwc_tars stores for a turn that stopped short, in the
+ * product's language: the audit report shows it as the reason.
+ */
+export const TARS_INTERRUPTED_MESSAGES = {
+  aborted: '使用者中止了回覆',
+  stepLimitReached: '已達工具呼叫步數上限，回覆未完成',
+  incomplete: '回覆未完成',
+} as const;
+
+/** How a LibreChat turn ended, as the request controller knows it. */
+export interface TarsTurnOutcome {
+  /** The run failed outright; the turn has no response. */
+  error?: string | null;
+  /** The user stopped it. */
+  aborted?: boolean;
+  /** The run halted before the answer was complete. */
+  incomplete?: boolean;
+  stepLimitReached?: boolean;
+}
+
+/**
+ * The status and error message pwc_tars records for the turn, matching what
+ * its own chat stores: a failure is `failed`, a turn that stopped short is
+ * `interrupted`. A run that hit an error part still answered, but failed.
+ */
+export function resolveTarsMessageOutcome(
+  outcome: TarsTurnOutcome | null | undefined,
+  content?: TarsTraceInput['content'],
+): { status: number; errorMessage: string | null } {
+  if (outcome?.error) {
+    return { status: TARS_MESSAGE_STATUS.failed, errorMessage: outcome.error };
+  }
+  const [contentError] = tarsContentErrors(content);
+  if (contentError) {
+    return { status: TARS_MESSAGE_STATUS.failed, errorMessage: contentError };
+  }
+  if (outcome?.aborted) {
+    return {
+      status: TARS_MESSAGE_STATUS.interrupted,
+      errorMessage: TARS_INTERRUPTED_MESSAGES.aborted,
+    };
+  }
+  if (outcome?.stepLimitReached) {
+    return {
+      status: TARS_MESSAGE_STATUS.interrupted,
+      errorMessage: TARS_INTERRUPTED_MESSAGES.stepLimitReached,
+    };
+  }
+  if (outcome?.incomplete) {
+    return {
+      status: TARS_MESSAGE_STATUS.interrupted,
+      errorMessage: TARS_INTERRUPTED_MESSAGES.incomplete,
+    };
+  }
+  return { status: TARS_MESSAGE_STATUS.success, errorMessage: null };
+}
+
+/**
+ * The history a mirrored message records: the branch above the turn, in the same
+ * shape and window pwc_tars plugins get. A regenerate answers an existing user
+ * message, so the walk starts at this turn's own query, which is dropped.
+ */
+export async function loadTarsMirrorHistory(
+  source: TarsPluginHistorySource & { isRegenerate?: boolean },
+): Promise<TarsHistoryMessage[]> {
+  const history = await loadTarsPluginHistory(source);
+  const last = history[history.length - 1];
+  return source.isRegenerate && last?.role === 'user' ? history.slice(0, -1) : history;
 }
 
 /**
@@ -197,6 +296,8 @@ export async function syncTarsConversationName(
  * (`POST /api/message/create_message`). `message` stores the raw turn as JSON
  * (pwc_tars uses it for the request payload); `response` holds the answer text.
  * `ipAddr` is the user's address; Node reports IPv4 clients as `::ffff:a.b.c.d`.
+ * Its `messages` follow pwc_tars's own shape — the history then this query — so
+ * the audit report can show the history and pwc_tars can continue the thread.
  */
 export async function createTarsMessage(
   tarsId: string,
@@ -211,19 +312,22 @@ export async function createTarsMessage(
       query: input.query,
       response: input.response ?? '',
       message: JSON.stringify({
-        source: 'librechat',
+        source: TARS_MIRROR_SOURCE,
         query: input.query,
         response: input.response ?? '',
+        messages: [...(input.history ?? []), { role: 'user', content: input.query }],
       }),
       model_name: input.modelName ?? null,
       message_tokens: input.messageTokens ?? 0,
       response_tokens: input.responseTokens ?? 0,
+      ...(input.responseLatency != null && { response_latency: input.responseLatency }),
+      ...(input.trace?.length && { trace: input.trace }),
       status: input.status ?? TARS_MESSAGE_STATUS.success,
-      error_message: input.errorMessage ?? null,
-      upload_filename: input.uploadFilename ?? null,
-      is_web_search: input.isWebSearch ?? false,
-      is_sql_agent: input.isSqlAgent ?? false,
-      ip_addr: input.ipAddr?.replace(/^::ffff:/, '') || null,
+      error_message: input.errorMessage || null,
+      upload_filename: input.uploadFilename || null,
+      is_web_search: input.isWebSearch === true,
+      is_sql_agent: input.isSqlAgent === true,
+      ip_addr: (typeof input.ipAddr === 'string' && input.ipAddr.replace(/^::ffff:/, '')) || null,
       created_by: tarsId,
     },
     baseUrl,

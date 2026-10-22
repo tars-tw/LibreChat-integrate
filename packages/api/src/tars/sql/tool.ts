@@ -3,9 +3,12 @@ import { Tools } from 'librechat-data-provider';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
 import type { LangflowToolResult } from '~/tars/langflow/client';
+import type { TarsToolRunConfig } from '~/tars/tools/progress';
 import type { TarsSqlDatabase } from './client';
 import { langflowToolResult, LANGFLOW_TOOL_RESPONSE_FORMAT } from '~/tars/langflow/client';
+import { TARS_NOT_LINKED, tarsToolFailureText } from '~/tars/failure';
 import { listTarsSqlDatabases, runTarsSqlAgent } from './client';
+import { recordTarsCallUsage } from '~/tars/tools/usage';
 import { TarsRequestError } from '~/tars/client';
 
 export const TARS_SQL_TOOL_NAME: Tools = Tools.sql_agent;
@@ -79,10 +82,11 @@ export interface TarsSqlToolOptions {
   /** Model the chat turn runs on; the nested pwc_tars loop inherits it. */
   model?: string;
   librechatUserId?: string;
+  /** The request this tool's own model usage is kept on, for the mirrored turn's totals. */
+  auditTraceOwner?: object;
 }
 
-const NOT_LINKED =
-  'This LibreChat account is not linked to pwc_tars, so no database can be queried.';
+const NOT_LINKED = `${TARS_NOT_LINKED}, so no database can be queried.`;
 
 function listDatabases(databases: TarsSqlDatabase[]): string {
   if (!databases.length) {
@@ -147,7 +151,10 @@ export async function createTarsSqlTool(
   const only = databases.length === 1 ? databases[0].knowledge_base_id : undefined;
 
   return tool(
-    async (input: z.infer<typeof sqlAgentSchema>): Promise<LangflowToolResult> => {
+    async (
+      input: z.infer<typeof sqlAgentSchema>,
+      config?: TarsToolRunConfig,
+    ): Promise<LangflowToolResult> => {
       if (!tarsUserId) {
         return langflowToolResult(NOT_LINKED);
       }
@@ -169,9 +176,10 @@ export async function createTarsSqlTool(
           model: options.model,
           librechatUserId: options.librechatUserId,
         });
+        recordTarsCallUsage(options.auditTraceOwner, config, result.tokens);
         return langflowToolResult(result.answer, result.trace);
       } catch (error) {
-        return langflowToolResult(`The database query failed: ${toErrorMessage(error)}`);
+        return langflowToolResult(tarsToolFailureText('The database query', toErrorMessage(error)));
       }
     },
     {

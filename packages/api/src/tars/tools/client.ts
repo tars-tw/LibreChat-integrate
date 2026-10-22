@@ -1,5 +1,6 @@
 import { logger } from '@librechat/data-schemas';
 import type { LangflowGeneratedUrl } from '~/tars/langflow/client';
+import type { TarsTraceRecord } from '~/tars/trace';
 import {
   langflowTimeoutMs,
   langflowServiceFetch,
@@ -40,6 +41,8 @@ export interface TarsBuiltinToolResult {
   generated_urls: LangflowGeneratedUrl[];
   tokens?: { total?: number; prompt?: number; completion?: number };
   model_name?: string;
+  /** Audit-only trace records (`rag_retrieval`), when asked for with `auditTrace`. */
+  audit_trace?: TarsTraceRecord[];
 }
 
 /** How one direct pwc_tars tool call is made; shared by built-in and plugin tools. */
@@ -137,6 +140,8 @@ export interface TarsBuiltinToolRunOptions extends Omit<TarsServiceToolCallOptio
   inputs: Record<string, unknown>;
   context: TarsBuiltinToolContext;
   longRunning?: boolean;
+  /** Ask pwc_tars for the tool's audit-only trace records as well. */
+  auditTrace?: boolean;
 }
 
 /**
@@ -149,7 +154,11 @@ export async function runTarsBuiltinTool(
 ): Promise<TarsBuiltinToolResult> {
   const data = await runTarsServiceTool<Partial<TarsBuiltinToolResult>>(
     toolName,
-    { inputs: options.inputs, context: options.context },
+    {
+      inputs: options.inputs,
+      context: options.context,
+      ...(options.auditTrace && { audit_trace: true }),
+    },
     {
       timeoutMs: options.longRunning
         ? langflowTimeoutMs('TARS_TABLE_TASK_TIMEOUT_MS', TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS)
@@ -170,6 +179,12 @@ export async function runTarsBuiltinTool(
     generated_urls: data?.generated_urls ?? [],
     tokens: data?.tokens,
     model_name: data?.model_name,
+    audit_trace: Array.isArray(data?.audit_trace)
+      ? data.audit_trace.filter(
+          (record): record is TarsTraceRecord =>
+            record != null && typeof record === 'object' && typeof record.type === 'string',
+        )
+      : undefined,
   };
   logger.debug(
     `[tars-tools] tool=${toolName} summary=${result.summary || '(none)'} ` +

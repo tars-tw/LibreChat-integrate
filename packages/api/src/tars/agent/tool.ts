@@ -3,10 +3,13 @@ import { Tools } from 'librechat-data-provider';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
 import type { LangflowToolResult } from '~/tars/langflow/client';
+import type { TarsToolRunConfig } from '~/tars/tools/progress';
 import type { TarsAgentBindings } from './bindings';
 import type { TarsAgentScope } from './client';
 import { langflowToolResult, LANGFLOW_TOOL_RESPONSE_FORMAT } from '~/tars/langflow/client';
+import { TARS_NOT_LINKED, tarsToolFailureText } from '~/tars/failure';
 import { listTarsAgentScope, runTarsAgent } from './client';
+import { recordTarsCallUsage } from '~/tars/tools/usage';
 import { hasTarsAgentBindings } from './bindings';
 import { TarsRequestError } from '~/tars/client';
 
@@ -114,9 +117,11 @@ export interface TarsAgentToolOptions {
   /** Model the chat turn runs on; the nested pwc_tars loop inherits it. */
   model?: string;
   librechatUserId?: string;
+  /** The request this tool's own model usage is kept on, for the mirrored turn's totals. */
+  auditTraceOwner?: object;
 }
 
-const NOT_LINKED = 'This LibreChat account is not linked to pwc_tars, so nothing can be reached.';
+const NOT_LINKED = `${TARS_NOT_LINKED}, so nothing can be reached.`;
 const NOTHING_BOUND =
   'Nothing is bound for this turn — no knowledge base, database, spreadsheet or chart request — so this tool cannot answer anything right now.';
 
@@ -199,7 +204,10 @@ export async function createTarsAgentTool(
       : { knowledgeBases: [], databases: [], documents: [], chart: false };
 
   return tool(
-    async (input: z.infer<typeof tarsAgentSchema>): Promise<LangflowToolResult> => {
+    async (
+      input: z.infer<typeof tarsAgentSchema>,
+      config?: TarsToolRunConfig,
+    ): Promise<LangflowToolResult> => {
       if (!tarsUserId) {
         return langflowToolResult(NOT_LINKED);
       }
@@ -217,9 +225,10 @@ export async function createTarsAgentTool(
           model: options.model,
           librechatUserId: options.librechatUserId,
         });
+        recordTarsCallUsage(options.auditTraceOwner, config, result.tokens);
         return langflowToolResult(result.answer, result.trace);
       } catch (error) {
-        return langflowToolResult(`The TARS agent failed: ${toErrorMessage(error)}`);
+        return langflowToolResult(tarsToolFailureText('The TARS agent', toErrorMessage(error)));
       }
     },
     {

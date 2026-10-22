@@ -3,6 +3,7 @@ import { Tools } from 'librechat-data-provider';
 import { logger } from '@librechat/data-schemas';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
+import type { TarsToolRunConfig } from '~/tars/tools/progress';
 import type { LangflowToolResult } from './client';
 import {
   langflowTimeoutMs,
@@ -13,6 +14,8 @@ import {
   LANGFLOW_TOOL_RESPONSE_FORMAT,
   TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
 } from './client';
+import { recordTarsCallUsage } from '~/tars/tools/usage';
+import { tarsToolFailureText } from '~/tars/failure';
 import { TarsRequestError } from '~/tars/client';
 
 export const TARS_CHART_TOOL_NAME: Tools = Tools.chart_agent;
@@ -65,6 +68,8 @@ export interface TarsChartToolOptions {
   model?: string;
   /** The account the LLM gateway resolves models and quota for. */
   librechatUserId?: string;
+  /** The request this tool's own model usage is kept on, for the mirrored turn's totals. */
+  auditTraceOwner?: object;
 }
 
 function toErrorMessage(error: unknown): string {
@@ -82,7 +87,10 @@ function toErrorMessage(error: unknown): string {
  */
 export function createTarsChartTool(options: TarsChartToolOptions): DynamicStructuredTool {
   return tool(
-    async (input: z.infer<typeof chartAgentSchema>): Promise<LangflowToolResult> => {
+    async (
+      input: z.infer<typeof chartAgentSchema>,
+      config?: TarsToolRunConfig,
+    ): Promise<LangflowToolResult> => {
       try {
         const requestedModel = await resolveLangflowModelName(options.model, 'tars-chart');
         const data = await runLangflowCapability(
@@ -101,6 +109,7 @@ export function createTarsChartTool(options: TarsChartToolOptions): DynamicStruc
             `used=${data.model_name ?? '(unreported)'} tokens=${data.tokens?.total ?? 0} ` +
             `chart=${data.chart_url ? 'yes' : 'no'} gateway=requested`,
         );
+        recordTarsCallUsage(options.auditTraceOwner, config, data.tokens);
         const trace = toTarsTraceArtifact(data);
         const answer = data.answer?.trim() ?? '';
         const chartUrl = data.chart_url?.trim() ?? '';
@@ -112,7 +121,7 @@ export function createTarsChartTool(options: TarsChartToolOptions): DynamicStruc
         }
         return langflowToolResult(`${answer}\n\n![chart](${chartUrl})`.trim(), trace);
       } catch (error) {
-        return langflowToolResult(`Chart generation failed: ${toErrorMessage(error)}`);
+        return langflowToolResult(tarsToolFailureText('Chart generation', toErrorMessage(error)));
       }
     },
     {

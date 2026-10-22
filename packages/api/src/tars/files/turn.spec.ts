@@ -68,7 +68,7 @@ const source = (overrides: Partial<TarsTurnFilesSource> = {}): TarsTurnFilesSour
     ((await methods.getFiles(
       { file_id: { $in: fileIds }, user: OWNER },
       {},
-      withText ? 'file_id text' : 'file_id filename llmDeliveryPath',
+      withText ? 'file_id text' : 'file_id filename type llmDeliveryPath',
     )) as TarsStoredFile[] | null) ?? [],
   getThreadMessages: async (conversationId) =>
     (await methods.getMessages({ conversationId }, 'messageId parentMessageId files')).map(
@@ -87,7 +87,9 @@ describe('resolveTarsTurnFiles', () => {
     await addFile('sheet-earlier', 'earlier.csv');
     await addFile('sheet-sibling', 'sibling.xls');
     await addFile('notes', 'notes.pdf', { llmDeliveryPath: 'text', text: ' 會議紀錄 ' });
-    await addFile('photo', 'photo.png', { llmDeliveryPath: 'provider' });
+    await addFile('photo', 'photo.png', { llmDeliveryPath: 'provider', type: 'image/png' });
+    await addFile('deck', 'deck.pdf', { llmDeliveryPath: 'provider', type: 'application/pdf' });
+    await addFile('archive', 'logs.zip', { llmDeliveryPath: 'none', type: 'application/zip' });
     await mongoose.models.File.create({
       user: STRANGER,
       file_id: 'foreign-sheet',
@@ -109,6 +111,16 @@ describe('resolveTarsTurnFiles', () => {
       { id: 'sheet-earlier', filename: 'earlier.csv' },
     ]);
     await expect(files.loadFileInput()).resolves.toBe('會議紀錄');
+  });
+
+  it('sorts every attachment into exactly one kind, images and kept-out files included', async () => {
+    const files = await resolveTarsTurnFiles(source({ requestFileIds: ['deck', 'archive'] }));
+
+    expect(files.textFiles).toEqual([{ id: 'notes', filename: 'notes.pdf' }]);
+    expect(files.providerFiles).toEqual([{ id: 'deck', filename: 'deck.pdf' }]);
+    expect(files.imageFiles).toEqual([{ id: 'photo', filename: 'photo.png' }]);
+    expect(files.otherFiles).toEqual([{ id: 'archive', filename: 'logs.zip' }]);
+    expect(files.dataFiles).toEqual([{ id: 'sheet-earlier', filename: 'earlier.csv' }]);
   });
 
   it("skips another user's file even when a message references it", async () => {

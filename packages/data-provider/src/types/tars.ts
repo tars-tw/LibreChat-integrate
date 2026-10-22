@@ -1469,6 +1469,234 @@ export type TTarsJsonField =
   | TTarsJsonField[]
   | { [key: string]: TTarsJsonField };
 
+/**
+ * The client's own chat request body, as `request_raw` stores it. Only the
+ * switches the audit timeline reads are named; the rest pass through untyped.
+ */
+export type TTarsTraceRequestBody = {
+  reasoning_effort?: string | null;
+  upload_filename?: string | null;
+  /** LibreChat traces: this message's attachments with the ids the audit report downloads them by. */
+  upload_files?: { file_id?: string | null; filename?: string | null }[] | null;
+  is_database_bound?: boolean | null;
+  is_enable_web_search?: boolean | null;
+  is_file_generate_active?: boolean | null;
+  file_generate_type?: string | null;
+  file_generate_extra_prompt?: string | null;
+  file_generate_footer_text?: string | null;
+  /** Sent either as an object or as its JSON text. */
+  file_generate_style_spec?: TTarsJsonField;
+  is_enable_suggested_questions?: boolean | null;
+  is_mcp_enabled?: boolean | null;
+  is_enable_langflow?: boolean | null;
+  is_regenerate?: boolean | null;
+};
+
+/**
+ * `message_execution_trace.payload`. Every event type writes its own subset
+ * (pwc_tars `agent_core/events.py` `to_trace`), so every field is optional and
+ * a row only ever carries the ones its `event_type` defines.
+ */
+export type TTarsTracePayload = {
+  type?: string;
+  /** `request`: `'librechat'` when LibreChat built this trace for a chat it mirrored. */
+  source?: string;
+  /** `'inferred'` when the span was placed by content order rather than measured. */
+  timing?: string;
+  text?: string | null;
+  input?: TTarsJsonField;
+  output?: string | null;
+  summary?: string | null;
+  sources?: string[];
+  /** The turn a row ran in, where pwc_tars keeps it in the payload rather than the column. */
+  turn?: number | null;
+  turn_index?: number | null;
+  model_output_limit?: number | null;
+  truncated?: boolean;
+  output_len_chars?: number | null;
+  /** `regenerate_not_applied`. */
+  aborted?: boolean;
+  status?: number | null;
+  error_message?: string | null;
+  /** `usage`. */
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  /** `request_raw`: the body, or null with `payload_truncated` when it was too large to keep. */
+  payload?: TTarsTraceRequestBody | null;
+  payload_truncated?: boolean;
+  payload_original_chars?: number | null;
+  /** `request`. */
+  query?: string | null;
+  domain_name?: string | null;
+  database_names?: string[];
+  knowledge_base_names?: string[];
+  langflow_names?: string[];
+  system_version?: string | null;
+  sql_schema_injected?: string | null;
+  /** `provenance`. */
+  model_name?: string | null;
+  temperature?: number | null;
+  model_kwargs?: Record<string, TTarsJsonField>;
+  model_endpoint?: string | null;
+  available_tools?: string[];
+  native_tool_calling?: boolean | null;
+  data_files?: string[];
+  image_input_count?: number | null;
+  mcp_servers?: { name?: string | null }[];
+  degradation_notes?: string[];
+  embedding_profiles?: {
+    kb_id?: string | null;
+    kb_name?: string | null;
+    embedding_model_name?: string | null;
+    embedding_dims?: number | null;
+  }[];
+  milvus_url?: string | null;
+  milvus_port?: string | number | null;
+  rerank_backend?: string | null;
+  rerank_model_name?: string | null;
+  retrieval_params?: {
+    rerank_floor_ratio?: number | null;
+    score_threshold?: number | null;
+    default_limit?: number | null;
+  } | null;
+  /** `memory_context`. */
+  retrieval_ms?: number | null;
+  context_available?: boolean;
+  records?: {
+    memory_type?: string | null;
+    score?: number | string | null;
+    content?: string | null;
+    created_at?: string | null;
+  }[];
+  /** `long_term_memory`. */
+  documents?: {
+    /** A pwc_tars memory-area document; pwc_tars clears it on traces LibreChat built. */
+    id?: string | null;
+    /** A LibreChat attachment, on traces LibreChat built for the chats it mirrors. */
+    file_id?: string | null;
+    filename?: string | null;
+    injected_as?: string | null;
+    milvus_pk?: string | number | null;
+  }[];
+  websites?: { name?: string | null }[];
+  /** `tool_context_replay`. */
+  entry_count?: number | null;
+  /** `rag_retrieval`. */
+  total_documents?: number | null;
+  rerank_by_kb?: { candidates_in?: number | null; backend?: string | null }[];
+  floor_filter?: { threshold?: number | string | null } | null;
+  channel_hits?: { milvus_pk?: string | number | null }[];
+  channel_weights?: Record<string, number | string>;
+  /** `clarification`. */
+  question?: string | null;
+  options?: { label?: string | null }[];
+  /** `plan`. */
+  items?: { status?: string | null; content?: string | null }[];
+  /** `message_stop`. */
+  finish_reason?: string | null;
+  /** `error` / `status`. */
+  error_code?: string | null;
+  message?: string | null;
+  kind?: string | null;
+  /** `suggested_questions`. */
+  count?: number | null;
+  wait_ms?: number | null;
+  invoke_ms?: number | null;
+  total_ms?: number | null;
+  join_ms?: number | null;
+};
+
+/** One `message_execution_trace` row, as pwc_tars serves it (`system_prompt` never included). */
+export type TTarsTraceRow = {
+  id: string;
+  seq: number;
+  message_id: string;
+  event_type: string;
+  turn: number | null;
+  tool_name: string | null;
+  tool_use_id: string | null;
+  parent_id: string | null;
+  attempt: number;
+  retry_of: string | null;
+  /** Millisecond-precision UTC ISO timestamps. */
+  started_at: string | null;
+  ended_at: string | null;
+  duration_ms: number | null;
+  ok: boolean | null;
+  payload: TTarsTracePayload | null;
+  created_at?: string | null;
+  user_id?: string | null;
+  conversation_id?: string | null;
+  domain_id?: string | null;
+};
+
+/** One message's execution trace (`GET /api/tars/audit/messages/:messageId/trace`). */
+export type TTarsMessageTrace = {
+  message: {
+    id: string;
+    conversation_id: string | null;
+    model_name: string | null;
+    created_at: string | null;
+    ip_addr: string | null;
+    query: string | null;
+    response: string | null;
+    /** pwc_tars `SysConst`: 1 success, 2 failed, 3 interrupted. */
+    status: number | null;
+    error_message: string | null;
+    /** Seconds. */
+    response_latency: number | null;
+  };
+  /** Null when the user row is gone; the message and its trace stay readable. */
+  user: {
+    id: string;
+    username: string | null;
+    email: string | null;
+    user_groups: { id: string; name: string }[];
+  } | null;
+  /** The newest batch that produced the stored answer, ordered by `seq`. */
+  trace: TTarsTraceRow[];
+  unapplied_regenerate_count: number;
+  conversation_history: { role: string; content: TTarsJsonField }[];
+};
+
+/**
+ * Why reading a message's trace or downloading one of its files failed, as the
+ * audit routes classify it, so the panel can say what went wrong and what to do.
+ * - `secret_missing`: `TARS_JWT_SECRET` is unset, so no admin call can be signed
+ * - `credentials_rejected`: pwc_tars refused the signed bearer (secret mismatch or clock skew)
+ * - `not_tars_admin`: pwc_tars no longer treats this account as an admin
+ * - `not_configured`: `TARS_AUTH_URL` is unset
+ * - `tars_unreachable` / `tars_timeout` / `tars_failed`: pwc_tars was down, slow or erred
+ * - `bad_response`: pwc_tars answered in a shape this LibreChat cannot read
+ * - `message_not_found` / `document_not_found`: the message or file no longer exists
+ * - `document_unavailable`: the file's storage cannot serve downloads
+ * - `storage_failed`: LibreChat's file storage could not be read
+ * - `request_rejected`: pwc_tars refused the request itself (another 4xx)
+ * - `internal`: anything else
+ */
+export type TTarsAuditErrorCode =
+  | 'secret_missing'
+  | 'credentials_rejected'
+  | 'not_tars_admin'
+  | 'not_configured'
+  | 'tars_unreachable'
+  | 'tars_timeout'
+  | 'tars_failed'
+  | 'bad_response'
+  | 'message_not_found'
+  | 'document_not_found'
+  | 'document_unavailable'
+  | 'storage_failed'
+  | 'request_rejected'
+  | 'internal';
+
+/** The body of a failed trace or file request; `detail` is pwc_tars's own reason, when it gave one. */
+export type TTarsAuditErrorBody = {
+  error: string;
+  code: TTarsAuditErrorCode;
+  detail?: string;
+};
+
 /** One recorded operation in the pwc_tars system audit trail. */
 export type TTarsActionLog = {
   id: string;

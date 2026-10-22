@@ -69,6 +69,11 @@ endpoints:
       titleConvo: true
       titleModel: 'current_model'
       modelDisplayLabel: 'vLLM'
+      # LibreChat turns stream usage off for custom endpoints, so vLLM would report no
+      # token counts and every model call between tool calls would go uncounted. vLLM
+      # supports `stream_options.include_usage`, which this re-enables.
+      addParams:
+        streamUsage: true
 
 # Web search runs on Tavily alone (search + page extract, no reranker), so no other
 # provider's key is ever consulted and users get no key/provider dialog. The key is

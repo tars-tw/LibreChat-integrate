@@ -3,9 +3,12 @@ import { Tools } from 'librechat-data-provider';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
 import type { LangflowToolResult } from '~/tars/langflow/client';
+import type { TarsToolRunConfig } from '~/tars/tools/progress';
 import type { TarsRagKnowledgeBase } from './client';
 import { langflowToolResult, LANGFLOW_TOOL_RESPONSE_FORMAT } from '~/tars/langflow/client';
 import { listTarsRagKnowledgeBases, runTarsRagAgent } from './client';
+import { TARS_NOT_LINKED, tarsToolFailureText } from '~/tars/failure';
+import { recordTarsCallUsage } from '~/tars/tools/usage';
 import { TarsRequestError } from '~/tars/client';
 
 export const TARS_RAG_TOOL_NAME: Tools = Tools.rag_agent;
@@ -80,10 +83,11 @@ export interface TarsRagToolOptions {
   /** Model the chat turn runs on; the nested pwc_tars loop inherits it. */
   model?: string;
   librechatUserId?: string;
+  /** The request this tool's own model usage is kept on, for the mirrored turn's totals. */
+  auditTraceOwner?: object;
 }
 
-const NOT_LINKED =
-  'This LibreChat account is not linked to pwc_tars, so no knowledge base can be searched.';
+const NOT_LINKED = `${TARS_NOT_LINKED}, so no knowledge base can be searched.`;
 const NO_KNOWLEDGE_BASES =
   'The active brain (專用腦) binds no knowledge base, so this tool cannot answer anything right now.';
 
@@ -145,7 +149,10 @@ export async function createTarsRagTool(
     : ([] as TarsRagKnowledgeBase[]);
 
   return tool(
-    async (input: z.infer<typeof ragAgentSchema>): Promise<LangflowToolResult> => {
+    async (
+      input: z.infer<typeof ragAgentSchema>,
+      config?: TarsToolRunConfig,
+    ): Promise<LangflowToolResult> => {
       if (!tarsUserId) {
         return langflowToolResult(NOT_LINKED);
       }
@@ -160,9 +167,12 @@ export async function createTarsRagTool(
           model: options.model,
           librechatUserId: options.librechatUserId,
         });
+        recordTarsCallUsage(options.auditTraceOwner, config, result.tokens);
         return langflowToolResult(result.answer, result.trace);
       } catch (error) {
-        return langflowToolResult(`The knowledge base search failed: ${toErrorMessage(error)}`);
+        return langflowToolResult(
+          tarsToolFailureText('The knowledge base search', toErrorMessage(error)),
+        );
       }
     },
     {

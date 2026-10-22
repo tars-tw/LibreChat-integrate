@@ -3,6 +3,7 @@ import { Tools } from 'librechat-data-provider';
 import { logger } from '@librechat/data-schemas';
 import { tool } from '@librechat/agents/langchain/tools';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
+import type { TarsToolRunConfig } from '~/tars/tools/progress';
 import type { TarsDataFile } from '~/tars/files/sign';
 import type { LangflowToolResult } from './client';
 import {
@@ -14,8 +15,10 @@ import {
   LANGFLOW_TOOL_RESPONSE_FORMAT,
   TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS,
 } from './client';
+import { TARS_NOT_LINKED, tarsToolFailureText } from '~/tars/failure';
 import { fetchTarsDomainKnowledgeBases } from '~/tars/prompts';
 import { toTarsDataFileRefsContext } from '~/tars/files/sign';
+import { recordTarsCallUsage } from '~/tars/tools/usage';
 import { TarsRequestError } from '~/tars/client';
 
 export const TARS_TABLE_TOOL_NAME: Tools = Tools.table_task;
@@ -83,10 +86,11 @@ export interface TarsTableToolOptions {
   dataFiles?: TarsDataFile[];
   model?: string;
   librechatUserId?: string;
+  /** The request this tool's own model usage is kept on, for the mirrored turn's totals. */
+  auditTraceOwner?: object;
 }
 
-const NOT_LINKED =
-  'This LibreChat account is not linked to pwc_tars, so no attached file can be processed.';
+const NOT_LINKED = `${TARS_NOT_LINKED}, so no attached file can be processed.`;
 const NO_FILES =
   'No spreadsheet file (csv/xlsx) is attached to this conversation, so there is nothing to process.';
 const NO_DOMAIN =
@@ -127,7 +131,10 @@ function selectFiles(files: TarsDataFile[], requested?: string[]): TarsDataFile[
 export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicStructuredTool {
   const files = options.dataFiles ?? [];
   return tool(
-    async (input: z.infer<typeof tableTaskSchema>): Promise<LangflowToolResult> => {
+    async (
+      input: z.infer<typeof tableTaskSchema>,
+      config?: TarsToolRunConfig,
+    ): Promise<LangflowToolResult> => {
       if (!options.tarsUserId) {
         return langflowToolResult(NOT_LINKED);
       }
@@ -169,6 +176,7 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
             `requested=${requestedModel ?? '(pwc_tars default)'} used=${data.model_name ?? '(unreported)'} ` +
             `tokens=${data.tokens?.total ?? 0} gateway=requested`,
         );
+        recordTarsCallUsage(options.auditTraceOwner, config, data.tokens);
         const trace = toTarsTraceArtifact(data);
         const answer = data.answer?.trim() ?? '';
         const fileUrl = data.file_url?.trim() ?? '';
@@ -177,7 +185,7 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
         }
         return langflowToolResult(`${answer}\n\n[下載完整結果 (xlsx)](${fileUrl})`, trace);
       } catch (error) {
-        return langflowToolResult(`The table task failed: ${toErrorMessage(error)}`);
+        return langflowToolResult(tarsToolFailureText('The table task', toErrorMessage(error)));
       }
     },
     {

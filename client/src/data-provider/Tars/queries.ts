@@ -61,6 +61,7 @@ import type {
   TTarsAuditQuery,
   TTarsAuditReport,
   TTarsAuditOptionsResponse,
+  TTarsMessageTrace,
   TTarsTicket,
   TTarsTicketDetail,
   TTarsTicketsResponse,
@@ -832,6 +833,28 @@ export const useTarsAuditReportQuery = (
     {
       enabled: query != null,
       keepPreviousData: true,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Admin: one audited message's execution trace. Never cached — a regenerate
+ * writes a new batch, so reopening a row must show the latest one — and never
+ * retried, since a 404 (the message is gone) is an answer, not a failure.
+ */
+export const useTarsAuditMessageTraceQuery = (
+  messageId: string | null,
+  config?: UseQueryOptions<TTarsMessageTrace>,
+): QueryObserverResult<TTarsMessageTrace> => {
+  return useQuery<TTarsMessageTrace>(
+    [QueryKeys.tarsAuditMessageTrace, messageId],
+    () => dataService.getTarsAuditMessageTrace(messageId as string),
+    {
+      enabled: messageId != null,
+      cacheTime: 0,
+      retry: false,
       ...adminQueryOptions,
       ...config,
     },

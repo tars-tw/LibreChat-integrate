@@ -26,12 +26,15 @@ import {
 import { listTarsRagKnowledgeBases, resolveTarsKnowledgeBaseIds } from '~/tars/rag/client';
 import { getTarsBuiltinManifest, primeTarsBuiltinManifests } from '~/tars/plugins/client';
 import { TARS_DATABASE_SWITCH_TOOL, tarsBuiltinToolCapability } from './names';
+import { TARS_NOT_LINKED, tarsBuiltinToolFailureText } from '~/tars/failure';
 import { normalizeJsonSchema, resolveJsonSchemaRefs } from '~/mcp/zod';
 import { TarsRequestError, isTarsConfigured } from '~/tars/client';
 import { toTarsDataFileRefsContext } from '~/tars/files/sign';
 import { resolveTarsDatabaseId } from '~/tars/agent/client';
 import { listTarsSqlDatabases } from '~/tars/sql/client';
+import { recordTarsToolAuditTrace } from './auditTrace';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
+import { recordTarsCallUsage } from './usage';
 import { runTarsBuiltinTool } from './client';
 
 /** LibreChat-side arguments that narrow what a call reaches; never forwarded as tool inputs. */
@@ -44,7 +47,7 @@ const SOURCE_EXCERPT_CHARS = 280;
 /** A result table or schema listing is shown on the card; anything longer is cut there only. */
 const OUTPUT_DISPLAY_CHARS = 6_000;
 
-const NOT_LINKED = 'This LibreChat account is not linked to pwc_tars, so TARS tools cannot run.';
+const NOT_LINKED = `${TARS_NOT_LINKED}, so TARS tools cannot run.`;
 
 /** Registry entry for the definition-only (deferred) load path. */
 export interface TarsBuiltinToolDefinition {
@@ -157,6 +160,11 @@ export interface TarsBuiltinToolOptions {
   question?: string;
   /** Relays the progress the tool reports to its card while it runs (host-bound). */
   reportProgress?: TarsProgressReporter;
+  /**
+   * The request the turn's audit-only trace records are kept on, for the mirror
+   * to add to its execution trace; without it they are not asked for.
+   */
+  auditTraceOwner?: object;
 }
 
 const asString = (value: unknown): string | undefined =>
@@ -383,12 +391,18 @@ export async function createTarsBuiltinTool(
           tarsUserId,
           onProgress: (message) => options.reportProgress?.(message, config),
           signal: config?.signal,
+          auditTrace: options.auditTraceOwner != null,
         });
+        const toolCallId = config?.toolCall?.id;
+        if (options.auditTraceOwner && toolCallId) {
+          recordTarsToolAuditTrace(options.auditTraceOwner, toolCallId, result.audit_trace ?? []);
+        }
+        recordTarsCallUsage(options.auditTraceOwner, config, result.tokens);
         const text = toModelText(result);
         return langflowToolResult(text, { trace: [], step: toStep(builtin, result, text) });
       } catch (error) {
         const message = toErrorMessage(error);
-        return langflowToolResult(`The tool "${options.toolName}" failed: ${message}`, {
+        return langflowToolResult(tarsBuiltinToolFailureText(options.toolName, message), {
           trace: [],
           step: { tool: builtin, ok: false, output: message },
         });
