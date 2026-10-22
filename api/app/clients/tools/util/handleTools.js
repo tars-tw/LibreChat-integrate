@@ -580,6 +580,7 @@ const loadTools = async ({
           dataFiles: getTarsTurnFiles(options.req)?.dataFiles,
           model: agent?.model,
           librechatUserId: user,
+          auditTraceOwner: options.req,
         });
       continue;
     } else if (tool === ASK_USER_QUESTION_TOOL_NAME) {
