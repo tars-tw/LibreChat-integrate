@@ -79,6 +79,7 @@ import { ConnectionsRepository } from './ConnectionsRepository';
 import { MCPConnectionFactory } from './MCPConnectionFactory';
 import { processMCPEnv, isPluginSourced } from '~/utils/env';
 import { OAuthLifecycleRelay } from './oauth/pending';
+import { noteTarsMcpToolError } from '~/tars/failure';
 import { isOwnedAbortError } from '~/utils/errors';
 import { markMCPToolResultError } from './status';
 import { withMCPRequestSignal } from './signal';
@@ -2182,7 +2183,7 @@ Please follow these instructions when using tools from the respective MCP server
           resolvedAppResource = undefined;
         }
 
-        return markMCPToolResultError(
+        const formatted = markMCPToolResultError(
           formatToolContent(
             toolResult,
             provider,
@@ -2200,6 +2201,9 @@ Please follow these instructions when using tools from the respective MCP server
           ),
           toolResult?.isError === true,
         );
+        /** TARS: keep `isError` for the audit trace (read in `services/MCP.js`). */
+        noteTarsMcpToolError(formatted, toolResult);
+        return formatted;
       } catch (error) {
         if (error instanceof OAuthRecoveryTakeoverRequired) {
           recoveryTakeoverConsumed = true;

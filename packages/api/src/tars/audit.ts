@@ -1,4 +1,24 @@
-import { tarsFetch } from './client';
+import { Readable } from 'stream';
+import { logger } from '@librechat/data-schemas';
+import { FileSources, normalizeTarsMessageTrace } from 'librechat-data-provider';
+import type {
+  TTarsMessageTrace,
+  TTarsAuditErrorBody,
+  TTarsAuditErrorCode,
+} from 'librechat-data-provider';
+import type { Request, Response } from 'express';
+import type { StoredFileRef } from '~/storage/path';
+import {
+  tarsFetch,
+  bearerHeaders,
+  getTarsBaseUrl,
+  TarsRequestError,
+  readTarsErrorMessage,
+  TARS_SECRET_MISSING_MESSAGE,
+  TARS_NOT_CONFIGURED_MESSAGE,
+} from './client';
+import { pipeTarsDownload, sendTarsFileStream, tarsAttachmentDisposition } from './files/route';
+import { resolveDownloadPath } from '~/storage/path';
 
 /**
  * A message audit row (`POST /api/settings/query_message_reports` → `data[]`).
@@ -208,5 +228,274 @@ export async function fetchTarsAuditReport(
       message_count: detail.message_count,
       knowledge_bases: detail.knowledge_bases ?? [],
     })),
+  };
+}
+
+/**
+ * One message's execution trace (`GET /api/settings/get_message_execution_trace/<id>`).
+ * pwc_tars picks the batch that produced the stored answer and strips the system
+ * prompt; a 404 means the message itself is gone.
+ */
+export async function fetchTarsMessageTrace(
+  tarsId: string,
+  messageId: string,
+  baseUrl?: string,
+): Promise<TTarsMessageTrace> {
+  const response = await tarsFetch<TarsAuditEnvelope<unknown>>(
+    `/api/settings/get_message_execution_trace/${encodeURIComponent(messageId)}`,
+    { baseUrl, asUser: tarsId },
+  );
+  /** Held to its declared types here, once, so no reader re-checks pwc_tars's values. */
+  const trace = normalizeTarsMessageTrace(response?.data);
+  if (!trace) {
+    throw new TarsRequestError(502, 'get_message_execution_trace', MALFORMED_TRACE);
+  }
+  return trace;
+}
+
+/**
+ * A long-term-memory file referenced by a trace. Unlike the owner-only memory
+ * download, pwc_tars serves this one to any admin, since auditing reads other
+ * people's files.
+ */
+export async function downloadTarsAuditMemoryDocument(
+  tarsId: string,
+  documentId: string,
+  baseUrl?: string,
+): Promise<{ stream: Readable; contentType: string; disposition: string | null }> {
+  const path = `/api/settings/download_memory_document_for_audit/${encodeURIComponent(documentId)}`;
+  const response = await fetch(`${getTarsBaseUrl(baseUrl)}${path}`, {
+    headers: bearerHeaders(path, tarsId),
+    signal: AbortSignal.timeout(REPORT_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new TarsRequestError(response.status, path, await readTarsErrorMessage(response));
+  }
+  return {
+    stream: response.body
+      ? Readable.fromWeb(response.body as unknown as Parameters<typeof Readable.fromWeb>[0])
+      : Readable.from([]),
+    contentType: response.headers.get('content-type') ?? 'application/octet-stream',
+    disposition: response.headers.get('content-disposition'),
+  };
+}
+
+/** Thrown by {@link fetchTarsMessageTrace} when pwc_tars answers 2xx without a message. */
+const MALFORMED_TRACE = 'Malformed trace response';
+
+/** A failed trace or file request, classified for the audit panel (see `TTarsAuditErrorCode`). */
+export interface TarsAuditErrorReply extends TTarsAuditErrorBody {
+  status: number;
+}
+
+const reply = (
+  status: number,
+  code: TTarsAuditErrorCode,
+  error: string,
+  detail?: string,
+): TarsAuditErrorReply => ({ status, code, error, ...(detail && { detail }) });
+
+/** A connection-level failure (refused, reset, DNS) that `fetch` reports as a TypeError. */
+const isNetworkError = (error: unknown): boolean =>
+  error instanceof TypeError && /fetch failed|network/i.test(error.message);
+
+/**
+ * Classifies a failed trace read or document download. pwc_tars's own 401 is
+ * answered as a 502, never relayed: the browser would take a 401 for an expired
+ * LibreChat session and refresh it, when the signed admin bearer was refused.
+ */
+export function tarsAuditErrorReply(
+  error: unknown,
+  notFound: Extract<TTarsAuditErrorCode, 'message_not_found' | 'document_not_found'>,
+): TarsAuditErrorReply {
+  if (error instanceof TarsRequestError) {
+    const detail = error.serverMessage;
+    /** pwc_tars (or a proxy in front of it) can answer 503 too; only our own refusal names the secret. */
+    if (error.status === 503 && detail === TARS_SECRET_MISSING_MESSAGE) {
+      return reply(503, 'secret_missing', TARS_SECRET_MISSING_MESSAGE);
+    }
+    if (error.status === 401) {
+      return reply(
+        502,
+        'credentials_rejected',
+        'The server rejected the signed admin request',
+        detail,
+      );
+    }
+    if (error.status === 403) {
+      return reply(
+        403,
+        'not_tars_admin',
+        'The server does not grant this account admin access',
+        detail,
+      );
+    }
+    if (error.status === 404) {
+      return reply(404, notFound, 'Not found on the server', detail);
+    }
+    if (error.status === 502 && detail === MALFORMED_TRACE) {
+      return reply(502, 'bad_response', 'The server answered in an unexpected shape', detail);
+    }
+    if (error.status >= 400 && error.status < 500) {
+      return reply(error.status, 'request_rejected', 'The server rejected the request', detail);
+    }
+    return reply(502, 'tars_failed', `The server failed with status ${error.status}`, detail);
+  }
+  if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+    return reply(504, 'tars_timeout', 'The server did not answer in time');
+  }
+  if (error instanceof SyntaxError) {
+    return reply(502, 'bad_response', 'The server answered in an unexpected shape', error.message);
+  }
+  if (error instanceof Error && error.message === TARS_NOT_CONFIGURED_MESSAGE) {
+    return reply(503, 'not_configured', TARS_NOT_CONFIGURED_MESSAGE);
+  }
+  if (isNetworkError(error)) {
+    const cause = (error as { cause?: { code?: unknown } }).cause?.code;
+    return reply(502, 'tars_unreachable', 'The server could not be reached', String(cause ?? ''));
+  }
+  return reply(500, 'internal', 'Unexpected error');
+}
+
+/** Sends a classified failure, unless the response already started streaming. */
+export function sendTarsAuditError(
+  res: Response,
+  error: unknown,
+  notFound: Parameters<typeof tarsAuditErrorReply>[1],
+): void {
+  if (res.headersSent) {
+    return;
+  }
+  const { status, ...body } = tarsAuditErrorReply(error, notFound);
+  res.status(status).json(body);
+}
+
+/** A LibreChat file a mirrored trace names, as its download reads it. */
+export interface TarsAuditStoredFile extends StoredFileRef {
+  file_id: string;
+  filename: string;
+  source?: string | null;
+}
+
+type TarsAuditDocumentRequest = Request<{ documentId: string }> & { user?: { tarsId?: string } };
+
+/**
+ * Whether the trace names this document: a LibreChat attachment by `file_id`
+ * (thread files and the turn's own uploads) or a pwc_tars memory document by `id`.
+ */
+export function tarsTraceNamesDocument(trace: TTarsMessageTrace, documentId: string): boolean {
+  return trace.trace.some(({ payload }) =>
+    [...(payload?.documents ?? []), ...(payload?.payload?.upload_files ?? [])].some(
+      (document) =>
+        document?.file_id === documentId ||
+        ('id' in document && document.id != null && String(document.id) === documentId),
+    ),
+  );
+}
+
+type OpenDownloadStream = (
+  req: TarsAuditDocumentRequest,
+  filepath: string,
+) => Promise<NodeJS.ReadableStream>;
+
+export interface TarsAuditDocumentDeps<TFile extends TarsAuditStoredFile> {
+  /** The LibreChat file with this `file_id`, whoever owns it, or null. */
+  findFile: (fileId: string) => Promise<TFile | null>;
+  /** The text of a file kept only as text (`source: 'text'`). */
+  readText: (file: TFile) => Promise<string | null | undefined>;
+  /** The stream opener of the storage a file source names; null when it cannot stream. */
+  getDownloadStream: (source: string) => OpenDownloadStream | null | undefined;
+  /** The audited message's trace, read as the acting admin (defaults to pwc_tars). */
+  loadTrace?: (tarsId: string, messageId: string) => Promise<TTarsMessageTrace>;
+}
+
+const DOCUMENT_LOG_TAG = '[tars-audit] document';
+
+/**
+ * Downloads a file a traced message names. A mirrored LibreChat chat names its
+ * attachments by LibreChat `file_id`, so those come from LibreChat's own
+ * storage; any other id is a pwc_tars long-term-memory document. It serves any
+ * user's file, so the request names the audited message: reading its trace
+ * re-checks admin access in pwc_tars, and only a file that trace names is sent.
+ */
+export function createTarsAuditDocumentHandler<TFile extends TarsAuditStoredFile>(
+  deps: TarsAuditDocumentDeps<TFile>,
+) {
+  return async function sendTarsAuditDocument(
+    req: TarsAuditDocumentRequest,
+    res: Response,
+  ): Promise<void> {
+    const { documentId } = req.params;
+    const messageId = typeof req.query?.messageId === 'string' ? req.query.messageId : '';
+    const tarsId = req.user?.tarsId ?? '';
+    if (!messageId) {
+      const { status, ...body } = reply(400, 'request_rejected', 'messageId is required');
+      res.status(status).json(body);
+      return;
+    }
+    try {
+      const trace = await (deps.loadTrace ?? fetchTarsMessageTrace)(tarsId, messageId);
+      if (!tarsTraceNamesDocument(trace, documentId)) {
+        const { status, ...body } = reply(404, 'document_not_found', 'Not found on the server');
+        res.status(status).json(body);
+        return;
+      }
+      const file = await deps.findFile(documentId);
+      if (file?.source === FileSources.text) {
+        const text = await deps.readText(file);
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', tarsAttachmentDisposition(file.filename));
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.send(typeof text === 'string' ? text : '');
+        return;
+      }
+      if (file) {
+        const source =
+          typeof file.source === 'string' && file.source ? file.source : FileSources.local;
+        const openStream = deps.getDownloadStream(source);
+        if (!openStream) {
+          const { status, ...body } = reply(
+            404,
+            'document_unavailable',
+            'This file cannot be downloaded from its storage',
+            source,
+          );
+          res.status(status).json(body);
+          return;
+        }
+        let stream: NodeJS.ReadableStream;
+        try {
+          stream = await openStream(req, resolveDownloadPath(file));
+        } catch (error) {
+          logger.error(`${DOCUMENT_LOG_TAG} Storage could not open the file`, error);
+          const { status, ...body } = reply(
+            500,
+            'storage_failed',
+            'The file storage could not be read',
+            error instanceof Error ? error.message : undefined,
+          );
+          res.status(status).json(body);
+          return;
+        }
+        sendTarsFileStream(res, stream, file.filename, DOCUMENT_LOG_TAG);
+        return;
+      }
+      const document = await downloadTarsAuditMemoryDocument(tarsId, documentId);
+      /** pwc_tars's type is relayed but never sniffed, so its bytes cannot render as a page here. */
+      res.setHeader('Content-Type', document.contentType);
+      if (document.disposition) {
+        /** Node refuses a header with characters it cannot send; the file still downloads, by its id. */
+        try {
+          res.setHeader('Content-Disposition', document.disposition);
+        } catch {
+          res.setHeader('Content-Disposition', tarsAttachmentDisposition(documentId));
+        }
+      }
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      pipeTarsDownload(res, document.stream, DOCUMENT_LOG_TAG);
+    } catch (error) {
+      logger.error(`${DOCUMENT_LOG_TAG} Download failed`, error);
+      sendTarsAuditError(res, error, 'document_not_found');
+    }
   };
 }

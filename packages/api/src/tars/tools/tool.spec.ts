@@ -13,6 +13,8 @@ import { invalidateTarsPluginManifestsCache } from '~/tars/plugins/client';
 import { invalidateTarsScopedKnowledgeBasesCache } from '~/tars/scope';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { tarsToolStreamResponse } from './mocks';
+import { getTarsToolAuditTrace } from './auditTrace';
+import { getTarsToolUsage } from './usage';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import {
   buildTarsToolsContext,
@@ -400,6 +402,43 @@ describe('createTarsBuiltinTool', () => {
       '正在重新排序…',
     ]);
     expect(reportProgress.mock.calls[0][1]).toMatchObject({ toolCall: { id: 'call-1' } });
+  });
+
+  /** Kept on the request for the mirror's trace; never in the message or the stream. */
+  it('asks for the retrieval detail and keeps it by call id when the request will be mirrored', async () => {
+    const retrieval = { type: 'rag_retrieval', query: 'q', parent_id: '', documents: [{ pk: 1 }] };
+    const fetchMock = mockBackend(
+      ok({
+        content: '[1] source: a.pdf',
+        audit_trace: [retrieval],
+        tokens: { total: 34, prompt: 30, completion: 4 },
+      }),
+    );
+    const req = {};
+    const builtin = await createTarsBuiltinTool({
+      toolName: 'tars_knowledge_search',
+      tarsUserId: USER_ID,
+      domainId: 100,
+      auditTraceOwner: req,
+    });
+
+    const message = await invoke(builtin, 'tars_knowledge_search', { query: 'q' });
+    expect(bodyOf(fetchMock)).toMatchObject({ audit_trace: true });
+    expect(getTarsToolAuditTrace(req).get('call-1')).toEqual([retrieval]);
+    expect(getTarsToolUsage(req).get('call-1')).toEqual({ input_tokens: 30, output_tokens: 4 });
+    expect(JSON.stringify(message)).not.toContain('"pk"');
+  });
+
+  it('does not ask for the retrieval detail without a request to keep it on', async () => {
+    const fetchMock = mockBackend(ok({ content: 'done' }));
+    const builtin = await createTarsBuiltinTool({
+      toolName: 'tars_knowledge_search',
+      tarsUserId: USER_ID,
+      domainId: 100,
+    });
+
+    await invoke(builtin, 'tars_knowledge_search', { query: 'q' });
+    expect(bodyOf(fetchMock)).not.toHaveProperty('audit_trace');
   });
 
   it('relays a pwc_tars error message to the model', async () => {

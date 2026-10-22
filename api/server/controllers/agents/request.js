@@ -398,6 +398,8 @@ async function saveErrorTurn(
     sender,
     initialAgentId,
     existingTarsConversationId,
+    tarsUsage,
+    tarsAgent,
   },
 ) {
   try {
@@ -616,7 +618,8 @@ async function saveErrorTurn(
         domainId: req.body?.domain_id,
         query: userMessage?.text ?? liveUserMessage?.text ?? req.body?.text,
         messageId: errorMessageId,
-        turn: { files: userMessage?.files, errorText },
+        turn: { files: userMessage?.files, usage: tarsUsage, errorText },
+        agent: tarsAgent,
       });
     }
   } catch (err) {
@@ -3026,7 +3029,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
 
         /** Best-effort, non-blocking mirror of this turn into pwc_tars (LibreChat → pwc_tars).
          *  A stopped or truncated turn is recorded as interrupted, as pwc_tars records its own. */
-        const mirrorTurnToTars = (unfinished) => {
+        const mirrorTurnToTars = (unfinished, outcome) => {
           if (req.body?.isTemporary) {
             return;
           }
@@ -3044,6 +3047,13 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
               usage: client?.collectedUsage,
               unfinished,
             },
+            tokenEstimate: {
+              promptTokens: response?.promptTokens,
+              completionTokens: response?.tokenCount,
+            },
+            agent: client?.options?.agent,
+            attachments: response?.attachments,
+            outcome,
           });
         };
 
@@ -3073,7 +3083,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           /** Stop won the claim and saves the partial response itself; the turn still
            *  happened, so pwc_tars records it. A replacement turn mirrors on its own. */
           if (job.abortController.signal.aborted) {
-            mirrorTurnToTars(true);
+            mirrorTurnToTars(true, { aborted: true });
           }
           /** This controller lost terminal persistence ownership, so it cannot
            * prove the winning Stop/replacement has written the unfinished
@@ -3259,7 +3269,13 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           ).catch((err) => logger.error('[AgentController] Failed to persist domain_id', err));
         }
 
-        mirrorTurnToTars(responseIsUnfinished);
+        /** TARS: upstream's terminal flags decide the status pwc_tars records (`resolveTarsMessageOutcome`);
+         *  if a rebase renames them, map the new names here. */
+        mirrorTurnToTars(responseIsUnfinished, {
+          aborted: terminalWasAborted,
+          incomplete: preemptIncomplete,
+          stepLimitReached,
+        });
 
         // If the user stopped this turn — or an empty preempt boundary truncated
         // it, which persists under the same honest `unfinished` contract — cancel
@@ -3488,6 +3504,8 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
                       sender: client?.sender,
                       initialAgentId: verifiedInitialAgentId,
                       existingTarsConversationId,
+                      tarsUsage: client?.collectedUsage,
+                      tarsAgent: client?.options?.agent,
                     }),
                   ),
               })) === true;

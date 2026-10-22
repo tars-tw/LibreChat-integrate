@@ -19,12 +19,18 @@ type StoredMessage = Pick<
   'messageId' | 'parentMessageId' | 'isCreatedByUser' | 'text' | 'content' | 'attachments'
 >;
 
+/** The fields {@link loadTarsPluginHistory} reads, so the thread is not loaded whole. */
+const HISTORY_FIELDS = 'messageId parentMessageId isCreatedByUser text content attachments';
+
 export interface TarsPluginHistorySource {
   conversationId?: string;
   /** Parent of the message being answered; the chain above it is the history. */
   parentMessageId?: string;
   userId?: string;
-  getMessages: (filter: { conversationId: string; user: string }) => Promise<StoredMessage[]>;
+  getMessages: (
+    filter: { conversationId: string; user: string },
+    select?: string,
+  ) => Promise<StoredMessage[]>;
 }
 
 type ContentPart = NonNullable<TMessage['content']>[number];
@@ -73,7 +79,7 @@ export async function loadTarsPluginHistory(
   if (!conversationId || !parentMessageId || !userId || conversationId === 'new') {
     return [];
   }
-  const rows = await getMessages({ conversationId, user: userId });
+  const rows = await getMessages({ conversationId, user: userId }, HISTORY_FIELDS);
   const byId = new Map(rows.map((row) => [row.messageId, row]));
   const chain: TarsHistoryMessage[] = [];
   const seen = new Set<string>();

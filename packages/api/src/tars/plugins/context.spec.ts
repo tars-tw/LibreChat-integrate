@@ -41,7 +41,10 @@ describe('loadTarsPluginHistory', () => {
       { role: 'user', content: '第二個問題' },
       { role: 'assistant', content: '第二個回答' },
     ]);
-    expect(getMessages).toHaveBeenCalledWith({ conversationId: 'conv-1', user: 'user-1' });
+    expect(getMessages).toHaveBeenCalledWith(
+      { conversationId: 'conv-1', user: 'user-1' },
+      'messageId parentMessageId isCreatedByUser text content attachments',
+    );
   });
 
   it('puts an ends_turn plugin answer back in front of the model line', async () => {

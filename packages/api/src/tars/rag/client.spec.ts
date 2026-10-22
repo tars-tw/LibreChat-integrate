@@ -116,6 +116,7 @@ describe('runTarsRagAgent', () => {
       answer: '請假依《考勤辦法》辦理',
       modelName: 'gpt-5.4-mini',
       totalTokens: 1234,
+      tokens: { total: 1234 },
       knowledgeBaseIds: ['kb-general', 'kb-docs'],
     });
     expect(ragBodyOf(fetchMock)).toEqual({

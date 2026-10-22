@@ -2,78 +2,23 @@ const mongoose = require('mongoose');
 const { logger } = require('@librechat/data-schemas');
 const {
   isTarsConfigured,
-  createTarsConversation,
-  createTarsMessage,
-  buildTarsTurnFields,
-  syncTarsConversationName,
+  createTarsChatMirror,
   deleteTarsConversation,
   deleteTarsConversations,
   mirrorTarsMessageFeedback,
 } = require('@librechat/api');
-const { getConvo, saveConvo, getMessage } = require('~/models');
+const { getConvo, saveConvo, getMessage, getMessages } = require('~/models');
+
+let chatMirror;
 
 /**
- * Best-effort, one-way mirror of a finished, stopped or failed LibreChat chat turn into
- * the pwc_tars DB (LibreChat → pwc_tars). Lazily creates the linked pwc_tars conversation
- * on the first turn and stores the mapping (`tarsConversationId`) on the LibreChat
- * conversation, then appends the query/response as a pwc_tars message. Keeps the
- * pwc_tars-side conversation name in step with LibreChat's generated title.
- * `turn` is a `TarsTurnSource` (response, files, usage, unfinished / errorText).
- *
- * Never throws — any failure is logged and swallowed so chat is unaffected.
+ * Mirrors a finished, stopped or failed chat turn into pwc_tars; never rejects (see
+ * `createTarsChatMirror`). Built on first use with `?.` because upstream specs mock
+ * `@librechat/api` without it, and a throw here would break the chat controller.
  */
-async function mirrorChatToTars(
-  req,
-  { conversationId, existingTarsConversationId, title, model, domainId, query, messageId, turn },
-) {
-  try {
-    const tarsId = req?.user?.tarsId;
-    if (!isTarsConfigured() || !tarsId || !conversationId || !query) {
-      return;
-    }
-
-    const userId = req.user.id;
-    // Prefer the mapping captured before generation (the agent's convo save wipes it);
-    // fall back to re-reading in case it survived.
-    let tarsConversationId =
-      existingTarsConversationId || (await getConvo(userId, conversationId))?.tarsConversationId;
-
-    if (!tarsConversationId) {
-      tarsConversationId = await createTarsConversation(tarsId, {
-        name: title || 'New Chat',
-        domainId,
-        modelName: model,
-        systemInstruction: req?.body?.promptPrefix ?? null,
-      });
-      if (!tarsConversationId) {
-        return;
-      }
-    } else if (title) {
-      // An adopted conversation was named by whoever created it — a long-term-memory
-      // upload names it `長期記憶對話_MMDD` — so push LibreChat's title once it exists.
-      // Deduplicated inside, so this is one request per conversation, not per turn.
-      await syncTarsConversationName(tarsId, tarsConversationId, title);
-    }
-
-    // Always re-assert the mapping: the agent's per-turn convo save wipes it, so without
-    // re-saving each turn the next turn would create a duplicate pwc_tars conversation.
-    await saveConvo(
-      { userId },
-      { conversationId, tarsConversationId },
-      { context: 'api/server/services/Tars/mirror.js - link pwc_tars conversation' },
-    );
-
-    await createTarsMessage(tarsId, {
-      conversationId: tarsConversationId,
-      messageId,
-      query,
-      modelName: model,
-      ipAddr: req.ip,
-      ...buildTarsTurnFields(turn ?? {}),
-    });
-  } catch (error) {
-    logger.error('[mirrorChatToTars] Failed to mirror conversation to pwc_tars', error);
-  }
+function mirrorChatToTars(req, input) {
+  chatMirror ??= createTarsChatMirror?.({ getConvo, saveConvo, getMessages });
+  return chatMirror?.(req, input);
 }
 
 /**

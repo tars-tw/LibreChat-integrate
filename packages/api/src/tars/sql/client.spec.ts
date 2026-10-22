@@ -120,7 +120,12 @@ describe('runTarsSqlAgent', () => {
         knowledgeBaseId: 'kb-sql',
         model: 'gpt-5.4-mini',
       }),
-    ).resolves.toEqual({ answer: '共有 9 個模型', modelName: 'gpt-5.4-mini', totalTokens: 8983 });
+    ).resolves.toEqual({
+      answer: '共有 9 個模型',
+      modelName: 'gpt-5.4-mini',
+      totalTokens: 8983,
+      tokens: { total: 8983 },
+    });
 
     const call = fetchMock.mock.calls.find(([url]) =>
       String(url).includes('/api/langflow-service/sql'),

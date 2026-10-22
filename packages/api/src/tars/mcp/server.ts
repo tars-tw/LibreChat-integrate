@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import type { CallToolResult, ListToolsResult } from '@modelcontextprotocol/sdk/types.js';
 import type { IncomingMessage, ServerResponse } from 'http';
+import { TARS_NOT_LINKED, tarsToolFailureText } from '~/tars/failure';
 import { listTarsMcpTools, executeTarsMcpTool } from './client';
 import { TarsRequestError } from '~/tars/client';
 
@@ -53,7 +54,7 @@ export function createTarsMcpServer(tarsUserId: string | null, serverId?: string
     const { name, arguments: toolArguments } = request.params;
     if (!tarsUserId) {
       return {
-        content: [{ type: 'text', text: 'This LibreChat account is not linked to pwc_tars.' }],
+        content: [{ type: 'text', text: `${TARS_NOT_LINKED}.` }],
         isError: true,
       };
     }
@@ -65,7 +66,9 @@ export function createTarsMcpServer(tarsUserId: string | null, serverId?: string
         `[tars-mcp] Tool "${name}" failed for pwc_tars user ${tarsUserId}: ${toErrorMessage(error)}`,
       );
       return {
-        content: [{ type: 'text', text: `TARS tool call failed: ${toErrorMessage(error)}` }],
+        content: [
+          { type: 'text', text: tarsToolFailureText('TARS tool call', toErrorMessage(error)) },
+        ],
         isError: true,
       };
     }
