@@ -1,11 +1,14 @@
 import React from 'react';
-import { ResourceType } from 'librechat-data-provider';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { PrincipalType, ResourceType } from 'librechat-data-provider';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
+import type { TPrincipal } from 'librechat-data-provider';
 import GenericGrantAccessDialog from '../GenericGrantAccessDialog';
 import translationEn from '~/locales/en/translation.json';
 
 const mockShowToast = jest.fn();
+let mockPicked: TPrincipal[] = [];
+
 const mockRefetchPermissions = jest.fn();
 const mockUseResourcePermissionState = jest.fn();
 const mockUseAuthContext = jest.fn(() => ({ user: { role: 'ADMIN' } }));
@@ -60,9 +63,25 @@ jest.mock('~/data-provider', () => ({
   useGetStartupConfig: () => mockUseGetStartupConfig(),
 }));
 
+/** Stands in for the directory picker: one button adds the queued picks, one only checks them. */
 jest.mock('../PeoplePicker/DirectoryPeoplePicker', () => ({
   __esModule: true,
-  default: () => <div data-testid="directory-people-picker" />,
+  default: ({
+    onAddPeople,
+    onPendingChange,
+  }: {
+    onAddPeople: (people: TPrincipal[]) => void;
+    onPendingChange?: (people: TPrincipal[]) => void;
+  }) => (
+    <div data-testid="directory-people-picker">
+      <button type="button" data-testid="add-picks" onClick={() => onAddPeople(mockPicked)} />
+      <button
+        type="button"
+        data-testid="check-picks"
+        onClick={() => onPendingChange?.(mockPicked)}
+      />
+    </div>
+  ),
 }));
 
 jest.mock('../PeoplePicker/UnifiedPeopleSearch', () => ({
@@ -221,6 +240,95 @@ describe('GenericGrantAccessDialog - permissions load failure', () => {
     expect(screen.getByTestId('unified-people-search')).toBeInTheDocument();
     expect(screen.queryByTestId('directory-people-picker')).not.toBeInTheDocument();
     expect(screen.getByTestId('admin-settings')).toBeInTheDocument();
+  });
+
+  describe('picks left in the pwc_tars directory picker', () => {
+    const owner: TPrincipal = {
+      type: PrincipalType.USER,
+      id: 'owner-1',
+      name: 'Owner',
+      source: 'tars',
+      idOnTheSource: 't-owner',
+      accessRoleId: 'owner' as TPrincipal['accessRoleId'],
+    };
+    const amy: TPrincipal = {
+      type: PrincipalType.USER,
+      name: 'Amy',
+      source: 'tars',
+      idOnTheSource: 't-amy',
+    };
+    const boss: TPrincipal = {
+      type: PrincipalType.GROUP,
+      name: 'BOSS專用',
+      source: 'tars',
+      idOnTheSource: 't-boss',
+    };
+
+    const openDirectoryDialog = () => {
+      const mutateAsync = jest.fn().mockResolvedValue({});
+      mockUseGetStartupConfig.mockReturnValue({ data: { tarsAuth: true } });
+      mockUseResourcePermissionState.mockReturnValue(
+        baseState({
+          permissionsData: { principals: [owner], public: false },
+          currentShares: [owner],
+          updatePermissionsMutation: { isLoading: false, mutateAsync },
+        }),
+      );
+      renderDialog();
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_share_var' }));
+      return mutateAsync;
+    };
+    const saveButton = () => screen.getByRole('button', { name: 'com_ui_save' });
+
+    beforeEach(() => {
+      mockPicked = [amy, boss];
+    });
+
+    it('enables Save for checked picks and shares them with the default role', async () => {
+      const mutateAsync = openDirectoryDialog();
+      expect(saveButton()).toBeDisabled();
+
+      fireEvent.click(screen.getByTestId('check-picks'));
+      expect(saveButton()).not.toBeDisabled();
+      await act(async () => {
+        fireEvent.click(saveButton());
+      });
+
+      expect(mutateAsync).toHaveBeenCalledWith({
+        resourceType: ResourceType.AGENT,
+        resourceId: 'agent-db-1',
+        data: {
+          updated: [
+            expect.objectContaining({ idOnTheSource: 't-amy', accessRoleId: 'viewer' }),
+            expect.objectContaining({ idOnTheSource: 't-boss', accessRoleId: 'viewer' }),
+          ],
+          removed: [],
+        },
+      });
+    });
+
+    it('shares a pick once when it is both checked and added', async () => {
+      const mutateAsync = openDirectoryDialog();
+
+      fireEvent.click(screen.getByTestId('check-picks'));
+      fireEvent.click(screen.getByTestId('add-picks'));
+      await act(async () => {
+        fireEvent.click(saveButton());
+      });
+
+      expect(mutateAsync.mock.calls[0][0].data.updated).toHaveLength(2);
+    });
+
+    it('drops the checked picks when the dialog is closed without saving', async () => {
+      const mutateAsync = openDirectoryDialog();
+
+      fireEvent.click(screen.getByTestId('check-picks'));
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_share_var' }));
+
+      expect(saveButton()).toBeDisabled();
+      expect(mutateAsync).not.toHaveBeenCalled();
+    });
   });
 
   it('discards the draft through the shared close path', () => {

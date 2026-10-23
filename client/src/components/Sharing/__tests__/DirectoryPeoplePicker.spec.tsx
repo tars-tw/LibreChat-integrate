@@ -184,6 +184,44 @@ describe('DirectoryPeoplePicker', () => {
     expect(onPendingChange).toHaveBeenLastCalledWith([]);
   });
 
+  it('forgets a pick once the host lists it, so removing it later does not bring it back', () => {
+    const onPendingChange = jest.fn();
+    /** A host that saves picks without Add, then lets the admin remove them again. */
+    function Host() {
+      const [listed, setListed] = React.useState<string[]>([]);
+      return (
+        <>
+          <DirectoryPeoplePicker
+            onAddPeople={jest.fn()}
+            excludeIds={listed}
+            onPendingChange={onPendingChange}
+          />
+          <button type="button" data-testid="save-picks" onClick={() => setListed(['u-alice'])} />
+          <button type="button" data-testid="remove-alice" onClick={() => setListed([])} />
+        </>
+      );
+    }
+    render(<Host />);
+    openList();
+    act(() => {
+      fireEvent.click(screen.getByRole('option', { name: /Alice Chen/ }));
+    });
+    expect(onPendingChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ idOnTheSource: 'u-alice' }),
+    ]);
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('save-picks'));
+    });
+    expect(onPendingChange).toHaveBeenLastCalledWith([]);
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('remove-alice'));
+    });
+    expect(onPendingChange).toHaveBeenLastCalledWith([]);
+    expect(screen.queryAllByTestId('directory-picker-chip')).toHaveLength(0);
+  });
+
   it('does not offer principals already on the share list', () => {
     render(<DirectoryPeoplePicker onAddPeople={jest.fn()} excludeIds={['u-alice', undefined]} />);
     openList();

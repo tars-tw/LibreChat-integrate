@@ -113,6 +113,18 @@ export default function DirectoryPeoplePicker({
     [selectedKeys, options],
   );
 
+  /**
+   * A pick the host has since listed (excluded) is dropped for good, not merely hidden:
+   * hosts that save picks without Add would otherwise see it come back as a pick — and be
+   * saved again — the moment it is removed from their list.
+   */
+  useEffect(() => {
+    setSelectedKeys((keys) => {
+      const kept = keys.filter((key) => options.has(key));
+      return kept.length === keys.length ? keys : kept;
+    });
+  }, [options]);
+
   /** Reported by identity, not array: hosts re-render with a fresh `excludeIds` array, which
    *  rebuilds `selected` — reporting every rebuild would loop through the host's state. */
   const pendingRef = useRef(onPendingChange);
