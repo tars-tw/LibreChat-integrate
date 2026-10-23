@@ -1693,11 +1693,6 @@
       "count": 1
     }
   },
-  "client/src/components/McpSettings/McpPermissionsTab.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 6
-    }
-  },
   "client/src/components/McpSettings/McpServerModal.tsx": {
     "shadcn/no-raw-colors": {
       "count": 1
