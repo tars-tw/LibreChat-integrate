@@ -145,6 +145,45 @@ describe('DirectoryPeoplePicker', () => {
     expect(screen.queryAllByTestId('directory-picker-chip')).toHaveLength(0);
   });
 
+  it('reports picks not added yet, and none once they are added', () => {
+    const onPendingChange = jest.fn();
+    /** A host that re-renders with a fresh `excludeIds` array on every report. */
+    function Host() {
+      const [, setCount] = React.useState(0);
+      return (
+        <DirectoryPeoplePicker
+          onAddPeople={jest.fn()}
+          excludeIds={['u-nobody']}
+          onPendingChange={(people) => {
+            onPendingChange(people);
+            setCount((count) => count + 1);
+          }}
+        />
+      );
+    }
+    render(<Host />);
+    openList();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('option', { name: /Finance/ }));
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole('option', { name: /Alice Chen/ }));
+    });
+
+    expect(onPendingChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ idOnTheSource: 'g-finance' }),
+      expect.objectContaining({ idOnTheSource: 'u-alice' }),
+    ]);
+    /** Mount (empty) plus one report per pick — a fresh `excludeIds` does not re-report. */
+    expect(onPendingChange).toHaveBeenCalledTimes(3);
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('directory-picker-add'));
+    });
+    expect(onPendingChange).toHaveBeenLastCalledWith([]);
+  });
+
   it('does not offer principals already on the share list', () => {
     render(<DirectoryPeoplePicker onAddPeople={jest.fn()} excludeIds={['u-alice', undefined]} />);
     openList();
