@@ -27,6 +27,8 @@ import { errorMessage } from '~/components/Admin/Tars/Models/helpers';
 import { principalKey } from '~/components/Sharing/shareChanges';
 import McpPaginationControls from './McpPaginationControls';
 import { useClientPagination } from './useClientPagination';
+import McpToolChecklist from './McpToolChecklist';
+import { toggleToolScope } from './grants';
 import { useLocalize } from '~/hooks';
 
 /** Selection state: serverId → checked toolId set; empty set = whole server (`mcp_tool_ids: []`). */
@@ -111,67 +113,16 @@ function PermissionServerRow({
         <span className="text-text-secondary text-right text-xs">{server.tool_count ?? 0}</span>
       </div>
       {isExpanded && (
-        <ul className="bg-surface-secondary space-y-1 px-4 py-2 sm:px-6">
-          {isLoading && (
-            <li>
-              <Spinner className="icon-sm" />
-            </li>
-          )}
-          {!isLoading &&
-            tools.map((tool) => {
-              const isToolChecked =
-                isServerChecked &&
-                ((checkedTools?.size ?? 0) === 0 || checkedTools?.has(tool.id) === true);
-              return (
-                <li key={tool.id}>
-                  <div className="hover:bg-surface-hover flex items-start gap-2 rounded-lg px-2 py-2">
-                    <Checkbox
-                      aria-label={tool.name}
-                      checked={isToolChecked}
-                      onCheckedChange={(checked) =>
-                        onToggleTool(server.id, allToolIds, tool.id, checked === true)
-                      }
-                      className="mt-0.5 shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <span
-                        className={`inline-block rounded px-1.5 py-0.5 font-mono text-xs ${
-                          isToolChecked
-                            ? 'bg-accent-primary/15 text-accent-primary'
-                            : 'bg-surface-tertiary text-text-primary'
-                        }`}
-                      >
-                        {tool.name}
-                      </span>
-                      {tool.description != null && tool.description !== '' && (
-                        <p className="text-text-secondary mt-1 text-xs break-words whitespace-normal">
-                          {tool.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          {!isLoading && tools.length === 0 && (
-            <li className="text-text-secondary text-xs">{localize('com_ui_tars_mcp_no_tools')}</li>
-          )}
-        </ul>
+        <McpToolChecklist
+          tools={tools}
+          isLoading={isLoading}
+          scope={checkedTools}
+          onToggle={(toolId, checked) => onToggleTool(server.id, allToolIds, toolId, checked)}
+        />
       )}
     </div>
   );
 }
-
-/**
- * The tools a server grants right now: none while it is unchecked (`undefined`),
- * every tool when stored as "whole server" (an empty set), else the stored subset.
- */
-const grantedToolIds = (current: Set<string> | undefined, allToolIds: string[]): Set<string> => {
-  if (current == null) {
-    return new Set();
-  }
-  return new Set(current.size === 0 ? allToolIds : current);
-};
 
 const toPrincipalType = (principal: TPrincipal): TTarsMcpPrincipalType =>
   principal.type === PrincipalType.GROUP ? 'group' : 'user';
@@ -212,6 +163,12 @@ export default function McpPermissionEditor({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   /** The single target whose saved grants are on the tree; later refetches keep the admin's edits. */
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  /**
+   * Checked in the picker but not added yet. Unlike the server dialog these are not saved
+   * implicitly: adding is what loads a principal's grants onto the tree, and saving
+   * without that would overwrite their other servers with whatever the tree shows.
+   */
+  const [pending, setPending] = useState<TPrincipal[]>([]);
 
   const {
     page,
@@ -272,18 +229,11 @@ export default function McpPermissionEditor({
   const toggleTool = useCallback<ToggleTool>((serverId, allToolIds, toolId, checked) => {
     setSelection((prev) => {
       const next = new Map(prev);
-      const effective = grantedToolIds(next.get(serverId), allToolIds);
-      if (checked) {
-        effective.add(toolId);
-      } else {
-        effective.delete(toolId);
-      }
-      if (effective.size === 0) {
+      const scope = toggleToolScope(next.get(serverId), allToolIds, toolId, checked);
+      if (scope == null) {
         next.delete(serverId);
-      } else if (effective.size === allToolIds.length) {
-        next.set(serverId, new Set());
       } else {
-        next.set(serverId, effective);
+        next.set(serverId, scope);
       }
       return next;
     });
@@ -314,6 +264,13 @@ export default function McpPermissionEditor({
   });
 
   const handleSave = () => {
+    if (pending.length > 0) {
+      showToast({
+        message: localize('com_ui_tars_mcp_pending_picks', { count: pending.length }),
+        status: 'warning',
+      });
+      return;
+    }
     if (targets.length === 0) {
       showToast({ message: localize('com_ui_tars_mcp_principal_required'), status: 'error' });
       return;
@@ -344,8 +301,14 @@ export default function McpPermissionEditor({
               </h3>
               <DirectoryPeoplePicker
                 onAddPeople={handleAddPeople}
+                onPendingChange={setPending}
                 excludeIds={targets.map(tarsIdOf)}
               />
+              {pending.length > 0 && (
+                <p className="text-status-warning text-xs">
+                  {localize('com_ui_tars_mcp_pending_picks', { count: pending.length })}
+                </p>
+              )}
               <SelectedPrincipalsList principles={targets} onRemoveHandler={removeTarget} />
               {targets.length > 1 && (
                 <p className="text-status-warning text-xs">

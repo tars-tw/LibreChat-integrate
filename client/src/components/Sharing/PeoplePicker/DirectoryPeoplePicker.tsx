@@ -43,6 +43,11 @@ interface DirectoryPeoplePickerProps {
   onAddPeople: (principals: TPrincipal[]) => void;
   /** `idOnTheSource` of principals already on the share list; they are not offered. */
   excludeIds?: (string | undefined)[];
+  /**
+   * Reports the principals checked but not yet added with Add (empty once they are), so a
+   * host whose own Save would otherwise ignore them can include them or ask for Add first.
+   */
+  onPendingChange?: (principals: TPrincipal[]) => void;
   className?: string;
 }
 
@@ -55,6 +60,7 @@ interface DirectoryPeoplePickerProps {
 export default function DirectoryPeoplePicker({
   onAddPeople,
   excludeIds = [],
+  onPendingChange,
   className,
 }: DirectoryPeoplePickerProps) {
   const localize = useLocalize();
@@ -106,6 +112,17 @@ export default function DirectoryPeoplePicker({
         .filter((principal): principal is TPrincipalSearchResult => principal != null),
     [selectedKeys, options],
   );
+
+  /** Reported by identity, not array: hosts re-render with a fresh `excludeIds` array, which
+   *  rebuilds `selected` — reporting every rebuild would loop through the host's state. */
+  const pendingRef = useRef(onPendingChange);
+  pendingRef.current = onPendingChange;
+  const pendingKey = selected.map(optionKey).join('|');
+  const pendingSelected = useRef(selected);
+  pendingSelected.current = selected;
+  useEffect(() => {
+    pendingRef.current?.(pendingSelected.current.map(toPrincipal));
+  }, [pendingKey]);
 
   const sections = useMemo(() => {
     const needle = query.trim().toLowerCase();

@@ -13,6 +13,8 @@ import {
   adminGetTarsMcpPermissions,
   adminSaveTarsMcpPermissions,
   adminDeleteTarsMcpPermissions,
+  adminGetTarsMcpServerPermissions,
+  adminSaveTarsMcpServerPermissions,
   adminListTarsMcpPermissionPrincipals,
 } from './admin';
 import { TarsRequestError } from '~/tars/client';
@@ -161,6 +163,93 @@ describe('pwc_tars MCP permission admin proxy', () => {
       query: { user_id: 'u1' },
       method: 'DELETE',
       actingUser: ADMIN,
+    });
+  });
+
+  describe('server-centric assignment', () => {
+    it("reads one server's assignees as the acting admin", async () => {
+      const assignees = [
+        {
+          principal_type: 'user',
+          principal_id: 'u1',
+          name: 'Amy',
+          email: 'amy@x',
+          is_active: true,
+          mcp_tool_ids: ['t1'],
+          is_enabled: true,
+        },
+      ];
+      const fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(jsonResponse(200, envelope(assignees)));
+
+      await expect(
+        adminGetTarsMcpServerPermissions({ mcp_server_id: 's1' }, ADMIN),
+      ).resolves.toEqual(assignees);
+      expect(requestOf(fetchMock)).toEqual({
+        path: '/api/mcp/permission/server',
+        query: { mcp_server_id: 's1' },
+        method: 'GET',
+        body: undefined,
+        actingUser: ADMIN,
+      });
+    });
+
+    it.each([
+      ['an array', ['s1', 's2']],
+      ['an empty string', ''],
+      ['nothing', undefined],
+    ])('forwards no server id when the Express query holds %s', async (_label, value) => {
+      const fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(jsonResponse(200, envelope(null)));
+
+      await expect(
+        adminGetTarsMcpServerPermissions({ mcp_server_id: value }, ADMIN),
+      ).resolves.toEqual([]);
+      expect(requestOf(fetchMock).query).toEqual({});
+    });
+
+    it('saves exactly the server id and principals pwc_tars expects', async () => {
+      const result = { mcp_server_id: 's1', user_count: 1, group_count: 1 };
+      const fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(jsonResponse(200, envelope(result)));
+      const principals = [
+        { principal_type: 'user' as const, principal_id: 'u1', mcp_tool_ids: ['t1'] },
+        { principal_type: 'group' as const, principal_id: 'g1', mcp_tool_ids: [] },
+      ];
+      const payload = { mcp_server_id: 's1', principals, user_ids: ['u9'] };
+
+      await expect(adminSaveTarsMcpServerPermissions(payload, ADMIN)).resolves.toEqual(result);
+      expect(requestOf(fetchMock)).toEqual({
+        path: '/api/mcp/permission/server/save',
+        query: {},
+        method: 'POST',
+        body: { mcp_server_id: 's1', principals },
+        actingUser: ADMIN,
+      });
+    });
+
+    it('relays a refused disabled principal with its status and message', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          jsonResponse(400, { success: false, message: '已停用的對象不可新增：TARS_AIS' }),
+        );
+
+      const call = adminSaveTarsMcpServerPermissions(
+        {
+          mcp_server_id: 's1',
+          principals: [{ principal_type: 'group', principal_id: 'g2', mcp_tool_ids: [] }],
+        },
+        ADMIN,
+      );
+      await expect(call).rejects.toBeInstanceOf(TarsRequestError);
+      await expect(call).rejects.toMatchObject({
+        status: 400,
+        serverMessage: '已停用的對象不可新增：TARS_AIS',
+      });
     });
   });
 });

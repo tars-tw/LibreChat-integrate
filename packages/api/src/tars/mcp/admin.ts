@@ -1,9 +1,12 @@
 import type {
   TTarsMcpPermission,
   TTarsMcpSystemVariable,
+  TTarsMcpServerPermission,
   TTarsMcpPermissionPrincipal,
   TTarsMcpPermissionSaveResult,
   TTarsMcpPermissionSavePayload,
+  TTarsMcpServerPermissionSaveResult,
+  TTarsMcpServerPermissionSavePayload,
 } from 'librechat-data-provider';
 import { tarsMcpFetch } from './client';
 
@@ -297,6 +300,34 @@ export async function adminDeleteTarsMcpPermissions(
     asUser,
   });
   return result?.deleted ?? 0;
+}
+
+/** One server's assignees with their tool scope, disabled ones included (server-centric view). */
+export async function adminGetTarsMcpServerPermissions(
+  query: { mcp_server_id?: unknown },
+  asUser: string,
+): Promise<TTarsMcpServerPermission[]> {
+  const serverId = query.mcp_server_id;
+  const rows = await tarsMcpFetch<TTarsMcpServerPermission[]>('/api/mcp/permission/server', {
+    query: typeof serverId === 'string' && serverId !== '' ? { mcp_server_id: serverId } : {},
+    asUser,
+  });
+  return rows ?? [];
+}
+
+/**
+ * Overwrites one server's assignees: listed principals are upserted, every other principal
+ * loses this server, their other servers are untouched. pwc_tars validates the payload.
+ */
+export async function adminSaveTarsMcpServerPermissions(
+  payload: TTarsMcpServerPermissionSavePayload,
+  asUser: string,
+): Promise<TTarsMcpServerPermissionSaveResult | undefined> {
+  return tarsMcpFetch<TTarsMcpServerPermissionSaveResult>('/api/mcp/permission/server/save', {
+    method: 'POST',
+    body: { mcp_server_id: payload.mcp_server_id, principals: payload.principals },
+    asUser,
+  });
 }
 
 /**

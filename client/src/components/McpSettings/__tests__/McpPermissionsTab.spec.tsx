@@ -77,13 +77,31 @@ jest.mock('~/data-provider', () => ({
     return { mutate: mockSave, isLoading: false };
   },
   useDeleteTarsMcpPermissionsMutation: () => ({ mutate: mockDelete, isLoading: false }),
+  useTarsMcpServerPermissionsQuery: (serverId: string | null) => ({
+    data: serverId === 's1' ? [] : undefined,
+    isLoading: false,
+  }),
+  useSaveTarsMcpServerPermissionsMutation: () => ({ mutate: jest.fn(), isLoading: false }),
 }));
 
-/** Stands in for the directory combobox: one press adds whatever the test queued up. */
+/** Stands in for the directory combobox: one press adds (or only checks) what the test queued up. */
 jest.mock('~/components/Sharing/PeoplePicker/DirectoryPeoplePicker', () => ({
   __esModule: true,
-  default: ({ onAddPeople }: { onAddPeople: (people: TPrincipal[]) => void }) => (
-    <button type="button" data-testid="pick-people" onClick={() => onAddPeople(mockPicked)} />
+  default: ({
+    onAddPeople,
+    onPendingChange,
+  }: {
+    onAddPeople: (people: TPrincipal[]) => void;
+    onPendingChange?: (people: TPrincipal[]) => void;
+  }) => (
+    <>
+      <button type="button" data-testid="pick-people" onClick={() => onAddPeople(mockPicked)} />
+      <button
+        type="button"
+        data-testid="check-people"
+        onClick={() => onPendingChange?.(mockPicked)}
+      />
+    </>
   ),
 }));
 
@@ -138,6 +156,23 @@ describe('McpPermissionsTab', () => {
     expect(serverCheckbox('Github-repo')).toBeInTheDocument();
   });
 
+  it('opens the server-side assignment from an overview row, apart from the principal dialog', () => {
+    render(<McpPermissionsTab />);
+
+    const [githubAssign] = screen.getAllByRole('button', {
+      name: 'com_ui_tars_mcp_assign_server_title',
+    });
+    fireEvent.click(githubAssign);
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('com_ui_tars_mcp_assign_server_title')).toBeInTheDocument();
+    expect(within(dialog).getByText('com_ui_tars_mcp_assigned_empty')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('checkbox', { name: 'Github-repo' })).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /cancel/i }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it("loads a single target's saved grants into the tree", () => {
     renderOpen();
     pick(amy);
@@ -162,6 +197,22 @@ describe('McpPermissionsTab', () => {
       user_ids: ['u1'],
       user_group_ids: ['g1'],
       servers: [{ mcp_server_id: 's2', mcp_tool_ids: [] }],
+    });
+  });
+
+  it('asks for Add before saving picks that were only checked', () => {
+    renderOpen();
+    pick(amy);
+    mockPicked = [bob];
+    fireEvent.click(screen.getByTestId('check-people'));
+
+    expect(screen.getByText('com_ui_tars_mcp_pending_picks')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
+
+    expect(mockSave).not.toHaveBeenCalled();
+    expect(mockShowToast).toHaveBeenCalledWith({
+      message: 'com_ui_tars_mcp_pending_picks',
+      status: 'warning',
     });
   });
 

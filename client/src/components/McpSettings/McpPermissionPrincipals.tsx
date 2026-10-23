@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Chip, Spinner } from '@librechat/client';
 import { User, Users, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
-import type { TTarsMcpPermissionPrincipal } from 'librechat-data-provider';
+import type { TTarsMcpPrincipalInfo, TTarsMcpPermissionPrincipal } from 'librechat-data-provider';
 import McpPaginationControls from './McpPaginationControls';
 import { useClientPagination } from './useClientPagination';
 import { mcpActionClass } from './actions';
@@ -9,8 +9,9 @@ import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 
 /** Matches `principalKey` from the share dialog, so dialog targets and these rows share one identity. */
-export const permissionPrincipalKey = (principal: TTarsMcpPermissionPrincipal): string =>
-  `${principal.principal_type}-${principal.principal_id}`;
+export const permissionPrincipalKey = (
+  principal: Pick<TTarsMcpPrincipalInfo, 'principal_type' | 'principal_id'>,
+): string => `${principal.principal_type}-${principal.principal_id}`;
 
 type SortField = 'name' | 'type' | 'servers' | 'status';
 

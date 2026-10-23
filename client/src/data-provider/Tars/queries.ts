@@ -53,6 +53,8 @@ import type {
   TTarsMcpPermissionsResponse,
   TTarsMcpPermissionPrincipal,
   TTarsMcpPermissionPrincipalsResponse,
+  TTarsMcpServerPermission,
+  TTarsMcpServerPermissionsResponse,
   TTarsMcpDomainToolsResponse,
   TTarsActionLog,
   TTarsActionLogPage,
@@ -473,6 +475,23 @@ export const useTarsMcpPermissionsQuery = (
     {
       select: (data) => data.permissions ?? [],
       enabled: principal != null,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: one server's assignees with their tool scope (`null` = nothing to load). */
+export const useTarsMcpServerPermissionsQuery = (
+  serverId: string | null,
+  config?: UseQueryOptions<TTarsMcpServerPermissionsResponse, unknown, TTarsMcpServerPermission[]>,
+): QueryObserverResult<TTarsMcpServerPermission[]> => {
+  return useQuery<TTarsMcpServerPermissionsResponse, unknown, TTarsMcpServerPermission[]>(
+    [QueryKeys.tarsMcpServerPermissions, serverId ?? ''],
+    () => dataService.getTarsMcpServerPermissions(serverId as string),
+    {
+      select: (data) => data.permissions ?? [],
+      enabled: serverId != null,
       ...adminQueryOptions,
       ...config,
     },

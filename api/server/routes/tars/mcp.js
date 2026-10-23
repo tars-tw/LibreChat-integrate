@@ -27,6 +27,8 @@ const {
   adminGetTarsMcpPermissions,
   adminSaveTarsMcpPermissions,
   adminDeleteTarsMcpPermissions,
+  adminGetTarsMcpServerPermissions,
+  adminSaveTarsMcpServerPermissions,
   adminGetTarsMcpLogs,
   adminListTarsMcpSystemVariables,
 } = require('@librechat/api');
@@ -313,6 +315,24 @@ router.delete(
     const deleted = await adminDeleteTarsMcpPermissions(req.query ?? {}, req.user.tarsId);
     await invalidateMcpCaches('DELETE /api/tars/mcp/admin/permissions');
     return { deleted };
+  }),
+);
+
+router.get(
+  '/mcp/admin/permissions/server',
+  adminMiddleware,
+  adminHandler('GET /api/tars/mcp/admin/permissions/server', async (req) => ({
+    permissions: await adminGetTarsMcpServerPermissions(req.query ?? {}, req.user.tarsId),
+  })),
+);
+
+router.post(
+  '/mcp/admin/permissions/server/save',
+  adminMiddleware,
+  adminHandler('POST /api/tars/mcp/admin/permissions/server/save', async (req) => {
+    const result = await adminSaveTarsMcpServerPermissions(req.body ?? {}, req.user.tarsId);
+    await invalidateMcpCaches('POST /api/tars/mcp/admin/permissions/server/save');
+    return { result };
   }),
 );
 
