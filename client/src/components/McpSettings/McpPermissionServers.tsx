@@ -1,21 +1,19 @@
 import { useMemo, useState } from 'react';
-import * as Popover from '@radix-ui/react-popover';
-import { User, Users, UserPlus } from 'lucide-react';
-import { Chip, Spinner, FilterInput } from '@librechat/client';
+import { UserPlus } from 'lucide-react';
+import { Spinner, FilterInput } from '@librechat/client';
 import type {
   TTarsMcpServer,
   TTarsMcpPrincipalType,
   TTarsMcpPermissionPrincipal,
 } from 'librechat-data-provider';
 import type { ReactNode } from 'react';
-import { TYPE_ICON_COLOR } from './McpPermissionPrincipals';
 import McpPaginationControls from './McpPaginationControls';
 import { useClientPagination } from './useClientPagination';
+import AssigneesCell from '~/components/Tars/Assignees';
 import { filterManagedServers } from './servers';
 import ServerTypeBadge from './ServerTypeBadge';
 import { mcpActionClass } from './actions';
 import { useLocalize } from '~/hooks';
-import { cn } from '~/utils';
 
 type ServerAssignees = Record<TTarsMcpPrincipalType, TTarsMcpPermissionPrincipal[]>;
 
@@ -33,72 +31,6 @@ const assigneesByServer = (principals: TTarsMcpPermissionPrincipal[]) => {
   }
   return byServer;
 };
-
-function AssigneesCell({
-  serverName,
-  type,
-  assignees,
-}: {
-  serverName: string;
-  type: TTarsMcpPrincipalType;
-  assignees: TTarsMcpPermissionPrincipal[];
-}) {
-  const localize = useLocalize();
-  const Icon = type === 'group' ? Users : User;
-
-  if (assignees.length === 0) {
-    return (
-      <span className="text-text-secondary inline-flex items-center gap-1.5 px-1.5 py-1">
-        <Icon className="icon-sm" aria-hidden="true" />0
-      </span>
-    );
-  }
-
-  const title = localize(
-    type === 'group' ? 'com_ui_tars_mcp_server_groups_title' : 'com_ui_tars_mcp_server_users_title',
-    { name: serverName, count: assignees.length },
-  );
-  return (
-    <Popover.Root>
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          aria-label={title}
-          className="text-text-primary hover:bg-surface-tertiary inline-flex items-center gap-1.5 rounded px-1.5 py-1"
-        >
-          <Icon className={cn('icon-sm', TYPE_ICON_COLOR[type])} aria-hidden="true" />
-          {assignees.length}
-        </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          align="start"
-          sideOffset={4}
-          className="border-border-light bg-surface-primary text-text-primary z-50 w-72 max-w-[calc(100vw-2rem)] rounded-lg border shadow-lg"
-        >
-          <p className="border-border-light text-text-secondary border-b px-3 py-2 text-xs font-medium">
-            {title}
-          </p>
-          <ul className="max-h-64 overflow-y-auto py-1">
-            {assignees.map((principal) => (
-              <li key={principal.principal_id} className="flex items-center gap-2 px-3 py-1.5">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">{principal.name}</span>
-                  {principal.email != null && principal.email !== '' && (
-                    <span className="text-text-secondary block truncate text-xs">
-                      {principal.email}
-                    </span>
-                  )}
-                </span>
-                {!principal.is_active && <Chip>{localize('com_ui_tars_mcp_disabled')}</Chip>}
-              </li>
-            ))}
-          </ul>
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
 
 interface McpPermissionServersProps {
   servers: TTarsMcpServer[];
@@ -127,16 +59,24 @@ export default function McpPermissionServers({
   const assignees = useMemo(() => assigneesByServer(principals), [principals]);
   const { page, setPage, pageSize, setPageSize, pageCount, pageItems } = useClientPagination(rows);
 
-  const renderAssignees = (server: TTarsMcpServer, type: TTarsMcpPrincipalType) =>
-    principalsLoading ? (
-      <Spinner className="icon-sm" />
-    ) : (
+  const renderAssignees = (server: TTarsMcpServer, type: TTarsMcpPrincipalType) => {
+    if (principalsLoading) {
+      return <Spinner className="icon-sm" />;
+    }
+    const list = (assignees.get(server.id) ?? NO_ASSIGNEES)[type];
+    return (
       <AssigneesCell
-        serverName={server.name}
         type={type}
-        assignees={(assignees.get(server.id) ?? NO_ASSIGNEES)[type]}
+        assignees={list}
+        title={localize(
+          type === 'group'
+            ? 'com_ui_tars_mcp_server_groups_title'
+            : 'com_ui_tars_mcp_server_users_title',
+          { name: server.name, count: list.length },
+        )}
       />
     );
+  };
 
   return (
     <section className="space-y-3" aria-labelledby="tars-mcp-servers-overview-title">

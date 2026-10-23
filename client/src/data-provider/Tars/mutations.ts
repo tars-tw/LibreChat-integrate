@@ -54,6 +54,8 @@ import type {
   TTarsModelProfileInput,
   TTarsModelProfileSync,
   TTarsModelProfileWriteResult,
+  TTarsModelPermissionSaveResult,
+  TTarsModelPermissionSavePayload,
   TTarsRoleInput,
   TTarsRoleDetail,
   TTarsSystemSettings,
@@ -843,6 +845,17 @@ const invalidateTarsMcpGrants = (queryClient: ReturnType<typeof useQueryClient>)
   queryClient.invalidateQueries([QueryKeys.tarsMcpServerPermissions], { refetchType: 'all' });
 };
 
+/**
+ * Every view of `sys_model_permission`: the overview (each model's counts and names) and
+ * each model's assignees. pwc_tars also drops grants when a model, user or group is
+ * deleted, and a user's or group's name/status shows in those lists, so the user, group
+ * and model-profile mutations call this too. `refetchType: 'all'` for the same reason as
+ * `invalidateTarsMcpGrants`.
+ */
+const invalidateTarsModelGrants = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsModelPermissions], { refetchType: 'all' });
+};
+
 const invalidateTarsMcp = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsMcpServers]);
   queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
@@ -1140,6 +1153,7 @@ const invalidateUsers = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsUserGroups]);
   queryClient.invalidateQueries([QueryKeys.tarsTokenQuotas]);
   invalidateTarsMcpGrants(queryClient);
+  invalidateTarsModelGrants(queryClient);
 };
 
 export const useCreateTarsUserMutation = (
@@ -1247,6 +1261,7 @@ const invalidateUserGroups = (queryClient: ReturnType<typeof useQueryClient>) =>
   queryClient.invalidateQueries([QueryKeys.tarsUsers]);
   queryClient.invalidateQueries([QueryKeys.tarsUserPrepareData]);
   invalidateTarsMcpGrants(queryClient);
+  invalidateTarsModelGrants(queryClient);
 };
 
 export const useCreateTarsUserGroupMutation = (
@@ -1337,6 +1352,7 @@ const invalidateModelProfiles = (queryClient: ReturnType<typeof useQueryClient>)
   queryClient.invalidateQueries([QueryKeys.tarsModels], { refetchType: 'all' });
   queryClient.invalidateQueries([QueryKeys.tarsModelOptions], { refetchType: 'all' });
   queryClient.invalidateQueries([QueryKeys.models], { refetchType: 'all' });
+  invalidateTarsModelGrants(queryClient);
 };
 
 export const useCreateTarsModelProfileMutation = (
@@ -1383,6 +1399,26 @@ export const useDeleteTarsModelProfileMutation = (
       options?.onSuccess?.(...args);
     },
   });
+};
+
+type ModelPermissionSave = { modelProfileId: string; data: TTarsModelPermissionSavePayload };
+type ModelPermissionSaveResponse = { result: TTarsModelPermissionSaveResult };
+
+export const useSaveTarsModelPermissionMutation = (
+  options?: UseMutationOptions<ModelPermissionSaveResponse, unknown, ModelPermissionSave>,
+): UseMutationResult<ModelPermissionSaveResponse, unknown, ModelPermissionSave> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ modelProfileId, data }: ModelPermissionSave) =>
+      dataService.saveTarsModelPermission(modelProfileId, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateTarsModelGrants(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
 };
 
 type RoleResponse = { role: TTarsRoleDetail };
