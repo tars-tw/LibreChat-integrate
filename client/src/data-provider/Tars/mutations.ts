@@ -41,6 +41,8 @@ import type {
   TTarsMcpPrincipalType,
   TTarsMcpPermissionSaveResult,
   TTarsMcpPermissionSavePayload,
+  TTarsMcpServerPermissionSaveResult,
+  TTarsMcpServerPermissionSavePayload,
   TTarsUser,
   TTarsUserInput,
   TTarsUserUpdate,
@@ -828,6 +830,19 @@ export const useUpdateTarsSysConfigMutation = (
   });
 };
 
+/**
+ * Every view of `sys_mcp_permission`: the overview (server counts and the assigned list),
+ * each principal's grants and each server's assignees. pwc_tars also drops grants when a
+ * server, tool, user or group goes away, so those mutations call this too. `refetchType:
+ * 'all'` because admin queries never refetch on mount — one invalidated while its tab or
+ * page is closed would otherwise come back stale.
+ */
+const invalidateTarsMcpGrants = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries([QueryKeys.tarsMcpPermissionPrincipals], { refetchType: 'all' });
+  queryClient.invalidateQueries([QueryKeys.tarsMcpPermissions], { refetchType: 'all' });
+  queryClient.invalidateQueries([QueryKeys.tarsMcpServerPermissions], { refetchType: 'all' });
+};
+
 const invalidateTarsMcp = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsMcpServers]);
   queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
@@ -883,6 +898,7 @@ export const useDeleteTarsMcpServerMutation = (
     ...options,
     onSuccess: (...args) => {
       invalidateTarsMcp(queryClient);
+      invalidateTarsMcpGrants(queryClient);
       options?.onSuccess?.(...args);
     },
   });
@@ -896,6 +912,7 @@ export const useBatchDeleteTarsMcpServersMutation = (
     ...options,
     onSuccess: (...args) => {
       invalidateTarsMcp(queryClient);
+      invalidateTarsMcpGrants(queryClient);
       options?.onSuccess?.(...args);
     },
   });
@@ -915,6 +932,7 @@ export const useSyncTarsMcpServerMutation = (
     ...options,
     onSuccess: (...args) => {
       invalidateTarsMcp(queryClient);
+      invalidateTarsMcpGrants(queryClient);
       options?.onSuccess?.(...args);
     },
   });
@@ -1029,19 +1047,19 @@ export const useDeleteTarsMcpToolMutation = (
     ...options,
     onSuccess: (...args) => {
       invalidateTarsMcp(queryClient);
+      invalidateTarsMcpGrants(queryClient);
       options?.onSuccess?.(...args);
     },
   });
 };
 
 /**
- * A grant change moves what every affected user sees, so the overview, every
- * cached principal (a multi-target save touches several, including inactive
- * cache entries) and the user-facing MCP surfaces all refresh.
+ * A grant change moves what every affected user sees, so every view of the grants
+ * (whichever side — principal or server — saved them) and the user-facing MCP
+ * surfaces all refresh.
  */
 const invalidateTarsMcpPermissions = (queryClient: ReturnType<typeof useQueryClient>) => {
-  queryClient.invalidateQueries([QueryKeys.tarsMcpPermissionPrincipals]);
-  queryClient.invalidateQueries([QueryKeys.tarsMcpPermissions], { refetchType: 'all' });
+  invalidateTarsMcpGrants(queryClient);
   queryClient.invalidateQueries([QueryKeys.tarsMcpChatTools]);
   invalidateTarsMcp(queryClient);
 };
@@ -1054,6 +1072,33 @@ export const useSaveTarsMcpPermissionsMutation = (
   const queryClient = useQueryClient();
   return useMutation(
     (data: TTarsMcpPermissionSavePayload) => dataService.saveTarsMcpPermissions(data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateTarsMcpPermissions(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+type McpServerPermissionSaveResponse = { result: TTarsMcpServerPermissionSaveResult };
+
+/** Overwrites one server's assignees (the server-centric side of the same grants). */
+export const useSaveTarsMcpServerPermissionsMutation = (
+  options?: UseMutationOptions<
+    McpServerPermissionSaveResponse,
+    unknown,
+    TTarsMcpServerPermissionSavePayload
+  >,
+): UseMutationResult<
+  McpServerPermissionSaveResponse,
+  unknown,
+  TTarsMcpServerPermissionSavePayload
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    (data: TTarsMcpServerPermissionSavePayload) => dataService.saveTarsMcpServerPermissions(data),
     {
       ...options,
       onSuccess: (...args) => {
@@ -1087,12 +1132,14 @@ type UserResponse = { user: TTarsUser };
 
 /**
  * Account edits also change the group member lists and, since pwc_tars copies a
- * user's groups onto their token quota rows, the quota listings.
+ * user's groups onto their token quota rows, the quota listings. The MCP grant views
+ * show each user's name and status, and a deleted user's grants go with it.
  */
 const invalidateUsers = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsUsers]);
   queryClient.invalidateQueries([QueryKeys.tarsUserGroups]);
   queryClient.invalidateQueries([QueryKeys.tarsTokenQuotas]);
+  invalidateTarsMcpGrants(queryClient);
 };
 
 export const useCreateTarsUserMutation = (
@@ -1192,12 +1239,14 @@ type GroupResponse = { group: TTarsUserGroupWithMembers };
 
 /**
  * Group edits also change what the user admin page shows (a user's groups and
- * the roles those groups grant), so both caches are refreshed together.
+ * the roles those groups grant), so both caches are refreshed together. The MCP
+ * grant views show each group's name and status, and a deleted group's grants go with it.
  */
 const invalidateUserGroups = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsUserGroups]);
   queryClient.invalidateQueries([QueryKeys.tarsUsers]);
   queryClient.invalidateQueries([QueryKeys.tarsUserPrepareData]);
+  invalidateTarsMcpGrants(queryClient);
 };
 
 export const useCreateTarsUserGroupMutation = (

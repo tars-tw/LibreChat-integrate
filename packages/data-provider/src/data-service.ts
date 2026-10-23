@@ -1807,6 +1807,18 @@ export const deleteTarsMcpPermissions = (
   return request.delete(endpoints.tarsMcpAdminPermissions(principalType, principalId));
 };
 
+export const getTarsMcpServerPermissions = (
+  serverId: string,
+): Promise<t.TTarsMcpServerPermissionsResponse> => {
+  return request.get(endpoints.tarsMcpAdminServerPermissions(serverId));
+};
+
+export const saveTarsMcpServerPermissions = (
+  data: t.TTarsMcpServerPermissionSavePayload,
+): Promise<{ result: t.TTarsMcpServerPermissionSaveResult }> => {
+  return request.post(endpoints.tarsMcpAdminServerPermissionSave(), data);
+};
+
 export const getTarsMcpSystemVariables = (): Promise<t.TTarsMcpSystemVariablesResponse> => {
   return request.get(endpoints.tarsMcpAdminSystemVariables());
 };
