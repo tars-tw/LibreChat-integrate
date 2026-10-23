@@ -38,13 +38,12 @@ import { useLocalize, useIsTarsAdmin } from '~/hooks';
 import McpBulkDeleteModal from './McpBulkDeleteModal';
 import { useAuthContext } from '~/hooks/AuthContext';
 import McpPermissionsTab from './McpPermissionsTab';
+import { filterManagedServers } from './servers';
 import ServerTypeBadge from './ServerTypeBadge';
 import McpUserToolsTab from './McpUserToolsTab';
 import McpServerModal from './McpServerModal';
 import { mcpActionClass } from './actions';
 import McpLogsTab from './McpLogsTab';
-
-const MANAGED_TYPES = new Set(['openapi', 'custom_api', 'external']);
 
 const MAX_TAG_BADGES = 3;
 
@@ -125,18 +124,7 @@ export default function McpSettingsView() {
       showToast({ message: (error as Error)?.message ?? 'Error', status: 'error' }),
   });
 
-  const rows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const managed = servers.filter((server) => MANAGED_TYPES.has(server.type));
-    if (!q) {
-      return managed;
-    }
-    return managed.filter((server) =>
-      [server.name, server.code, server.description]
-        .filter(Boolean)
-        .some((field) => (field as string).toLowerCase().includes(q)),
-    );
-  }, [servers, search]);
+  const rows = useMemo(() => filterManagedServers(servers, search), [servers, search]);
 
   const {
     page: currentPage,
