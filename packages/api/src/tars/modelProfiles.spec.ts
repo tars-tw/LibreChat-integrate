@@ -7,14 +7,23 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
+import jwt from 'jsonwebtoken';
+import type { JwtPayload } from 'jsonwebtoken';
 import {
+  saveTarsModelAssignees,
   fetchTarsModelProfiles,
   createTarsModelProfile,
   updateTarsModelProfile,
   deleteTarsModelProfile,
+  fetchTarsModelAssignees,
+  fetchTarsModelPermissions,
 } from './modelProfiles';
 import type { TarsModelProfile } from './modelProfiles';
-import { getTarsModelProfileNames, invalidateTarsModelProfilesCache } from './models';
+import {
+  getTarsModelProfileNames,
+  getTarsUserModelProfileNames,
+  invalidateTarsModelProfilesCache,
+} from './models';
 import { TarsRequestError } from './client';
 
 const BASE_URL = 'http://tars.test';
@@ -245,5 +254,136 @@ describe('model whitelist cache', () => {
     });
     await expect(getTarsModelProfileNames()).resolves.toEqual(['old', 'new']);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('model permission admin proxy', () => {
+  const SECRET = 'pwc-tars-test-secret';
+  const savedSecret = process.env.TARS_JWT_SECRET;
+  const envelope = (data: unknown) => ({ success: true, message: '成功', data });
+  const principal = {
+    principal_type: 'group' as const,
+    principal_id: 'g1',
+    name: 'BOSS',
+    email: null,
+    is_active: true,
+  };
+
+  /** pwc_tars gates `/api/model/permission*` with `@admin_required`, so every call is signed as the admin. */
+  const requestOf = (fetchMock: jest.SpyInstance, call = 0) => {
+    const [input, init] = fetchMock.mock.calls[call] as [string, RequestInit];
+    const url = new URL(String(input));
+    const headers = init.headers as Record<string, string>;
+    return {
+      path: url.pathname,
+      query: Object.fromEntries(url.searchParams.entries()),
+      method: init.method ?? 'GET',
+      body: init.body ? JSON.parse(String(init.body)) : undefined,
+      actingUser: (
+        jwt.verify(headers.Authorization.slice('Bearer '.length), SECRET, {
+          algorithms: ['HS256'],
+        }) as JwtPayload
+      ).user_id,
+    };
+  };
+
+  beforeEach(() => {
+    process.env.TARS_JWT_SECRET = SECRET;
+  });
+
+  afterAll(() => {
+    if (savedSecret === undefined) {
+      delete process.env.TARS_JWT_SECRET;
+    } else {
+      process.env.TARS_JWT_SECRET = savedSecret;
+    }
+  });
+
+  it('lists every model with assignees as the acting admin', async () => {
+    const permissions = [{ model_profile_id: '1', principals: [principal] }];
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, envelope(permissions)));
+
+    await expect(fetchTarsModelPermissions('admin-1', BASE_URL)).resolves.toEqual(permissions);
+    expect(requestOf(fetchMock)).toEqual({
+      path: '/api/model/permission/models',
+      query: {},
+      method: 'GET',
+      body: undefined,
+      actingUser: 'admin-1',
+    });
+  });
+
+  it('reads one model by id and defaults to no assignees on a bare reply', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(buildResponse(200, envelope([principal])))
+      .mockResolvedValueOnce(buildResponse(200, { success: true }));
+
+    await expect(fetchTarsModelAssignees('admin-1', '1', BASE_URL)).resolves.toEqual([principal]);
+    expect(requestOf(fetchMock)).toMatchObject({
+      path: '/api/model/permission',
+      query: { model_profile_id: '1' },
+      actingUser: 'admin-1',
+    });
+    await expect(fetchTarsModelAssignees('admin-1', '1', BASE_URL)).resolves.toEqual([]);
+  });
+
+  it('saves one model, sending only the model id and principals', async () => {
+    const result = { model_profile_id: '1', user_count: 1, group_count: 1 };
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, envelope(result)));
+    const principals = [
+      { principal_type: 'group' as const, principal_id: 'g1' },
+      { principal_type: 'user' as const, principal_id: 'u1' },
+    ];
+
+    await expect(saveTarsModelAssignees('admin-1', '1', { principals }, BASE_URL)).resolves.toEqual(
+      result,
+    );
+    expect(requestOf(fetchMock)).toEqual({
+      path: '/api/model/permission/save',
+      query: {},
+      method: 'POST',
+      body: { model_profile_id: '1', principals },
+      actingUser: 'admin-1',
+    });
+  });
+
+  it("drops every user's cached model list after a save", async () => {
+    process.env.TARS_AUTH_URL = BASE_URL;
+    invalidateTarsModelProfilesCache();
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(buildResponse(200, [{ model_name: 'gpt-5.4' }]))
+      .mockResolvedValueOnce(buildResponse(200, envelope({ model_profile_id: '1' })))
+      .mockResolvedValueOnce(buildResponse(200, []));
+
+    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual(['gpt-5.4']);
+    await saveTarsModelAssignees('admin-1', '1', { principals: [] });
+    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('relays a refused principal with its status and message', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        buildResponse(400, { success: false, message: '已停用的對象不可新增：GONE' }),
+      );
+
+    const call = saveTarsModelAssignees(
+      'admin-1',
+      '1',
+      { principals: [{ principal_type: 'group', principal_id: 'g2' }] },
+      BASE_URL,
+    );
+    await expect(call).rejects.toBeInstanceOf(TarsRequestError);
+    await expect(call).rejects.toMatchObject({
+      status: 400,
+      serverMessage: '已停用的對象不可新增：GONE',
+    });
   });
 });

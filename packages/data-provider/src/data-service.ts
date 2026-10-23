@@ -1718,6 +1718,23 @@ export const deleteTarsModelProfile = (
   return request.delete(endpoints.tarsModelProfile(id));
 };
 
+export const getTarsModelPermissions = (): Promise<t.TTarsModelPermissionsResponse> => {
+  return request.get(endpoints.tarsModelPermissions());
+};
+
+export const getTarsModelPermission = (
+  modelProfileId: string,
+): Promise<t.TTarsModelAssigneesResponse> => {
+  return request.get(endpoints.tarsModelPermission(modelProfileId));
+};
+
+export const saveTarsModelPermission = (
+  modelProfileId: string,
+  data: t.TTarsModelPermissionSavePayload,
+): Promise<{ result: t.TTarsModelPermissionSaveResult }> => {
+  return request.put(endpoints.tarsModelPermission(modelProfileId), data);
+};
+
 export const updateTarsSysConfig = (
   data: t.TTarsSysConfigUpdate,
 ): Promise<{ success: boolean }> => {

@@ -56,6 +56,8 @@ export enum QueryKeys {
   tarsModelOptions = 'tarsModelOptions',
   tarsModels = 'tarsModels',
   tarsModelProfiles = 'tarsModelProfiles',
+  /** `[key]` = every model's assignees; `[key, modelProfileId]` = one model's. */
+  tarsModelPermissions = 'tarsModelPermissions',
   tarsPrompts = 'tarsPrompts',
   tarsSysConfigs = 'tarsSysConfigs',
   tarsUsers = 'tarsUsers',

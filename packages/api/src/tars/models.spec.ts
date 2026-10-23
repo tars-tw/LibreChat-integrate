@@ -12,6 +12,8 @@ import {
   getTarsLocalModelNames,
   getTarsModelProfileNames,
   resolveTarsLocalModelBaseURL,
+  getTarsUserModelProfileNames,
+  invalidateTarsUserModelsCache,
   reorderTarsWhitelistedModels,
   invalidateTarsLocalModelsCache,
   invalidateTarsModelProfilesCache,
@@ -246,6 +248,115 @@ describe('getTarsModelProfileNames', () => {
 
     await expect(lookups).resolves.toEqual([['gpt-4o'], ['gpt-4o']]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('getTarsUserModelProfileNames', () => {
+  const modelList = (names: Array<string | null>) => names.map((model_name) => ({ model_name }));
+  const requestedUrl = (fetchMock: jest.SpyInstance, call = 0) =>
+    new URL(String(fetchMock.mock.calls[call][0]));
+
+  it("asks pwc_tars for the user's own list, trimmed and deduplicated", async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, modelList(['gpt-4o', ' gpt-4o ', '', null, 'o3'])));
+
+    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual(['gpt-4o', 'o3']);
+    const url = requestedUrl(fetchMock);
+    expect(url.pathname).toBe('/api/model/get_user_model_list');
+    expect(url.searchParams.get('user_id')).toBe('u1');
+  });
+
+  it('returns null without fetching when TARS is unconfigured', async () => {
+    delete process.env.TARS_AUTH_URL;
+    const fetchMock = jest.spyOn(global, 'fetch');
+    await expect(getTarsUserModelProfileNames('u1')).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('gives an account with no pwc_tars link the global list', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, modelList(['gpt-4o'])));
+
+    await expect(getTarsUserModelProfileNames(undefined)).resolves.toEqual(['gpt-4o']);
+    expect(requestedUrl(fetchMock).pathname).toBe('/api/model/get_model_list');
+  });
+
+  it('caches each user separately and refetches after the TTL', async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(buildResponse(200, modelList(['gpt-4o'])))
+      .mockResolvedValueOnce(buildResponse(200, modelList(['o3'])))
+      .mockResolvedValueOnce(buildResponse(200, modelList(['gpt-4o', 'o3'])));
+
+    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual(['gpt-4o']);
+    await expect(getTarsUserModelProfileNames('u2')).resolves.toEqual(['o3']);
+    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual(['gpt-4o']);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    jest.advanceTimersByTime(61_000);
+    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual(['gpt-4o', 'o3']);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([
+    ['a permission save', invalidateTarsUserModelsCache],
+    ['a profile write', invalidateTarsModelProfilesCache],
+  ])('rereads every user after %s', async (_label, invalidate) => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(buildResponse(200, modelList(['gpt-4o'])))
+      .mockResolvedValueOnce(buildResponse(200, modelList([])));
+
+    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual(['gpt-4o']);
+    invalidate();
+    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shares one in-flight fetch per user', async () => {
+    let resolveFetch: (value: Response) => void = () => undefined;
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(() => new Promise<Response>((resolve) => (resolveFetch = resolve)));
+
+    const lookups = Promise.all([
+      getTarsUserModelProfileNames('u1'),
+      getTarsUserModelProfileNames('u1'),
+    ]);
+    resolveFetch(buildResponse(200, modelList(['gpt-4o'])));
+
+    await expect(lookups).resolves.toEqual([['gpt-4o'], ['gpt-4o']]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not cache an answer that was in flight when the cache was dropped', async () => {
+    let resolveFirst: (value: Response) => void = () => undefined;
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => (resolveFirst = resolve)))
+      .mockResolvedValueOnce(buildResponse(200, modelList(['o3'])));
+
+    const stale = getTarsUserModelProfileNames('u1');
+    invalidateTarsUserModelsCache();
+    resolveFirst(buildResponse(200, modelList(['gpt-4o'])));
+    await expect(stale).resolves.toEqual(['gpt-4o']);
+
+    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual(['o3']);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws on a failed fetch and does not cache the failure', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockRejectedValueOnce(new Error('down'))
+      .mockResolvedValueOnce(buildResponse(200, modelList(['gpt-4o'])));
+
+    await expect(getTarsUserModelProfileNames('u1')).rejects.toThrow('down');
+    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual(['gpt-4o']);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 

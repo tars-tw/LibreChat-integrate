@@ -48,6 +48,12 @@ interface DirectoryPeoplePickerProps {
    * host whose own Save would otherwise ignore them can include them or ask for Add first.
    */
   onPendingChange?: (principals: TPrincipal[]) => void;
+  /**
+   * Max height of each list column; a host with less room than the share dialog (a dialog
+   * that also lists its assignees under the picker) passes a shorter one so the whole panel,
+   * Add button included, stays in view.
+   */
+  columnHeightClassName?: string;
   className?: string;
 }
 
@@ -61,6 +67,7 @@ export default function DirectoryPeoplePicker({
   onAddPeople,
   excludeIds = [],
   onPendingChange,
+  columnHeightClassName = COLUMN_HEIGHT,
   className,
 }: DirectoryPeoplePickerProps) {
   const localize = useLocalize();
@@ -182,7 +189,7 @@ export default function DirectoryPeoplePicker({
         <Ariakit.ComboboxGroupLabel className="border-border-light bg-surface-primary text-text-secondary border-b px-4 py-2 text-xs font-semibold">
           {localize(labelKey)} ({principals.length})
         </Ariakit.ComboboxGroupLabel>
-        <div className={cn('overflow-y-auto overscroll-contain pb-1', COLUMN_HEIGHT)}>
+        <div className={cn('overflow-y-auto overscroll-contain pb-1', columnHeightClassName)}>
           {shown.length === 0 && (
             <div className="text-text-secondary px-4 py-6 text-center text-sm">
               {localize('com_ui_no_results_found')}
