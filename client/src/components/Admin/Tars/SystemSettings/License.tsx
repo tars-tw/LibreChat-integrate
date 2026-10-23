@@ -54,11 +54,11 @@ export default function LicenseCard() {
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <p className="text-xs font-medium text-text-secondary">
+              <p className="text-text-secondary text-xs font-medium">
                 {localize('com_ui_tars_users_status')}
               </p>
               <span
-                className={`mt-1 inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${
+                className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs whitespace-nowrap ${
                   activated
                     ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
                     : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
@@ -70,16 +70,16 @@ export default function LicenseCard() {
               </span>
             </div>
             <div>
-              <p className="text-xs font-medium text-text-secondary">
+              <p className="text-text-secondary text-xs font-medium">
                 {localize('com_ui_tars_settings_license_start')}
               </p>
-              <p className="mt-1 text-sm text-text-primary">{settings?.licenseStartDate || '—'}</p>
+              <p className="text-text-primary mt-1 text-sm">{settings?.licenseStartDate || '—'}</p>
             </div>
             <div>
-              <p className="text-xs font-medium text-text-secondary">
+              <p className="text-text-secondary text-xs font-medium">
                 {localize('com_ui_tars_settings_license_end')}
               </p>
-              <p className="mt-1 text-sm text-text-primary">{settings?.licenseEndDate || '—'}</p>
+              <p className="text-text-primary mt-1 text-sm">{settings?.licenseEndDate || '—'}</p>
             </div>
           </div>
 
@@ -104,7 +104,7 @@ export default function LicenseCard() {
               )}
               {localize('com_ui_tars_settings_license_upload')}
             </Button>
-            <span className="text-xs text-text-secondary">
+            <span className="text-text-secondary text-xs">
               {localize('com_ui_tars_settings_license_format')}
             </span>
           </div>

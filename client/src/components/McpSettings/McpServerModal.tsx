@@ -352,7 +352,7 @@ export default function McpServerModal({
   /** pwc_tars only injects bearer / api_key headers for external servers; stdio has no auth at all. */
   const isExternal = form.type === 'external';
   const authFields = (
-    <div className="space-y-3 rounded-lg border border-border-light p-3">
+    <div className="border-border-light space-y-3 rounded-lg border p-3">
       <div className="flex items-center justify-between">
         <Label>{localize('com_ui_tars_mcp_auth')}</Label>
         <Dropdown
@@ -411,7 +411,7 @@ export default function McpServerModal({
               value={form.auth.value}
               onChange={(e) => setAuth('value', e.target.value)}
             />
-            <p className="mt-1 text-xs text-text-secondary">
+            <p className="text-text-secondary mt-1 text-xs">
               {localize('com_ui_tars_mcp_auth_shared_hint')}
             </p>
           </div>
@@ -436,7 +436,7 @@ export default function McpServerModal({
               onChange={(e) => setAuth('password', e.target.value)}
             />
           </div>
-          <p className="col-span-2 text-xs text-text-secondary">
+          <p className="text-text-secondary col-span-2 text-xs">
             {localize('com_ui_tars_mcp_auth_shared_hint')}
           </p>
         </div>
@@ -472,7 +472,7 @@ export default function McpServerModal({
               aria-label={localize('com_ui_tars_mcp_auth_credentials')}
               className={textareaClass}
             />
-            <p className="mt-1 text-xs text-text-secondary">
+            <p className="text-text-secondary mt-1 text-xs">
               {localize('com_ui_tars_mcp_auth_login_hint')}
             </p>
           </div>
@@ -502,7 +502,7 @@ export default function McpServerModal({
             onChange={(e) => set('code', e.target.value)}
             placeholder="issues"
           />
-          <p className="mt-1 text-xs text-text-secondary">
+          <p className="text-text-secondary mt-1 text-xs">
             {localize('com_ui_tars_mcp_code_hint')}
           </p>
         </div>
@@ -570,7 +570,7 @@ export default function McpServerModal({
   const connectionTab = (
     <div className="space-y-4">
       {form.type === 'openapi' && (
-        <div className="space-y-3 rounded-lg border border-border-light p-3">
+        <div className="border-border-light space-y-3 rounded-lg border p-3">
           <div>
             <Label htmlFor="tars-mcp-openapi-url">{localize('com_ui_tars_mcp_openapi_url')}</Label>
             <div className="mt-1 flex gap-2">
@@ -607,16 +607,16 @@ export default function McpServerModal({
             </div>
           </div>
           {parsed != null && (
-            <div className="rounded-lg bg-surface-secondary p-3 text-sm">
-              <p className="mb-2 font-medium text-text-primary">
+            <div className="bg-surface-secondary rounded-lg p-3 text-sm">
+              <p className="text-text-primary mb-2 font-medium">
                 {localize('com_ui_tars_mcp_parse_result', {
                   count: parsed.tool_count ?? parsed.tools?.length ?? 0,
                 })}
               </p>
               <ul className="max-h-40 space-y-1 overflow-y-auto">
                 {(parsed.tools ?? []).map((tool) => (
-                  <li key={tool.name} className="truncate text-xs text-text-secondary">
-                    <span className="font-mono text-text-primary">{tool.name}</span>
+                  <li key={tool.name} className="text-text-secondary truncate text-xs">
+                    <span className="text-text-primary font-mono">{tool.name}</span>
                     {tool.description ? ` — ${tool.description}` : ''}
                   </li>
                 ))}
@@ -627,7 +627,7 @@ export default function McpServerModal({
       )}
 
       {form.type === 'custom_api' && (
-        <div className="rounded-lg border border-border-light p-3">
+        <div className="border-border-light rounded-lg border p-3">
           <Label htmlFor="tars-mcp-custom-base">{localize('com_ui_tars_mcp_base_url')}</Label>
           <Input
             id="tars-mcp-custom-base"
@@ -640,7 +640,7 @@ export default function McpServerModal({
       )}
 
       {form.type === 'external' && (
-        <div className="space-y-3 rounded-lg border border-border-light p-3">
+        <div className="border-border-light space-y-3 rounded-lg border p-3">
           <div className="flex items-center gap-4">
             <Label>{localize('com_ui_tars_mcp_transport')}</Label>
             <Dropdown
@@ -680,7 +680,7 @@ export default function McpServerModal({
           )}
           {form.transport === 'stdio' && (
             <>
-              <p className="rounded-lg bg-surface-secondary p-2 text-xs text-text-secondary">
+              <p className="bg-surface-secondary text-text-secondary rounded-lg p-2 text-xs">
                 {localize('com_ui_tars_mcp_stdio_warning')}
               </p>
               <div>
@@ -703,7 +703,7 @@ export default function McpServerModal({
                   className={textareaClass}
                   placeholder={'mcp-server-fetch\n--option value'}
                 />
-                <p className="mt-1 text-xs text-text-secondary">
+                <p className="text-text-secondary mt-1 text-xs">
                   {localize('com_ui_tars_mcp_args_hint')}
                 </p>
               </div>

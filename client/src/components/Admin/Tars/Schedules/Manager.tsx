@@ -61,8 +61,8 @@ export default function ScheduleManager() {
     }
     if (filtered.length === 0) {
       return (
-        <div className="flex flex-col items-center gap-3 py-16 text-sm text-text-secondary">
-          <CalendarClock className="size-10 text-text-tertiary" aria-hidden />
+        <div className="text-text-secondary flex flex-col items-center gap-3 py-16 text-sm">
+          <CalendarClock className="text-text-tertiary size-10" aria-hidden />
           {localize(
             schedules.length === 0 ? 'com_ui_tars_sched_empty' : 'com_ui_tars_kb_ds_no_match',
           )}
@@ -101,7 +101,7 @@ export default function ScheduleManager() {
 
         <div className="relative min-w-[14rem] flex-1 sm:max-w-xs">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary"
+            className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
             aria-hidden
           />
           <Input
@@ -143,7 +143,7 @@ export default function ScheduleManager() {
 
       {scoped == null && (
         /* Creating needs a knowledge base to scope the dataset picker. */
-        <p className="text-xs text-text-secondary">{localize('com_ui_tars_sched_pick_kb_first')}</p>
+        <p className="text-text-secondary text-xs">{localize('com_ui_tars_sched_pick_kb_first')}</p>
       )}
 
       {body()}

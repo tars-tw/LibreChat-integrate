@@ -30,8 +30,8 @@ function TarsPluginAnswer({
         block.type === 'markdown' ? (
           <MarkdownLite key={index} content={block.content} codeExecution={false} />
         ) : (
-          <details key={index} className="my-2 rounded-lg border border-border-light px-3 py-1">
-            <summary className="cursor-pointer text-sm text-text-secondary">
+          <details key={index} className="border-border-light my-2 rounded-lg border px-3 py-1">
+            <summary className="text-text-secondary cursor-pointer text-sm">
               {block.summary}
             </summary>
             <MarkdownLite content={block.content} codeExecution={false} />

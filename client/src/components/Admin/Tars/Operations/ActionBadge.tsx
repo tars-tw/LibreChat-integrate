@@ -14,7 +14,7 @@ export default function ActionBadge({ action }: { action: string | null | undefi
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${toneClasses(tone)}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${toneClasses(tone)}`}
     >
       <Icon className="size-3.5" aria-hidden />
       {label}

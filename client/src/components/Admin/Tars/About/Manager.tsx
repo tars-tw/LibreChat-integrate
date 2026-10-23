@@ -12,9 +12,9 @@ export default function AboutManager() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-xl border border-border-light">
-        <header className="border-b border-border-light px-4 py-3">
-          <h2 className="text-base font-medium text-text-primary">
+      <section className="border-border-light rounded-xl border">
+        <header className="border-border-light border-b px-4 py-3">
+          <h2 className="text-text-primary text-base font-medium">
             {localize('com_ui_tars_about_release_notes')}
           </h2>
         </header>
@@ -24,9 +24,9 @@ export default function AboutManager() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-border-light">
-        <header className="border-b border-border-light px-4 py-3">
-          <h2 className="text-base font-medium text-text-primary">
+      <section className="border-border-light rounded-xl border">
+        <header className="border-border-light border-b px-4 py-3">
+          <h2 className="text-text-primary text-base font-medium">
             {localize('com_ui_tars_about_sbom')}
           </h2>
         </header>

@@ -108,7 +108,7 @@ export default function SyncScheduleModal({
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-text-secondary">
+              <p className="text-text-secondary text-sm">
                 {localize('com_ui_tars_sso_schedule_hint')}
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -163,7 +163,7 @@ export default function SyncScheduleModal({
                 </div>
               </div>
               {schedule?.last_execute_at != null && schedule.last_execute_at !== '' && (
-                <p className="text-xs text-text-secondary">
+                <p className="text-text-secondary text-xs">
                   {localize('com_ui_tars_sso_schedule_last', { time: schedule.last_execute_at })}
                 </p>
               )}

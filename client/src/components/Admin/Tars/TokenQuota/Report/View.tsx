@@ -32,10 +32,10 @@ import Trend from './Trend';
 /** One headline number, matching the audit report's statistics tiles. */
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-border-light p-4">
-      <p className="text-xs text-text-secondary">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-text-primary">{value}</p>
-      {hint != null && <p className="mt-0.5 text-xs text-text-secondary">{hint}</p>}
+    <div className="border-border-light rounded-xl border p-4">
+      <p className="text-text-secondary text-xs">{label}</p>
+      <p className="text-text-primary mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+      {hint != null && <p className="text-text-secondary mt-0.5 text-xs">{hint}</p>}
     </div>
   );
 }
@@ -117,9 +117,9 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
 
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-border-light">
-        <header className="border-b border-border-light px-4 py-2">
-          <h2 className="text-sm font-medium text-text-primary">
+      <section className="border-border-light rounded-xl border">
+        <header className="border-border-light border-b px-4 py-2">
+          <h2 className="text-text-primary text-sm font-medium">
             {localize('com_ui_tars_audit_filters')}
           </h2>
         </header>
@@ -221,14 +221,14 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
       )}
 
       {submitted == null && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_tars_audit_prompt')}
         </p>
       )}
 
       {submitted != null && overview != null && (
         <>
-          <p className="text-sm text-text-secondary">
+          <p className="text-text-secondary text-sm">
             {`${localize('com_ui_tars_audit_period')}: ${overview.date_range.start_date} ~ ${overview.date_range.end_date}`}
           </p>
 

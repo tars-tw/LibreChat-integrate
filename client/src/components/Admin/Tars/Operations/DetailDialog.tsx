@@ -12,8 +12,8 @@ import { useLocalize } from '~/hooks';
 function Field({ label, value, wide }: { label: string; value: string | null; wide?: boolean }) {
   return (
     <div className={wide === true ? 'sm:col-span-2' : undefined}>
-      <p className="text-xs text-text-secondary">{label}</p>
-      <p className="break-words text-sm text-text-primary">
+      <p className="text-text-secondary text-xs">{label}</p>
+      <p className="text-text-primary text-sm break-words">
         {value == null || value === '' ? '—' : value}
       </p>
     </div>
@@ -23,8 +23,8 @@ function Field({ label, value, wide }: { label: string; value: string | null; wi
 function Json({ label, value }: { label: string; value: TTarsJsonField }) {
   return (
     <div className="min-w-0 flex-1">
-      <p className="mb-1 text-xs text-text-secondary">{label}</p>
-      <pre className="data-table-scroll max-h-72 overflow-auto rounded-lg bg-surface-secondary p-2 text-xs text-text-primary">
+      <p className="text-text-secondary mb-1 text-xs">{label}</p>
+      <pre className="data-table-scroll bg-surface-secondary text-text-primary max-h-72 overflow-auto rounded-lg p-2 text-xs">
         {prettyJson(value)}
       </pre>
     </div>
@@ -74,7 +74,7 @@ export default function DetailDialog({
             <div className="max-h-[70vh] min-w-0 space-y-5 overflow-y-auto pr-1">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <ActionBadge action={shown.action_type} />
-                <span className="flex items-center gap-1.5 text-sm text-text-secondary">
+                <span className="text-text-secondary flex items-center gap-1.5 text-sm">
                   <Clock className="size-4" aria-hidden />
                   {formatDateTime(shown.created_at, locale)}
                 </span>
@@ -85,7 +85,7 @@ export default function DetailDialog({
                 {field('com_ui_tars_ops_detail_email', shown.user_email)}
                 {field('com_ui_tars_ops_col_module', moduleLabel(shown.module, modules))}
                 <div>
-                  <p className="text-xs text-text-secondary">
+                  <p className="text-text-secondary text-xs">
                     {localize('com_ui_tars_ops_col_status')}
                   </p>
                   <p className={`text-sm ${statusTone(shown.status)}`}>{shown.status ?? '—'}</p>
@@ -98,7 +98,7 @@ export default function DetailDialog({
 
               {(hasJsonValue(shown.before_data) || hasJsonValue(shown.after_data)) && (
                 <div>
-                  <p className="mb-2 text-sm font-medium text-text-primary">
+                  <p className="text-text-primary mb-2 text-sm font-medium">
                     {localize('com_ui_tars_ops_detail_changes')}
                   </p>
                   <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
@@ -107,7 +107,7 @@ export default function DetailDialog({
                       value={shown.before_data}
                     />
                     <ArrowRight
-                      className="mx-auto size-4 shrink-0 rotate-90 text-text-secondary sm:rotate-0"
+                      className="text-text-secondary mx-auto size-4 shrink-0 rotate-90 sm:rotate-0"
                       aria-hidden
                     />
                     <Json
@@ -120,14 +120,14 @@ export default function DetailDialog({
 
               {shown.error_message != null && shown.error_message !== '' && (
                 <div>
-                  <p className="text-xs text-text-secondary">
+                  <p className="text-text-secondary text-xs">
                     {localize('com_ui_tars_ops_detail_error')}
                   </p>
-                  <p className="break-words text-sm text-pwc-danger">{shown.error_message}</p>
+                  <p className="text-pwc-danger text-sm break-words">{shown.error_message}</p>
                 </div>
               )}
 
-              <div className="grid gap-3 border-t border-border-light pt-4 sm:grid-cols-2">
+              <div className="border-border-light grid gap-3 border-t pt-4 sm:grid-cols-2">
                 {field('com_ui_tars_ops_detail_http_method', shown.http_method)}
                 {field('com_ui_tars_audit_col_ip', shown.ip_address)}
                 {field('com_ui_tars_ops_detail_api_endpoint', shown.api_endpoint, true)}

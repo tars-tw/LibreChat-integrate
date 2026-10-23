@@ -8,9 +8,9 @@ import Trend from './Trend';
 /** One headline number, matching the report's own tiles. */
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border-light p-3">
-      <p className="text-xs text-text-secondary">{label}</p>
-      <p className="mt-1 text-lg font-semibold tabular-nums text-text-primary">{value}</p>
+    <div className="border-border-light rounded-xl border p-3">
+      <p className="text-text-secondary text-xs">{label}</p>
+      <p className="text-text-primary mt-1 text-lg font-semibold tabular-nums">{value}</p>
     </div>
   );
 }
@@ -46,7 +46,7 @@ export default function UserDialog({
         className="w-11/12 md:max-w-4xl"
         main={
           <div className="space-y-4">
-            <p className="text-sm text-text-secondary">
+            <p className="text-text-secondary text-sm">
               {`${localize('com_ui_tars_audit_period')}: ${range.start_date} ~ ${range.end_date}`}
             </p>
 
@@ -57,7 +57,7 @@ export default function UserDialog({
             )}
 
             {!usageQuery.isFetching && usage == null && (
-              <p className="py-12 text-center text-sm text-text-secondary">
+              <p className="text-text-secondary py-12 text-center text-sm">
                 {localize('com_ui_tars_audit_no_data')}
               </p>
             )}

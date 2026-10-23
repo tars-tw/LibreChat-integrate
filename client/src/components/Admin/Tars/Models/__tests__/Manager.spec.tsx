@@ -1,7 +1,7 @@
 import React from 'react';
 import userEvent from '@testing-library/user-event';
 import { render, screen, within } from '@testing-library/react';
-import type { TTarsModelProfile } from 'librechat-data-provider';
+import type { TTarsModelProfile, TTarsModelPermission } from 'librechat-data-provider';
 import ModelProfileManager from '../Manager';
 
 type MutationOptions = {
@@ -31,7 +31,7 @@ const profiles: TTarsModelProfile[] = [
     status: 1,
     config: '{"max_token": 8192}',
     endpoint: 'https://api.openai.com/v1',
-    api_version: null,
+    api_version: '2024-10-21',
     updated_at: '2026-10-01T00:00:00Z',
   },
 ];
@@ -40,9 +40,23 @@ const mockShowToast = jest.fn();
 const mockUpdate = jest.fn();
 let mockQuery: { data?: TTarsModelProfile[]; isLoading: boolean; isError: boolean };
 let mockUpdateResult: { ok: boolean; payload: unknown };
+let mockPermissions: { data?: TTarsModelPermission[]; isLoading: boolean; isError: boolean };
+
+/** gpt-5.4 is assigned (one group, an active and a disabled user); qwen-local is open to everyone. */
+const permissions: TTarsModelPermission[] = [
+  {
+    model_profile_id: 'p-1',
+    principals: [
+      { principal_type: 'group', principal_id: 'g1', name: 'BOSS', email: null, is_active: true },
+      { principal_type: 'user', principal_id: 'u1', name: 'Amy', email: 'amy@x', is_active: true },
+      { principal_type: 'user', principal_id: 'u2', name: 'Bob', email: null, is_active: false },
+    ],
+  },
+];
 
 jest.mock('~/data-provider', () => ({
   useTarsModelProfilesQuery: () => mockQuery,
+  useTarsModelPermissionsQuery: () => mockPermissions,
   useDeleteTarsModelProfileMutation: () => ({ mutate: jest.fn(), isLoading: false }),
   useUpdateTarsModelProfileMutation: (options: MutationOptions) => ({
     isLoading: false,
@@ -57,6 +71,16 @@ jest.mock('~/data-provider', () => ({
     },
   }),
   useCreateTarsModelProfileMutation: () => ({ mutate: jest.fn(), isLoading: false }),
+}));
+
+/** Stands in for the assign dialog; its own spec covers what happens inside. */
+jest.mock('../Assign', () => ({
+  __esModule: true,
+  default: ({ profile, onClose }: { profile: TTarsModelProfile; onClose: () => void }) => (
+    <div role="dialog" aria-label={`assign:${profile.name}`}>
+      <button type="button" data-testid="close-assign" onClick={onClose} />
+    </div>
+  ),
 }));
 
 jest.mock('@librechat/client', () => ({
@@ -81,6 +105,7 @@ describe('ModelProfileManager', () => {
     mockUpdate.mockClear();
     mockQuery = { data: profiles, isLoading: false, isError: false };
     mockUpdateResult = { ok: true, payload: { profile: profiles[1], sync: null } };
+    mockPermissions = { data: permissions, isLoading: false, isError: false };
   });
 
   it('shows nothing but the loader while the list loads', () => {
@@ -104,6 +129,64 @@ describe('ModelProfileManager', () => {
     expect(within(rows[1]).getByText('qwen-local')).toBeInTheDocument();
     expect(within(rows[1]).getByText('On-prem model')).toBeInTheDocument();
     expect(screen.getByText('com_ui_tars_models_total:2')).toBeInTheDocument();
+  });
+
+  it('shows the version under the name and the API version under the endpoint', () => {
+    render(<ModelProfileManager />);
+    const [gpt, qwen] = bodyRows();
+    expect(within(qwen).getByText('com_ui_tars_models_version v2')).toBeInTheDocument();
+    expect(within(gpt).getByText('com_ui_tars_models_api_version 2024-10-21')).toBeInTheDocument();
+    expect(within(gpt).queryByText(/^com_ui_tars_models_version /)).not.toBeInTheDocument();
+    expect(within(qwen).queryByText(/^com_ui_tars_models_api_version /)).not.toBeInTheDocument();
+  });
+
+  it('marks a model nobody is assigned to as open to everyone and counts the rest', () => {
+    render(<ModelProfileManager />);
+    const [gpt, qwen] = bodyRows();
+    const openToAll = within(qwen).getAllByRole('img', { name: 'com_ui_tars_models_open_to_all' });
+    expect(openToAll).toHaveLength(2);
+    openToAll.forEach((cell) => expect(cell).toHaveTextContent('\u221E'));
+    expect(
+      within(gpt).queryByRole('img', { name: 'com_ui_tars_models_open_to_all' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(gpt).getByRole('button', { name: 'com_ui_tars_models_users_title:gpt-5.4,2' }),
+    ).toHaveTextContent('2');
+    expect(
+      within(gpt).getByRole('button', { name: 'com_ui_tars_models_groups_title:gpt-5.4,1' }),
+    ).toHaveTextContent('1');
+  });
+
+  it('lists the assigned users by name, disabled ones marked', async () => {
+    const user = userEvent.setup();
+    render(<ModelProfileManager />);
+    await user.click(
+      screen.getByRole('button', { name: 'com_ui_tars_models_users_title:gpt-5.4,2' }),
+    );
+    expect(screen.getByText('Amy')).toBeInTheDocument();
+    expect(screen.getByText('amy@x')).toBeInTheDocument();
+    expect(screen.getByText('Bob')).toBeInTheDocument();
+    expect(screen.getByText('com_ui_tars_mcp_disabled')).toBeInTheDocument();
+  });
+
+  it('does not call a model open to everyone before its assignees have loaded', () => {
+    mockPermissions = { data: undefined, isLoading: true, isError: false };
+    render(<ModelProfileManager />);
+    expect(
+      screen.queryByRole('img', { name: 'com_ui_tars_models_open_to_all' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens the assign dialog for the chosen model', async () => {
+    const user = userEvent.setup();
+    render(<ModelProfileManager />);
+    await user.click(
+      screen.getByRole('button', { name: 'com_ui_tars_models_assign_title:qwen-local' }),
+    );
+    expect(screen.getByRole('dialog', { name: 'assign:qwen-local' })).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('close-assign'));
+    expect(screen.queryByRole('dialog', { name: 'assign:qwen-local' })).not.toBeInTheDocument();
   });
 
   it('searches across name, type, endpoint and description', async () => {

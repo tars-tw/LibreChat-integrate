@@ -197,12 +197,12 @@ export const defaultTheme: IThemeRGB = {
   /** Slot 8 is upstream's neutral-leaning stop (the retained tool-context
    *  segment); the PwC-led slots 1–7 above are the brand scale. */
   'rgb-series-8': '63 81 181', // #3f51b5 (indigo)
-  'rgb-category-icon-1': '5 110 189', // #056ebd (matching series-1)
-  'rgb-category-icon-2': '233 86 13', // #e9560d (matching series-2)
-  'rgb-category-icon-4': '182 123 5', // #b67b05 (matching series-4)
-  'rgb-category-icon-5': '216 90 142', // #d85a8e (matching series-5)
-  'rgb-category-icon-6': '126 35 205', // #7e23cd (matching series-6)
-  'rgb-category-icon-7': '1 131 1', // #018301 (matching series-7)
+  'rgb-category-icon-1': '224 71 5', // #e04705 (matching series-1)
+  'rgb-category-icon-2': '5 110 189', // #056ebd (matching series-2)
+  'rgb-category-icon-4': '0 148 142', // #00948e (matching series-4)
+  'rgb-category-icon-5': '126 35 205', // #7e23cd (matching series-5)
+  'rgb-category-icon-6': '1 131 1', // #018301 (matching series-6)
+  'rgb-category-icon-7': '216 90 142', // #d85a8e (matching series-7)
 
   /** Unchecked switch track. 3.03:1 against the white page and the
    *  `surface-primary` thumb, 5.91:1 against the checked `surface-inverted`

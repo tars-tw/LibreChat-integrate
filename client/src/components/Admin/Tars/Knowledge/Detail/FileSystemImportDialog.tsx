@@ -503,7 +503,7 @@ export default function FileSystemImportDialog({
                         <Checkbox
                           checked={selected.includes(file)}
                           onCheckedChange={() => toggle(file)}
-                          aria-label={localize('com_ui_tars_kb_ds_select_one', { 0: file })}
+                          aria-label={localize('com_ui_tars_kb_ds_select_item', { 0: file })}
                         />
                       )}
                     </td>

@@ -14,7 +14,7 @@ export default function KnowledgeDetailView() {
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-presentation">
+    <div className="bg-presentation h-full w-full overflow-y-auto">
       <div className="mx-auto max-w-7xl space-y-6 p-6">
         <KnowledgeDetailManager knowledgeBaseId={kbId} />
       </div>

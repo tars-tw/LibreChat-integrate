@@ -220,6 +220,46 @@ export type TTarsModelProfileWriteResult = {
   sync: TTarsModelProfileSync | null;
 };
 
+/** Who a pwc_tars permission grant (`sys_mcp_permission`, `sys_model_permission`) is assigned to. */
+export type TTarsPrincipalType = 'user' | 'group';
+
+/** A user or group as the permission admin lists it. */
+export type TTarsPrincipalInfo = {
+  principal_type: TTarsPrincipalType;
+  principal_id: string;
+  name: string;
+  email?: string | null;
+  /** A disabled user/group keeps its rows but they grant nothing; it can only be removed. */
+  is_active: boolean;
+};
+
+/**
+ * One model's direct assignees (`sys_model_permission`), disabled ones included.
+ * A model missing from the overview has no assignees, which means everyone may use it.
+ */
+export type TTarsModelPermission = {
+  model_profile_id: string;
+  principals: TTarsPrincipalInfo[];
+};
+
+export type TTarsModelPermissionsResponse = { permissions: TTarsModelPermission[] };
+
+export type TTarsModelAssigneesResponse = { principals: TTarsPrincipalInfo[] };
+
+/**
+ * Full overwrite of one model's assignees; other models are untouched. A disabled
+ * principal can only stay or be left out, and an empty list opens the model to everyone.
+ */
+export type TTarsModelPermissionSavePayload = {
+  principals: Array<Pick<TTarsPrincipalInfo, 'principal_type' | 'principal_id'>>;
+};
+
+export type TTarsModelPermissionSaveResult = {
+  model_profile_id: string;
+  user_count: number;
+  group_count: number;
+};
+
 export type TTarsKnowledgeBaseInput = {
   name: string;
   description?: string;
@@ -794,17 +834,10 @@ export type TTarsMcpToolUpdate = {
 };
 
 /** Who a `sys_mcp_permission` grant is assigned to. */
-export type TTarsMcpPrincipalType = 'user' | 'group';
+export type TTarsMcpPrincipalType = TTarsPrincipalType;
 
-/** A user or group as the permission admin lists it. */
-export type TTarsMcpPrincipalInfo = {
-  principal_type: TTarsMcpPrincipalType;
-  principal_id: string;
-  name: string;
-  email?: string | null;
-  /** A disabled user/group keeps its rows but they grant nothing; it can only be removed. */
-  is_active: boolean;
-};
+/** A user or group as the MCP permission admin lists it. */
+export type TTarsMcpPrincipalInfo = TTarsPrincipalInfo;
 
 /** One user or group holding MCP grants (admin overview — disabled ones included). */
 export type TTarsMcpPermissionPrincipal = TTarsMcpPrincipalInfo & {

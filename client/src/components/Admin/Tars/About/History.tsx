@@ -13,7 +13,7 @@ import {
 import { useLocalize } from '~/hooks';
 
 const SectionTitle = ({ children }: { children?: React.ReactNode }) => (
-  <h2 className="my-3 border-l-2 border-orange-400 pl-2.5 text-sm font-medium text-text-primary">
+  <h2 className="text-text-primary my-3 border-l-2 border-orange-400 pl-2.5 text-sm font-medium">
     {children}
   </h2>
 );
@@ -63,7 +63,7 @@ export default function History({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[24rem] items-center justify-center gap-2 rounded-lg border border-border-light text-sm text-text-secondary">
+      <div className="border-border-light text-text-secondary flex min-h-[24rem] items-center justify-center gap-2 rounded-lg border text-sm">
         <Spinner className="size-4" />
         {localize('com_ui_loading')}
       </div>
@@ -72,7 +72,7 @@ export default function History({
 
   if (notes.length === 0) {
     return (
-      <div className="flex min-h-[24rem] flex-col items-center justify-center gap-2 rounded-lg border border-border-light text-sm text-text-secondary">
+      <div className="border-border-light text-text-secondary flex min-h-[24rem] flex-col items-center justify-center gap-2 rounded-lg border text-sm">
         <Inbox className="size-6" aria-hidden />
         {localize('com_ui_tars_about_no_notes')}
       </div>
@@ -80,21 +80,21 @@ export default function History({
   }
 
   return (
-    <div className="grid min-h-[24rem] overflow-hidden rounded-lg border border-border-light md:grid-cols-[18rem_minmax(0,1fr)]">
-      <div className="flex flex-col border-b border-border-light bg-surface-secondary md:border-b-0 md:border-r">
-        <div className="border-b border-border-light p-2">
+    <div className="border-border-light grid min-h-[24rem] overflow-hidden rounded-lg border md:grid-cols-[18rem_minmax(0,1fr)]">
+      <div className="border-border-light bg-surface-secondary flex flex-col border-b md:border-r md:border-b-0">
+        <div className="border-border-light border-b p-2">
           <input
             type="text"
             value={query}
             onChange={(event) => handleQueryChange(event.target.value)}
             placeholder={localize('com_ui_tars_about_search_placeholder')}
-            className="w-full rounded-md border border-border-light bg-surface-primary px-2 py-1 text-xs text-text-primary outline-none"
+            className="border-border-light bg-surface-primary text-text-primary w-full rounded-md border px-2 py-1 text-xs outline-none"
           />
         </div>
 
         <ul className="flex-1 overflow-y-auto">
           {paged.length === 0 ? (
-            <li className="p-3 text-xs text-text-secondary">
+            <li className="text-text-secondary p-3 text-xs">
               {localize('com_ui_tars_about_no_matching_notes')}
             </li>
           ) : (
@@ -102,20 +102,20 @@ export default function History({
               const active = selected?.id === note.id;
               const isLatest = notes[0]?.id === note.id;
               return (
-                <li key={note.id} className="border-b border-border-light last:border-b-0">
+                <li key={note.id} className="border-border-light border-b last:border-b-0">
                   <button
                     type="button"
                     onClick={() => setSelectedId(note.id)}
                     aria-pressed={active}
-                    className={`w-full px-3 py-2 text-left transition-colors hover:bg-surface-tertiary ${
+                    className={`hover:bg-surface-tertiary w-full px-3 py-2 text-left transition-colors ${
                       active ? 'bg-surface-primary' : ''
                     }`}
                   >
-                    <span className="block truncate text-sm font-medium text-text-primary">
+                    <span className="text-text-primary block truncate text-sm font-medium">
                       {note.title}
                     </span>
                     <span className="mt-0.5 flex items-center gap-1.5">
-                      <span className="text-xs text-text-secondary">{note.version}</span>
+                      <span className="text-text-secondary text-xs">{note.version}</span>
                       {isLatest && (
                         <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
                           {localize('com_ui_tars_about_latest')}
@@ -129,14 +129,14 @@ export default function History({
           )}
         </ul>
 
-        <div className="flex items-center justify-between gap-2 border-t border-border-light p-2">
+        <div className="border-border-light flex items-center justify-between gap-2 border-t p-2">
           <select
             value={pageSize}
             onChange={(event) => {
               setPageSize(Number(event.target.value));
               setPage(1);
             }}
-            className="rounded-md border border-border-light bg-surface-primary px-1 py-0.5 text-xs text-text-secondary"
+            className="border-border-light bg-surface-primary text-text-secondary rounded-md border px-1 py-0.5 text-xs"
           >
             {PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>
@@ -156,7 +156,7 @@ export default function History({
               >
                 <ChevronLeft className="size-4" aria-hidden />
               </Button>
-              <span className="text-xs text-text-secondary">
+              <span className="text-text-secondary text-xs">
                 {currentPage}/{totalPages}
               </span>
               <Button
@@ -177,26 +177,26 @@ export default function History({
       <div className="overflow-y-auto p-5">
         {selected ? (
           <>
-            <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-border-light pb-3">
+            <div className="border-border-light mb-3 flex flex-wrap items-center gap-2 border-b pb-3">
               <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
                 {selected.version}
               </span>
-              <span className="text-sm font-medium text-text-primary">{selected.title}</span>
-              <span className="ml-auto text-xs text-text-secondary">
+              <span className="text-text-primary text-sm font-medium">{selected.title}</span>
+              <span className="text-text-secondary ml-auto text-xs">
                 {formatDate(selected.created_at)}
               </span>
             </div>
             {parsed != null && parsed.intro !== '' && (
-              <div className="text-sm leading-7 text-text-secondary">
+              <div className="text-text-secondary text-sm leading-7">
                 <ReactMarkdown components={markdownComponents}>{parsed.intro}</ReactMarkdown>
               </div>
             )}
             {parsed != null && parsed.sections.length > 0 && (
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 {parsed.sections.map((section, index) => (
-                  <div key={index} className="rounded-lg bg-surface-primary px-3 pb-1">
+                  <div key={index} className="bg-surface-primary rounded-lg px-3 pb-1">
                     <SectionTitle>{section.title}</SectionTitle>
-                    <div className="text-sm leading-7 text-text-secondary">
+                    <div className="text-text-secondary text-sm leading-7">
                       <ReactMarkdown components={markdownComponents}>
                         {section.content}
                       </ReactMarkdown>
@@ -207,7 +207,7 @@ export default function History({
             )}
           </>
         ) : (
-          <p className="pt-16 text-center text-sm text-text-secondary">
+          <p className="text-text-secondary pt-16 text-center text-sm">
             {localize('com_ui_tars_about_select_version')}
           </p>
         )}

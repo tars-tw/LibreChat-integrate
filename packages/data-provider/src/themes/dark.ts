@@ -210,12 +210,12 @@ export const darkTheme: IThemeRGB = {
    *  indigo because a slot also fills a badge chip under `text-on-status`
    *  white: this reads 3.66:1 there. */
   'rgb-series-8': '120 130 190', // #8082be (indigo)
-  'rgb-category-icon-1': '9 140 238', // #098cee (matching series-1)
-  'rgb-category-icon-2': '217 87 35', // #d95723 (matching series-2)
-  'rgb-category-icon-4': '200 133 12', // #c8850c (matching series-4)
-  'rgb-category-icon-5': '213 82 130', // #d55282 (matching series-5)
-  'rgb-category-icon-6': '171 104 254', // #ab68fe (matching series-6)
-  'rgb-category-icon-7': '80 167 49', // #50a731 (matching series-7)
+  'rgb-category-icon-1': '254 124 57', // #fe7c39 (matching series-1)
+  'rgb-category-icon-2': '9 140 238', // #098cee (matching series-2)
+  'rgb-category-icon-4': '6 158 152', // #069e98 (matching series-4)
+  'rgb-category-icon-5': '171 104 254', // #ab68fe (matching series-5)
+  'rgb-category-icon-6': '80 167 49', // #50a731 (matching series-6)
+  'rgb-category-icon-7': '213 82 130', // #d55282 (matching series-7)
 
   /** Unchecked switch track. 3.38:1 against the page and the `surface-primary`
    *  thumb, 5.74:1 against the checked `surface-inverted` track. */

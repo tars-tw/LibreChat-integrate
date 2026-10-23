@@ -131,11 +131,43 @@ let cachedProfileNames: string[] | null = null;
 let profileCachedAt = 0;
 let profileInflight: Promise<string[] | null> | null = null;
 
-/** Drops the cached model_profile name list so the next lookup re-reads pwc_tars. */
+/** pwc_tars user id → the model_profile names that user may pick, and when they were read. */
+const userProfileCache = new Map<string, { names: string[]; at: number }>();
+const userProfileInflight = new Map<string, Promise<string[]>>();
+/** Bumped on every drop, so a fetch already in flight cannot store a pre-drop answer. */
+let userProfileGeneration = 0;
+
+/**
+ * Drops every user's cached permitted-model list. A `sys_model_permission` save
+ * moves what any user may pick, so the whole map goes rather than one entry.
+ */
+export function invalidateTarsUserModelsCache(): void {
+  userProfileCache.clear();
+  userProfileInflight.clear();
+  userProfileGeneration += 1;
+}
+
+/**
+ * Drops the cached model_profile name list so the next lookup re-reads pwc_tars,
+ * along with every user's permitted list, which is drawn from the same profiles.
+ */
 export function invalidateTarsModelProfilesCache(): void {
   cachedProfileNames = null;
   profileCachedAt = 0;
   profileInflight = null;
+  invalidateTarsUserModelsCache();
+}
+
+/** Trimmed, deduplicated model names of a pwc_tars model-list reply. */
+function toModelNames(rows: TarsModelListEntry[] | null | undefined): string[] {
+  const names = new Set<string>();
+  for (const row of rows ?? []) {
+    const name = row?.model_name?.trim();
+    if (name) {
+      names.add(name);
+    }
+  }
+  return [...names];
 }
 
 async function refreshProfileNames(): Promise<string[] | null> {
@@ -143,14 +175,7 @@ async function refreshProfileNames(): Promise<string[] | null> {
     const rows = await tarsFetch<TarsModelListEntry[]>('/api/model/get_model_list', {
       timeoutMs: FETCH_TIMEOUT_MS,
     });
-    const names = new Set<string>();
-    for (const row of rows ?? []) {
-      const name = row?.model_name?.trim();
-      if (name) {
-        names.add(name);
-      }
-    }
-    cachedProfileNames = [...names];
+    cachedProfileNames = toModelNames(rows);
   } catch (error) {
     logger.warn(
       `[TarsModelProfiles] Failed to refresh model_profile list; ${
@@ -181,6 +206,54 @@ export async function getTarsModelProfileNames(): Promise<string[] | null> {
     await profileInflight;
   }
   return cachedProfileNames;
+}
+
+async function fetchUserProfileNames(tarsId: string): Promise<string[]> {
+  const generation = userProfileGeneration;
+  const rows = await tarsFetch<TarsModelListEntry[]>('/api/model/get_user_model_list', {
+    query: { user_id: tarsId },
+    timeoutMs: FETCH_TIMEOUT_MS,
+  });
+  const names = toModelNames(rows);
+  if (generation === userProfileGeneration) {
+    userProfileCache.set(tarsId, { names, at: Date.now() });
+  }
+  return names;
+}
+
+/**
+ * The model_profile names one pwc_tars user may pick in the chat and agent model
+ * selectors: pwc_tars applies `sys_model_permission` (models nobody is assigned to,
+ * plus those assigned to the user or one of their active groups; admins get every
+ * model). Read per user through a TTL cache with one shared in-flight fetch per user.
+ * An account with no pwc_tars link keeps the global list, and null still means "no
+ * restriction" when TARS is unconfigured. A failed fetch throws — pwc_tars being down
+ * already locks users out of logging in, so there is no stale list to fall back on.
+ */
+export async function getTarsUserModelProfileNames(
+  tarsId: string | null | undefined,
+): Promise<string[] | null> {
+  if (!isTarsConfigured()) {
+    return null;
+  }
+  if (!tarsId) {
+    return getTarsModelProfileNames();
+  }
+  const cached = userProfileCache.get(tarsId);
+  if (cached && Date.now() - cached.at < PROFILE_CACHE_TTL_MS) {
+    return cached.names;
+  }
+  const inflight = userProfileInflight.get(tarsId);
+  if (inflight) {
+    return inflight;
+  }
+  const request = fetchUserProfileNames(tarsId).finally(() => {
+    if (userProfileInflight.get(tarsId) === request) {
+      userProfileInflight.delete(tarsId);
+    }
+  });
+  userProfileInflight.set(tarsId, request);
+  return request;
 }
 
 /**

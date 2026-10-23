@@ -12,6 +12,7 @@ import type { AgentForm, StringOption } from '~/common';
 import { pruneAgentModelParameters, resolveAgentParameterSettings } from './parameters';
 import { useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
 import ParametersFields from '~/components/SidePanel/Parameters/Fields';
+import { useModelReasoning } from '~/hooks/Endpoint/useModelReasoning';
 import ParametersModal from '~/components/SidePanel/Parameters/Modal';
 import { useLocalize, useHasAccess } from '~/hooks';
 import { useLiveAnnouncer } from '~/Providers';
@@ -83,6 +84,7 @@ export default function ModelPanel({
   }, [tempProvider, models, tempModel]);
   const { data: endpointsConfig = {} } = useGetEndpointsQuery();
   const { data: startupConfig } = useGetStartupConfig();
+  const { modelReasoning } = useModelReasoning(endpointsConfig, tempProvider, tempModel);
 
   const bedrockRegions = useMemo(() => {
     return endpointsConfig?.[tempProvider]?.availableRegions ?? [];
@@ -101,8 +103,9 @@ export default function ModelPanel({
         provider: tempProvider,
         startupConfig,
         webSearchAllowed,
+        modelReasoning,
       }),
-    [endpointsConfig, tempModel, tempProvider, startupConfig, webSearchAllowed],
+    [endpointsConfig, tempModel, modelReasoning, tempProvider, startupConfig, webSearchAllowed],
   );
   /** The rendered set omits role-gated controls; `parameterSettings.parameters`
    *  stays complete so the pruning effect below still recognises them. */
@@ -195,7 +198,7 @@ export default function ModelPanel({
         <div className="mb-1">
           <label
             id="provider-label"
-            className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-text-secondary"
+            className="text-text-secondary text-2xs mb-1 block font-medium tracking-wide uppercase"
             htmlFor="provider"
           >
             {localize('com_ui_provider')} <span className="text-text-destructive">*</span>
@@ -221,7 +224,7 @@ export default function ModelPanel({
           <label
             id="model-label"
             className={cn(
-              'mb-1 block text-[11px] font-medium uppercase tracking-wide text-text-secondary',
+              'text-text-secondary text-2xs mb-1 block font-medium tracking-wide uppercase',
               !tempProvider && 'opacity-60',
             )}
             htmlFor="model"

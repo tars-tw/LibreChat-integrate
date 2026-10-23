@@ -271,7 +271,7 @@ export default function ConfigModal({
                 value={form.warningPercent}
                 onChange={(event) => set('warningPercent', event.target.value)}
               />
-              <p className="text-xs text-text-secondary">
+              <p className="text-text-secondary text-xs">
                 {localize('com_ui_tars_quota_warning_hint')}
               </p>
             </div>

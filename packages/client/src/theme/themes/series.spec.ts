@@ -1,8 +1,7 @@
-import type { IThemeRGB } from '../types';
+import { darkTheme, defaultTheme } from 'librechat-data-provider';
+import type { IThemeRGB } from 'librechat-data-provider';
 import type { RGB } from '../utils/color';
 import { contrastRatio, hueAngle, parseRgb, toHex, worstSeparation } from '../utils/color';
-import { defaultTheme } from './default';
-import { darkTheme } from './dark';
 
 /**
  * The contract the categorical series scale is held to. Both figures are floors

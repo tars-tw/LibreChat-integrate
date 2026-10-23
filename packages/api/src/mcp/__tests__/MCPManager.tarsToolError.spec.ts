@@ -37,6 +37,7 @@ jest.mock('~/mcp/registry/MCPServersRegistry', () => ({
       isAppServerConfig: jest.fn(),
       getAllServerConfigs: jest.fn(),
       getOAuthServers: jest.fn(),
+      isHiddenFromPrincipal: jest.fn().mockResolvedValue(false),
       shouldEnableSSRFProtection: jest.fn().mockReturnValue(false),
       getAllowedDomains: jest.fn().mockReturnValue(null),
       getAllowedAddresses: jest.fn().mockReturnValue(null),

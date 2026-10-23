@@ -66,7 +66,7 @@ export default function KnowledgeCards({
                 onClick={() => onManagePrompts(kb)}
                 aria-label={localize('com_ui_tars_kb_prompts')}
                 title={localize('com_ui_tars_kb_prompts')}
-                className="text-pwc-info hover:bg-surface-tertiary hover:text-pwc-info"
+                className="hover:bg-surface-tertiary text-[rgb(var(--pwc-info))] hover:text-[rgb(var(--pwc-info))]"
               >
                 <BookText className="size-4" aria-hidden />
               </Button>

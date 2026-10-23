@@ -92,7 +92,7 @@ export default function AuditTable({
           aria-label={localize('com_ui_tars_audit_view_response')}
           title={localize('com_ui_tars_audit_view_response')}
         >
-          <Eye className="text-pwc-info size-4" aria-hidden />
+          <Eye className="size-4 text-[rgb(var(--pwc-info))]" aria-hidden />
         </Button>
       );
       if (!onViewTrace) {

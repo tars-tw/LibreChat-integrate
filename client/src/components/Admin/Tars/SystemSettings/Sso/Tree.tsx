@@ -70,7 +70,7 @@ function NodeLabel({
     <>
       {node.label}
       {memberCount != null && (
-        <span className="ml-1 text-xs font-normal text-text-secondary">
+        <span className="text-text-secondary ml-1 text-xs font-normal">
           ({localize('com_ui_tars_sso_tree_group_members', { count: memberCount })})
         </span>
       )}
@@ -87,7 +87,7 @@ function NodeLabel({
     const allChecked = checkedCount === accounts.length;
     const someChecked = checkedCount > 0 && !allChecked;
     return (
-      <label className="flex cursor-pointer items-center gap-2 text-text-primary">
+      <label className="text-text-primary flex cursor-pointer items-center gap-2">
         <input
           type="checkbox"
           className="h-4 w-4"
@@ -106,7 +106,7 @@ function NodeLabel({
   }
 
   return (
-    <span className="flex items-center gap-2 text-text-primary">
+    <span className="text-text-primary flex items-center gap-2">
       <Icon className="icon-xs text-text-secondary" aria-hidden="true" />
       {label}
     </span>
@@ -151,7 +151,7 @@ export function LdapTreeNode({
             aria-expanded={open}
             aria-label={node.label}
             onClick={() => setOpen((prev) => !prev)}
-            className="rounded p-0.5 text-text-secondary hover:text-text-primary"
+            className="text-text-secondary hover:text-text-primary rounded p-0.5"
           >
             {open ? <ChevronDown className="icon-xs" /> : <ChevronRight className="icon-xs" />}
           </button>
@@ -233,11 +233,11 @@ export default function LdapTreeModal({
         className="w-11/12 md:max-w-2xl"
         main={
           <div className="space-y-3">
-            <p className="text-xs text-text-destructive">
+            <p className="text-text-destructive text-xs">
               {localize('com_ui_tars_sso_tree_excluded_hint')}
             </p>
             <div className="relative">
-              <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+              <Search className="icon-sm text-text-secondary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -245,17 +245,17 @@ export default function LdapTreeModal({
                 className="pl-9"
               />
             </div>
-            <p className="text-xs text-text-secondary">
+            <p className="text-text-secondary text-xs">
               {localize('com_ui_tars_sso_tree_selected', { count: selected.size })}
             </p>
-            <div className="max-h-[45vh] overflow-y-auto rounded-lg border border-border-light p-2">
+            <div className="border-border-light max-h-[45vh] overflow-y-auto rounded-lg border p-2">
               {isLoading && (
                 <div className="flex h-32 items-center justify-center">
                   <Spinner />
                 </div>
               )}
               {!isLoading && nodes.length === 0 && (
-                <p className="py-8 text-center text-sm text-text-secondary">
+                <p className="text-text-secondary py-8 text-center text-sm">
                   {localize('com_ui_tars_sso_tree_empty')}
                 </p>
               )}

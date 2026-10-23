@@ -92,8 +92,8 @@ export default function DatabaseBindDialog({
   const tablePicker = () => {
     if (inspectId !== chosenId || tablesQuery.isError) {
       return (
-        <div className="space-y-2 rounded-lg border border-border-light p-4 text-center">
-          <p className="text-sm text-text-secondary">
+        <div className="border-border-light space-y-2 rounded-lg border p-4 text-center">
+          <p className="text-text-secondary text-sm">
             {localize(
               tablesQuery.isError
                 ? 'com_ui_tars_kb_ds_connect_failed'
@@ -115,7 +115,7 @@ export default function DatabaseBindDialog({
 
     if (tablesQuery.isFetching) {
       return (
-        <div className="flex h-32 items-center justify-center gap-2 text-sm text-text-secondary">
+        <div className="text-text-secondary flex h-32 items-center justify-center gap-2 text-sm">
           <Spinner className="size-4" />
           {localize('com_ui_tars_kb_ds_connecting')}
         </div>
@@ -127,7 +127,7 @@ export default function DatabaseBindDialog({
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary"
+              className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
               aria-hidden
             />
             <Input
@@ -138,29 +138,29 @@ export default function DatabaseBindDialog({
               className="pl-9"
             />
           </div>
-          <span className="shrink-0 text-sm text-text-secondary">
+          <span className="text-text-secondary shrink-0 text-sm">
             {localize('com_ui_tars_audit_selected_count', { 0: String(selected.length) })}
           </span>
         </div>
 
         {entries.length === 0 ? (
-          <p className="py-8 text-center text-sm text-text-secondary">
+          <p className="text-text-secondary py-8 text-center text-sm">
             {localize('com_ui_tars_kb_ds_no_tables')}
           </p>
         ) : (
-          <ul className="max-h-64 divide-y divide-border-light overflow-y-auto rounded-lg border border-border-light">
+          <ul className="divide-border-light border-border-light max-h-64 divide-y overflow-y-auto rounded-lg border">
             {visible.map((entry) => (
               <li key={`${entry.isView ? 'view' : 'table'}-${entry.name}`}>
-                <label className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-surface-hover">
+                <label className="hover:bg-surface-hover flex cursor-pointer items-center gap-2 px-3 py-2 text-sm">
                   <Checkbox
                     checked={selected.includes(entry.name)}
                     onCheckedChange={() => toggle(entry.name)}
                     aria-label={entry.name}
                   />
-                  <Table2 className="size-4 shrink-0 text-text-secondary" aria-hidden />
-                  <span className="min-w-0 flex-1 truncate text-text-primary">{entry.name}</span>
+                  <Table2 className="text-text-secondary size-4 shrink-0" aria-hidden />
+                  <span className="text-text-primary min-w-0 flex-1 truncate">{entry.name}</span>
                   {entry.isView && (
-                    <span className="shrink-0 rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
+                    <span className="bg-surface-tertiary text-text-secondary shrink-0 rounded-full px-2 py-0.5 text-xs">
                       {localize('com_ui_tars_kb_ds_view')}
                     </span>
                   )}
@@ -171,7 +171,7 @@ export default function DatabaseBindDialog({
         )}
 
         {/* Binding re-reads and re-embeds every chosen table. */}
-        <p className="text-xs text-text-secondary">{localize('com_ui_tars_kb_ds_import_slow')}</p>
+        <p className="text-text-secondary text-xs">{localize('com_ui_tars_kb_ds_import_slow')}</p>
       </>
     );
   };
@@ -192,7 +192,7 @@ export default function DatabaseBindDialog({
             <div className="space-y-1.5">
               <Label id="tars-db-pick-label">{localize('com_ui_tars_kb_ds_connection')}</Label>
               {isAdjusting ? (
-                <p className="flex h-10 items-center rounded-md border border-border-light px-3 text-sm text-text-primary">
+                <p className="border-border-light text-text-primary flex h-10 items-center rounded-md border px-3 text-sm">
                   {database?.name}
                 </p>
               ) : (

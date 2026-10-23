@@ -40,12 +40,12 @@ export default function ScheduleTable({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto rounded-lg border border-border-light">
+      <div className="border-border-light overflow-x-auto rounded-lg border">
         <table
           className={`w-full ${showKnowledgeBase === true ? 'min-w-[68rem]' : 'min-w-[60rem]'} border-collapse text-sm`}
         >
           <thead className="bg-surface-secondary">
-            <tr className="text-left text-text-secondary">
+            <tr className="text-text-secondary text-left">
               <th className="w-[22%] px-3 py-2 font-medium">
                 {localize('com_ui_tars_sched_dataset')}
               </th>
@@ -64,34 +64,34 @@ export default function ScheduleTable({
           </thead>
           <tbody>
             {paged.rows.map((schedule) => (
-              <tr key={schedule.id} className="border-t border-border-light hover:bg-surface-hover">
+              <tr key={schedule.id} className="border-border-light hover:bg-surface-hover border-t">
                 <td className="max-w-0 px-3 py-1.5">
-                  <span className="block truncate text-text-primary" title={schedule.dataset_name}>
+                  <span className="text-text-primary block truncate" title={schedule.dataset_name}>
                     {schedule.dataset_name}
                   </span>
                 </td>
                 {showKnowledgeBase === true && (
-                  <td className="max-w-0 px-3 py-1.5 text-text-secondary">
+                  <td className="text-text-secondary max-w-0 px-3 py-1.5">
                     <span className="block truncate" title={schedule.knowledge_base_name}>
                       {schedule.knowledge_base_name}
                     </span>
                   </td>
                 )}
-                <td className="whitespace-nowrap px-3 py-1.5 text-text-secondary">
+                <td className="text-text-secondary px-3 py-1.5 whitespace-nowrap">
                   {datasetType(schedule)}
                 </td>
-                <td className="whitespace-nowrap px-3 py-1.5 text-text-secondary">
+                <td className="text-text-secondary px-3 py-1.5 whitespace-nowrap">
                   {cadence(schedule)}
                 </td>
                 <td className="px-3 py-1.5">
                   <ScheduleStatusBadge schedule={schedule} />
                 </td>
-                <td className="whitespace-nowrap px-3 py-1.5 text-text-secondary">
+                <td className="text-text-secondary px-3 py-1.5 whitespace-nowrap">
                   {schedule.next_execute_time == null
                     ? '—'
                     : formatDateTime(schedule.next_execute_time, locale)}
                 </td>
-                <td className="px-3 py-1.5 tabular-nums text-text-secondary">
+                <td className="text-text-secondary px-3 py-1.5 tabular-nums">
                   {schedule.execution_count}
                 </td>
                 <td className="px-3 py-1.5">

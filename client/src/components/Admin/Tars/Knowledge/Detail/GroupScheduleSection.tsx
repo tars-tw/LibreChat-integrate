@@ -133,22 +133,22 @@ export default function GroupScheduleSection({
   };
 
   return (
-    <div className="space-y-3 rounded-lg border border-border-light p-3">
+    <div className="border-border-light space-y-3 rounded-lg border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium text-text-primary">
+        <p className="text-text-primary text-sm font-medium">
           {localize('com_ui_tars_kb_ds_schedule')}
         </p>
         {schedule != null ? (
           <ScheduleStatusBadge schedule={schedule} />
         ) : (
-          <span className="rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
+          <span className="bg-surface-tertiary text-text-secondary rounded-full px-2 py-0.5 text-xs">
             {localize('com_ui_tars_kb_ds_schedule_not_set')}
           </span>
         )}
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-text-primary">
+        <span className="text-text-primary text-sm">
           {localize('com_ui_tars_kb_ds_schedule_enable')}
         </span>
         <Switch

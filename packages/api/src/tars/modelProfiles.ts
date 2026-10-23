@@ -1,5 +1,15 @@
 import { isTarsModelEndpoint, isTarsModelType, TARS_MODEL_TYPES } from 'librechat-data-provider';
-import { invalidateTarsLocalModelsCache, invalidateTarsModelProfilesCache } from './models';
+import type {
+  TTarsPrincipalInfo,
+  TTarsModelPermission,
+  TTarsModelPermissionSaveResult,
+  TTarsModelPermissionSavePayload,
+} from 'librechat-data-provider';
+import {
+  invalidateTarsUserModelsCache,
+  invalidateTarsLocalModelsCache,
+  invalidateTarsModelProfilesCache,
+} from './models';
 import { tarsFetch, TarsRequestError } from './client';
 
 /** A pwc_tars `model_profile` row as the model admin page sees it. Mirrors `ModelProfile.to_json()`. */
@@ -186,4 +196,65 @@ export async function deleteTarsModelProfile(
   });
   invalidateModelCaches();
   return { sync: data?.sync ?? null };
+}
+
+/** pwc_tars `/api/model/permission*` answers `{success, message, data}`; a failure is a 4xx/5xx. */
+interface TarsModelPermissionEnvelope<T> {
+  success: boolean;
+  message?: string;
+  data?: T;
+}
+
+/**
+ * Every model's direct assignees in `sys_model_permission`, disabled users/groups
+ * included. A model missing from the list has none, which means everyone may use it.
+ * The permission endpoints are `@admin_required` on pwc_tars, so they go out as the
+ * acting admin (`asUser`).
+ */
+export async function fetchTarsModelPermissions(
+  tarsId: string,
+  baseUrl?: string,
+): Promise<TTarsModelPermission[]> {
+  const envelope = await tarsFetch<TarsModelPermissionEnvelope<TTarsModelPermission[]>>(
+    '/api/model/permission/models',
+    { asUser: tarsId, baseUrl },
+  );
+  return envelope?.data ?? [];
+}
+
+/** One model's assignees, groups first; pwc_tars answers 400 for a missing or deleted model. */
+export async function fetchTarsModelAssignees(
+  tarsId: string,
+  modelProfileId: string,
+  baseUrl?: string,
+): Promise<TTarsPrincipalInfo[]> {
+  const envelope = await tarsFetch<TarsModelPermissionEnvelope<TTarsPrincipalInfo[]>>(
+    '/api/model/permission',
+    { query: { model_profile_id: modelProfileId }, asUser: tarsId, baseUrl },
+  );
+  return envelope?.data ?? [];
+}
+
+/**
+ * Overwrites one model's assignees; other models are untouched. pwc_tars validates
+ * the principals (unknown ones and newly added disabled ones are a 400), and an empty
+ * list opens the model to everyone again.
+ */
+export async function saveTarsModelAssignees(
+  tarsId: string,
+  modelProfileId: string,
+  payload: TTarsModelPermissionSavePayload,
+  baseUrl?: string,
+): Promise<TTarsModelPermissionSaveResult | undefined> {
+  const envelope = await tarsFetch<TarsModelPermissionEnvelope<TTarsModelPermissionSaveResult>>(
+    '/api/model/permission/save',
+    {
+      method: 'POST',
+      body: { model_profile_id: modelProfileId, principals: payload?.principals },
+      asUser: tarsId,
+      baseUrl,
+    },
+  );
+  invalidateTarsUserModelsCache();
+  return envelope?.data;
 }

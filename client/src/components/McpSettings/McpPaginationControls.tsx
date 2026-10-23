@@ -23,7 +23,7 @@ export default function McpPaginationControls({
   const localize = useLocalize();
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
+    <div className="text-text-secondary flex flex-wrap items-center justify-between gap-3 text-sm">
       <div className="flex items-center gap-2">
         <span id={labelId}>{localize('com_ui_tars_mcp_rows_per_page')}</span>
         <Dropdown

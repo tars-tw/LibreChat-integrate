@@ -31,11 +31,11 @@ export default function Trend({
     peak === 0 ? 0 : Math.max((tokens / peak) * 100, tokens > 0 ? 2 : 0);
 
   return (
-    <section className="rounded-xl border border-border-light">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border-light px-4 py-2">
+    <section className="border-border-light rounded-xl border">
+      <header className="border-border-light flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2">
         <div className="flex items-center gap-3">
-          <h2 className="text-sm font-medium text-text-primary">{title}</h2>
-          <div className="flex items-center gap-1 text-text-secondary">
+          <h2 className="text-text-primary text-sm font-medium">{title}</h2>
+          <div className="text-text-secondary flex items-center gap-1">
             <button
               type="button"
               onClick={() => setView('chart')}
@@ -54,12 +54,12 @@ export default function Trend({
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-xs text-text-secondary">
+        <div className="text-text-secondary flex items-center gap-4 text-xs">
           <span className="flex items-center gap-1.5">
-            <span className="h-px w-6 border-t border-dashed border-border-heavy" aria-hidden />
+            <span className="border-border-heavy h-px w-6 border-t border-dashed" aria-hidden />
             {`${localize('com_ui_tars_usage_daily_average')} ${formatTokens(Math.round(average))}`}
           </span>
-          <span className="rounded-full bg-surface-tertiary px-2 py-0.5 tabular-nums text-text-primary">
+          <span className="bg-surface-tertiary text-text-primary rounded-full px-2 py-0.5 tabular-nums">
             {formatTokens(total)}
           </span>
         </div>
@@ -72,7 +72,7 @@ export default function Trend({
           >
             {peak > 0 && (
               <div
-                className="pointer-events-none absolute inset-x-0 border-t border-dashed border-border-heavy"
+                className="border-border-heavy pointer-events-none absolute inset-x-0 border-t border-dashed"
                 style={{ bottom: `${(average / peak) * 100}%` }}
                 aria-hidden
               />
@@ -100,7 +100,7 @@ export default function Trend({
             {days.map((day, index) => (
               <span
                 key={day.date}
-                className="flex-1 text-center text-[10px] tabular-nums text-text-secondary"
+                className="text-text-secondary flex-1 text-center text-[10px] tabular-nums"
               >
                 {index % 3 === 0 ? shortDate(day.date) : ''}
               </span>
@@ -112,7 +112,7 @@ export default function Trend({
       {view === 'table' && (
         <div className="max-h-80 overflow-auto">
           <table className="w-full min-w-[32rem] text-sm">
-            <thead className="sticky top-0 bg-surface-secondary text-left text-text-secondary">
+            <thead className="bg-surface-secondary text-text-secondary sticky top-0 text-left">
               <tr>
                 <th className="w-[30%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_usage_col_date')}
@@ -128,18 +128,18 @@ export default function Trend({
             </thead>
             <tbody>
               {days.map((day) => (
-                <tr key={day.date} className="border-t border-border-light">
-                  <td className="px-3 py-2 tabular-nums text-text-primary">{day.date}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                <tr key={day.date} className="border-border-light border-t">
+                  <td className="text-text-primary px-3 py-2 tabular-nums">{day.date}</td>
+                  <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                     {formatTokens(day.log_count)}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-text-primary">
+                  <td className="text-text-primary px-3 py-2 text-right tabular-nums">
                     {formatTokens(day.total_tokens)}
                   </td>
                   <td className="px-3 py-2">
-                    <div className="h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
+                    <div className="bg-surface-tertiary h-1.5 overflow-hidden rounded-full">
                       <div
-                        className="h-full rounded-full bg-brand-primary"
+                        className="bg-brand-primary h-full rounded-full"
                         style={{ width: `${heightOf(day.total_tokens)}%` }}
                       />
                     </div>

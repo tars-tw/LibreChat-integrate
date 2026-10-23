@@ -79,8 +79,8 @@ export default function DocumentRowActions({
           size="icon-xs"
           disabled={isRetryingStuck}
           onClick={onRetryStuck}
-          aria-label={localize('com_ui_tars_kb_retry_stuck_one')}
-          title={localize('com_ui_tars_kb_retry_stuck_one')}
+          aria-label={localize('com_ui_tars_kb_retry_stuck_single')}
+          title={localize('com_ui_tars_kb_retry_stuck_single')}
         >
           <Wrench className="size-4" aria-hidden />
         </Button>

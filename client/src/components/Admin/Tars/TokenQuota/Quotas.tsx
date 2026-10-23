@@ -117,7 +117,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
           aria-label={localize('com_ui_tars_quota_info_title')}
           title={localize('com_ui_tars_quota_info_title')}
           onClick={() => setShowInfo(true)}
-          className="ml-auto flex size-10 items-center justify-center rounded-xl border border-border-light bg-surface-primary text-text-secondary transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 dark:hover:border-orange-900/40 dark:hover:bg-orange-950/20 dark:hover:text-orange-400"
+          className="border-border-light bg-surface-primary text-text-secondary ml-auto flex size-10 items-center justify-center rounded-xl border transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 dark:hover:border-orange-900/40 dark:hover:bg-orange-950/20 dark:hover:text-orange-400"
         >
           <HelpCircle className="size-5" aria-hidden />
         </button>
@@ -137,15 +137,15 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
       )}
 
       {!isLoading && quotas.length === 0 && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_tars_quota_empty')}
         </p>
       )}
 
       {!isLoading && quotas.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-border-light">
+        <div className="border-border-light overflow-x-auto rounded-xl border">
           <table className="w-full min-w-[68rem] text-sm">
-            <thead className="bg-surface-secondary text-left text-text-secondary">
+            <thead className="bg-surface-secondary text-text-secondary text-left">
               <tr>
                 <th className="w-[18%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_quota_col_user')}
@@ -181,16 +181,16 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
             </thead>
             <tbody>
               {quotas.map((quota) => (
-                <tr key={quota.id} className="border-t border-border-light hover:bg-surface-hover">
+                <tr key={quota.id} className="border-border-light hover:bg-surface-hover border-t">
                   <td className="px-3 py-2">
-                    <span className="block truncate text-text-primary">
+                    <span className="text-text-primary block truncate">
                       {quota.display_name ?? quota.username ?? '—'}
                     </span>
-                    <span className="block truncate text-xs text-text-secondary">
+                    <span className="text-text-secondary block truncate text-xs">
                       {quota.email ?? quota.username ?? '—'}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-text-secondary">
+                  <td className="text-text-secondary px-3 py-2">
                     <span className="block truncate">{quota.domain_name ?? '—'}</span>
                   </td>
                   <td className="px-3 py-2">
@@ -198,9 +198,9 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                       {quota.provider ?? 'system'}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                     {capOf(quota.custom_limit) == null ? (
-                      <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                      <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs whitespace-nowrap text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
                         {localize('com_ui_tars_quota_unlimited')}
                       </span>
                     ) : (
@@ -208,11 +208,11 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                     )}
                   </td>
                   <td className="px-3 py-2">
-                    <div className="flex items-center justify-between gap-2 text-xs tabular-nums text-text-secondary">
+                    <div className="text-text-secondary flex items-center justify-between gap-2 text-xs tabular-nums">
                       <span>{(quota.used_amount ?? 0).toLocaleString()}</span>
                       {capOf(quota.custom_limit) != null && <span>{quotaUsageShare(quota)}%</span>}
                     </div>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
+                    <div className="bg-surface-tertiary mt-1 h-1.5 overflow-hidden rounded-full">
                       {capOf(quota.custom_limit) == null ? (
                         <div
                           className="h-full w-full rounded-full"
@@ -223,23 +223,23 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                         />
                       ) : (
                         <div
-                          className="h-full rounded-full bg-brand-primary"
+                          className="bg-brand-primary h-full rounded-full"
                           style={{ width: `${quotaUsageShare(quota)}%` }}
                         />
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-text-secondary">
+                  <td className="text-text-secondary px-3 py-2">
                     {RESET_TYPES.includes(quota.reset_type as TokenResetType)
                       ? localize(RESET_LABEL_KEYS[quota.reset_type as TokenResetType])
                       : (quota.reset_type ?? '—')}
                     {usesResetDay(quota.reset_type) &&
                       ` (${localize('com_ui_tars_quota_day', { 0: String(quota.reset_day ?? 1) })})`}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                     {formatThreshold(quota.warning_threshold)}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                     {recentUsage.has(String(quota.user_id ?? ''))
                       ? formatTokens(recentUsage.get(String(quota.user_id ?? '')))
                       : '—'}
@@ -260,7 +260,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                         aria-label={localize('com_ui_edit')}
                         title={localize('com_ui_edit')}
                         onClick={() => setEditing(quota)}
-                        className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                        className="text-text-secondary hover:bg-surface-tertiary hover:text-text-primary rounded p-1.5"
                       >
                         <Pencil className="icon-sm" />
                       </button>
@@ -269,7 +269,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                         aria-label={localize('com_ui_delete')}
                         title={localize('com_ui_delete')}
                         onClick={() => setDeleting(quota)}
-                        className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                        className="text-text-secondary hover:bg-surface-tertiary rounded p-1.5 hover:text-red-500"
                       >
                         <Trash2 className="icon-sm text-pwc-danger" />
                       </button>
@@ -304,7 +304,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
             className="w-11/12 max-w-md"
             showCloseButton={true}
             main={
-              <p className="text-sm text-text-secondary">
+              <p className="text-text-secondary text-sm">
                 {localize('com_ui_tars_quota_delete_confirm', {
                   0: `${deleting.display_name ?? deleting.username ?? '—'} · ${deleting.provider ?? 'system'}`,
                 })}

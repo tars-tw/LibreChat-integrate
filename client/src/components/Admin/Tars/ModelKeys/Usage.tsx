@@ -15,10 +15,10 @@ const PROVIDERS = MODEL_KEY_GROUPS.filter((group) => group.usageProvider != null
 /** One headline number, matching the audit report's statistics tiles. */
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-border-light p-4">
-      <p className="text-xs text-text-secondary">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-text-primary">{value}</p>
-      {hint != null && <p className="mt-0.5 text-xs text-text-secondary">{hint}</p>}
+    <div className="border-border-light rounded-xl border p-4">
+      <p className="text-text-secondary text-xs">{label}</p>
+      <p className="text-text-primary mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+      {hint != null && <p className="text-text-secondary mt-0.5 text-xs">{hint}</p>}
     </div>
   );
 }
@@ -68,14 +68,14 @@ export default function Usage() {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-border-light">
-        <header className="border-b border-border-light px-4 py-2">
-          <h2 className="text-sm font-medium text-text-primary">
+      <section className="border-border-light rounded-xl border">
+        <header className="border-border-light border-b px-4 py-2">
+          <h2 className="text-text-primary text-sm font-medium">
             {localize('com_ui_tars_usage_query')}
           </h2>
         </header>
 
-        <div className="flex items-start gap-2 border-b border-border-light bg-surface-secondary px-4 py-2 text-xs text-text-secondary">
+        <div className="border-border-light bg-surface-secondary text-text-secondary flex items-start gap-2 border-b px-4 py-2 text-xs">
           <KeyRound className="mt-0.5 size-4 shrink-0" aria-hidden />
           <p>{localize('com_ui_tars_usage_admin_key_notice')}</p>
         </div>
@@ -160,24 +160,24 @@ export default function Usage() {
       )}
 
       {usage == null && !usageQuery.isFetching && !usageQuery.isError && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_tars_usage_prompt')}
         </p>
       )}
 
       {usage != null && (
         <>
-          <p className="text-sm text-text-secondary">
+          <p className="text-text-secondary text-sm">
             {localize('com_ui_tars_audit_period')}
             {': '}
             {usage.period.start_date} ~ {usage.period.end_date}
           </p>
 
           {billing != null && (
-            <section className="rounded-xl border border-border-light">
-              <header className="flex items-center gap-2 border-b border-border-light px-4 py-2">
-                <Wallet className="size-4 text-text-secondary" aria-hidden />
-                <h2 className="text-sm font-medium text-text-primary">
+            <section className="border-border-light rounded-xl border">
+              <header className="border-border-light flex items-center gap-2 border-b px-4 py-2">
+                <Wallet className="text-text-secondary size-4" aria-hidden />
+                <h2 className="text-text-primary text-sm font-medium">
                   {localize('com_ui_tars_usage_billing')}
                 </h2>
               </header>
@@ -205,7 +205,7 @@ export default function Usage() {
                       : 'border-border-light'
                   }`}
                 >
-                  <p className="text-xs text-text-secondary">
+                  <p className="text-text-secondary text-xs">
                     {localize('com_ui_tars_usage_remaining')}
                   </p>
                   <p
@@ -218,7 +218,7 @@ export default function Usage() {
                       : formatCurrency(billing.remaining_balance)}
                   </p>
                   {billing.remaining_balance != null && billing.budget != null && (
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
+                    <div className="bg-surface-tertiary mt-2 h-1.5 overflow-hidden rounded-full">
                       <div
                         className={`h-full rounded-full ${
                           billing.remaining_balance < 0 ? 'bg-red-500' : 'bg-brand-primary'
@@ -259,24 +259,24 @@ export default function Usage() {
           </div>
 
           {lineItems.length > 0 && (
-            <section className="rounded-xl border border-border-light">
-              <header className="border-b border-border-light px-4 py-2">
-                <h2 className="text-sm font-medium text-text-primary">
+            <section className="border-border-light rounded-xl border">
+              <header className="border-border-light border-b px-4 py-2">
+                <h2 className="text-text-primary text-sm font-medium">
                   {localize('com_ui_tars_usage_by_category')}
                 </h2>
               </header>
-              <ul className="divide-y divide-border-light">
+              <ul className="divide-border-light divide-y">
                 {lineItems.map(([item, amount]) => (
                   <li key={item} className="px-4 py-3">
                     <div className="flex items-baseline justify-between gap-3">
-                      <span className="min-w-0 truncate text-sm text-text-primary">{item}</span>
-                      <span className="shrink-0 text-xs tabular-nums text-text-secondary">
+                      <span className="text-text-primary min-w-0 truncate text-sm">{item}</span>
+                      <span className="text-text-secondary shrink-0 text-xs tabular-nums">
                         {`${percentOf(amount, totalCost)}% · ${formatCurrency(amount)}`}
                       </span>
                     </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
+                    <div className="bg-surface-tertiary mt-2 h-1.5 overflow-hidden rounded-full">
                       <div
-                        className="h-full rounded-full bg-brand-primary"
+                        className="bg-brand-primary h-full rounded-full"
                         style={{ width: `${percentOf(amount, totalCost)}%` }}
                       />
                     </div>
@@ -288,15 +288,15 @@ export default function Usage() {
 
           {usage.daily_costs.length > 0 && <DailyCosts days={usage.daily_costs} />}
 
-          <section className="rounded-xl border border-border-light">
-            <header className="border-b border-border-light px-4 py-2">
-              <h2 className="text-sm font-medium text-text-primary">
+          <section className="border-border-light rounded-xl border">
+            <header className="border-border-light border-b px-4 py-2">
+              <h2 className="text-text-primary text-sm font-medium">
                 {localize('com_ui_tars_usage_by_model')}
               </h2>
             </header>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[40rem] text-sm">
-                <thead className="bg-surface-secondary text-left text-text-secondary">
+                <thead className="bg-surface-secondary text-text-secondary text-left">
                   <tr>
                     <th className="w-[40%] px-3 py-2 font-medium">
                       {localize('com_ui_tars_usage_col_model')}
@@ -315,25 +315,25 @@ export default function Usage() {
                 <tbody>
                   {models.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-3 py-6 text-center text-text-secondary">
+                      <td colSpan={4} className="text-text-secondary px-3 py-6 text-center">
                         {localize('com_ui_tars_audit_no_data')}
                       </td>
                     </tr>
                   ) : (
                     models.map(([model, stat]) => (
-                      <tr key={model} className="border-t border-border-light">
+                      <tr key={model} className="border-border-light border-t">
                         <td className="px-3 py-2">
-                          <span className="block truncate font-mono text-xs text-text-primary">
+                          <span className="text-text-primary block truncate font-mono text-xs">
                             {model}
                           </span>
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                        <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                           {formatTokens(stat.input_tokens)}
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                        <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                           {formatTokens(stat.output_tokens)}
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                        <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                           {formatTokens(stat.requests)}
                         </td>
                       </tr>

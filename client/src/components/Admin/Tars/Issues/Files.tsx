@@ -25,23 +25,23 @@ export function ExistingAttachments({
   return (
     <div className="space-y-1">
       {attachments.length === 0 ? (
-        <p className="text-xs text-text-secondary">{localize('com_ui_tars_issues_no_files')}</p>
+        <p className="text-text-secondary text-xs">{localize('com_ui_tars_issues_no_files')}</p>
       ) : (
         <ul className="space-y-1">
           {attachments.map((attachment, index) => (
             <li
               key={attachment.id ?? `${attachment.filename ?? index}`}
-              className="flex items-center gap-2 text-sm text-text-primary"
+              className="text-text-primary flex items-center gap-2 text-sm"
             >
-              <Paperclip className="size-3.5 shrink-0 text-text-secondary" aria-hidden />
+              <Paperclip className="text-text-secondary size-3.5 shrink-0" aria-hidden />
               <span className="truncate">{attachment.filename ?? attachment.original_name}</span>
               {attachment.size != null && (
-                <span className="shrink-0 text-xs text-text-secondary">
+                <span className="text-text-secondary shrink-0 text-xs">
                   ({formatBytes(attachment.size)})
                 </span>
               )}
               {attachment.uploader != null && attachment.uploader !== '' && (
-                <span className="shrink-0 text-xs text-text-secondary">
+                <span className="text-text-secondary shrink-0 text-xs">
                   — {attachment.uploader}
                 </span>
               )}
@@ -50,7 +50,7 @@ export function ExistingAttachments({
         </ul>
       )}
       {error != null && error !== '' && (
-        <p className="text-xs text-text-secondary">
+        <p className="text-text-secondary text-xs">
           {localize('com_ui_tars_issues_attachments_error', { 0: error })}
         </p>
       )}
@@ -103,7 +103,7 @@ export default function FilePicker({
           <Paperclip className="mr-1 size-4" aria-hidden />
           {addLabel}
         </Button>
-        <span className="text-xs text-text-secondary">
+        <span className="text-text-secondary text-xs">
           {localize('com_ui_tars_issues_file_hint', {
             0: String(MAX_FILES),
             1: String(MAX_FILE_MB),
@@ -124,18 +124,18 @@ export default function FilePicker({
           {files.map((file, index) => (
             <li
               key={file.name}
-              className="flex items-center justify-between gap-2 text-sm text-text-primary"
+              className="text-text-primary flex items-center justify-between gap-2 text-sm"
             >
               <span className="flex min-w-0 items-center gap-2">
-                <Upload className="size-3.5 shrink-0 text-text-secondary" aria-hidden />
+                <Upload className="text-text-secondary size-3.5 shrink-0" aria-hidden />
                 <span className="truncate">{file.name}</span>
-                <span className="shrink-0 text-xs text-text-secondary">
+                <span className="text-text-secondary shrink-0 text-xs">
                   ({formatBytes(file.size)})
                 </span>
               </span>
               <button
                 type="button"
-                className="shrink-0 rounded p-1 text-text-secondary hover:text-red-500"
+                className="text-text-secondary shrink-0 rounded p-1 hover:text-red-500"
                 onClick={() => onChange(files.filter((_, i) => i !== index))}
                 aria-label={localize('com_ui_tars_issues_remove_file', { 0: file.name })}
               >

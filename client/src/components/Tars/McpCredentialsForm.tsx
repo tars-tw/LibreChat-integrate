@@ -65,7 +65,7 @@ export default function McpCredentialsForm({ server, onSaved }: McpCredentialsFo
   };
 
   return (
-    <div className="space-y-2 rounded-lg bg-surface-secondary p-3">
+    <div className="bg-surface-secondary space-y-2 rounded-lg p-3">
       <div className="grid grid-cols-2 gap-2">
         {fieldNames.map((name) => (
           <div key={name} className={fieldNames.length === 1 ? 'col-span-2' : ''}>

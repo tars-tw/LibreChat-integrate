@@ -21,7 +21,7 @@ export default function DatabaseDetails({
   const row = (labelKey: TranslationKeys, value: string) => (
     <div className="grid grid-cols-3 gap-3 py-1.5">
       <dt className="text-text-secondary">{localize(labelKey)}</dt>
-      <dd className="col-span-2 break-words text-text-primary">{value === '' ? '—' : value}</dd>
+      <dd className="text-text-primary col-span-2 break-words">{value === '' ? '—' : value}</dd>
     </div>
   );
 
@@ -32,7 +32,7 @@ export default function DatabaseDetails({
         showCloseButton={true}
         className="w-11/12 max-w-lg"
         main={
-          <dl className="divide-y divide-border-light text-sm">
+          <dl className="divide-border-light divide-y text-sm">
             {row('com_ui_description', database.description ?? '')}
             {row('com_ui_tars_db_type', database.db_type ?? '')}
             {row('com_ui_tars_db_host', fileBacked ? '' : (database.host ?? ''))}

@@ -7,8 +7,8 @@ import { useLocalize } from '~/hooks';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-medium text-text-secondary">{label}</p>
-      <div className="mt-0.5 text-sm text-text-primary">{children}</div>
+      <p className="text-text-secondary text-xs font-medium">{label}</p>
+      <div className="text-text-primary mt-0.5 text-sm">{children}</div>
     </div>
   );
 }

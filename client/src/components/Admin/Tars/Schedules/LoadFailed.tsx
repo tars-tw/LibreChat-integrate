@@ -13,8 +13,8 @@ export default function ScheduleLoadFailed({ onRetry }: { onRetry: () => void })
   const localize = useLocalize();
 
   return (
-    <div className="flex flex-col items-center gap-3 py-12 text-sm text-text-secondary">
-      <TriangleAlert className="size-8 text-pwc-danger" aria-hidden />
+    <div className="text-text-secondary flex flex-col items-center gap-3 py-12 text-sm">
+      <TriangleAlert className="text-pwc-danger size-8" aria-hidden />
       <p>{localize('com_ui_tars_sched_load_failed')}</p>
       <Button variant="outline" onClick={onRetry} className="gap-1.5">
         <RotateCw className="size-4" aria-hidden />

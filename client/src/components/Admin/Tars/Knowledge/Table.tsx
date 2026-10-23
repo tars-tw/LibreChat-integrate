@@ -74,7 +74,7 @@ export default function KnowledgeTable({
                     <Checkbox
                       checked={selected.includes(kb.id)}
                       onCheckedChange={() => toggle(kb.id)}
-                      aria-label={localize('com_ui_tars_kb_batch_select_one', { 0: kb.name })}
+                      aria-label={localize('com_ui_tars_kb_batch_select_item', { 0: kb.name })}
                     />
                   </td>
                 )}
@@ -111,7 +111,7 @@ export default function KnowledgeTable({
                       onClick={() => onManagePrompts(kb)}
                       aria-label={localize('com_ui_tars_kb_prompts')}
                       title={localize('com_ui_tars_kb_prompts')}
-                      className="text-pwc-info hover:bg-surface-tertiary hover:text-pwc-info"
+                      className="hover:bg-surface-tertiary text-[rgb(var(--pwc-info))] hover:text-[rgb(var(--pwc-info))]"
                     >
                       <BookText className="size-4" aria-hidden />
                     </Button>

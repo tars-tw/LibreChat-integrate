@@ -59,12 +59,12 @@ export default function TimelineDialog({
         closeButtonClassName="right-[19px]"
         main={
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-6 rounded-lg bg-surface-secondary px-4 py-3 text-sm">
+            <div className="bg-surface-secondary flex flex-wrap gap-6 rounded-lg px-4 py-3 text-sm">
               <span>
                 <span className="text-text-secondary">
                   {localize('com_ui_tars_ops_timeline_total')}
                 </span>
-                <span className="ml-2 font-semibold tabular-nums text-text-primary">
+                <span className="text-text-primary ml-2 font-semibold tabular-nums">
                   {logs.length}
                 </span>
               </span>
@@ -72,7 +72,7 @@ export default function TimelineDialog({
                 <span className="text-text-secondary">
                   {localize('com_ui_tars_ops_timeline_latest')}
                 </span>
-                <span className="ml-2 font-semibold text-text-primary">
+                <span className="text-text-primary ml-2 font-semibold">
                   {logs.length > 0 ? formatDateTime(logs[0].created_at, locale) : '—'}
                 </span>
               </span>
@@ -80,14 +80,14 @@ export default function TimelineDialog({
 
             <div className="max-h-[55vh] overflow-y-auto pr-1">
               {query.isFetching && logs.length === 0 && (
-                <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
+                <div className="text-text-secondary flex items-center justify-center gap-2 py-10 text-sm">
                   <Spinner className="size-4" />
                   {localize('com_ui_loading')}
                 </div>
               )}
 
               {!query.isFetching && logs.length === 0 && (
-                <div className="flex flex-col items-center gap-2 py-10 text-sm text-text-secondary">
+                <div className="text-text-secondary flex flex-col items-center gap-2 py-10 text-sm">
                   <Inbox className="size-6" aria-hidden />
                   {localize('com_ui_tars_ops_timeline_empty')}
                 </div>
@@ -112,26 +112,26 @@ export default function TimelineDialog({
                           <Icon className="size-3.5" aria-hidden />
                         </span>
                         {index < logs.length - 1 && (
-                          <span className="mt-1 w-px flex-1 bg-border-light" aria-hidden />
+                          <span className="bg-border-light mt-1 w-px flex-1" aria-hidden />
                         )}
                       </div>
                       <button
                         type="button"
                         onClick={() => onSelectLog(log)}
-                        className="min-w-0 flex-1 rounded-lg border border-border-light px-3 py-2 text-left transition-colors hover:bg-surface-tertiary"
+                        className="border-border-light hover:bg-surface-tertiary min-w-0 flex-1 rounded-lg border px-3 py-2 text-left transition-colors"
                       >
                         <div className="flex min-w-0 items-baseline justify-between gap-2">
-                          <span className="truncate text-sm font-medium text-text-primary">
+                          <span className="text-text-primary truncate text-sm font-medium">
                             {config != null ? localize(config.labelKey) : (log.action_type ?? '—')}
                           </span>
-                          <span className="shrink-0 text-xs text-text-secondary">
+                          <span className="text-text-secondary shrink-0 text-xs">
                             {formatDateTime(log.created_at, locale)}
                           </span>
                         </div>
-                        <p className="mt-0.5 break-words text-sm text-text-secondary">
+                        <p className="text-text-secondary mt-0.5 text-sm break-words">
                           {log.description ?? '—'}
                         </p>
-                        <p className="mt-0.5 break-words text-xs text-text-secondary">
+                        <p className="text-text-secondary mt-0.5 text-xs break-words">
                           {moduleLabel(log.module, modules)}
                         </p>
                       </button>

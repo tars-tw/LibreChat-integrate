@@ -204,9 +204,9 @@ export default function TicketForm({
   })();
 
   return (
-    <section className="flex h-full min-h-0 flex-col rounded-xl border border-border-light">
-      <header className="flex items-center justify-between gap-2 border-b border-border-light px-4 py-3">
-        <h2 className="text-base font-medium text-text-primary">{title}</h2>
+    <section className="border-border-light flex h-full min-h-0 flex-col rounded-xl border">
+      <header className="border-border-light flex items-center justify-between gap-2 border-b px-4 py-3">
+        <h2 className="text-text-primary text-base font-medium">{title}</h2>
         {isViewing && (
           <Button
             type="button"
@@ -388,7 +388,7 @@ export default function TicketForm({
           </Field>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border-light px-5 py-3">
+        <div className="border-border-light flex justify-end gap-2 border-t px-5 py-3">
           <Button
             type="button"
             variant="outline"
@@ -460,7 +460,7 @@ function StatusBanner({ detail, loading }: { detail: TTarsTicketDetail | null; l
 
   if (loading) {
     return (
-      <p className="flex items-center gap-2 rounded-lg bg-surface-tertiary px-3 py-2 text-xs text-text-secondary">
+      <p className="bg-surface-tertiary text-text-secondary flex items-center gap-2 rounded-lg px-3 py-2 text-xs">
         <Spinner className="size-3.5" />
         {localize('com_ui_tars_issues_status_loading')}
       </p>
@@ -477,7 +477,7 @@ function StatusBanner({ detail, loading }: { detail: TTarsTicketDetail | null; l
 
   const remoteError = detail?.remote_error;
   return (
-    <p className="rounded-lg bg-surface-tertiary px-3 py-2 text-xs text-text-secondary">
+    <p className="bg-surface-tertiary text-text-secondary rounded-lg px-3 py-2 text-xs">
       {remoteError != null && remoteError !== ''
         ? localize('com_ui_tars_issues_status_error', { 0: remoteError })
         : localize('com_ui_tars_issues_status_readonly', {

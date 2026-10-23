@@ -134,7 +134,7 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="relative w-56 max-w-full">
-          <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <Search className="icon-sm text-text-secondary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
           <Input
             value={search}
             onChange={(e) => {
@@ -146,7 +146,7 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
+          <span className="bg-surface-tertiary text-text-secondary rounded-full px-2 py-0.5 text-xs">
             {localize('com_ui_tars_sso_whitelist_count', { count: usernames.length })}
           </span>
           <Button variant="outline" onClick={handleBrowse} disabled={treeMutation.isLoading}>
@@ -165,15 +165,15 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
       </div>
 
       {usernames.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-8 text-text-secondary">
+        <div className="text-text-secondary flex flex-col items-center gap-2 py-8">
           <UserX className="h-6 w-6" aria-hidden="true" />
           <p className="text-sm">{localize('com_ui_tars_sso_whitelist_empty')}</p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border-light">
+          <div className="border-border-light overflow-x-auto rounded-lg border">
             <table className="w-full text-sm">
-              <thead className="bg-surface-secondary text-left text-text-secondary">
+              <thead className="bg-surface-secondary text-text-secondary text-left">
                 <tr>
                   <th className="px-3 py-2 font-medium">
                     {localize('com_ui_tars_users_username')}
@@ -186,9 +186,9 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
               </thead>
               <tbody>
                 {pagedRows.map((user) => (
-                  <tr key={user.username} className="border-t border-border-light">
-                    <td className="px-3 py-2 text-text-primary">{user.username}</td>
-                    <td className="px-3 py-2 text-text-secondary">{user.ou || '—'}</td>
+                  <tr key={user.username} className="border-border-light border-t">
+                    <td className="text-text-primary px-3 py-2">{user.username}</td>
+                    <td className="text-text-secondary px-3 py-2">{user.ou || '—'}</td>
                     <td className="px-3 py-2">
                       <div className="flex justify-end">
                         <button
@@ -199,7 +199,7 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
                           onClick={() =>
                             saveList(usernames.filter((name) => name !== user.username))
                           }
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                          className="text-text-secondary hover:bg-surface-tertiary hover:text-text-primary rounded p-1.5"
                         >
                           <Trash2 className="icon-sm" />
                         </button>
@@ -211,7 +211,7 @@ export default function WhitelistPanel({ config }: { config: TTarsSsoConfig }) {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
+          <div className="text-text-secondary flex flex-wrap items-center justify-between gap-3 text-sm">
             <div className="flex items-center gap-2">
               <span id={`tars-whitelist-page-size-label-${config.id}`}>
                 {localize('com_ui_tars_users_rows_per_page')}

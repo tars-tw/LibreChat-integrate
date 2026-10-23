@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Search, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import {
   Input,
   Button,
@@ -10,10 +9,27 @@ import {
   OGDialog,
   OGDialogTemplate,
 } from '@librechat/client';
-import type { TTarsModelProfile } from 'librechat-data-provider';
+import {
+  Plus,
+  User,
+  Users,
+  Search,
+  Pencil,
+  Trash2,
+  UserPlus,
+  ChevronUp,
+  ChevronDown,
+} from 'lucide-react';
+import type {
+  TTarsModelProfile,
+  TTarsPrincipalInfo,
+  TTarsPrincipalType,
+  TTarsModelPermission,
+} from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks';
 import {
   useTarsModelProfilesQuery,
+  useTarsModelPermissionsQuery,
   useDeleteTarsModelProfileMutation,
   useUpdateTarsModelProfileMutation,
 } from '~/data-provider';
@@ -23,10 +39,14 @@ import {
   displayModelType,
   displayDescription,
 } from './helpers';
+import { TYPE_ICON_COLOR } from '~/components/McpSettings/McpPermissionPrincipals';
+import AssigneesCell from '~/components/Tars/Assignees';
 import { formatDateTime } from '../Users/helpers';
+import ModelAssignModal from './Assign';
 import ModelProfileModal from './Modal';
 import useFeedback from './useFeedback';
 import { useLocalize } from '~/hooks';
+import { cn } from '~/utils';
 
 const PAGE_SIZES = [10, 25, 50, 100];
 const PAGE_SIZE_OPTIONS = PAGE_SIZES.map(String);
@@ -71,12 +91,66 @@ function Truncated({ value, className = '' }: { value: string; className?: strin
   );
 }
 
+/** A secondary detail under a cell's main value, e.g. the version under the name; none when blank. */
+function SubLine({ label, value }: { label: string; value: string | null }) {
+  if (!value) {
+    return null;
+  }
+  const text = `${label} ${value}`;
+  return (
+    <span title={text} className="text-text-secondary block truncate text-xs">
+      {text}
+    </span>
+  );
+}
+
+type ModelAssignees = Record<TTarsPrincipalType, TTarsPrincipalInfo[]>;
+
+const PRINCIPAL_TYPES: TTarsPrincipalType[] = ['user', 'group'];
+
+const INFINITY = '\u221E';
+
+/** A model nobody is assigned to: the same icon as a count, with ∞ for "everyone". */
+function OpenToAllCell({ type, label }: { type: TTarsPrincipalType; label: string }) {
+  const Icon = type === 'group' ? Users : User;
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className="text-text-primary inline-flex items-center gap-1.5 px-1.5 py-1"
+    >
+      <Icon className={cn('icon-sm', TYPE_ICON_COLOR[type])} aria-hidden="true" />
+      <span aria-hidden="true">{INFINITY}</span>
+    </span>
+  );
+}
+
+/** model id → its direct assignees split by type; a model missing from the map is open to everyone. */
+const assigneesByModel = (permissions: TTarsModelPermission[]) => {
+  const byModel = new Map<string, ModelAssignees>();
+  for (const { model_profile_id, principals } of permissions) {
+    const entry: ModelAssignees = { user: [], group: [] };
+    for (const principal of principals) {
+      entry[principal.principal_type].push(principal);
+    }
+    byModel.set(model_profile_id, entry);
+  }
+  return byModel;
+};
+
 export default function ModelProfileManager() {
   const localize = useLocalize();
   const { i18n } = useTranslation();
   const { notifySuccess, notifyError } = useFeedback();
 
   const { data: profiles = [], isLoading, isError } = useTarsModelProfilesQuery();
+  const {
+    data: permissions,
+    isLoading: permissionsLoading,
+    isError: permissionsError,
+  } = useTarsModelPermissionsQuery();
+  const assignees = useMemo(() => assigneesByModel(permissions ?? []), [permissions]);
 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState(ALL);
@@ -90,6 +164,7 @@ export default function ModelProfileManager() {
   const [editing, setEditing] = useState<TTarsModelProfile | null>(null);
   const [deleting, setDeleting] = useState<TTarsModelProfile | null>(null);
   const [disabling, setDisabling] = useState<TTarsModelProfile | null>(null);
+  const [assigning, setAssigning] = useState<TTarsModelProfile | null>(null);
 
   const types = useMemo(() => collectModelTypes(profiles), [profiles]);
   const typeOptions = useMemo(
@@ -206,6 +281,37 @@ export default function ModelProfileManager() {
       setPage(0);
     };
 
+  /** The users and groups columns; one merged cell when nobody is assigned (everyone may use it). */
+  const assigneeCells = (profile: TTarsModelProfile) => {
+    if (permissionsLoading || permissionsError) {
+      return (
+        <td colSpan={2} className="text-text-secondary px-3 py-2">
+          {permissionsLoading ? <Spinner className="icon-sm" /> : '—'}
+        </td>
+      );
+    }
+    const entry = assignees.get(profile.id);
+    if (entry == null) {
+      return PRINCIPAL_TYPES.map((type) => (
+        <td key={type} className="px-1.5 py-1">
+          <OpenToAllCell type={type} label={localize('com_ui_tars_models_open_to_all')} />
+        </td>
+      ));
+    }
+    return PRINCIPAL_TYPES.map((type) => (
+      <td key={type} className="px-1.5 py-1">
+        <AssigneesCell
+          type={type}
+          assignees={entry[type]}
+          title={localize(
+            type === 'group' ? 'com_ui_tars_models_groups_title' : 'com_ui_tars_models_users_title',
+            { name: profile.name, count: entry[type].length },
+          )}
+        />
+      </td>
+    ));
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -268,23 +374,19 @@ export default function ModelProfileManager() {
             <table className="w-full min-w-[72rem] table-fixed text-sm">
               <thead className="bg-surface-secondary text-text-secondary text-left">
                 <tr>
-                  {sortableHeader('name', 'com_ui_tars_models_name', 'w-[14%]')}
-                  <th className="w-[7%] px-3 py-2 font-medium">
-                    {localize('com_ui_tars_models_version')}
-                  </th>
+                  {sortableHeader('name', 'com_ui_tars_models_name', 'w-[16%]')}
                   {sortableHeader('type', 'com_ui_tars_models_type', 'w-[10%]')}
-                  <th className="w-[19%] px-3 py-2 font-medium">
+                  <th className="w-[20%] px-3 py-2 font-medium">
                     {localize('com_ui_tars_models_endpoint')}
                   </th>
-                  <th className="w-[10%] px-3 py-2 font-medium">
-                    {localize('com_ui_tars_models_api_version')}
-                  </th>
-                  <th className="w-[17%] px-3 py-2 font-medium">
+                  <th className="w-[15%] px-3 py-2 font-medium">
                     {localize('com_ui_tars_models_description')}
                   </th>
+                  <th className="w-[7%] px-3 py-2 font-medium">{localize('com_ui_user')}</th>
+                  <th className="w-[7%] px-3 py-2 font-medium">{localize('com_ui_group')}</th>
                   {sortableHeader('status', 'com_ui_tars_users_status', 'w-[9%]')}
                   {sortableHeader('updated_at', 'com_ui_tars_models_updated_at', 'w-[9%]')}
-                  <th className="w-[5%] px-3 py-2 text-right font-medium">
+                  <th className="w-[7%] px-3 py-2 text-right font-medium">
                     {localize('com_ui_actions')}
                   </th>
                 </tr>
@@ -299,9 +401,10 @@ export default function ModelProfileManager() {
                     >
                       <td className="text-text-primary px-3 py-2 font-medium">
                         <Truncated value={profile.name} />
-                      </td>
-                      <td className="text-text-secondary px-3 py-2">
-                        <Truncated value={profile.version ?? ''} />
+                        <SubLine
+                          label={localize('com_ui_tars_models_version')}
+                          value={profile.version}
+                        />
                       </td>
                       <td className="px-3 py-2">
                         {profile.type ? (
@@ -317,16 +420,15 @@ export default function ModelProfileManager() {
                       </td>
                       <td className="text-text-secondary px-3 py-2">
                         <Truncated value={profile.endpoint ?? ''} className="font-mono text-xs" />
-                      </td>
-                      <td className="text-text-secondary px-3 py-2">
-                        <Truncated
-                          value={profile.api_version ?? ''}
-                          className="font-mono text-xs"
+                        <SubLine
+                          label={localize('com_ui_tars_models_api_version')}
+                          value={profile.api_version}
                         />
                       </td>
                       <td className="text-text-secondary px-3 py-2">
                         <Truncated value={displayDescription(profile.description, i18n.language)} />
                       </td>
+                      {assigneeCells(profile)}
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
                           <Switch
@@ -354,6 +456,17 @@ export default function ModelProfileManager() {
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex justify-end">
+                          <button
+                            type="button"
+                            aria-label={localize('com_ui_tars_models_assign_title', {
+                              name: profile.name,
+                            })}
+                            title={localize('com_ui_tars_models_assign')}
+                            onClick={() => setAssigning(profile)}
+                            className="text-text-secondary hover:text-text-primary rounded p-1.5"
+                          >
+                            <UserPlus className="icon-sm" />
+                          </button>
                           <button
                             type="button"
                             aria-label={localize('com_ui_edit')}
@@ -435,6 +548,14 @@ export default function ModelProfileManager() {
               setEditing(null);
             }
           }}
+        />
+      )}
+
+      {assigning != null && (
+        <ModelAssignModal
+          key={assigning.id}
+          profile={assigning}
+          onClose={() => setAssigning(null)}
         />
       )}
 

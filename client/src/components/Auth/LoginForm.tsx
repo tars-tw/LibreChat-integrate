@@ -227,7 +227,7 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
               {...register('use_sso')}
               className={`h-4 w-4 rounded ${
                 isTars
-                  ? 'border-gray-300 text-pwc-orange focus:ring-pwc-orange'
+                  ? 'text-pwc-orange focus:ring-pwc-orange border-gray-300'
                   : 'border-border-light text-brand-primary focus:ring-brand-primary'
               }`}
             />

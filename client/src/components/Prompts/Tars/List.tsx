@@ -84,7 +84,7 @@ export default function TarsPromptList({
   });
 
   return (
-    <div className="flex h-full w-72 shrink-0 flex-col gap-2 overflow-hidden border-r border-border-light p-2 sm:w-80">
+    <div className="border-border-light flex h-full w-72 shrink-0 flex-col gap-2 overflow-hidden border-r p-2 sm:w-80">
       <div role="search" className="flex items-center gap-2">
         <Dropdown
           value={category}
@@ -130,11 +130,11 @@ export default function TarsPromptList({
         )}
         {!isLoading && filtered.length === 0 && (
           <div className="flex flex-col items-center gap-1 py-10 text-center">
-            <FileText className="size-6 text-text-tertiary" aria-hidden="true" />
-            <p className="text-sm font-medium text-text-primary">
+            <FileText className="text-text-tertiary size-6" aria-hidden="true" />
+            <p className="text-text-primary text-sm font-medium">
               {localize('com_ui_no_prompts_title')}
             </p>
-            <p className="text-xs text-text-secondary">{localize('com_ui_add_first_prompt')}</p>
+            <p className="text-text-secondary text-xs">{localize('com_ui_add_first_prompt')}</p>
           </div>
         )}
         {filtered.map((prompt) => {
@@ -143,7 +143,7 @@ export default function TarsPromptList({
             <div
               key={prompt.id}
               className={cn(
-                'group/prompt relative rounded-xl border border-border-light bg-transparent transition-colors hover:bg-surface-secondary',
+                'group/prompt border-border-light hover:bg-surface-secondary relative rounded-xl border bg-transparent transition-colors',
                 isActive && 'bg-surface-hover',
               )}
             >
@@ -152,10 +152,10 @@ export default function TarsPromptList({
                 className="block min-w-0 px-3 py-2.5 pr-9"
                 title={prompt.name}
               >
-                <span className="block truncate text-sm font-semibold text-text-primary">
+                <span className="text-text-primary block truncate text-sm font-semibold">
                   {prompt.name}
                 </span>
-                <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-text-secondary">
+                <p className="text-text-secondary mt-0.5 line-clamp-2 text-xs leading-relaxed">
                   {prompt.description?.trim() ? prompt.description : prompt.content}
                 </p>
               </Link>
@@ -164,7 +164,7 @@ export default function TarsPromptList({
                 onClick={() => setDeleting(prompt)}
                 aria-label={localize('com_ui_delete')}
                 title={localize('com_ui_delete')}
-                className="absolute right-2 top-2.5 flex size-6 items-center justify-center rounded-md text-text-secondary opacity-0 transition-opacity hover:bg-surface-hover focus-visible:opacity-100 group-hover/prompt:opacity-100"
+                className="text-text-secondary hover:bg-surface-hover absolute top-2.5 right-2 flex size-6 items-center justify-center rounded-md opacity-0 transition-opacity group-hover/prompt:opacity-100 focus-visible:opacity-100"
               >
                 <Trash2 className="size-3.5" aria-hidden="true" />
               </button>
@@ -179,7 +179,7 @@ export default function TarsPromptList({
           className="w-11/12 max-w-md"
           main={
             deleting != null ? (
-              <p className="text-sm text-text-secondary">
+              <p className="text-text-secondary text-sm">
                 {localize('com_ui_prompt_delete_confirm', { 0: deleting.name })}
               </p>
             ) : null

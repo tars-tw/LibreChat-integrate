@@ -8,8 +8,8 @@ import { useLocalize } from '~/hooks';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-medium text-text-secondary">{label}</p>
-      <div className="mt-0.5 text-sm text-text-primary">{children}</div>
+      <p className="text-text-secondary text-xs font-medium">{label}</p>
+      <div className="text-text-primary mt-0.5 text-sm">{children}</div>
     </div>
   );
 }
@@ -56,17 +56,17 @@ export default function GroupDetailsModal({
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-medium text-text-secondary">
+              <p className="text-text-secondary mb-2 text-xs font-medium">
                 {localize('com_ui_tars_groups_members')}
               </p>
               {members.length === 0 ? (
-                <p className="py-6 text-center text-sm text-text-secondary">
+                <p className="text-text-secondary py-6 text-center text-sm">
                   {localize('com_ui_tars_groups_members_empty')}
                 </p>
               ) : (
-                <div className="max-h-64 overflow-y-auto rounded-lg border border-border-light">
+                <div className="border-border-light max-h-64 overflow-y-auto rounded-lg border">
                   <table className="w-full text-sm">
-                    <thead className="bg-surface-secondary text-left text-text-secondary">
+                    <thead className="bg-surface-secondary text-text-secondary text-left">
                       <tr>
                         <th className="px-3 py-2 font-medium">
                           {localize('com_ui_tars_users_username')}
@@ -79,9 +79,9 @@ export default function GroupDetailsModal({
                     </thead>
                     <tbody>
                       {members.map((member) => (
-                        <tr key={member.id} className="border-t border-border-light">
-                          <td className="px-3 py-2 text-text-primary">{member.username}</td>
-                          <td className="px-3 py-2 text-text-secondary">{member.email || '—'}</td>
+                        <tr key={member.id} className="border-border-light border-t">
+                          <td className="text-text-primary px-3 py-2">{member.username}</td>
+                          <td className="text-text-secondary px-3 py-2">{member.email || '—'}</td>
                           <td className="px-3 py-2">
                             <StatusBadge active={member.status === 'active'} />
                           </td>

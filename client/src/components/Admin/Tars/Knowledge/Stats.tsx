@@ -17,14 +17,14 @@ export default function DatasetStats({
   const localize = useLocalize();
 
   return (
-    <div className={`flex items-center gap-3 whitespace-nowrap text-xs ${className ?? ''}`}>
+    <div className={`flex items-center gap-3 text-xs whitespace-nowrap ${className ?? ''}`}>
       {DATASET_STATS.map(({ key, icon: Icon, labelKey }) => {
         const count = datasetCount(knowledgeBase, key);
         const label = localize(labelKey);
         const iconTone = count > 0 ? 'text-pwc-orange-500' : 'text-text-tertiary';
 
         return (
-          <span key={key} className="flex items-center gap-1 text-text-primary" title={label}>
+          <span key={key} className="text-text-primary flex items-center gap-1" title={label}>
             <Icon className={`size-3.5 ${iconTone}`} aria-hidden />
 
             {/* The database column is a yes/no flag in pwc_tars, not a count. */}

@@ -71,7 +71,7 @@ function Panel({ domain, onInsert }: { domain: TTarsDomain; onInsert: (text: str
   );
 
   return (
-    <div className="w-80 rounded-2xl border border-border-light bg-surface-tertiary-alt p-2 shadow-lg sm:w-96">
+    <div className="border-border-light bg-surface-tertiary-alt w-80 rounded-2xl border p-2 shadow-lg sm:w-96">
       {mode.kind === 'list' && (
         <ListView
           isLoading={isLoading}
@@ -112,12 +112,12 @@ function PanelHeader({ title, onBack }: { title: string; onBack?: () => void }) 
           type="button"
           onClick={onBack}
           aria-label="back"
-          className="rounded p-1 text-text-secondary hover:bg-surface-hover"
+          className="text-text-secondary hover:bg-surface-hover rounded p-1"
         >
           <ArrowLeft size={16} aria-hidden={true} />
         </button>
       )}
-      <span className="text-sm font-medium text-text-primary">{title}</span>
+      <span className="text-text-primary text-sm font-medium">{title}</span>
     </div>
   );
 }
@@ -149,7 +149,7 @@ function ListView({
     }
     if (grouped.length === 0) {
       return (
-        <div className="flex h-24 items-center justify-center px-3 text-center text-sm text-text-secondary">
+        <div className="text-text-secondary flex h-24 items-center justify-center px-3 text-center text-sm">
           {localize('com_ui_tars_prompts_empty')}
         </div>
       );
@@ -160,7 +160,7 @@ function ListView({
           const { icon: Icon, labelKey } = SCOPE_META[group.scope];
           return (
             <div key={group.scope} className="mb-1">
-              <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary">
+              <div className="text-text-secondary flex items-center gap-1.5 px-2 py-1 text-xs font-medium">
                 <Icon size={13} aria-hidden={true} />
                 {localize(labelKey)}
               </div>
@@ -169,11 +169,11 @@ function ListView({
                   key={prompt.id}
                   type="button"
                   onClick={() => onSelect(prompt)}
-                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left hover:bg-surface-hover"
+                  className="hover:bg-surface-hover flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left"
                 >
-                  <span className="text-sm text-text-primary">{prompt.name}</span>
+                  <span className="text-text-primary text-sm">{prompt.name}</span>
                   {prompt.category && (
-                    <span className="text-xs text-text-secondary">{prompt.category}</span>
+                    <span className="text-text-secondary text-xs">{prompt.category}</span>
                   )}
                 </button>
               ))}
@@ -191,7 +191,7 @@ function ListView({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={localize('com_ui_tars_prompts_search')}
-          className="w-full rounded-lg bg-surface-secondary px-3 py-1.5 text-sm text-text-primary focus:outline-none"
+          className="bg-surface-secondary text-text-primary w-full rounded-lg px-3 py-1.5 text-sm focus:outline-none"
         />
         <Button
           type="button"
@@ -228,11 +228,11 @@ function VariablesView({
       <div className="max-h-72 space-y-2 overflow-y-auto px-1">
         {variables.map((variable) => (
           <div key={variable}>
-            <label className="mb-1 block text-xs text-text-secondary">{variable}</label>
+            <label className="text-text-secondary mb-1 block text-xs">{variable}</label>
             <input
               value={values[variable] ?? ''}
               onChange={(e) => setValues((prev) => ({ ...prev, [variable]: e.target.value }))}
-              className="w-full rounded-lg bg-surface-secondary px-3 py-1.5 text-sm text-text-primary focus:outline-none"
+              className="bg-surface-secondary text-text-primary w-full rounded-lg px-3 py-1.5 text-sm focus:outline-none"
             />
           </div>
         ))}
@@ -299,13 +299,13 @@ function CreateView({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={localize('com_ui_tars_prompts_name')}
-          className="w-full rounded-lg bg-surface-secondary px-3 py-1.5 text-sm text-text-primary focus:outline-none"
+          className="bg-surface-secondary text-text-primary w-full rounded-lg px-3 py-1.5 text-sm focus:outline-none"
         />
         <input
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           placeholder={localize('com_ui_tars_prompts_category')}
-          className="w-full rounded-lg bg-surface-secondary px-3 py-1.5 text-sm text-text-primary focus:outline-none"
+          className="bg-surface-secondary text-text-primary w-full rounded-lg px-3 py-1.5 text-sm focus:outline-none"
         />
         <TextareaAutosize
           aria-label={localize('com_ui_tars_prompts_content')}
@@ -314,27 +314,27 @@ function CreateView({
           placeholder={localize('com_ui_tars_prompts_content_placeholder', { 0: variableToken })}
           minRows={3}
           maxRows={8}
-          className="w-full rounded-lg bg-surface-secondary px-3 py-1.5 text-sm text-text-primary focus:outline-none"
+          className="bg-surface-secondary text-text-primary w-full rounded-lg px-3 py-1.5 text-sm focus:outline-none"
         />
         <div>
-          <div className="mb-1 text-xs font-medium text-text-secondary">
+          <div className="text-text-secondary mb-1 text-xs font-medium">
             {localize('com_ui_tars_prompts_variables')}
           </div>
           {variables.length === 0 ? (
-            <span className="text-xs text-text-tertiary">—</span>
+            <span className="text-text-tertiary text-xs">—</span>
           ) : (
             <div className="flex flex-wrap gap-1">
               {variables.map((variable) => (
                 <span
                   key={variable}
-                  className="rounded bg-surface-tertiary px-1.5 py-0.5 text-xs text-text-primary"
+                  className="bg-surface-tertiary text-text-primary rounded px-1.5 py-0.5 text-xs"
                 >
                   {`{{${variable}}}`}
                 </span>
               ))}
             </div>
           )}
-          <p className="mt-1 text-xs text-text-secondary">
+          <p className="text-text-secondary mt-1 text-xs">
             {localize('com_ui_tars_prompts_variables_help', { 0: variableToken })}
           </p>
         </div>

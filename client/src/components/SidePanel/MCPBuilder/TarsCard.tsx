@@ -23,7 +23,7 @@ export default function TarsCard() {
 
   return (
     <div
-      className="group flex cursor-pointer items-center gap-3 rounded-lg border border-border-light bg-transparent px-3 py-2.5 hover:bg-surface-hover"
+      className="group border-border-light hover:bg-surface-hover flex cursor-pointer items-center gap-3 rounded-lg border bg-transparent px-3 py-2.5"
       role="button"
       tabIndex={0}
       aria-label={localize('com_ui_tars_mcp_my_tools')}
@@ -35,18 +35,18 @@ export default function TarsCard() {
         }
       }}
     >
-      <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-lg bg-surface-tertiary">
-        <Wrench className="size-5 text-text-secondary" aria-hidden="true" />
+      <div className="bg-surface-tertiary flex size-8 flex-shrink-0 items-center justify-center rounded-lg">
+        <Wrench className="text-text-secondary size-5" aria-hidden="true" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-text-primary">
+        <div className="text-text-primary truncate text-sm font-medium">
           {localize('com_ui_tars_mcp_my_tools')}
         </div>
-        <p className="truncate text-xs text-text-secondary">
+        <p className="text-text-secondary truncate text-xs">
           {localize('com_ui_tars_mcp_card_hint')}
         </p>
       </div>
-      <ChevronRight className="size-4 flex-shrink-0 text-text-secondary" aria-hidden="true" />
+      <ChevronRight className="text-text-secondary size-4 flex-shrink-0" aria-hidden="true" />
     </div>
   );
 }

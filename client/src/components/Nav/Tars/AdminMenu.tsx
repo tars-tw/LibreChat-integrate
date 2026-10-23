@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TranslationKeys } from '~/hooks';
+import useDirection, { inlineSide } from '~/hooks/Nav/useDirection';
 import { useLocalize, useTarsAdminAccess } from '~/hooks';
 
 /**
@@ -279,8 +280,9 @@ export function SubmenuGroup({
   label: string;
   children: React.ReactNode;
 }) {
+  const submenuSide = inlineSide(useDirection(), 'end');
   return (
-    <Menu.MenuProvider placement="right-start">
+    <Menu.MenuProvider placement={`${submenuSide}-start`}>
       <Menu.MenuItem
         hideOnClick={false}
         render={
@@ -288,13 +290,13 @@ export function SubmenuGroup({
         }
       >
         <Icon className="icon-md" aria-hidden="true" />
-        <span className="flex-1 text-left">{label}</span>
-        <ChevronRight className="text-text-secondary h-4 w-4" aria-hidden="true" />
+        <span className="flex-1 text-start">{label}</span>
+        <ChevronRight className="text-text-secondary h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
       </Menu.MenuItem>
       <Menu.Menu
         portal
         gutter={12}
-        className="account-settings-popover popover-ui popover-from-left z-[126] w-[244px] rounded-lg"
+        className="popover-ui popover-from-left z-[126] w-[min(15.25rem,90vw)]"
       >
         {children}
       </Menu.Menu>

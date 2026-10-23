@@ -44,7 +44,7 @@ export default function ScheduleSettings({
         <div className="space-y-1.5">
           <Label htmlFor="tars-sched-frequency">
             {localize('com_ui_tars_sched_frequency')}
-            <span className="ml-0.5 text-pwc-danger">*</span>
+            <span className="text-pwc-danger ml-0.5">*</span>
           </Label>
           <Input
             id="tars-sched-frequency"
@@ -55,7 +55,7 @@ export default function ScheduleSettings({
             aria-invalid={frequencyInvalid}
           />
           {frequencyInvalid && (
-            <p className="text-xs text-pwc-danger">
+            <p className="text-pwc-danger text-xs">
               {localize('com_ui_tars_sched_frequency_invalid')}
             </p>
           )}
@@ -81,7 +81,7 @@ export default function ScheduleSettings({
         <div className="space-y-1.5">
           <Label htmlFor="tars-sched-start">
             {localize('com_ui_tars_sched_start')}
-            <span className="ml-0.5 text-pwc-danger">*</span>
+            <span className="text-pwc-danger ml-0.5">*</span>
           </Label>
           <Input
             id="tars-sched-start"
@@ -101,10 +101,10 @@ export default function ScheduleSettings({
             aria-invalid={rangeInvalid}
           />
           {rangeInvalid ? (
-            <p className="text-xs text-pwc-danger">{localize('com_ui_tars_sched_range_invalid')}</p>
+            <p className="text-pwc-danger text-xs">{localize('com_ui_tars_sched_range_invalid')}</p>
           ) : (
             /* pwc_tars marks a schedule stopped once the end time passes. */
-            <p className="text-xs text-text-secondary">{localize('com_ui_tars_sched_end_hint')}</p>
+            <p className="text-text-secondary text-xs">{localize('com_ui_tars_sched_end_hint')}</p>
           )}
         </div>
       </div>

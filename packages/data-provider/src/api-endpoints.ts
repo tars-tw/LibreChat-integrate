@@ -599,6 +599,11 @@ export const tarsModels = () => `${BASE_URL}/api/tars/models`;
 export const tarsModelProfiles = () => `${BASE_URL}/api/tars/model-profiles`;
 export const tarsModelProfile = (id: string) =>
   `${BASE_URL}/api/tars/model-profiles/${encodeURIComponent(id)}`;
+/** Every model's direct assignees (`sys_model_permission`). */
+export const tarsModelPermissions = () => `${BASE_URL}/api/tars/model-permissions`;
+/** One model's assignees: GET reads them, PUT overwrites them. */
+export const tarsModelPermission = (modelProfileId: string) =>
+  `${BASE_URL}/api/tars/model-permissions/${encodeURIComponent(modelProfileId)}`;
 export const tarsMcpAdminServers = () => `${BASE_URL}/api/tars/mcp/admin/servers`;
 export const tarsMcpAdminServer = (id: string) =>
   `${BASE_URL}/api/tars/mcp/admin/servers/${encodeURIComponent(id)}`;

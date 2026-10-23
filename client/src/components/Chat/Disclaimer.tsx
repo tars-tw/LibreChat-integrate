@@ -14,7 +14,7 @@ function Disclaimer({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'hidden px-2 pt-3.5 text-center text-xs leading-tight text-text-secondary sm:block',
+        'text-text-secondary hidden px-2 pt-3.5 text-center text-xs leading-tight sm:block',
         className,
       )}
     >

@@ -8,6 +8,10 @@ import type {
   TTarsSysConfig,
   TTarsModelProfile,
   TTarsModelProfilesResponse,
+  TTarsPrincipalInfo,
+  TTarsModelPermission,
+  TTarsModelPermissionsResponse,
+  TTarsModelAssigneesResponse,
   TTarsMcpServer,
   TTarsModelOptions,
   TTarsModelsResponse,
@@ -664,6 +668,34 @@ export const useTarsModelProfilesQuery = (
     [QueryKeys.tarsModelProfiles],
     () => dataService.getTarsModelProfiles(),
     { select: (data) => data.profiles ?? [], ...adminQueryOptions, ...config },
+  );
+};
+
+/** Admin: every model's direct assignees; a model left out has none and is open to everyone. */
+export const useTarsModelPermissionsQuery = (
+  config?: UseQueryOptions<TTarsModelPermissionsResponse, unknown, TTarsModelPermission[]>,
+): QueryObserverResult<TTarsModelPermission[]> => {
+  return useQuery<TTarsModelPermissionsResponse, unknown, TTarsModelPermission[]>(
+    [QueryKeys.tarsModelPermissions],
+    () => dataService.getTarsModelPermissions(),
+    { select: (data) => data.permissions ?? [], ...adminQueryOptions, ...config },
+  );
+};
+
+/** Admin: one model's assignees for the assign dialog; idle while no model is picked. */
+export const useTarsModelAssigneesQuery = (
+  modelProfileId: string | null,
+  config?: UseQueryOptions<TTarsModelAssigneesResponse, unknown, TTarsPrincipalInfo[]>,
+): QueryObserverResult<TTarsPrincipalInfo[]> => {
+  return useQuery<TTarsModelAssigneesResponse, unknown, TTarsPrincipalInfo[]>(
+    [QueryKeys.tarsModelPermissions, modelProfileId ?? ''],
+    () => dataService.getTarsModelPermission(modelProfileId as string),
+    {
+      select: (data) => data.principals ?? [],
+      enabled: modelProfileId != null,
+      ...adminQueryOptions,
+      ...config,
+    },
   );
 };
 

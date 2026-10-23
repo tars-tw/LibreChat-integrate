@@ -97,10 +97,10 @@ export default function Filters({
 
   if (collapsed) {
     return (
-      <section className="rounded-xl border border-border-light">
+      <section className="border-border-light rounded-xl border">
         <header className="flex items-center justify-between gap-3 px-4 py-2">
-          <span className="min-w-0 truncate text-sm text-text-secondary" title={summary}>
-            <span className="mr-2 font-medium text-text-primary">
+          <span className="text-text-secondary min-w-0 truncate text-sm" title={summary}>
+            <span className="text-text-primary mr-2 font-medium">
               {localize('com_ui_tars_audit_filters')}
             </span>
             {summary}
@@ -121,9 +121,9 @@ export default function Filters({
   }
 
   return (
-    <section className="rounded-xl border border-border-light">
-      <header className="flex items-center justify-between gap-2 border-b border-border-light px-4 py-2">
-        <h2 className="text-sm font-medium text-text-primary">
+    <section className="border-border-light rounded-xl border">
+      <header className="border-border-light flex items-center justify-between gap-2 border-b px-4 py-2">
+        <h2 className="text-text-primary text-sm font-medium">
           {localize('com_ui_tars_audit_filters')}
         </h2>
         <Button

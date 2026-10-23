@@ -45,7 +45,7 @@ function ExpandableText({ text }: { text: string }) {
   return (
     <div className="mt-1">
       <p
-        className={`whitespace-pre-line text-xs text-text-secondary ${
+        className={`text-text-secondary text-xs whitespace-pre-line ${
           isLong && !expanded ? 'line-clamp-2' : ''
         }`}
       >
@@ -58,7 +58,7 @@ function ExpandableText({ text }: { text: string }) {
             e.stopPropagation();
             setExpanded((prev) => !prev);
           }}
-          className="mt-0.5 text-xs font-medium text-text-secondary underline hover:text-text-primary"
+          className="text-text-secondary hover:text-text-primary mt-0.5 text-xs font-medium underline"
         >
           {expanded ? localize('com_ui_show_less') : localize('com_ui_show_more')}
         </button>
@@ -92,7 +92,7 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
   const needsCredentials = server.requires_user_credentials && !server.has_credentials;
 
   return (
-    <div className="rounded-lg border border-border-light">
+    <div className="border-border-light rounded-lg border">
       <div className="flex items-center gap-3 p-3">
         <button
           type="button"
@@ -105,9 +105,9 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
         </button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="truncate font-medium text-text-primary">{server.name}</span>
+            <span className="text-text-primary truncate font-medium">{server.name}</span>
             <ServerTypeBadge type={server.type} />
-            <span className="text-xs text-text-secondary">
+            <span className="text-text-secondary text-xs">
               {localize('com_ui_tars_mcp_server_tool_count', { count: server.tools.length })}
             </span>
           </div>
@@ -145,13 +145,13 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
       )}
 
       {expanded && (
-        <ul className="space-y-1 border-t border-border-light p-3">
+        <ul className="border-border-light space-y-1 border-t p-3">
           {server.tools.map((tool) => {
             const params = describeParams(tool);
             return (
               <li
                 key={tool.id}
-                className="flex items-start gap-2 rounded p-1.5 hover:bg-surface-hover"
+                className="hover:bg-surface-hover flex items-start gap-2 rounded p-1.5"
               >
                 <Checkbox
                   checked={tool.user_enabled}
@@ -161,14 +161,14 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
                   className="mt-0.5"
                 />
                 <div className="min-w-0 flex-1">
-                  <span className="inline-block rounded bg-surface-tertiary px-1.5 py-0.5 font-mono text-xs text-text-primary">
+                  <span className="bg-surface-tertiary text-text-primary inline-block rounded px-1.5 py-0.5 font-mono text-xs">
                     {tool.name}
                   </span>
                   {tool.description != null && tool.description !== '' && (
                     <ExpandableText text={tool.description} />
                   )}
                   {params.length > 0 && (
-                    <p className="truncate text-xs text-text-secondary">
+                    <p className="text-text-secondary truncate text-xs">
                       {localize('com_ui_tars_mcp_params')}:{' '}
                       {params
                         .map((param) => `${param.name}${param.required ? '*' : ''} (${param.type})`)
@@ -180,7 +180,7 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
             );
           })}
           {server.tools.length === 0 && (
-            <li className="text-xs text-text-secondary">{localize('com_ui_tars_mcp_no_tools')}</li>
+            <li className="text-text-secondary text-xs">{localize('com_ui_tars_mcp_no_tools')}</li>
           )}
         </ul>
       )}
@@ -213,7 +213,7 @@ export default function McpUserToolsTab() {
         </div>
       )}
       {!isLoading && servers.length === 0 && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_tars_mcp_no_servers')}
         </p>
       )}

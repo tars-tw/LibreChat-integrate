@@ -10,7 +10,7 @@ export default function ScheduleStatusBadge({ schedule }: { schedule: TTarsSched
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${meta.className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs whitespace-nowrap ${meta.className}`}
     >
       {/* Running is the only state that is still changing, so it is the only
           one that animates — colour alone does not say "in progress". */}

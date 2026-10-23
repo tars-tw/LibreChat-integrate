@@ -17,7 +17,7 @@ export default function InlinePromptsView() {
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-surface-primary-alt">
+    <div className="bg-surface-primary-alt flex h-full w-full overflow-hidden">
       <div className="hidden h-full md:flex">
         <TarsPromptList
           domainId={domainId}

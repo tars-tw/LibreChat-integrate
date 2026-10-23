@@ -57,7 +57,7 @@ export default function SysConfigModal({
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <Label>{localize('com_ui_tars_sys_config_key')}</Label>
-                <p className="break-all font-mono text-xs text-text-secondary">{config.key}</p>
+                <p className="text-text-secondary font-mono text-xs break-all">{config.key}</p>
               </div>
               <div>
                 <Label>{localize('com_ui_tars_sys_config_category')}</Label>
@@ -80,7 +80,7 @@ export default function SysConfigModal({
                 rows={4}
                 value={form.value}
                 onChange={(e) => setForm((p) => ({ ...p, value: e.target.value }))}
-                className="min-h-[96px] w-full resize-none rounded-lg border border-border-light bg-transparent px-3 py-2 font-mono text-sm text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-heavy"
+                className="border-border-light text-text-primary focus-visible:ring-border-heavy min-h-[96px] w-full resize-none rounded-lg border bg-transparent px-3 py-2 font-mono text-sm focus-visible:ring-1 focus-visible:outline-none"
               />
             </div>
             <div>
@@ -92,7 +92,7 @@ export default function SysConfigModal({
                 rows={3}
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                className="min-h-[72px] w-full resize-none rounded-lg border border-border-light bg-transparent px-3 py-2 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-heavy"
+                className="border-border-light text-text-primary focus-visible:ring-border-heavy min-h-[72px] w-full resize-none rounded-lg border bg-transparent px-3 py-2 text-sm focus-visible:ring-1 focus-visible:outline-none"
               />
             </div>
           </div>

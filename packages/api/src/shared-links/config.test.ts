@@ -206,7 +206,7 @@ describe('buildSharedLinkStartupPayload', () => {
     );
 
     expect(JSON.parse(JSON.stringify(payload))).toEqual({
-      appTitle: 'LibreChat',
+      appTitle: 'TARS.ai',
       interface: {
         privacyPolicy: {},
         termsOfService: { externalUrl: 'https://example.com/tos', openNewTab: true },

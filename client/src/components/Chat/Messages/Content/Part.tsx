@@ -12,7 +12,6 @@ import {
   hasToolCallPreview,
   getToolCallPreviewRevision,
   isTarsPluginToolName,
-  isTarsPluginToolName,
   isTarsBuiltinToolName,
   isTarsCapabilityToolName,
 } from 'librechat-data-provider';
@@ -51,8 +50,8 @@ import BackgroundTaskCall from './Parts/BackgroundTaskCall';
 import { getAskUserQuestionPart } from '~/utils/approval';
 import AskUserQuestionCall from './AskUserQuestionCall';
 import { isError } from './ToolOutput/OutputRenderer';
-import { ToolPreparation } from './preparation';
 import TarsPluginAnswer from './TarsPluginAnswer';
+import { ToolPreparation } from './preparation';
 import { ErrorMessage } from './MessageContent';
 import AskUserQuestion from './AskUserQuestion';
 import TarsCapabilityCall from './TarsTrace';

@@ -106,7 +106,7 @@ export default function ScheduleCreateDialog({
     }
     if (candidates.length === 0) {
       return (
-        <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
+        <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
           {localize('com_ui_tars_sched_no_candidates')}
         </p>
       );

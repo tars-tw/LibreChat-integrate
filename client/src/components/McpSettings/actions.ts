@@ -8,8 +8,8 @@ import { cn } from '~/utils';
 export type McpActionTone = 'info' | 'key' | 'danger' | 'neutral';
 
 const TONE_CLASSES: Record<McpActionTone, string> = {
-  info: 'text-pwc-info',
-  key: 'text-pwc-info-cyan',
+  info: 'text-[rgb(var(--pwc-info))]',
+  key: 'text-[rgb(var(--pwc-info-cyan))]',
   danger: 'text-text-destructive',
   neutral: 'text-text-secondary hover:text-text-primary',
 };

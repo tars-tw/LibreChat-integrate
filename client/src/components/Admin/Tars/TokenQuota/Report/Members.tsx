@@ -32,9 +32,9 @@ export default function Members({
   const ranked = [...members].sort((a, b) => b.total_tokens - a.total_tokens);
 
   return (
-    <section className="rounded-xl border border-border-light">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border-light px-4 py-2">
-        <h2 className="text-sm font-medium text-text-primary">
+    <section className="border-border-light rounded-xl border">
+      <header className="border-border-light flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2">
+        <h2 className="text-text-primary text-sm font-medium">
           {localize('com_ui_tars_report_members_of', { 0: groupName })}
         </h2>
         <Button variant="outline" size="sm" onClick={onClear}>
@@ -49,7 +49,7 @@ export default function Members({
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[52rem] text-sm">
-            <thead className="bg-surface-secondary text-left text-text-secondary">
+            <thead className="bg-surface-secondary text-text-secondary text-left">
               <tr>
                 <th className="w-[28%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_quota_col_user')}
@@ -71,7 +71,7 @@ export default function Members({
             <tbody>
               {ranked.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-text-secondary">
+                  <td colSpan={5} className="text-text-secondary px-3 py-6 text-center">
                     {localize('com_ui_tars_audit_no_data')}
                   </td>
                 </tr>
@@ -87,31 +87,31 @@ export default function Members({
                   <tr
                     key={userId}
                     onClick={() => onSelect(member)}
-                    className="cursor-pointer border-t border-border-light hover:bg-surface-hover"
+                    className="border-border-light hover:bg-surface-hover cursor-pointer border-t"
                   >
                     <td className="px-3 py-2">
-                      <span className="block truncate font-medium text-text-primary">
+                      <span className="text-text-primary block truncate font-medium">
                         {primary}
                       </span>
                       {secondary != null && (
-                        <span className="block truncate text-xs text-text-secondary">
+                        <span className="text-text-secondary block truncate text-xs">
                           {secondary}
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                    <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                       {formatTokens(member.log_count)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-text-primary">
+                    <td className="text-text-primary px-3 py-2 text-right tabular-nums">
                       {formatTokens(member.total_tokens)}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <span className="block tabular-nums text-text-secondary">
+                      <span className="text-text-secondary block tabular-nums">
                         {ceiling?.limit == null
                           ? localize('com_ui_tars_quota_unlimited')
                           : formatTokens(ceiling.limit)}
                       </span>
-                      <span className="block text-xs text-text-secondary">
+                      <span className="text-text-secondary block text-xs">
                         {localize(
                           own == null
                             ? 'com_ui_tars_report_ceiling_inherited'
@@ -121,7 +121,7 @@ export default function Members({
                     </td>
                     <td className="px-3 py-2">
                       {share == null ? (
-                        <span className="text-xs text-text-secondary">
+                        <span className="text-text-secondary text-xs">
                           {localize('com_ui_tars_report_no_ceiling')}
                         </span>
                       ) : (
@@ -137,7 +137,7 @@ export default function Members({
                               />
                             )}
                           </div>
-                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
+                          <div className="bg-surface-tertiary mt-1 h-1.5 overflow-hidden rounded-full">
                             <div
                               className={`h-full rounded-full ${
                                 warning ? 'bg-red-500' : 'bg-brand-primary'

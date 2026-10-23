@@ -168,7 +168,7 @@ export default function DomainManager() {
           aria-label={localize('com_ui_tars_domain_prompts')}
           title={localize('com_ui_tars_domain_prompts')}
           onClick={() => navigate(`/prompts/domain/${domain.id}/new`)}
-          className="text-pwc-info hover:bg-surface-tertiary rounded p-1.5"
+          className="hover:bg-surface-tertiary rounded p-1.5 text-[rgb(var(--pwc-info))]"
         >
           <Book className="icon-sm" />
         </button>

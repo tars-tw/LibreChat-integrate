@@ -14,9 +14,9 @@ export default function AuditView() {
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-presentation">
+    <div className="bg-presentation h-full w-full overflow-y-auto">
       <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <h1 className="text-2xl font-semibold text-text-primary">
+        <h1 className="text-text-primary text-2xl font-semibold">
           {localize('com_ui_tars_nav_audit_messages')}
         </h1>
         <AuditManager />

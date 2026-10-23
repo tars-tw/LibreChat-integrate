@@ -31,8 +31,8 @@ export default function Header({
 
   const fact = (label: string, value: string) => (
     <div>
-      <p className="text-xs text-text-secondary">{label}</p>
-      <p className="break-words text-sm text-text-primary">{value}</p>
+      <p className="text-text-secondary text-xs">{label}</p>
+      <p className="text-text-primary text-sm break-words">{value}</p>
     </div>
   );
 
@@ -51,7 +51,7 @@ export default function Header({
             <ChevronLeft className="size-5" aria-hidden />
           </Button>
 
-          <h1 className="truncate text-2xl font-semibold text-text-primary">
+          <h1 className="text-text-primary truncate text-2xl font-semibold">
             {knowledgeBase?.name ?? '—'}
           </h1>
         </div>
@@ -74,16 +74,16 @@ export default function Header({
       </div>
 
       {knowledgeBase?.description != null && knowledgeBase.description !== '' && (
-        <p className="break-words pl-12 text-sm text-text-secondary">{knowledgeBase.description}</p>
+        <p className="text-text-secondary pl-12 text-sm break-words">{knowledgeBase.description}</p>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 pl-12 text-sm text-text-secondary">
+      <div className="text-text-secondary flex flex-wrap items-center gap-x-6 gap-y-1 pl-12 text-sm">
         <span className="flex items-center gap-1.5">
-          <Sliders className="size-3.5 text-brand-primary" aria-hidden />
+          <Sliders className="text-brand-primary size-3.5" aria-hidden />
           {knowledgeBase?.llm_model ?? '—'}
         </span>
         <span className="flex items-center gap-1.5">
-          <Search className="size-3.5 text-brand-primary" aria-hidden />
+          <Search className="text-brand-primary size-3.5" aria-hidden />
           {localize('com_ui_tars_kb_max_retrieve')}:{' '}
           {knowledgeBase?.max_retrieve_count ?? DEFAULT_MAX_RETRIEVE}
         </span>

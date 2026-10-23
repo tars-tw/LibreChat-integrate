@@ -193,7 +193,7 @@ export default function SsoCard() {
                     aria-label={localize('com_ui_tars_sso_unlink')}
                     title={localize('com_ui_tars_sso_unlink')}
                     onClick={() => setUnlinking(config)}
-                    className="hover:bg-surface-tertiary text-pwc-info rounded p-1.5"
+                    className="hover:bg-surface-tertiary rounded p-1.5 text-[rgb(var(--pwc-info))]"
                   >
                     <Unlink className="icon-sm" />
                   </button>

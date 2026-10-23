@@ -34,8 +34,8 @@ import UnifiedPeopleSearch from './PeoplePicker/UnifiedPeopleSearch';
 import PeoplePickerAdminSettings from './PeoplePickerAdminSettings';
 import PublicSharingToggle from './PublicSharingToggle';
 import { SelectedPrincipalsList } from './PeoplePicker';
-import { permissionErrorKey } from './errors';
 import { useGetStartupConfig } from '~/data-provider';
+import { permissionErrorKey } from './errors';
 import { cn } from '~/utils';
 
 export default function GenericGrantAccessDialog({

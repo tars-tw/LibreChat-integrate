@@ -44,11 +44,11 @@ export default function ParametersModal({
       }}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-surface-primary shadow-xl"
+        className="bg-surface-primary flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl shadow-xl"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <header className="flex flex-shrink-0 items-center justify-between border-b border-border-light px-5 py-4">
-          <h2 id={titleId} className="text-base font-semibold text-text-primary">
+        <header className="border-border-light flex flex-shrink-0 items-center justify-between border-b px-5 py-4">
+          <h2 id={titleId} className="text-text-primary text-base font-semibold">
             {title}
           </h2>
 
@@ -58,7 +58,7 @@ export default function ParametersModal({
             size="icon"
             onClick={onClose}
             aria-label={localize('com_ui_close')}
-            className="h-9 w-9 rounded-xl text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
+            className="text-text-secondary hover:bg-surface-secondary hover:text-text-primary h-9 w-9 rounded-xl"
           >
             <X className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
           </Button>
@@ -68,7 +68,7 @@ export default function ParametersModal({
           <div className="flex w-full flex-col gap-3 text-sm">{children}</div>
         </div>
 
-        <footer className="flex flex-shrink-0 justify-end gap-2 border-t border-border-light px-5 py-3">
+        <footer className="border-border-light flex flex-shrink-0 justify-end gap-2 border-t px-5 py-3">
           <Button type="button" variant="outline" onClick={onClose} className="h-9 rounded-xl px-5">
             {localize('com_ui_close')}
           </Button>

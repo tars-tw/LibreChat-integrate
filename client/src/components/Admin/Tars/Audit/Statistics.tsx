@@ -5,10 +5,10 @@ import { useLocalize } from '~/hooks';
 /** One headline number. */
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-border-light p-4">
-      <p className="text-xs text-text-secondary">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-text-primary">{value}</p>
-      {hint != null && <p className="mt-0.5 text-xs text-text-secondary">{hint}</p>}
+    <div className="border-border-light rounded-xl border p-4">
+      <p className="text-text-secondary text-xs">{label}</p>
+      <p className="text-text-primary mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+      {hint != null && <p className="text-text-secondary mt-0.5 text-xs">{hint}</p>}
     </div>
   );
 }
@@ -33,7 +33,7 @@ export default function Statistics({
 
   if (summary == null) {
     return (
-      <div className="py-12 text-center text-sm text-text-secondary">
+      <div className="text-text-secondary py-12 text-center text-sm">
         {localize('com_ui_tars_audit_no_data')}
       </div>
     );
@@ -46,7 +46,7 @@ export default function Statistics({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-text-secondary">
+      <p className="text-text-secondary text-sm">
         {localize('com_ui_tars_audit_period')}
         {': '}
         {summary.date_range.start_date} ~ {summary.date_range.end_date}
@@ -78,55 +78,55 @@ export default function Statistics({
       </div>
 
       {rated > 0 && (
-        <div className="rounded-xl border border-border-light p-4">
-          <p className="mb-3 text-sm font-medium text-text-primary">
+        <div className="border-border-light rounded-xl border p-4">
+          <p className="text-text-primary mb-3 text-sm font-medium">
             {localize('com_ui_tars_audit_feedback_split')}
           </p>
           {/* The filled share is the positive one, so the brand fill reads as the good news. */}
           <div
-            className="h-3 overflow-hidden rounded-full bg-surface-tertiary"
+            className="bg-surface-tertiary h-3 overflow-hidden rounded-full"
             role="img"
             aria-label={localize('com_ui_tars_audit_like_share', { 0: String(likeShare) })}
           >
             <div
-              className="h-full rounded-full bg-brand-primary"
+              className="bg-brand-primary h-full rounded-full"
               style={{ width: `${likeShare}%` }}
             />
           </div>
-          <div className="mt-2 flex items-center justify-between text-sm text-text-secondary">
+          <div className="text-text-secondary mt-2 flex items-center justify-between text-sm">
             <span className="flex items-center gap-1.5">
-              <ThumbsUp className="size-4 text-brand-primary" aria-hidden />
-              <span className="tabular-nums text-text-primary">{likes}</span>
+              <ThumbsUp className="text-brand-primary size-4" aria-hidden />
+              <span className="text-text-primary tabular-nums">{likes}</span>
               {localize('com_ui_tars_audit_col_like')}
             </span>
             <span className="flex items-center gap-1.5">
               {localize('com_ui_tars_audit_col_dislike')}
-              <span className="tabular-nums text-text-primary">{dislikes}</span>
+              <span className="text-text-primary tabular-nums">{dislikes}</span>
               <ThumbsDown className="size-4" aria-hidden />
             </span>
           </div>
         </div>
       )}
 
-      <div className="rounded-xl border border-border-light">
-        <header className="border-b border-border-light px-4 py-2">
-          <h3 className="text-sm font-medium text-text-primary">
+      <div className="border-border-light rounded-xl border">
+        <header className="border-border-light border-b px-4 py-2">
+          <h3 className="text-text-primary text-sm font-medium">
             {localize('com_ui_tars_audit_domain_stats')}
           </h3>
         </header>
         {ranked.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-text-secondary">
+          <p className="text-text-secondary px-4 py-6 text-sm">
             {localize('com_ui_tars_audit_no_data')}
           </p>
         ) : (
-          <ul className="divide-y divide-border-light">
+          <ul className="divide-border-light divide-y">
             {ranked.map((detail) => (
               <li key={detail.domain_name} className="px-4 py-3">
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="min-w-0 truncate text-sm text-text-primary">
+                  <span className="text-text-primary min-w-0 truncate text-sm">
                     {detail.domain_name}
                   </span>
-                  <span className="shrink-0 text-xs tabular-nums text-text-secondary">
+                  <span className="text-text-secondary shrink-0 text-xs tabular-nums">
                     {localize('com_ui_tars_audit_domain_counts', {
                       0: String(detail.message_count),
                       1: String(detail.conversation_count),
@@ -134,16 +134,16 @@ export default function Statistics({
                   </span>
                 </div>
                 {/* A bar relative to the busiest brain, so the mix reads at a glance. */}
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
+                <div className="bg-surface-tertiary mt-2 h-1.5 overflow-hidden rounded-full">
                   <div
-                    className="h-full rounded-full bg-brand-primary"
+                    className="bg-brand-primary h-full rounded-full"
                     style={{
                       width: `${busiest === 0 ? 0 : Math.round((detail.message_count / busiest) * 100)}%`,
                     }}
                   />
                 </div>
                 {detail.knowledge_bases.length > 0 && (
-                  <p className="mt-1.5 truncate text-xs text-text-secondary">
+                  <p className="text-text-secondary mt-1.5 truncate text-xs">
                     {detail.knowledge_bases.map((kb) => kb.name).join(', ')}
                   </p>
                 )}

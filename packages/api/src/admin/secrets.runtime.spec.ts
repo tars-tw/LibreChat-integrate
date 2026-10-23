@@ -315,6 +315,7 @@ const RUNTIME_READERS: Readonly<Record<string, RuntimeReader>> = {
   'speech.tts.localai.apiKey': TTS_SERVICE,
   'speech.stt.openai.apiKey': STT_SERVICE,
   'speech.stt.azureOpenAI.apiKey': STT_SERVICE,
+  'speech.stt.gemini.apiKey': STT_SERVICE,
   'webSearch.serperApiKey': webSearchReader('serperApiKey', {
     searchProvider: SearchProviders.SERPER,
   }),

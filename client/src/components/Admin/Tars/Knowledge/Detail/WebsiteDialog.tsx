@@ -88,7 +88,7 @@ export default function WebsiteDialog({
             <div className="space-y-1.5">
               <Label htmlFor="tars-site-name">
                 {localize('com_ui_tars_kb_ds_name')}
-                <span className="ml-0.5 text-pwc-danger">*</span>
+                <span className="text-pwc-danger ml-0.5">*</span>
               </Label>
               <Input
                 id="tars-site-name"
@@ -100,7 +100,7 @@ export default function WebsiteDialog({
             <div className="space-y-1.5">
               <Label htmlFor="tars-site-url">
                 {localize('com_ui_tars_kb_ds_url')}
-                {!isEdit && <span className="ml-0.5 text-pwc-danger">*</span>}
+                {!isEdit && <span className="text-pwc-danger ml-0.5">*</span>}
               </Label>
               <Input
                 id="tars-site-url"
@@ -110,13 +110,13 @@ export default function WebsiteDialog({
                 disabled={isEdit}
               />
               {isEdit ? (
-                <p className="text-xs text-text-secondary">
+                <p className="text-text-secondary text-xs">
                   {localize('com_ui_tars_kb_ds_url_locked')}
                 </p>
               ) : (
                 url !== '' &&
                 urlInvalid && (
-                  <p className="text-xs text-pwc-danger">
+                  <p className="text-pwc-danger text-xs">
                     {localize('com_ui_tars_kb_ds_url_invalid')}
                   </p>
                 )
@@ -130,13 +130,13 @@ export default function WebsiteDialog({
                 rows={2}
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                className="w-full rounded-md border border-border-light bg-surface-primary px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-border-heavy"
+                className="border-border-light bg-surface-primary text-text-primary focus:ring-border-heavy w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
               />
             </div>
 
             {!isEdit && (
               <>
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-border-light p-3">
+                <div className="border-border-light flex items-center justify-between gap-3 rounded-lg border p-3">
                   <Label htmlFor="tars-site-enabled" className="text-sm">
                     {localize('com_ui_tars_kb_ds_enable')}
                   </Label>
@@ -149,7 +149,7 @@ export default function WebsiteDialog({
                 </div>
                 {/* Crawling, chunking and embedding all happen before the
                     response returns, so this can take minutes on a large site. */}
-                <p className="text-xs text-text-secondary">
+                <p className="text-text-secondary text-xs">
                   {localize('com_ui_tars_kb_ds_import_slow')}
                 </p>
               </>
