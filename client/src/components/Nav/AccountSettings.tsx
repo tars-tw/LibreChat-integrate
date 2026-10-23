@@ -15,15 +15,14 @@ import {
 } from 'lucide-react';
 import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/ArchivedChatsModal';
 import { filesDialogTriggerAtom, showFilesDialogAtom } from '~/store/filesDialog';
+import { getHelpAndFaqURL, openInNewTab, policyUrls } from '~/utils';
 import useDirection, { inlineSide } from '~/hooks/Nav/useDirection';
-import { useGetStartupConfig } from '~/data-provider';
 import useSidebarToggle from '~/hooks/Nav/useSidebarToggle';
 import AdminMenu, { SubmenuGroup } from './Tars/AdminMenu';
 import useSidebarState from '~/hooks/Nav/useSidebarState';
 import { useLocalize, useTarsAdminAccess } from '~/hooks';
-import { getHelpAndFaqURL, openInNewTab } from '~/utils';
+import { useGetStartupConfig } from '~/data-provider';
 import { useAuthContext } from '~/hooks/AuthContext';
-import { openInNewTab, policyUrls } from '~/utils';
 import { settingsOpenAtom } from './Settings';
 import store from '~/store';
 

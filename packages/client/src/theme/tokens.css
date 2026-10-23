@@ -22,9 +22,6 @@
 @theme inline {
   /* brand and surfaces */
   --color-brand-purple: rgb(var(--brand-purple));
-  /* pwc action accents: details (info) and credential (key) icons in the admin tables */
-  --color-pwc-info: rgb(var(--pwc-info));
-  --color-pwc-info-cyan: rgb(var(--pwc-info-cyan));
   --color-avatar-fill: rgb(var(--avatar-fill));
   --color-avatar-text: rgb(var(--avatar-text));
   --color-avatar-placeholder: rgb(var(--avatar-placeholder));

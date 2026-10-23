@@ -108,8 +108,8 @@ export default function TarsLicenseUpload({
   }
 
   return (
-    <div className="mt-4 rounded-2xl border border-border-light bg-surface-primary p-4 text-center">
-      <p className="text-sm text-text-primary">{localize('com_ui_tars_login_license_required')}</p>
+    <div className="border-border-light bg-surface-primary mt-4 rounded-2xl border p-4 text-center">
+      <p className="text-text-primary text-sm">{localize('com_ui_tars_login_license_required')}</p>
       <div className="mt-4 flex items-center justify-center gap-2">
         <input
           ref={inputRef}
@@ -133,7 +133,7 @@ export default function TarsLicenseUpload({
           {localize('com_ui_tars_settings_license_upload')}
         </Button>
       </div>
-      <p className="mt-2 text-xs text-text-secondary">
+      <p className="text-text-secondary mt-2 text-xs">
         {localize('com_ui_tars_settings_license_format')}
       </p>
     </div>

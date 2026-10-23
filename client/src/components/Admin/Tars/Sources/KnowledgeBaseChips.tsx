@@ -23,7 +23,7 @@ export default function KnowledgeBaseChips({
     const label = emptyLabel ?? localize('com_ui_tars_db_allowed_kbs_none');
     return (
       <span role="img" aria-label={label} title={label} className="inline-flex">
-        <CircleOff className="size-3.5 text-text-tertiary" aria-hidden />
+        <CircleOff className="text-text-tertiary size-3.5" aria-hidden />
       </span>
     );
   }
@@ -33,7 +33,7 @@ export default function KnowledgeBaseChips({
       {names.map((name, index) => (
         <span
           key={`${index}-${name}`}
-          className="max-w-[16rem] truncate rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary"
+          className="bg-surface-tertiary text-text-secondary max-w-[16rem] truncate rounded-full px-2 py-0.5 text-xs"
           title={name}
         >
           {name}

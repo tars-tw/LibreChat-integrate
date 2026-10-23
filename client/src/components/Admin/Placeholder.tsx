@@ -15,10 +15,10 @@ export default function AdminPlaceholder({ titleKey }: { titleKey: TranslationKe
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-presentation">
+    <div className="bg-presentation h-full w-full overflow-y-auto">
       <div className="mx-auto max-w-6xl space-y-6 p-6">
-        <h1 className="text-2xl font-semibold text-text-primary">{localize(titleKey)}</h1>
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border-light py-24 text-text-secondary">
+        <h1 className="text-text-primary text-2xl font-semibold">{localize(titleKey)}</h1>
+        <div className="border-border-light text-text-secondary flex flex-col items-center justify-center gap-3 rounded-xl border py-24">
           <Construction className="h-8 w-8" aria-hidden="true" />
           <p className="text-sm">{localize('com_ui_tars_page_placeholder')}</p>
         </div>

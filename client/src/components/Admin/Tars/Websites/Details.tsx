@@ -25,7 +25,7 @@ export default function WebsiteDetails({
   const row = (labelKey: TranslationKeys, value: string) => (
     <div className="grid grid-cols-3 gap-3 py-1.5">
       <dt className="text-text-secondary">{localize(labelKey)}</dt>
-      <dd className="col-span-2 break-words text-text-primary">{value === '' ? '—' : value}</dd>
+      <dd className="text-text-primary col-span-2 break-words">{value === '' ? '—' : value}</dd>
     </div>
   );
 
@@ -41,13 +41,13 @@ export default function WebsiteDetails({
               href={website.url ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 break-all text-sm text-text-primary hover:underline"
+              className="text-text-primary flex items-center gap-1.5 text-sm break-all hover:underline"
             >
               {website.url ?? '—'}
               <ExternalLink className="size-3.5 shrink-0" aria-hidden />
             </a>
 
-            <dl className="divide-y divide-border-light text-sm">
+            <dl className="divide-border-light divide-y text-sm">
               {row('com_ui_description', website.description ?? '')}
               {row(
                 'com_ui_tars_web_knowledge_base',

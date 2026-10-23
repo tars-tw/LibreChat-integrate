@@ -68,12 +68,12 @@ function FieldInfoCard({
 }) {
   return (
     <div className="flex items-start gap-3 rounded-xl bg-orange-50 p-4 dark:bg-orange-950/20">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-orange-600 dark:bg-surface-primary dark:text-orange-400">
+      <div className="dark:bg-surface-primary flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-orange-600 dark:text-orange-400">
         <Icon className="size-4" aria-hidden />
       </div>
       <div className="min-w-0">
-        <div className="text-sm font-semibold text-text-primary">{title}</div>
-        <div className="mt-0.5 text-xs leading-relaxed text-text-secondary">{desc}</div>
+        <div className="text-text-primary text-sm font-semibold">{title}</div>
+        <div className="text-text-secondary mt-0.5 text-xs leading-relaxed">{desc}</div>
       </div>
     </div>
   );
@@ -191,7 +191,7 @@ export default function TokenQuotaInfo({
         main={
           <div>
             {current.type === 'pyramid' && (
-              <p className="mb-4 text-sm text-text-secondary">
+              <p className="text-text-secondary mb-4 text-sm">
                 {localize('com_ui_tars_quota_info_priority_label')}
                 {localize('com_ui_tars_quota_info_priority_full', {
                   personal: localize('com_ui_tars_quota_info_personal_title'),
@@ -207,7 +207,7 @@ export default function TokenQuotaInfo({
                 aria-label={localize('com_ui_tars_quota_info_prev')}
                 onClick={() => setSlide((s) => Math.max(0, s - 1))}
                 disabled={slide === 0}
-                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border-light text-text-secondary transition-colors hover:border-orange-500 hover:bg-orange-500 hover:text-white disabled:opacity-30 disabled:hover:border-border-light disabled:hover:bg-transparent disabled:hover:text-text-secondary"
+                className="border-border-light text-text-secondary disabled:hover:border-border-light disabled:hover:text-text-secondary flex size-9 shrink-0 items-center justify-center rounded-full border transition-colors hover:border-orange-500 hover:bg-orange-500 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
               >
                 <ChevronLeft className="size-4" aria-hidden />
               </button>
@@ -216,17 +216,17 @@ export default function TokenQuotaInfo({
                 {current.type === 'pyramid' ? (
                   <div className="flex w-full flex-col items-center gap-6 sm:flex-row sm:items-center">
                     <div className="w-full flex-1 rounded-xl bg-orange-50 p-5 dark:bg-orange-950/20">
-                      <div className="mb-3 text-base font-bold text-text-primary">
+                      <div className="text-text-primary mb-3 text-base font-bold">
                         {current.title}
                       </div>
-                      <div className="mb-0.5 mt-2 text-xs text-text-secondary">
+                      <div className="text-text-secondary mt-2 mb-0.5 text-xs">
                         {localize('com_ui_tars_quota_info_scope_label')}
                       </div>
-                      <div className="text-sm text-text-primary">{current.scope}</div>
-                      <div className="mb-0.5 mt-3 text-xs text-text-secondary">
+                      <div className="text-text-primary text-sm">{current.scope}</div>
+                      <div className="text-text-secondary mt-3 mb-0.5 text-xs">
                         {localize('com_ui_tars_quota_info_desc_label')}
                       </div>
-                      <div className="text-sm leading-relaxed text-text-primary">
+                      <div className="text-text-primary text-sm leading-relaxed">
                         {current.desc}
                       </div>
                     </div>
@@ -242,7 +242,7 @@ export default function TokenQuotaInfo({
                   <div className="w-full space-y-5">
                     {fieldGroups.map((group) => (
                       <div key={group.label}>
-                        <div className="mb-2.5 text-sm text-text-secondary">{group.label}</div>
+                        <div className="text-text-secondary mb-2.5 text-sm">{group.label}</div>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           {group.fields.map((f) => (
                             <FieldInfoCard
@@ -264,7 +264,7 @@ export default function TokenQuotaInfo({
                 aria-label={localize('com_ui_tars_quota_info_next')}
                 onClick={() => setSlide((s) => Math.min(slides.length - 1, s + 1))}
                 disabled={slide === slides.length - 1}
-                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border-light text-text-secondary transition-colors hover:border-orange-500 hover:bg-orange-500 hover:text-white disabled:opacity-30 disabled:hover:border-border-light disabled:hover:bg-transparent disabled:hover:text-text-secondary"
+                className="border-border-light text-text-secondary disabled:hover:border-border-light disabled:hover:text-text-secondary flex size-9 shrink-0 items-center justify-center rounded-full border transition-colors hover:border-orange-500 hover:bg-orange-500 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
               >
                 <ChevronRight className="size-4" aria-hidden />
               </button>
@@ -278,7 +278,7 @@ export default function TokenQuotaInfo({
                   tabIndex={0}
                   onClick={() => setSlide(i)}
                   className={`h-2 cursor-pointer rounded-full transition-all ${
-                    i === slide ? 'w-5 bg-orange-500' : 'w-2 bg-border-light'
+                    i === slide ? 'w-5 bg-orange-500' : 'bg-border-light w-2'
                   }`}
                 />
               ))}

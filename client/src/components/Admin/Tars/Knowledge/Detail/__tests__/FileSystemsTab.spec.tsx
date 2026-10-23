@@ -64,7 +64,7 @@ const renderTab = (onBatchUnlink = jest.fn()) => {
 };
 
 const tick = (name: string) =>
-  screen.getByRole('checkbox', { name: `com_ui_tars_kb_ds_select_one ${name}` });
+  screen.getByRole('checkbox', { name: `com_ui_tars_kb_ds_select_item ${name}` });
 
 describe('FileSystemsTab batch unlink', () => {
   it('asks first, then unlinks the ticked groups by their file-system id', async () => {

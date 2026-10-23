@@ -235,7 +235,13 @@ function ChatPane({
                           {/* The generic disclaimer and the policy links are the
                               welcome screen's; a deployment's own footer stays
                               with the conversation that always showed it. */}
-                          {!fullFooter && configuredFooter && <Footer showDisclaimer={false} />}
+                          {!fullFooter &&
+                            configuredFooter &&
+                            (isLandingPage ? (
+                              <Footer configuredOnly />
+                            ) : (
+                              <Footer showDisclaimer={false} />
+                            ))}
                         </div>
                         <Lia
                           bandRef={composerBandRef}

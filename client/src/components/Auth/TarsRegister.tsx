@@ -33,19 +33,19 @@ const TermsOfServiceContent = () => (
     <p className="mb-2">
       請仔細閱讀並確認您同意以下服務條款，這些條款適用於您在本平台的所有操作和互動。
     </p>
-    <h5 className="mb-1 mt-3 font-semibold">1. 使用範圍</h5>
+    <h5 className="mt-3 mb-1 font-semibold">1. 使用範圍</h5>
     <p className="mb-2">
       本平台僅供企業內部使用，所有帳戶和資料必須由公司授權的員工使用。任何未經授權的使用都會受到限制或終止。
     </p>
-    <h5 className="mb-1 mt-3 font-semibold">2. 帳戶安全</h5>
+    <h5 className="mt-3 mb-1 font-semibold">2. 帳戶安全</h5>
     <p className="mb-2">
       您應對您的帳戶信息保密，並對通過您的帳戶發生的所有行為負責。若發現任何未經授權的使用或安全漏洞，請立即聯繫我們的客服團隊。
     </p>
-    <h5 className="mb-1 mt-3 font-semibold">3. 數據隱私與保護</h5>
+    <h5 className="mt-3 mb-1 font-semibold">3. 數據隱私與保護</h5>
     <p className="mb-2">
       本平台將根據公司政策和相關法律法規，保護您的個人數據及機密資訊。您同意我們收集、儲存並處理與您帳戶相關的資料，以提供更好的服務。
     </p>
-    <h5 className="mb-1 mt-3 font-semibold">4. 使用限制</h5>
+    <h5 className="mt-3 mb-1 font-semibold">4. 使用限制</h5>
     <p className="mb-1">您不得使用本平台進行以下行為：</p>
     <ul className="mb-2 list-disc pl-6">
       <li>未經授權的數據收集或挖掘。</li>
@@ -53,27 +53,27 @@ const TermsOfServiceContent = () => (
       <li>傳播病毒或其他有害的程式。</li>
       <li>違反公司政策或法律法規的行為。</li>
     </ul>
-    <h5 className="mb-1 mt-3 font-semibold">5. 服務變更或中止</h5>
+    <h5 className="mt-3 mb-1 font-semibold">5. 服務變更或中止</h5>
     <p className="mb-2">
       我們保留隨時修改、更新或終止本平台服務的權利。若平台服務有所變動，我們會提前通知使用者。
     </p>
-    <h5 className="mb-1 mt-3 font-semibold">6. 免責聲明</h5>
+    <h5 className="mt-3 mb-1 font-semibold">6. 免責聲明</h5>
     <p className="mb-2">
       本平台將盡力確保服務的可用性和穩定性，但對於由於技術問題、外部原因或不可預見的情況所造成的服務中斷或數據丟失，概不負責。
     </p>
-    <h5 className="mb-1 mt-3 font-semibold">7. 知識產權</h5>
+    <h5 className="mt-3 mb-1 font-semibold">7. 知識產權</h5>
     <p className="mb-2">
       本平台的所有內容、資料、軟體及技術屬於公司或其授權方，未經授權，您不得以任何方式複製、分發或修改。
     </p>
-    <h5 className="mb-1 mt-3 font-semibold">8. 遵守法律</h5>
+    <h5 className="mt-3 mb-1 font-semibold">8. 遵守法律</h5>
     <p className="mb-2">
       使用本平台時，您同意遵守所在國家/地區的所有相關法律法規，並不會利用平台進行任何非法行為。
     </p>
-    <h5 className="mb-1 mt-3 font-semibold">9. 變更與終止</h5>
+    <h5 className="mt-3 mb-1 font-semibold">9. 變更與終止</h5>
     <p className="mb-2">
       本條款可隨時進行修改，並會在平台上發布更新版本。修改後的條款將自發布日起生效。若您不同意修改後的條款，您可選擇終止使用平台。
     </p>
-    <h5 className="mb-1 mt-3 font-semibold">10. 聯繫方式</h5>
+    <h5 className="mt-3 mb-1 font-semibold">10. 聯繫方式</h5>
     <p className="mb-2">
       如對服務條款有任何疑問或建議，請與我們的客戶支持團隊聯繫：
       <br />
@@ -198,20 +198,20 @@ function TarsRegister() {
           {renderError('password')}
         </div>
 
-        <div className="mb-4 mt-2 flex items-center">
+        <div className="mt-2 mb-4 flex items-center">
           <input
             type="checkbox"
             id="terms"
             checked={termsAccepted}
             onChange={handleCheckboxClick}
-            className="h-4 w-4 rounded border-gray-300 text-pwc-orange focus:ring-pwc-orange"
+            className="text-pwc-orange focus:ring-pwc-orange h-4 w-4 rounded border-gray-300"
           />
           <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
             {localize('com_auth_tars_agree_prefix')}{' '}
             <button
               type="button"
               onClick={() => setTermsOpen(true)}
-              className="font-medium text-pwc-orange hover:underline"
+              className="text-pwc-orange font-medium hover:underline"
             >
               {localize('com_auth_tars_terms')}
             </button>
@@ -238,7 +238,7 @@ function TarsRegister() {
             <OGDialogTitle>{localize('com_auth_tars_terms')}</OGDialogTitle>
           </OGDialogHeader>
           <TermsOfServiceContent />
-          <div className="flex justify-end gap-2 px-1 pb-1 pt-2">
+          <div className="flex justify-end gap-2 px-1 pt-2 pb-1">
             <button
               type="button"
               onClick={() => setTermsOpen(false)}
@@ -252,7 +252,7 @@ function TarsRegister() {
                 setTermsAccepted(true);
                 setTermsOpen(false);
               }}
-              className="rounded-md bg-pwc-orange px-4 py-2 text-sm text-white hover:bg-pwc-orange-600"
+              className="bg-pwc-orange hover:bg-pwc-orange-600 rounded-md px-4 py-2 text-sm text-white"
             >
               {localize('com_ui_confirm')}
             </button>

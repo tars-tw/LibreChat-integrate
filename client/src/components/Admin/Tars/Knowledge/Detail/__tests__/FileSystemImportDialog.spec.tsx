@@ -83,7 +83,7 @@ const browse = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 const tick = (file: string) =>
-  screen.getByRole('checkbox', { name: `com_ui_tars_kb_ds_select_one ${file}` });
+  screen.getByRole('checkbox', { name: `com_ui_tars_kb_ds_select_item ${file}` });
 const folderPicker = () => screen.getByRole('combobox', { name: 'com_ui_tars_kb_ds_bind_folder' });
 const importButton = () => screen.getByRole('button', { name: 'com_ui_tars_kb_ds_import' });
 
@@ -100,7 +100,7 @@ describe('FileSystemImportDialog', () => {
 
     await user.selectOptions(folderPicker(), 'test');
     expect(
-      screen.queryByRole('checkbox', { name: 'com_ui_tars_kb_ds_select_one test2/demo_ftp.txt' }),
+      screen.queryByRole('checkbox', { name: 'com_ui_tars_kb_ds_select_item test2/demo_ftp.txt' }),
     ).not.toBeInTheDocument();
     expect(screen.getAllByRole('row')).toHaveLength(3);
 

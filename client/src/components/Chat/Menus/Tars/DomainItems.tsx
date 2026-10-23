@@ -24,12 +24,12 @@ export function DomainMenuItem({ domain, isSelected, onSelect }: DomainMenuItemP
       className="group flex w-full cursor-pointer items-center justify-between rounded-lg px-2 text-sm"
     >
       <div className="flex w-full min-w-0 items-center gap-2 py-1">
-        <Brain className="size-5 shrink-0 text-text-primary" aria-hidden="true" />
+        <Brain className="text-text-primary size-5 shrink-0" aria-hidden="true" />
         <span className="truncate text-left">{domain.name}</span>
       </div>
       {isSelected && (
         <>
-          <CheckCircle2 className="size-4 shrink-0 text-text-primary" aria-hidden="true" />
+          <CheckCircle2 className="text-text-primary size-4 shrink-0" aria-hidden="true" />
           <VisuallyHidden>{localize('com_a11y_selected')}</VisuallyHidden>
         </>
       )}

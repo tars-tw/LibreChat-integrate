@@ -131,12 +131,12 @@ export default function QuotaModal({
             {quota == null ? (
               <UserPicker selected={user} onSelect={setUser} />
             ) : (
-              <div className="rounded-lg border border-border-light px-3 py-2">
-                <p className="text-xs text-text-secondary">
+              <div className="border-border-light rounded-lg border px-3 py-2">
+                <p className="text-text-secondary text-xs">
                   {localize('com_ui_tars_quota_col_user')}
                 </p>
-                <p className="text-sm text-text-primary">{quota.display_name ?? quota.username}</p>
-                <p className="text-xs text-text-secondary">{quota.email ?? '—'}</p>
+                <p className="text-text-primary text-sm">{quota.display_name ?? quota.username}</p>
+                <p className="text-text-secondary text-xs">{quota.email ?? '—'}</p>
               </div>
             )}
 
@@ -247,7 +247,7 @@ export default function QuotaModal({
             </div>
 
             {quota != null && (
-              <p className="text-xs text-text-secondary">
+              <p className="text-text-secondary text-xs">
                 {localize('com_ui_tars_quota_used')}
                 {': '}
                 {(quota.used_amount ?? 0).toLocaleString()}

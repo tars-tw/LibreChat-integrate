@@ -66,16 +66,16 @@ export default function OperationsTable({
         </Button>
       </div>
 
-      <div className="data-table-scroll max-h-[70vh] overflow-auto rounded-lg border border-border-light">
+      <div className="data-table-scroll border-border-light max-h-[70vh] overflow-auto rounded-lg border">
         {isLoading && logs.length === 0 && (
-          <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
+          <div className="text-text-secondary flex items-center justify-center gap-2 py-10 text-sm">
             <Spinner className="size-4" />
             {localize('com_ui_loading')}
           </div>
         )}
 
         {!isLoading && logs.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-10 text-sm text-text-secondary">
+          <div className="text-text-secondary flex flex-col items-center gap-2 py-10 text-sm">
             <Inbox className="size-6" aria-hidden />
             {localize('com_ui_tars_audit_no_data')}
           </div>
@@ -83,7 +83,7 @@ export default function OperationsTable({
 
         {logs.length > 0 && (
           <table className="w-max min-w-full border-collapse text-sm">
-            <thead className="sticky top-0 z-10 bg-surface-secondary">
+            <thead className="bg-surface-secondary sticky top-0 z-10">
               <tr>
                 {[
                   'com_ui_tars_ops_col_time',
@@ -96,12 +96,12 @@ export default function OperationsTable({
                   <th
                     key={key}
                     scope="col"
-                    className="whitespace-nowrap px-3 py-2 text-left font-medium text-text-secondary"
+                    className="text-text-secondary px-3 py-2 text-left font-medium whitespace-nowrap"
                   >
                     {localize(key as 'com_ui_tars_ops_col_time')}
                   </th>
                 ))}
-                <th scope="col" className="px-3 py-2 text-left font-medium text-text-secondary">
+                <th scope="col" className="text-text-secondary px-3 py-2 text-left font-medium">
                   {localize('com_ui_tars_ops_col_detail')}
                 </th>
               </tr>
@@ -110,9 +110,9 @@ export default function OperationsTable({
               {logs.map((log) => (
                 <tr
                   key={log.id}
-                  className="border-t border-border-light align-top hover:bg-surface-tertiary"
+                  className="border-border-light hover:bg-surface-tertiary border-t align-top"
                 >
-                  <td className="whitespace-nowrap px-3 py-1.5 text-text-primary">
+                  <td className="text-text-primary px-3 py-1.5 whitespace-nowrap">
                     {formatDateTime(log.created_at, locale)}
                   </td>
                   <td className="px-3 py-1.5">
@@ -130,10 +130,10 @@ export default function OperationsTable({
                       title={localize('com_ui_tars_ops_view_timeline')}
                       className="block max-w-[14rem] text-left disabled:cursor-default"
                     >
-                      <span className="block truncate text-text-primary underline-offset-2 hover:underline">
+                      <span className="text-text-primary block truncate underline-offset-2 hover:underline">
                         {log.username ?? '—'}
                       </span>
-                      <span className="block truncate text-xs text-text-secondary">
+                      <span className="text-text-secondary block truncate text-xs">
                         {log.user_email ?? log.user_id ?? ''}
                       </span>
                     </button>
@@ -141,12 +141,12 @@ export default function OperationsTable({
                   <td className="px-3 py-1.5">
                     <ActionBadge action={log.action_type} />
                   </td>
-                  <td className="px-3 py-1.5 text-text-primary">
+                  <td className="text-text-primary px-3 py-1.5">
                     <span className="block max-w-[14rem] truncate">
                       {moduleLabel(log.module, modules)}
                     </span>
                   </td>
-                  <td className="px-3 py-1.5 text-text-primary">
+                  <td className="text-text-primary px-3 py-1.5">
                     <span
                       className="block max-w-[26rem] truncate"
                       title={log.description ?? undefined}
@@ -154,7 +154,7 @@ export default function OperationsTable({
                       {log.description ?? '—'}
                     </span>
                   </td>
-                  <td className={`whitespace-nowrap px-3 py-1.5 ${statusTone(log.status)}`}>
+                  <td className={`px-3 py-1.5 whitespace-nowrap ${statusTone(log.status)}`}>
                     {log.status ?? '—'}
                   </td>
                   <td className="px-3 py-1.5">
@@ -166,7 +166,7 @@ export default function OperationsTable({
                       aria-label={localize('com_ui_tars_ops_view_detail')}
                       title={localize('com_ui_tars_ops_view_detail')}
                     >
-                      <Info className="size-4 text-pwc-info" aria-hidden />
+                      <Info className="size-4 text-[rgb(var(--pwc-info))]" aria-hidden />
                     </Button>
                   </td>
                 </tr>
@@ -177,7 +177,7 @@ export default function OperationsTable({
       </div>
 
       {total > 0 && (
-        <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
+        <footer className="text-text-secondary flex flex-wrap items-center justify-between gap-3 text-sm">
           <div className="flex items-center gap-2">
             <span id={pageSizeLabelId}>{localize('com_ui_tars_audit_rows_per_page')}</span>
             <Dropdown

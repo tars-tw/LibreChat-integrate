@@ -5,8 +5,8 @@ import { hasPublishedPolicies } from '~/utils/policies';
 import { TranslationKeys, useLocalize } from '~/hooks';
 import SocialLoginRender from './SocialLoginRender';
 import { BlinkAnimation } from './BlinkAnimation';
-import LegalConsent from './LegalConsent';
 import TarsBrandPanel from './TarsBrandPanel';
+import LegalConsent from './LegalConsent';
 import BrandLogo from './BrandLogo';
 import { Banner } from '../Banners';
 import Footer from './Footer';
@@ -97,7 +97,7 @@ function AuthLayout({
     return (
       <div className="relative flex min-h-screen bg-white">
         <Banner />
-        <BrandLogo className="absolute left-3 top-3 z-10 h-8 w-auto object-contain" />
+        <BrandLogo className="absolute top-3 left-3 z-10 h-8 w-auto object-contain" />
         <main className="flex w-full flex-col items-center justify-center px-6 py-10 md:w-3/5">
           <div className="w-full max-w-md text-center">
             <h1
@@ -106,7 +106,7 @@ function AuthLayout({
             >
               {localize('com_auth_tars_brand')}
             </h1>
-            <p className="mb-6 mt-2 text-sm text-gray-500">
+            <p className="mt-2 mb-6 text-sm text-gray-500">
               {localize(
                 isTarsRegister ? 'com_auth_tars_register_subtitle' : 'com_auth_tars_subtitle',
               )}

@@ -113,7 +113,7 @@ export default function TarsPromptsPanel() {
 
   return (
     <div id="prompts-panel" className="flex h-full w-full flex-col space-y-2 pt-2">
-      <div className="scrollbar-gutter-stable flex h-full min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden pl-3 pr-1 text-text-primary">
+      <div className="text-text-primary flex h-full min-h-0 scrollbar-gutter-stable flex-col gap-2 overflow-x-hidden overflow-y-auto pr-1 pl-3">
         <div className="shrink-0 space-y-2">
           <div role="search" className="flex items-center gap-2">
             <div aria-live="polite" aria-atomic="true" className="sr-only">
@@ -162,14 +162,14 @@ export default function TarsPromptsPanel() {
               <Skeleton key={i} className="mb-1.5 h-[72px] w-full rounded-xl" />
             ))}
           {!isLoading && grouped.length === 0 && (
-            <div className="my-2 flex flex-col items-center justify-center rounded-lg border border-border-medium bg-transparent p-6 text-center">
-              <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-surface-tertiary">
-                <FileText className="size-5 text-text-secondary" aria-hidden="true" />
+            <div className="border-border-medium my-2 flex flex-col items-center justify-center rounded-lg border bg-transparent p-6 text-center">
+              <div className="bg-surface-tertiary mb-2 flex size-10 items-center justify-center rounded-full">
+                <FileText className="text-text-secondary size-5" aria-hidden="true" />
               </div>
-              <p className="text-sm font-medium text-text-primary">
+              <p className="text-text-primary text-sm font-medium">
                 {localize('com_ui_no_prompts_title')}
               </p>
-              <p className="mt-0.5 text-xs text-text-secondary">
+              <p className="text-text-secondary mt-0.5 text-xs">
                 {localize('com_ui_add_first_prompt')}
               </p>
             </div>
@@ -184,14 +184,14 @@ export default function TarsPromptsPanel() {
                     type="button"
                     onClick={() => toggleGroup(group.scope)}
                     aria-expanded={!isCollapsed}
-                    className="mb-1 flex w-full items-center gap-1.5 rounded-md px-1 py-1 text-xs font-semibold uppercase tracking-wide hover:bg-surface-hover"
+                    className="hover:bg-surface-hover mb-1 flex w-full items-center gap-1.5 rounded-md px-1 py-1 text-xs font-semibold tracking-wide uppercase"
                   >
                     <Icon className={cn('size-3.5 shrink-0', colorClass)} aria-hidden="true" />
                     <span className={colorClass}>{localize(labelKey)}</span>
                     <span className="text-text-tertiary">({group.items.length})</span>
                     <ChevronDown
                       className={cn(
-                        'ml-auto size-3.5 shrink-0 text-text-secondary transition-transform',
+                        'text-text-secondary ml-auto size-3.5 shrink-0 transition-transform',
                         isCollapsed && '-rotate-90',
                       )}
                       aria-hidden="true"

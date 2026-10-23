@@ -101,9 +101,9 @@ export default function History({
   };
 
   return (
-    <section className="flex h-full min-h-0 flex-col rounded-xl border border-border-light">
-      <header className="flex items-center justify-between gap-2 border-b border-border-light px-4 py-3">
-        <h2 className="text-base font-medium text-text-primary">
+    <section className="border-border-light flex h-full min-h-0 flex-col rounded-xl border">
+      <header className="border-border-light flex items-center justify-between gap-2 border-b px-4 py-3">
+        <h2 className="text-text-primary text-base font-medium">
           {localize('com_ui_tars_issues_history')}
         </h2>
         <div className="flex items-center gap-1">
@@ -134,14 +134,14 @@ export default function History({
 
       <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-2">
         {isLoading && tickets.length === 0 && (
-          <div className="flex items-center justify-center gap-2 py-8 text-sm text-text-secondary">
+          <div className="text-text-secondary flex items-center justify-center gap-2 py-8 text-sm">
             <Spinner className="size-4" />
             {localize('com_ui_loading')}
           </div>
         )}
 
         {!isLoading && tickets.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-8 text-sm text-text-secondary">
+          <div className="text-text-secondary flex flex-col items-center gap-2 py-8 text-sm">
             <Inbox className="size-6" aria-hidden />
             {localize('com_ui_tars_issues_empty')}
           </div>
@@ -159,21 +159,21 @@ export default function History({
                     onClick={() => onSelect(ticket)}
                     aria-pressed={active}
                     title={localize('com_ui_tars_issues_load_into_form')}
-                    className={`flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface-tertiary ${
+                    className={`hover:bg-surface-tertiary flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2 text-left transition-colors ${
                       active ? 'bg-surface-tertiary' : ''
                     }`}
                   >
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-text-primary">
+                      <span className="text-text-primary block truncate text-sm font-medium">
                         {ticket.title}
                       </span>
-                      <span className="block text-xs text-text-secondary">
+                      <span className="text-text-secondary block text-xs">
                         {formatDateTime(ticket.created_at, locale)}
                         {ticket.jira_ticket_key != null && ticket.jira_ticket_key !== ''
                           ? ` ｜ ${ticket.jira_ticket_key}`
                           : ''}
                       </span>
-                      <span className="block text-xs text-text-secondary">
+                      <span className="text-text-secondary block text-xs">
                         {labelOf('types', ticket.category)}
                         {ticket.priority != null && ticket.priority !== ''
                           ? ` ｜ ${labelOf('priorities', ticket.priority)}`
@@ -182,12 +182,12 @@ export default function History({
                     </span>
                     <span className="shrink-0 text-right">
                       <span
-                        className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${badgeClasses(badge.tone)}`}
+                        className={`inline-block rounded-full px-2 py-0.5 text-xs whitespace-nowrap ${badgeClasses(badge.tone)}`}
                       >
                         {badge.labelKey != null ? localize(badge.labelKey) : badge.rawLabel}
                       </span>
                       {active && (
-                        <span className="mt-1 block text-xs text-text-secondary">
+                        <span className="text-text-secondary mt-1 block text-xs">
                           {localize('com_ui_tars_issues_viewing')}
                         </span>
                       )}
@@ -201,7 +201,7 @@ export default function History({
       </div>
 
       {totalPages > 1 && (
-        <footer className="flex items-center justify-between gap-2 border-t border-border-light px-4 py-2">
+        <footer className="border-border-light flex items-center justify-between gap-2 border-t px-4 py-2">
           <Button
             type="button"
             variant="outline"
@@ -212,7 +212,7 @@ export default function History({
           >
             <ChevronLeft className="size-4" aria-hidden />
           </Button>
-          <span className="text-xs text-text-secondary">
+          <span className="text-text-secondary text-xs">
             {localize('com_ui_tars_issues_page_indicator', {
               0: String(currentPage),
               1: String(totalPages),

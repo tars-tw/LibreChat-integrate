@@ -68,7 +68,7 @@ export default function CategorySelector({
     const items: MenuItemProps[] = options.map((category) => ({
       id: category,
       label: category,
-      icon: <Tag className="icon-sm mr-2 text-text-primary" aria-hidden="true" />,
+      icon: <Tag className="icon-sm text-text-primary mr-2" aria-hidden="true" />,
       onClick: () => {
         onChange(category);
         setIsOpen(false);
@@ -78,7 +78,7 @@ export default function CategorySelector({
     items.push({
       id: 'tars-add-category',
       label: localize('com_ui_prompt_category_new'),
-      icon: <Plus className="icon-sm mr-2 text-text-primary" aria-hidden="true" />,
+      icon: <Plus className="icon-sm text-text-primary mr-2" aria-hidden="true" />,
       onClick: () => {
         setIsOpen(false);
         setDialogOpen(true);
@@ -100,7 +100,7 @@ export default function CategorySelector({
         trigger={
           <Ariakit.MenuButton
             className={cn(
-              'relative inline-flex h-9 items-center justify-between gap-2 rounded-xl border border-border-medium bg-transparent px-3 text-sm text-text-primary transition-all duration-200 ease-in-out hover:bg-surface-hover sm:w-fit',
+              'border-border-medium text-text-primary hover:bg-surface-hover relative inline-flex h-9 items-center justify-between gap-2 rounded-xl border bg-transparent px-3 text-sm transition-all duration-200 ease-in-out sm:w-fit',
               className,
             )}
             onClick={() => setIsOpen(!isOpen)}
@@ -115,7 +115,7 @@ export default function CategorySelector({
         }
       />
       <OGDialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <OGDialogContent className="w-11/12 max-w-md bg-surface-primary text-text-primary">
+        <OGDialogContent className="bg-surface-primary text-text-primary w-11/12 max-w-md">
           <OGDialogTitle>{localize('com_ui_prompt_category_new')}</OGDialogTitle>
           <div className="flex flex-col gap-4">
             <Input

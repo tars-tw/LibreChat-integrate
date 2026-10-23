@@ -46,7 +46,7 @@ function LogoPreview({
     );
   }
   return (
-    <div className="flex flex-col items-center gap-1 text-text-secondary">
+    <div className="text-text-secondary flex flex-col items-center gap-1">
       <ImageOff className="h-5 w-5" aria-hidden="true" />
       <span className="text-xs">{localize('com_ui_tars_settings_logo_none')}</span>
     </div>
@@ -135,7 +135,7 @@ export default function LogoCard() {
       description={localize('com_ui_tars_settings_logo_hint')}
     >
       <div className="flex flex-wrap items-center gap-6">
-        <div className="flex h-20 w-48 items-center justify-center rounded-lg border border-border-light bg-surface-secondary p-2">
+        <div className="border-border-light bg-surface-secondary flex h-20 w-48 items-center justify-center rounded-lg border p-2">
           <LogoPreview
             previewUrl={pending?.previewUrl}
             version={version}
@@ -180,7 +180,7 @@ export default function LogoCard() {
       </div>
 
       {pending != null && (
-        <p className="text-xs text-text-secondary">
+        <p className="text-text-secondary text-xs">
           {localize('com_ui_tars_settings_logo_pending')}
         </p>
       )}
@@ -192,7 +192,7 @@ export default function LogoCard() {
             showCloseButton={true}
             className="w-11/12 max-w-md"
             main={
-              <p className="text-sm text-text-secondary">
+              <p className="text-text-secondary text-sm">
                 {localize('com_ui_tars_settings_logo_remove_confirm')}
               </p>
             }

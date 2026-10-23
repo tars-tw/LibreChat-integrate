@@ -26,10 +26,10 @@ export default function FileSystemTable({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto rounded-lg border border-border-light">
+      <div className="border-border-light overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[64rem] border-collapse text-sm">
           <thead className="bg-surface-secondary">
-            <tr className="text-left text-text-secondary">
+            <tr className="text-text-secondary text-left">
               <th className="w-[18%] px-3 py-2 font-medium">{localize('com_ui_tars_fs_name')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_protocol')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_host')}</th>
@@ -52,30 +52,30 @@ export default function FileSystemTable({
               return (
                 <tr
                   key={fileSystem.id}
-                  className="border-t border-border-light hover:bg-surface-hover"
+                  className="border-border-light hover:bg-surface-hover border-t"
                 >
                   <td className="max-w-0 px-3 py-1.5">
                     <button
                       type="button"
                       onClick={() => onEdit(fileSystem)}
-                      className="block w-full truncate text-left font-medium text-text-primary hover:underline"
+                      className="text-text-primary block w-full truncate text-left font-medium hover:underline"
                       title={fileSystem.name}
                     >
                       {fileSystem.name}
                     </button>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1.5 text-text-secondary">
+                  <td className="text-text-secondary px-3 py-1.5 whitespace-nowrap">
                     <span className="flex items-center gap-1.5">
                       <Icon className="size-4" aria-hidden />
                       {fileSystem.mount_type ?? '—'}
                     </span>
                   </td>
-                  <td className="max-w-0 px-3 py-1.5 text-text-secondary">
+                  <td className="text-text-secondary max-w-0 px-3 py-1.5">
                     <span className="block truncate" title={fileSystem.host ?? undefined}>
                       {fileSystem.host ?? '—'}
                     </span>
                   </td>
-                  <td className="px-3 py-1.5 tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-1.5 tabular-nums">
                     {fileSystem.port ?? '—'}
                   </td>
                   <td className="px-3 py-1.5">
@@ -92,7 +92,7 @@ export default function FileSystemTable({
                         onClick={() => onDetails(fileSystem)}
                         aria-label={localize('com_ui_tars_db_details')}
                         title={localize('com_ui_tars_db_details')}
-                        className="text-pwc-info hover:text-pwc-info"
+                        className="hover:text-pwc-info text-[rgb(var(--pwc-info))]"
                       >
                         <Info className="size-4" aria-hidden />
                       </Button>

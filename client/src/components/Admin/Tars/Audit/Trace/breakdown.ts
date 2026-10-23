@@ -87,8 +87,8 @@ export function breakdownShares(summary: BreakdownInput): BreakdownShare[] {
       key: 'other',
       percent: other,
       durationMs: summary.otherWaitMs ?? null,
-      labelKey: 'com_ui_tars_audit_trace_other',
-      descKey: 'com_ui_tars_audit_trace_breakdown_desc_other',
+      labelKey: 'com_ui_tars_audit_trace_overhead',
+      descKey: 'com_ui_tars_audit_trace_breakdown_desc_overhead',
     });
   }
   return shares;

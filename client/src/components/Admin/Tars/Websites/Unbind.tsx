@@ -4,7 +4,7 @@
  */
 export default function UnbindWarning({ label, names }: { label: string; names: string[] }) {
   return (
-    <div className="rounded-lg border border-border-light p-3 text-sm text-pwc-danger">
+    <div className="border-border-light text-pwc-danger rounded-lg border p-3 text-sm">
       <p className="mb-1">{label}</p>
       <ul className="list-disc pl-5">
         {names.map((name, index) => (

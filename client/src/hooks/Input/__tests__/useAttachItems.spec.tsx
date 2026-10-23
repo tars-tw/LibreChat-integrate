@@ -118,6 +118,8 @@ function accessContext(canUseFileSearch?: boolean): TAuthContext {
     logout: jest.fn(),
     completeAuthentication: jest.fn(),
     setError: jest.fn(),
+    tarsLicenseStatus: undefined,
+    setTarsLicenseStatus: jest.fn(),
   };
 }
 

@@ -110,7 +110,7 @@ export default function ModelsDialog({
     <div className="space-y-1.5">
       <Label id={`${id}-label`}>{label}</Label>
       {!bindingsQuery.isFetching && options.length === 0 ? (
-        <p className="flex h-10 items-center rounded-md border border-border-light px-3 text-sm text-text-secondary">
+        <p className="border-border-light text-text-secondary flex h-10 items-center rounded-md border px-3 text-sm">
           {localize('com_ui_tars_kb_no_models')}
         </p>
       ) : (
@@ -175,14 +175,14 @@ export default function ModelsDialog({
                     onChange={(event) => setRetrieveCount(event.target.value)}
                   />
                   {retrieveInvalid ? (
-                    <p className="text-xs text-pwc-danger">
+                    <p className="text-pwc-danger text-xs">
                       {localize('com_ui_tars_kb_max_retrieve_invalid', {
                         0: String(RETRIEVE_MIN),
                         1: String(RETRIEVE_MAX),
                       })}
                     </p>
                   ) : (
-                    <p className="text-xs text-text-secondary">
+                    <p className="text-text-secondary text-xs">
                       {localize('com_ui_tars_kb_max_retrieve_hint')}
                     </p>
                   )}
@@ -190,10 +190,10 @@ export default function ModelsDialog({
 
                 <div className="space-y-1.5">
                   <Label>{localize('com_ui_tars_kb_embedding_model')}</Label>
-                  <p className="flex h-10 items-center rounded-md border border-border-light px-3 text-sm text-text-secondary">
+                  <p className="border-border-light text-text-secondary flex h-10 items-center rounded-md border px-3 text-sm">
                     {embeddingName}
                   </p>
-                  <p className="text-xs text-text-secondary">
+                  <p className="text-text-secondary text-xs">
                     {localize('com_ui_tars_kb_batch_embedding_note')}
                   </p>
                 </div>

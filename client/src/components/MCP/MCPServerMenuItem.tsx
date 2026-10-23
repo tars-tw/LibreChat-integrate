@@ -50,13 +50,13 @@ function MCPServerToolList({
   const selectedCount = selectedToolKeys == null ? toolList.length : selectedToolKeys.size;
 
   return (
-    <div className="ml-6 border-l border-border-light pl-2">
+    <div className="border-border-light ml-6 border-l pl-2">
       <button
         type="button"
         onClick={() => setIsExpanded((prev) => !prev)}
         aria-expanded={isExpanded}
         aria-label={localize('com_ui_tars_mcp_toggle_tools')}
-        className="flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-xs text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+        className="text-text-secondary hover:bg-surface-hover hover:text-text-primary flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-xs"
       >
         {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         <span>
@@ -79,7 +79,7 @@ function MCPServerToolList({
                 aria-label={tool.name}
                 title={tool.description ?? undefined}
                 onClick={() => onToggleTool?.(serverName, tool.tool_key)}
-                className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-surface-hover"
+                className="hover:bg-surface-hover flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left"
               >
                 <span
                   aria-hidden="true"
@@ -92,7 +92,7 @@ function MCPServerToolList({
                 >
                   {isChecked && <Check className="h-3 w-3" />}
                 </span>
-                <span className="min-w-0 flex-1 truncate font-mono text-xs text-text-primary">
+                <span className="text-text-primary min-w-0 flex-1 truncate font-mono text-xs">
                   {tool.name}
                 </span>
               </button>
@@ -142,29 +142,29 @@ export default function MCPServerMenuItem({
         aria-label={accessibleLabel}
         className={cn(
           'group flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2',
-          'outline-none transition-all duration-150',
+          'transition-all duration-150 outline-none',
           'hover:bg-surface-hover data-[active-item]:bg-surface-hover',
           isSelected && 'bg-surface-active-alt',
         )}
       >
         {/* Server Icon with Status Dot */}
-        <div className="relative flex-shrink-0">
+        <div className="text-text-primary relative shrink-0">
           {server.config?.iconPath ? (
             <CustomIcon
               src={server.config.iconPath}
-              className="h-8 w-8 rounded-lg object-cover text-text-primary"
+              className="h-8 w-8 rounded-lg object-cover"
               alt=""
             />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-tertiary">
-              <MCPIcon className="h-5 w-5 text-text-secondary" />
+            <div className="bg-surface-tertiary text-text-secondary flex h-8 w-8 items-center justify-center rounded-lg">
+              <MCPIcon className="h-5 w-5" />
             </div>
           )}
           {/* Status dot - decorative, status is announced via aria-label on MenuItem */}
           <div
             aria-hidden="true"
             className={cn(
-              'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface-secondary',
+              'border-surface-secondary absolute -inset-e-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2',
               statusColor,
             )}
           />
@@ -173,10 +173,10 @@ export default function MCPServerMenuItem({
         {/* Server Info */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-medium text-text-primary">{displayName}</span>
+            <span className="text-text-primary truncate text-sm font-medium">{displayName}</span>
           </div>
           {server.config?.description && (
-            <p className="truncate text-xs text-text-secondary">{server.config.description}</p>
+            <p className="text-text-secondary truncate text-xs">{server.config.description}</p>
           )}
         </div>
 

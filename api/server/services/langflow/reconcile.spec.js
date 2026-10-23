@@ -129,7 +129,7 @@ describe('reconcileLangflowAgents', () => {
   it('keeps the tool binding pointed at the flow action name', async () => {
     await reconcile([flow('TARS_tool', 'tars_rag')]);
     const [agent] = await db.getAgents({ id: 'agent_langflow_tars_rag' });
-    expect(agent.tools).toEqual(['tars_rag_mcp_langflow']);
+    expect(agent.tools).toEqual(['tars_rag_mcp_workflow']);
   });
 
   it('removes duplicate rows a create-only pass left behind', async () => {
@@ -274,7 +274,7 @@ describe('reconcileLangflowAgents', () => {
       const [agent] = await db.getAgents({ id: personalId(alice, 'notes') });
       expect(agent.name).toBe('Workflow · My Notes');
       expect(agent.author.toString()).toBe(alice._id.toString());
-      expect(agent.tools).toEqual(['my_notes_mcp_langflow']);
+      expect(agent.tools).toEqual(['my_notes_mcp_workflow']);
       expect(grantPermission).toHaveBeenCalledWith(
         expect.objectContaining({
           principalType: 'user',

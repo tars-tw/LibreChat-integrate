@@ -102,10 +102,10 @@ export default function Filters({
 
   if (collapsed) {
     return (
-      <section className="shrink-0 rounded-xl border border-border-light">
+      <section className="border-border-light shrink-0 rounded-xl border">
         <header className="flex items-center justify-between gap-3 px-4 py-2">
-          <span className="min-w-0 truncate text-sm text-text-secondary" title={summary}>
-            <span className="mr-2 font-medium text-text-primary">
+          <span className="text-text-secondary min-w-0 truncate text-sm" title={summary}>
+            <span className="text-text-primary mr-2 font-medium">
               {localize('com_ui_tars_audit_filters')}
             </span>
             {summary}
@@ -126,9 +126,9 @@ export default function Filters({
   }
 
   return (
-    <section className="shrink-0 rounded-xl border border-border-light">
-      <header className="flex items-center justify-between gap-2 border-b border-border-light px-4 py-2">
-        <h2 className="text-sm font-medium text-text-primary">
+    <section className="border-border-light shrink-0 rounded-xl border">
+      <header className="border-border-light flex items-center justify-between gap-2 border-b px-4 py-2">
+        <h2 className="text-text-primary text-sm font-medium">
           {localize('com_ui_tars_audit_filters')}
         </h2>
         <Button
@@ -191,7 +191,7 @@ export default function Filters({
             value={filters.domainId}
             disabled={optionsLoading}
             onChange={(event) => set('domainId', event.target.value)}
-            className="h-10 w-full rounded-md border border-border-light bg-surface-primary px-3 text-sm text-text-primary disabled:opacity-50"
+            className="border-border-light bg-surface-primary text-text-primary h-10 w-full rounded-md border px-3 text-sm disabled:opacity-50"
           >
             <option value="">{localize('com_ui_tars_audit_all_domains')}</option>
             {domains.map((domain) => (
@@ -225,7 +225,7 @@ export default function Filters({
         </div>
 
         <div className="flex items-end justify-between gap-2">
-          <label className="flex cursor-pointer items-center gap-2 pb-2.5 text-sm text-text-primary">
+          <label className="text-text-primary flex cursor-pointer items-center gap-2 pb-2.5 text-sm">
             <Checkbox
               aria-label={localize('com_ui_tars_audit_feedback_only')}
               checked={filters.feedbackOnly}

@@ -6,8 +6,8 @@ import { render, waitFor, fireEvent, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { UseFormReturn } from 'react-hook-form';
 import type { Agent } from 'librechat-data-provider';
-import type { AgentForm } from '~/common';
 import type { InstructionsPromptStatus } from './Instructions';
+import type { AgentForm } from '~/common';
 
 // Mock toast context - define this after all mocks
 let mockShowToast: jest.Mock;

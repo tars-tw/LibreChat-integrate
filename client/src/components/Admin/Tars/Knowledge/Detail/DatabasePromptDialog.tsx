@@ -58,17 +58,17 @@ export default function DatabasePromptDialog({
 
     if (promptQuery.isError) {
       return (
-        <p className="text-sm text-pwc-danger">{localize('com_ui_tars_kb_ds_prompt_missing')}</p>
+        <p className="text-pwc-danger text-sm">{localize('com_ui_tars_kb_ds_prompt_missing')}</p>
       );
     }
 
     return (
       <>
         <div>
-          <p className="text-xs text-text-secondary">
+          <p className="text-text-secondary text-xs">
             {localize('com_ui_tars_kb_ds_bound_tables')}
           </p>
-          <p className="break-words text-sm text-text-primary">{promptQuery.data?.tables ?? '—'}</p>
+          <p className="text-text-primary text-sm break-words">{promptQuery.data?.tables ?? '—'}</p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="tars-db-prompt">{localize('com_ui_tars_kb_ds_schema_description')}</Label>
@@ -77,7 +77,7 @@ export default function DatabasePromptDialog({
             rows={16}
             value={tableInfo ?? ''}
             onChange={(event) => setTableInfo(event.target.value)}
-            className="data-table-scroll w-full rounded-md border border-border-light bg-surface-primary px-3 py-2 font-mono text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-border-heavy"
+            className="data-table-scroll border-border-light bg-surface-primary text-text-primary focus:ring-border-heavy w-full rounded-md border px-3 py-2 font-mono text-xs focus:ring-2 focus:outline-none"
           />
         </div>
       </>

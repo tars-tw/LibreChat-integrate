@@ -32,10 +32,10 @@ export default function WebsiteTable({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto rounded-lg border border-border-light">
+      <div className="border-border-light overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[64rem] border-collapse text-sm">
           <thead className="bg-surface-secondary">
-            <tr className="text-left text-text-secondary">
+            <tr className="text-text-secondary text-left">
               <th className="w-[18%] px-3 py-2 font-medium">{localize('com_ui_tars_web_name')}</th>
               <th className="w-[28%] px-3 py-2 font-medium">{localize('com_ui_tars_web_url')}</th>
               <th className="w-[18%] px-3 py-2 font-medium">
@@ -57,13 +57,13 @@ export default function WebsiteTable({
               return (
                 <tr
                   key={website.id}
-                  className="border-t border-border-light hover:bg-surface-hover"
+                  className="border-border-light hover:bg-surface-hover border-t"
                 >
                   <td className="max-w-0 px-3 py-1.5">
                     <button
                       type="button"
                       onClick={() => onEdit(website)}
-                      className="block w-full truncate text-left font-medium text-text-primary hover:underline"
+                      className="text-text-primary block w-full truncate text-left font-medium hover:underline"
                       title={website.name ?? undefined}
                     >
                       {website.name ?? '—'}
@@ -74,7 +74,7 @@ export default function WebsiteTable({
                       href={website.url ?? '#'}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 truncate text-text-secondary hover:text-text-primary hover:underline"
+                      className="text-text-secondary hover:text-text-primary flex items-center gap-1 truncate hover:underline"
                       title={website.url ?? undefined}
                     >
                       <span className="truncate">{website.url ?? '—'}</span>
@@ -87,10 +87,10 @@ export default function WebsiteTable({
                       emptyLabel={localize('com_ui_tars_web_unbound')}
                     />
                   </td>
-                  <td className="px-3 py-1.5 text-right tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-1.5 text-right tabular-nums">
                     {formatCount(website.word_count)}
                   </td>
-                  <td className="px-3 py-1.5 text-right tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-1.5 text-right tabular-nums">
                     {formatCount(website.tokens)}
                   </td>
                   <td className="px-3 py-1.5">
@@ -115,7 +115,7 @@ export default function WebsiteTable({
                         onClick={() => onDetails(website)}
                         aria-label={localize('com_ui_tars_db_details')}
                         title={localize('com_ui_tars_db_details')}
-                        className="text-pwc-info hover:text-pwc-info"
+                        className="hover:text-pwc-info text-[rgb(var(--pwc-info))]"
                       >
                         <Info className="size-4" aria-hidden />
                       </Button>

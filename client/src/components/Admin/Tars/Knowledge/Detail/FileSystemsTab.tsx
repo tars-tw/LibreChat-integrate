@@ -240,7 +240,7 @@ export default function FileSystemsTab({
                       <Checkbox
                         checked={selectedIds.includes(link.dataset_file_system_id)}
                         onCheckedChange={() => toggle(link.dataset_file_system_id)}
-                        aria-label={localize('com_ui_tars_kb_ds_select_one', {
+                        aria-label={localize('com_ui_tars_kb_ds_select_item', {
                           0: fileSystemLabel(link),
                         })}
                       />

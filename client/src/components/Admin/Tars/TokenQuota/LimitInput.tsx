@@ -50,8 +50,8 @@ export default function LimitInput({
           onClick={() => onChange(unlimited ? '' : String(UNLIMITED))}
           className={
             unlimited
-              ? 'shrink-0 whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200'
-              : 'shrink-0 whitespace-nowrap rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary hover:text-text-primary'
+              ? 'shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs whitespace-nowrap text-amber-800 dark:bg-amber-900/50 dark:text-amber-200'
+              : 'bg-surface-tertiary text-text-secondary hover:text-text-primary shrink-0 rounded-full px-2 py-0.5 text-xs whitespace-nowrap'
           }
         >
           {localize('com_ui_tars_quota_unlimited')}
