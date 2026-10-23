@@ -96,6 +96,8 @@ export default function GenericGrantAccessDialog({
   /** State for unified list of all shares (existing + newly added) */
   const [allShares, setAllShares] = useState<TPrincipal[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
+  /** Directory picks checked but not added with the picker's Add yet; Save includes them. */
+  const [pendingShares, setPendingShares] = useState<TPrincipal[]>([]);
   const [defaultPermissionId, setDefaultPermissionId] = useState<AccessRoleIds | undefined>(
     config?.defaultViewerRoleId,
   );
@@ -126,23 +128,32 @@ export default function GenericGrantAccessDialog({
     return null;
   }
 
-  // Handler for adding users from search (immediate add to unified list)
-  const handleAddFromSearch = (newShares: TPrincipal[]) => {
-    const sharesToAdd = dedupeNewShares(allShares, newShares);
-    if (!sharesToAdd.length) {
-      return;
-    }
-
-    const sharesWithDefaults = sharesToAdd.map((share) => ({
+  /** Picks not already in the list, with the default role (and insights off). */
+  const withShareDefaults = (newShares: TPrincipal[]): TPrincipal[] =>
+    dedupeNewShares(allShares, newShares).map((share) => ({
       ...share,
       accessRoleId: defaultPermissionId || config?.defaultViewerRoleId,
       ...(canEditAgentInsights ? { viewInsights: false } : {}),
       isExisting: false, // Mark as newly added
     }));
 
+  // Handler for adding users from search (immediate add to unified list)
+  const handleAddFromSearch = (newShares: TPrincipal[]) => {
+    const sharesWithDefaults = withShareDefaults(newShares);
+    if (!sharesWithDefaults.length) {
+      return;
+    }
+
     setAllShares((prev) => [...prev, ...sharesWithDefaults]);
     setHasChanges(true);
   };
+
+  /** What Save writes: the list plus any picks still waiting in the directory picker,
+   *  which join exactly as if its Add had been pressed. */
+  const pendingToAdd = withShareDefaults(pendingShares);
+  const hasPendingShares = pendingToAdd.length > 0;
+  const sharesToSave = hasPendingShares ? [...allShares, ...pendingToAdd] : allShares;
+  const hasDraft = hasChanges || hasPendingShares;
 
   // Handler for removing individual shares
   const handleRemoveShare = (shareKey: string) => {
@@ -188,7 +199,7 @@ export default function GenericGrantAccessDialog({
 
   // Save all changes (unified save handler)
   const handleSave = async () => {
-    if (!allShares.length && !isPublic && !hasChanges) {
+    if (!sharesToSave.length && !isPublic && !hasDraft) {
       return;
     }
 
@@ -196,7 +207,7 @@ export default function GenericGrantAccessDialog({
       // Diff persisted shares against the working list. Keyed by stable `id`
       // (falling back to idOnTheSource) so the same principal is never simultaneously
       // granted and revoked — see computeShareChanges.
-      const { updated, removed } = computeShareChanges(currentShares, allShares);
+      const { updated, removed } = computeShareChanges(currentShares, sharesToSave);
 
       const publicChanged = isPublic !== currentIsPublic;
       const publicRoleChanged = isPublic && publicRole !== currentPublicRole;
@@ -214,7 +225,7 @@ export default function GenericGrantAccessDialog({
       });
 
       if (onGrantAccess) {
-        onGrantAccess(allShares, isPublic, publicRole);
+        onGrantAccess(sharesToSave, isPublic, publicRole);
       }
 
       showToast({
@@ -222,6 +233,8 @@ export default function GenericGrantAccessDialog({
         status: 'success',
       });
 
+      /** Saved picks leave the picker: once listed, it no longer offers them. */
+      setAllShares(sharesToSave);
       setHasChanges(false);
     } catch (error) {
       console.error('Error updating permissions:', error);
@@ -239,6 +252,7 @@ export default function GenericGrantAccessDialog({
     setIsPublic(currentIsPublic);
     setPublicRole(currentPublicRole || config?.defaultViewerRoleId || '');
     setHasChanges(false);
+    setPendingShares([]);
   };
 
   const handleModalOpenChange = (open: boolean) => {
@@ -253,12 +267,12 @@ export default function GenericGrantAccessDialog({
 
   // Check if there's at least one owner (user, group, or public with owner role)
   const hasAtLeastOneOwner =
-    allShares.some((share) => share.accessRoleId === config?.defaultOwnerRoleId) ||
+    sharesToSave.some((share) => share.accessRoleId === config?.defaultOwnerRoleId) ||
     (isPublic && publicRole === config?.defaultOwnerRoleId);
 
   // Check if there are any changes to save
   const hasPublicChanges = isPublic !== currentIsPublic || publicRole !== currentPublicRole;
-  const submitButtonActive = hasChanges || hasPublicChanges;
+  const submitButtonActive = hasDraft || hasPublicChanges;
 
   // On permissions load failure, keep a compact trigger-sized button so the layout holds,
   // surfacing the error (and a retry on click) through a tooltip.
@@ -371,6 +385,7 @@ export default function GenericGrantAccessDialog({
                     {useDirectory ? (
                       <DirectoryPeoplePicker
                         onAddPeople={handleAddFromSearch}
+                        onPendingChange={setPendingShares}
                         excludeIds={allShares.map((s) => s.idOnTheSource)}
                       />
                     ) : (
@@ -383,7 +398,7 @@ export default function GenericGrantAccessDialog({
                       />
                     )}
 
-                    {!hasAtLeastOneOwner && hasChanges && (
+                    {!hasAtLeastOneOwner && hasDraft && (
                       <Alert id={ownerErrorId} variant="error">
                         {localize('com_ui_at_least_one_owner_required')}
                       </Alert>
@@ -480,11 +495,11 @@ export default function GenericGrantAccessDialog({
             disabled={
               updatePermissionsMutation.isLoading ||
               !submitButtonActive ||
-              (hasChanges && !hasAtLeastOneOwner)
+              (hasDraft && !hasAtLeastOneOwner)
             }
             className="w-full sm:w-auto"
             aria-label={localize('com_ui_save')}
-            aria-describedby={hasChanges && !hasAtLeastOneOwner ? ownerErrorId : undefined}
+            aria-describedby={hasDraft && !hasAtLeastOneOwner ? ownerErrorId : undefined}
           >
             {updatePermissionsMutation.isLoading ? (
               <div className="flex items-center gap-2">
