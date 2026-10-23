@@ -4,6 +4,7 @@ import { PrincipalType } from 'librechat-data-provider';
 import { Button, Spinner, OGDialog, OGDialogTemplate, useToastContext } from '@librechat/client';
 import type {
   TPrincipal,
+  TTarsMcpServer,
   TPrincipalSearchResult,
   TTarsMcpPermissionPrincipal,
 } from 'librechat-data-provider';
@@ -16,6 +17,7 @@ import {
 import { errorMessage } from '~/components/Admin/Tars/Models/helpers';
 import McpPermissionPrincipals from './McpPermissionPrincipals';
 import McpPermissionServers from './McpPermissionServers';
+import McpServerAssignModal from './McpServerAssignModal';
 import McpPermissionEditor from './McpPermissionEditor';
 import { MANAGED_TYPES } from './servers';
 import { useLocalize } from '~/hooks';
@@ -36,8 +38,9 @@ const toEditTarget = (
 
 /**
  * MCP permissions: which users and groups each server is assigned to, everyone holding
- * grants, and the assignment dialog — opened empty from 新增權限 or on one principal's
- * saved grants from its edit action.
+ * grants, and two ways into the same grants — the principal dialog (opened empty from
+ * 新增權限 or on one principal's saved grants from its edit action) and the server dialog
+ * (one server's assignees, from its row in the overview).
  */
 export default function McpPermissionsTab() {
   const localize = useLocalize();
@@ -50,6 +53,8 @@ export default function McpPermissionsTab() {
   /** The open dialog's starting targets; `null` while it is closed. */
   const [editorTargets, setEditorTargets] = useState<TPrincipal[] | null>(null);
   const [removing, setRemoving] = useState<TTarsMcpPermissionPrincipal | null>(null);
+  /** The server being assigned from the server side; `null` while that dialog is closed. */
+  const [assigning, setAssigning] = useState<TTarsMcpServer | null>(null);
 
   const managedServers = useMemo(
     () => servers.filter((server) => MANAGED_TYPES.has(server.type)),
@@ -95,6 +100,7 @@ export default function McpPermissionsTab() {
         servers={servers}
         principals={principals}
         principalsLoading={principalsLoading}
+        onAssign={setAssigning}
         actions={
           <Button variant="submit" onClick={() => setEditorTargets([])}>
             <Plus className="icon-sm mr-1" aria-hidden="true" />
@@ -116,6 +122,10 @@ export default function McpPermissionsTab() {
           initialTargets={editorTargets}
           onClose={() => setEditorTargets(null)}
         />
+      )}
+
+      {assigning != null && (
+        <McpServerAssignModal server={assigning} onClose={() => setAssigning(null)} />
       )}
 
       {removing != null && (

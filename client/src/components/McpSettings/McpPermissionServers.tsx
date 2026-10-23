@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { User, Users } from 'lucide-react';
 import * as Popover from '@radix-ui/react-popover';
+import { User, Users, UserPlus } from 'lucide-react';
 import { Chip, Spinner, FilterInput } from '@librechat/client';
 import type {
   TTarsMcpServer,
@@ -13,6 +13,7 @@ import McpPaginationControls from './McpPaginationControls';
 import { useClientPagination } from './useClientPagination';
 import { filterManagedServers } from './servers';
 import ServerTypeBadge from './ServerTypeBadge';
+import { mcpActionClass } from './actions';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 
@@ -105,6 +106,8 @@ interface McpPermissionServersProps {
   principalsLoading: boolean;
   /** Buttons shown after the search field. */
   actions?: ReactNode;
+  /** Opens the server-centric assignment of one server. */
+  onAssign: (server: TTarsMcpServer) => void;
 }
 
 /**
@@ -116,6 +119,7 @@ export default function McpPermissionServers({
   principals,
   principalsLoading,
   actions,
+  onAssign,
 }: McpPermissionServersProps) {
   const localize = useLocalize();
   const [search, setSearch] = useState('');
@@ -181,6 +185,9 @@ export default function McpPermissionServers({
                   </th>
                   <th className="w-24 px-3 py-2 font-medium">{localize('com_ui_user')}</th>
                   <th className="w-24 px-3 py-2 font-medium">{localize('com_ui_group')}</th>
+                  <th className="w-20 px-3 py-2 text-right font-medium">
+                    {localize('com_ui_actions')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -208,6 +215,21 @@ export default function McpPermissionServers({
                     <td className="text-text-secondary px-3 py-2">{server.tool_count ?? 0}</td>
                     <td className="px-1.5 py-1">{renderAssignees(server, 'user')}</td>
                     <td className="px-1.5 py-1">{renderAssignees(server, 'group')}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => onAssign(server)}
+                          aria-label={localize('com_ui_tars_mcp_assign_server_title', {
+                            name: server.name,
+                          })}
+                          title={localize('com_ui_tars_mcp_assign_server')}
+                          className={mcpActionClass('neutral')}
+                        >
+                          <UserPlus className="icon-sm" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

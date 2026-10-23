@@ -50,9 +50,16 @@ const principals = [
 
 const rowOf = (name: string) => screen.getByText(name).closest('tr') as HTMLElement;
 
+const onAssign = jest.fn();
+
 const renderOverview = (loading = false) =>
   render(
-    <McpPermissionServers servers={servers} principals={principals} principalsLoading={loading} />,
+    <McpPermissionServers
+      servers={servers}
+      principals={principals}
+      principalsLoading={loading}
+      onAssign={onAssign}
+    />,
   );
 
 describe('McpPermissionServers', () => {
@@ -120,5 +127,18 @@ describe('McpPermissionServers', () => {
         name: 'com_ui_tars_mcp_server_users_title',
       }),
     ).toBeNull();
+  });
+
+  it('opens the server-side assignment of the clicked row', () => {
+    renderOverview();
+
+    fireEvent.click(
+      within(rowOf('Redmine')).getByRole('button', {
+        name: 'com_ui_tars_mcp_assign_server_title',
+      }),
+    );
+
+    expect(onAssign).toHaveBeenCalledTimes(1);
+    expect(onAssign).toHaveBeenCalledWith(servers[1]);
   });
 });

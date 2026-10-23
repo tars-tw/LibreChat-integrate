@@ -796,16 +796,49 @@ export type TTarsMcpToolUpdate = {
 /** Who a `sys_mcp_permission` grant is assigned to. */
 export type TTarsMcpPrincipalType = 'user' | 'group';
 
-/** One user or group holding MCP grants (admin overview — disabled ones included). */
-export type TTarsMcpPermissionPrincipal = {
+/** A user or group as the permission admin lists it. */
+export type TTarsMcpPrincipalInfo = {
   principal_type: TTarsMcpPrincipalType;
   principal_id: string;
   name: string;
   email?: string | null;
   /** A disabled user/group keeps its rows but they grant nothing; it can only be removed. */
   is_active: boolean;
+};
+
+/** One user or group holding MCP grants (admin overview — disabled ones included). */
+export type TTarsMcpPermissionPrincipal = TTarsMcpPrincipalInfo & {
   mcp_server_ids: string[];
   server_count: number;
+};
+
+/** One user or group assigned a server, with its tool scope (server-centric admin view). */
+export type TTarsMcpServerPermission = TTarsMcpPrincipalInfo & {
+  /** `[]` = the whole server. */
+  mcp_tool_ids: string[];
+  is_enabled: boolean;
+};
+
+export type TTarsMcpServerPermissionsResponse = { permissions: TTarsMcpServerPermission[] };
+
+/**
+ * Full overwrite of one server's assignees: listed principals are upserted, every other
+ * principal loses this server, and their other servers are untouched. A disabled
+ * principal can only stay as it is (its tool scope is ignored) or be left out.
+ */
+export type TTarsMcpServerPermissionSavePayload = {
+  mcp_server_id: string;
+  principals: Array<{
+    principal_type: TTarsMcpPrincipalType;
+    principal_id: string;
+    mcp_tool_ids: string[];
+  }>;
+};
+
+export type TTarsMcpServerPermissionSaveResult = {
+  mcp_server_id: string;
+  user_count: number;
+  group_count: number;
 };
 
 /** One `sys_mcp_permission` row: one user or one group × one server. */

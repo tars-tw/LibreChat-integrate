@@ -612,6 +612,11 @@ export const tarsMcpAdminTool = (id: string) =>
 export const tarsMcpAdminPermissionPrincipals = () =>
   `${BASE_URL}/api/tars/mcp/admin/permissions/principals`;
 export const tarsMcpAdminPermissionSave = () => `${BASE_URL}/api/tars/mcp/admin/permissions/save`;
+/** One server's assignees with their tool scope — the server-centric view. */
+export const tarsMcpAdminServerPermissions = (serverId: string) =>
+  `${BASE_URL}/api/tars/mcp/admin/permissions/server?mcp_server_id=${encodeURIComponent(serverId)}`;
+export const tarsMcpAdminServerPermissionSave = () =>
+  `${BASE_URL}/api/tars/mcp/admin/permissions/server/save`;
 /** One user's or group's own grants (`user_id` / `user_group_id` query). */
 export const tarsMcpAdminPermissions = (principalType: 'user' | 'group', principalId: string) => {
   const key = principalType === 'group' ? 'user_group_id' : 'user_id';
