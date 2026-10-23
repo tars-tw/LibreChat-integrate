@@ -93,7 +93,7 @@ const ACTIONS: Record<string, ActionConfig> = {
     summaryKey: 'logout',
   },
   OTHER: {
-    labelKey: 'com_ui_tars_ops_action_other',
+    labelKey: 'com_ui_tars_ops_action_misc',
     icon: MoreHorizontal,
     tone: 'neutral',
     summaryKey: 'other',

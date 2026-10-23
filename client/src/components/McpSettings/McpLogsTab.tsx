@@ -57,7 +57,7 @@ export default function McpLogsTab() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <div className="relative w-64 max-w-full">
-          <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <Search className="icon-sm text-text-secondary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
           <Input
             value={search}
             onChange={(e) => {
@@ -84,20 +84,20 @@ export default function McpLogsTab() {
         </div>
       )}
       {!isLoading && logs.length === 0 && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_tars_mcp_logs_empty')}
         </p>
       )}
       {!isLoading && logs.length > 0 && filteredLogs.length === 0 && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_no_results_found')}
         </p>
       )}
       {!isLoading && filteredLogs.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border-light">
+          <div className="border-border-light overflow-x-auto rounded-lg border">
             <table className="w-full min-w-[64rem] table-fixed text-sm">
-              <thead className="bg-surface-secondary text-left text-text-secondary">
+              <thead className="bg-surface-secondary text-text-secondary text-left">
                 <tr>
                   <th className="w-[28%] px-3 py-2 font-medium">
                     {localize('com_ui_tars_mcp_logs_tool')}
@@ -121,21 +121,21 @@ export default function McpLogsTab() {
               </thead>
               <tbody>
                 {pageLogs.map((log) => (
-                  <tr key={log.id} className="border-t border-border-light hover:bg-surface-hover">
+                  <tr key={log.id} className="border-border-light hover:bg-surface-hover border-t">
                     <td className="px-3 py-2">
-                      <span className="block break-words font-mono text-xs text-text-primary">
+                      <span className="text-text-primary block font-mono text-xs break-words">
                         {log.tool_name}
                       </span>
                       {log.error_message != null && log.error_message !== '' && (
-                        <span className="block whitespace-normal break-words text-xs text-red-500">
+                        <span className="block text-xs break-words whitespace-normal text-red-500">
                           {log.error_message}
                         </span>
                       )}
                     </td>
-                    <td className="truncate px-3 py-2 text-text-secondary">
+                    <td className="text-text-secondary truncate px-3 py-2">
                       {serverNames.get(log.mcp_server_id) ?? log.mcp_server_id}
                     </td>
-                    <td className="truncate px-3 py-2 text-text-secondary" title={log.sys_user_id}>
+                    <td className="text-text-secondary truncate px-3 py-2" title={log.sys_user_id}>
                       {log.sys_user_id}
                     </td>
                     <td className="px-3 py-2">
@@ -149,10 +149,10 @@ export default function McpLogsTab() {
                         {log.status}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-text-secondary">
+                    <td className="text-text-secondary px-3 py-2">
                       {log.duration_ms != null ? `${log.duration_ms} ms` : '—'}
                     </td>
-                    <td className="truncate px-3 py-2 text-xs text-text-secondary">
+                    <td className="text-text-secondary truncate px-3 py-2 text-xs">
                       {log.created_at != null ? new Date(log.created_at).toLocaleString() : '—'}
                     </td>
                   </tr>

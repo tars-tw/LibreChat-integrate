@@ -33,7 +33,7 @@ describe('breakdownShares', () => {
       ['model', 60, 'com_ui_tars_audit_trace_model_label'],
       ['toolSuccess', 10, 'com_ui_tars_audit_trace_success_tool'],
       ['toolFail', 20, 'com_ui_tars_audit_trace_fail_tool'],
-      ['other', 10, 'com_ui_tars_audit_trace_other'],
+      ['other', 10, 'com_ui_tars_audit_trace_overhead'],
     ]);
   });
 

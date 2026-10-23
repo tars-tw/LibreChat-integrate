@@ -86,12 +86,12 @@ function TarsPromptItem({
       {
         label: localize('com_ui_edit'),
         onClick: () => navigate(`${PROMPT_PATH}/${promptId}`),
-        icon: <SquarePen className="icon-sm mr-2 text-text-primary" aria-hidden="true" />,
+        icon: <SquarePen className="icon-sm text-text-primary mr-2" aria-hidden="true" />,
       },
       {
         label: localize('com_ui_delete'),
         onClick: () => setDeleteOpen(true),
-        icon: <Trash className="icon-sm mr-2 text-text-primary" aria-hidden="true" />,
+        icon: <Trash className="icon-sm text-text-primary mr-2" aria-hidden="true" />,
       },
     ],
     [localize, navigate, promptId],
@@ -106,13 +106,13 @@ function TarsPromptItem({
     <>
       <div
         className={cn(
-          'group/prompt relative mb-1.5 rounded-xl border border-border-light bg-transparent transition-colors hover:bg-surface-secondary',
+          'group/prompt border-border-light hover:bg-surface-secondary relative mb-1.5 rounded-xl border bg-transparent transition-colors',
           isActive && 'bg-surface-hover',
         )}
       >
         <button
           type="button"
-          className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring-primary"
+          className="focus-visible:ring-ring-primary absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2"
           onClick={onCardClick}
           aria-label={ariaLabel}
         />
@@ -124,12 +124,12 @@ function TarsPromptItem({
           />
           <div className="min-w-0 flex-1">
             <span
-              className="block truncate text-sm font-semibold text-text-primary"
+              className="text-text-primary block truncate text-sm font-semibold"
               title={prompt.name}
             >
               {prompt.name}
             </span>
-            <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-text-secondary">
+            <p className="text-text-secondary mt-0.5 line-clamp-2 text-xs leading-relaxed">
               {snippet}
             </p>
           </div>
@@ -149,10 +149,10 @@ function TarsPromptItem({
                     ref={menuButtonRef}
                     aria-label={localize('com_nav_convo_menu_options')}
                     className={cn(
-                      'flex size-7 items-center justify-center rounded-md text-text-secondary transition-opacity hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring-primary',
+                      'text-text-secondary hover:bg-surface-hover focus-visible:ring-ring-primary flex size-7 items-center justify-center rounded-md transition-opacity focus-visible:ring-2 focus-visible:outline-none',
                       menuOpen
                         ? 'opacity-100'
-                        : 'opacity-0 focus-visible:opacity-100 group-hover/prompt:opacity-100',
+                        : 'opacity-0 group-hover/prompt:opacity-100 focus-visible:opacity-100',
                     )}
                     onClick={(e) => e.stopPropagation()}
                   >

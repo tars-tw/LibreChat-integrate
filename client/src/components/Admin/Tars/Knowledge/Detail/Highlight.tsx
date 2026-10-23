@@ -13,7 +13,7 @@ export default function Highlight({ text, query }: { text: string; query: string
         part.match ? (
           <mark
             key={`${index}-${part.text}`}
-            className="rounded-sm bg-brand-primary/25 text-inherit"
+            className="bg-brand-primary/25 rounded-sm text-inherit"
           >
             {part.text}
           </mark>

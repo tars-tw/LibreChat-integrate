@@ -51,7 +51,7 @@ function MenuNode({
   return (
     <div>
       <div
-        className={`group flex items-center gap-1.5 rounded-md pr-2 hover:bg-surface-hover ${
+        className={`group hover:bg-surface-hover flex items-center gap-1.5 rounded-md pr-2 ${
           allChecked ? 'bg-brand-primary-subtle/40' : ''
         }`}
       >
@@ -61,7 +61,7 @@ function MenuNode({
             onClick={() => onToggleExpand(node.labelKey)}
             aria-expanded={isOpen}
             aria-label={isOpen ? localize('com_ui_collapse') : localize('com_ui_expand')}
-            className="flex h-6 w-5 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary"
+            className="text-text-secondary hover:text-text-primary flex h-6 w-5 shrink-0 items-center justify-center"
           >
             {isOpen ? (
               <ChevronDown className="icon-sm" aria-hidden="true" />
@@ -76,7 +76,7 @@ function MenuNode({
         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-1 text-sm">
           <input
             type="checkbox"
-            className="h-4 w-4 shrink-0 rounded-sm border-border-xheavy text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary"
+            className="border-border-xheavy text-brand-primary focus-visible:ring-text-primary h-4 w-4 shrink-0 rounded-sm focus-visible:ring-2 focus-visible:outline-none"
             checked={allChecked}
             ref={(input) => {
               if (input) {
@@ -85,8 +85,8 @@ function MenuNode({
             }}
             onChange={() => onToggleSelect(keys, !allChecked)}
           />
-          {Icon && <Icon className="icon-sm shrink-0 text-text-secondary" aria-hidden="true" />}
-          <span className={`truncate text-text-primary ${depth === 0 ? 'font-medium' : ''}`}>
+          {Icon && <Icon className="icon-sm text-text-secondary shrink-0" aria-hidden="true" />}
+          <span className={`text-text-primary truncate ${depth === 0 ? 'font-medium' : ''}`}>
             {label}
           </span>
           {hasChildren && (
@@ -102,7 +102,7 @@ function MenuNode({
       </div>
 
       {hasChildren && isOpen && (
-        <div className="ml-[0.6rem] border-l border-border-light pl-3">
+        <div className="border-border-light ml-[0.6rem] border-l pl-3">
           {node.children?.map((child) => (
             <MenuNode
               key={child.labelKey}
@@ -172,10 +172,10 @@ export default function MenuTree({
     <div className="space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-medium text-text-primary">
+          <span className="text-text-primary text-sm font-medium">
             {localize('com_ui_tars_roles_menus')}
           </span>
-          <span className="text-xs text-text-secondary">
+          <span className="text-text-secondary text-xs">
             {localize('com_ui_tars_roles_menus_selected', { count: selected.size })}
           </span>
         </div>
@@ -183,7 +183,7 @@ export default function MenuTree({
           <button
             type="button"
             onClick={toggleExpandAll}
-            className="text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
+            className="text-text-secondary hover:text-text-primary underline-offset-2 hover:underline"
           >
             {isFullyExpanded
               ? localize('com_ui_tars_roles_menus_collapse_all')
@@ -192,7 +192,7 @@ export default function MenuTree({
           <button
             type="button"
             onClick={() => onChange(allSelected ? new Set() : new Set(allKeys))}
-            className="text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
+            className="text-text-secondary hover:text-text-primary underline-offset-2 hover:underline"
           >
             {allSelected
               ? localize('com_ui_tars_roles_menus_clear')
@@ -200,7 +200,7 @@ export default function MenuTree({
           </button>
         </div>
       </div>
-      <div className="max-h-80 overflow-y-auto rounded-lg border border-border-light p-2">
+      <div className="border-border-light max-h-80 overflow-y-auto rounded-lg border p-2">
         {ADMIN_MENU_TREE.map((node) => (
           <MenuNode
             key={node.labelKey}
@@ -213,7 +213,7 @@ export default function MenuTree({
           />
         ))}
       </div>
-      <p className="text-xs text-text-secondary">{localize('com_ui_tars_roles_menus_hint')}</p>
+      <p className="text-text-secondary text-xs">{localize('com_ui_tars_roles_menus_hint')}</p>
     </div>
   );
 }

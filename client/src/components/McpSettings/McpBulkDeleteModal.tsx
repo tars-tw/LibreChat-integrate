@@ -30,10 +30,10 @@ export default function McpBulkDeleteModal({
         className="w-11/12 max-w-md"
         main={
           <div className="space-y-3">
-            <p className="text-sm text-text-secondary">
+            <p className="text-text-secondary text-sm">
               {localize('com_ui_tars_mcp_bulk_delete_warning', { count: servers.length })}
             </p>
-            <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border-light p-2 text-sm text-text-primary">
+            <ul className="border-border-light text-text-primary max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2 text-sm">
               {servers.map((server) => (
                 <li key={server.id} className="truncate">
                   {server.name}

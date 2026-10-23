@@ -25,9 +25,9 @@ export default function DocumentDetailsDialog({
   const localize = useLocalize();
 
   const row = (label: string, value: ReactNode) => (
-    <tr className="border-t border-border-light">
-      <th className="w-1/3 px-3 py-2 text-left text-sm font-medium text-text-secondary">{label}</th>
-      <td className="px-3 py-2 text-sm text-text-primary">{value}</td>
+    <tr className="border-border-light border-t">
+      <th className="text-text-secondary w-1/3 px-3 py-2 text-left text-sm font-medium">{label}</th>
+      <td className="text-text-primary px-3 py-2 text-sm">{value}</td>
     </tr>
   );
 
@@ -38,7 +38,7 @@ export default function DocumentDetailsDialog({
         className="w-11/12 max-w-lg"
         showCloseButton={true}
         main={
-          <div className="overflow-hidden rounded-lg border border-border-light">
+          <div className="border-border-light overflow-hidden rounded-lg border">
             <table className="w-full border-collapse">
               <tbody>
                 {row(localize('com_ui_tars_kb_ds_name'), document.filename)}

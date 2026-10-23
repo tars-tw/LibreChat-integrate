@@ -4,9 +4,9 @@ import { matchSorter } from 'match-sorter';
 import * as Select from '@ariakit/react/select';
 import * as Combobox from '@ariakit/react/combobox';
 import type { Option } from '~/common';
+import { usePopoverZIndex } from './OriginalDialog';
 import { cn, disabledFillClasses } from '~/utils';
 import { focusOutlineRole } from './Focus';
-import { usePopoverZIndex } from './OriginalDialog';
 import { fieldControl } from './Field';
 import './Dropdown.css';
 

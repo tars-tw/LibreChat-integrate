@@ -40,11 +40,11 @@ export default function UserPicker({
     return (
       <div className="space-y-1.5">
         <Label>{localize('com_ui_tars_quota_col_user')}</Label>
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border-light px-3 py-2">
+        <div className="border-border-light flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
           <span className="min-w-0">
-            <span className="block truncate font-medium text-text-primary">{primary}</span>
+            <span className="text-text-primary block truncate font-medium">{primary}</span>
             {secondary != null && (
-              <span className="block truncate text-xs text-text-secondary">{secondary}</span>
+              <span className="text-text-secondary block truncate text-xs">{secondary}</span>
             )}
           </span>
           <button
@@ -54,7 +54,7 @@ export default function UserPicker({
               onSelect(null);
             }}
             aria-label={localize('com_ui_clear')}
-            className="shrink-0 rounded-full p-1 text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+            className="text-text-secondary hover:bg-surface-hover hover:text-text-primary shrink-0 rounded-full p-1"
           >
             <X className="size-4" aria-hidden />
           </button>
@@ -68,7 +68,7 @@ export default function UserPicker({
       <Label htmlFor="tars-quota-user">{localize('com_ui_tars_quota_col_user')}</Label>
       <div className="relative">
         <Search
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary"
+          className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
           aria-hidden
         />
         <Input
@@ -80,14 +80,14 @@ export default function UserPicker({
         />
       </div>
 
-      <div className="max-h-48 overflow-y-auto rounded-lg border border-border-light">
+      <div className="border-border-light max-h-48 overflow-y-auto rounded-lg border">
         {isFetching && (
           <div className="flex h-16 items-center justify-center">
             <Spinner className="size-4" />
           </div>
         )}
         {!isFetching && users.length === 0 && (
-          <p className="px-3 py-4 text-center text-sm text-text-secondary">
+          <p className="text-text-secondary px-3 py-4 text-center text-sm">
             {localize('com_ui_tars_audit_no_data')}
           </p>
         )}
@@ -99,12 +99,12 @@ export default function UserPicker({
                 key={user.id}
                 type="button"
                 onClick={() => onSelect(user)}
-                className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-surface-hover"
+                className="hover:bg-surface-hover flex w-full items-center gap-3 px-3 py-2 text-left text-sm"
               >
                 <span className="min-w-0">
-                  <span className="block truncate font-medium text-text-primary">{primary}</span>
+                  <span className="text-text-primary block truncate font-medium">{primary}</span>
                   {secondary != null && (
-                    <span className="block truncate text-xs text-text-secondary">{secondary}</span>
+                    <span className="text-text-secondary block truncate text-xs">{secondary}</span>
                   )}
                 </span>
               </button>

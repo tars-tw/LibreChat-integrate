@@ -137,11 +137,11 @@ export default function GroupModal({
             <div>
               <Label>{localize('com_ui_tars_groups_roles')}</Label>
               {roles.length === 0 ? (
-                <p className="mt-1 text-sm text-text-secondary">
+                <p className="text-text-secondary mt-1 text-sm">
                   {localize('com_ui_tars_groups_roles_empty')}
                 </p>
               ) : (
-                <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-border-light p-2">
+                <div className="border-border-light mt-1 max-h-48 overflow-y-auto rounded-lg border p-2">
                   {roles.map((role) => (
                     <label
                       key={role.id}
@@ -153,12 +153,12 @@ export default function GroupModal({
                         checked={form.roleIds.has(String(role.id))}
                         onChange={() => toggleRole(String(role.id))}
                       />
-                      <span className="truncate text-text-primary">{role.name}</span>
+                      <span className="text-text-primary truncate">{role.name}</span>
                     </label>
                   ))}
                 </div>
               )}
-              <p className="mt-1 text-xs text-text-secondary">
+              <p className="text-text-secondary mt-1 text-xs">
                 {localize('com_ui_tars_groups_roles_hint')}
               </p>
             </div>

@@ -66,11 +66,11 @@ function ProviderDefault({
     });
 
   return (
-    <section className="rounded-xl border border-border-light">
-      <header className="flex items-center justify-between gap-3 border-b border-border-light px-4 py-2">
-        <h3 className="text-sm font-medium text-text-primary">{provider}</h3>
+    <section className="border-border-light rounded-xl border">
+      <header className="border-border-light flex items-center justify-between gap-3 border-b px-4 py-2">
+        <h3 className="text-text-primary text-sm font-medium">{provider}</h3>
         {config == null && (
-          <span className="rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary">
+          <span className="bg-surface-tertiary text-text-secondary rounded-full px-2 py-0.5 text-xs">
             {localize('com_ui_tars_quota_default_missing')}
           </span>
         )}
@@ -178,7 +178,7 @@ export default function Defaults() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <p className="flex-1 rounded-xl border border-border-light bg-surface-secondary px-4 py-3 text-sm text-text-secondary">
+        <p className="border-border-light bg-surface-secondary text-text-secondary flex-1 rounded-xl border px-4 py-3 text-sm">
           {localize('com_ui_tars_quota_defaults_intro')}
         </p>
 
@@ -187,7 +187,7 @@ export default function Defaults() {
           aria-label={localize('com_ui_tars_quota_info_title')}
           title={localize('com_ui_tars_quota_info_title')}
           onClick={() => setShowInfo(true)}
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border-light bg-surface-primary text-text-secondary transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 dark:hover:border-orange-900/40 dark:hover:bg-orange-950/20 dark:hover:text-orange-400"
+          className="border-border-light bg-surface-primary text-text-secondary flex size-10 shrink-0 items-center justify-center rounded-xl border transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 dark:hover:border-orange-900/40 dark:hover:bg-orange-950/20 dark:hover:text-orange-400"
         >
           <HelpCircle className="size-5" aria-hidden />
         </button>

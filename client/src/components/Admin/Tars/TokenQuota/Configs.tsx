@@ -81,7 +81,7 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
 
   return (
     <div className="space-y-4">
-      <p className="rounded-xl border border-border-light bg-surface-secondary px-4 py-3 text-sm text-text-secondary">
+      <p className="border-border-light bg-surface-secondary text-text-secondary rounded-xl border px-4 py-3 text-sm">
         {localize('com_ui_tars_quota_precedence')}
       </p>
 
@@ -119,7 +119,7 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
           aria-label={localize('com_ui_tars_quota_info_title')}
           title={localize('com_ui_tars_quota_info_title')}
           onClick={() => setShowInfo(true)}
-          className="ml-auto flex size-10 items-center justify-center rounded-xl border border-border-light bg-surface-primary text-text-secondary transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 dark:hover:border-orange-900/40 dark:hover:bg-orange-950/20 dark:hover:text-orange-400"
+          className="border-border-light bg-surface-primary text-text-secondary ml-auto flex size-10 items-center justify-center rounded-xl border transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 dark:hover:border-orange-900/40 dark:hover:bg-orange-950/20 dark:hover:text-orange-400"
         >
           <HelpCircle className="size-5" aria-hidden />
         </button>
@@ -139,16 +139,16 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
       )}
 
       {!isLoading && configs.length === 0 && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_tars_quota_empty')}
         </p>
       )}
 
       {!isLoading &&
         grouped.map((group) => (
-          <section key={group.groupName} className="rounded-xl border border-border-light">
-            <header className="flex items-center justify-between gap-3 border-b border-border-light px-4 py-2">
-              <h3 className="text-sm font-medium text-text-primary">{group.groupName}</h3>
+          <section key={group.groupName} className="border-border-light rounded-xl border">
+            <header className="border-border-light flex items-center justify-between gap-3 border-b px-4 py-2">
+              <h3 className="text-text-primary text-sm font-medium">{group.groupName}</h3>
               <div className="flex items-center gap-2">
                 {recentUsage.has(group.groupId) && (
                   <span className={BADGE_NEUTRAL}>
@@ -164,7 +164,7 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
             </header>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[56rem] text-sm">
-                <thead className="bg-surface-secondary text-left text-text-secondary">
+                <thead className="bg-surface-secondary text-text-secondary text-left">
                   <tr>
                     <th className="w-[20%] px-3 py-2 font-medium">
                       {localize('com_ui_tars_quota_col_domain')}
@@ -196,10 +196,10 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
                   {group.rows.map((config) => (
                     <tr
                       key={config.id}
-                      className="border-t border-border-light hover:bg-surface-hover"
+                      className="border-border-light hover:bg-surface-hover border-t"
                     >
                       <td className="px-3 py-2">
-                        <span className="block truncate text-text-primary">
+                        <span className="text-text-primary block truncate">
                           {config.domain_name ?? '—'}
                         </span>
                       </td>
@@ -208,9 +208,9 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
                           {config.provider ?? 'system'}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                      <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                         {capOf(config.default_user_limit) == null ? (
-                          <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                          <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs whitespace-nowrap text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
                             {localize('com_ui_tars_quota_unlimited')}
                           </span>
                         ) : (
@@ -220,9 +220,9 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
                           )
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                      <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                         {capOf(config.system_total_limit) == null ? (
-                          <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                          <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs whitespace-nowrap text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
                             {localize('com_ui_tars_quota_unlimited')}
                           </span>
                         ) : (
@@ -232,14 +232,14 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
                           )
                         )}
                       </td>
-                      <td className="px-3 py-2 text-text-secondary">
+                      <td className="text-text-secondary px-3 py-2">
                         {RESET_TYPES.includes(config.reset_type as TokenResetType)
                           ? localize(RESET_LABEL_KEYS[config.reset_type as TokenResetType])
                           : (config.reset_type ?? '—')}
                         {usesResetDay(config.reset_type) &&
                           ` (${localize('com_ui_tars_quota_day', { 0: String(config.reset_day ?? 1) })})`}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                      <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                         {formatThreshold(config.warning_threshold)}
                       </td>
                       <td className="px-3 py-2">
@@ -258,7 +258,7 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
                             aria-label={localize('com_ui_edit')}
                             title={localize('com_ui_edit')}
                             onClick={() => setEditing(config)}
-                            className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                            className="text-text-secondary hover:bg-surface-tertiary hover:text-text-primary rounded p-1.5"
                           >
                             <Pencil className="icon-sm" />
                           </button>
@@ -267,7 +267,7 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
                             aria-label={localize('com_ui_delete')}
                             title={localize('com_ui_delete')}
                             onClick={() => setDeleting(config)}
-                            className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-red-500"
+                            className="text-text-secondary hover:bg-surface-tertiary rounded p-1.5 hover:text-red-500"
                           >
                             <Trash2 className="icon-sm text-pwc-danger" />
                           </button>
@@ -303,7 +303,7 @@ export default function Configs({ options }: { options: TTarsTokenPrepareData | 
             className="w-11/12 max-w-md"
             showCloseButton={true}
             main={
-              <p className="text-sm text-text-secondary">
+              <p className="text-text-secondary text-sm">
                 {localize('com_ui_tars_quota_delete_confirm', {
                   0: `${deleting.group_name ?? '—'} · ${deleting.domain_name ?? '—'} · ${deleting.provider ?? 'system'}`,
                 })}

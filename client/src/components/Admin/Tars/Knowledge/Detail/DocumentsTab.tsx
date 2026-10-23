@@ -173,7 +173,7 @@ export default function DocumentsTab({
                     <Checkbox
                       checked={selected.includes(doc.id)}
                       onCheckedChange={() => toggle(doc.id)}
-                      aria-label={localize('com_ui_tars_kb_ds_select_one', { 0: doc.filename })}
+                      aria-label={localize('com_ui_tars_kb_ds_select_item', { 0: doc.filename })}
                     />
                   </td>
                   <td className="max-w-0 px-3 py-1.5">

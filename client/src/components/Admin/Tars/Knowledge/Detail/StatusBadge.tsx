@@ -8,7 +8,7 @@ export default function StatusBadge({ meta }: { meta: StatusMeta }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${meta.className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs whitespace-nowrap ${meta.className}`}
     >
       {meta.spinning === true && <Spinner className="size-3" />}
       {localize(meta.labelKey)}

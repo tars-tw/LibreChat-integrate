@@ -80,7 +80,7 @@ export default function DatabaseManager() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[16rem] flex-1 sm:max-w-sm">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary"
+            className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
             aria-hidden
           />
           <Input
@@ -113,8 +113,8 @@ export default function DatabaseManager() {
       )}
 
       {!databasesQuery.isLoading && filtered.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-sm text-text-secondary">
-          <Database className="size-10 text-text-tertiary" aria-hidden />
+        <div className="text-text-secondary flex flex-col items-center gap-3 py-16 text-sm">
+          <Database className="text-text-tertiary size-10" aria-hidden />
           {localize(
             databases.length === 0 ? 'com_ui_tars_db_empty' : 'com_ui_tars_db_no_search_results',
           )}
@@ -155,11 +155,11 @@ export default function DatabaseManager() {
             showCloseButton={true}
             main={
               <div className="space-y-2">
-                <p className="text-sm text-text-secondary">
+                <p className="text-text-secondary text-sm">
                   {localize('com_ui_tars_db_delete_confirm_named', { 0: deleting.name })}
                 </p>
                 {/* Knowledge bases bound to the connection lose their tables with it. */}
-                <p className="rounded-lg border border-border-light p-3 text-sm text-text-secondary">
+                <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
                   {localize('com_ui_tars_db_delete_warning')}
                 </p>
               </div>

@@ -9,6 +9,7 @@ jest.mock('@librechat/api', () => {
     TARS_TICKET_MAX_FILES: 5,
     TARS_TICKET_MAX_FILE_MB: 20,
     createWorkflowTicketHandler: () => (req, res) => res.json({ ticket: 'stub' }),
+    createTarsAuditDocumentHandler: () => (req, res) => res.sendStatus(404),
     createWorkflowAccountsHandler: () => (req, res) => res.json({ accounts: [] }),
     createWorkflowTransfer: () => ({ start: () => {}, requestSweep: () => {}, stop: () => {} }),
   };
@@ -36,6 +37,7 @@ jest.mock('~/models', () => ({
 jest.mock('~/server/services/Config', () => ({ invalidateConfigCaches: jest.fn() }));
 
 jest.mock('~/server/middleware', () => ({
+  configMiddleware: jest.fn((req, res, next) => next()),
   requireJwtAuth: jest.fn((req, res, next) => {
     const header = req.headers['x-test-user'];
     if (!header) {

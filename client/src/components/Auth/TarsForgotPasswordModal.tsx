@@ -117,7 +117,7 @@ function TarsForgotPasswordModal({
             type="button"
             onClick={handleSubmit}
             disabled={resetMutation.isLoading}
-            className="rounded-md bg-pwc-orange px-4 py-2 text-sm text-white hover:bg-pwc-orange-600 disabled:opacity-60"
+            className="bg-pwc-orange hover:bg-pwc-orange-600 rounded-md px-4 py-2 text-sm text-white disabled:opacity-60"
           >
             {localize('com_ui_confirm')}
           </button>

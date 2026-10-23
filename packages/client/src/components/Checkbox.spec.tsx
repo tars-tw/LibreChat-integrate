@@ -10,7 +10,7 @@ describe('Checkbox', () => {
     expect(box).toHaveClass(
       'rounded-theme-checkbox',
       'theme-checkbox-fill:bg-checkbox-fill',
-      'data-[state=checked]:bg-surface-inverted',
+      'data-[state=checked]:bg-surface-submit',
     );
     expect(box).not.toHaveClass('rounded-sm');
   });
@@ -22,27 +22,7 @@ describe('Checkbox', () => {
     expect(box).toHaveClass('rounded-full');
     expect(box).not.toHaveClass('rounded-theme-checkbox');
   });
-});
 
-describe('CheckboxGlyph', () => {
-  it('paints the unchecked fill role only while unchecked', () => {
-    const { container, rerender } = render(<CheckboxGlyph checked={false} />);
-    const glyph = container.firstElementChild;
-
-    expect(glyph).toHaveClass('rounded-theme-checkbox', 'theme-checkbox-fill:bg-checkbox-fill');
-    expect(glyph).not.toHaveClass('bg-surface-inverted');
-
-    rerender(<CheckboxGlyph checked />);
-
-    expect(glyph).toHaveClass('rounded-theme-checkbox', 'bg-surface-inverted');
-    expect(glyph).not.toHaveClass('theme-checkbox-fill:bg-checkbox-fill');
-  });
-});
-import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
-import { Checkbox } from './Checkbox';
-
-describe('Checkbox', () => {
   it('shows a check when checked', () => {
     render(<Checkbox aria-label="All" checked={true} />);
 
@@ -69,5 +49,20 @@ describe('Checkbox', () => {
     const box = screen.getByRole('checkbox', { name: 'None' });
     expect(box).toHaveAttribute('aria-checked', 'false');
     expect(box.querySelector('svg')).toBeNull();
+  });
+});
+
+describe('CheckboxGlyph', () => {
+  it('paints the unchecked fill role only while unchecked', () => {
+    const { container, rerender } = render(<CheckboxGlyph checked={false} />);
+    const glyph = container.firstElementChild;
+
+    expect(glyph).toHaveClass('rounded-theme-checkbox', 'theme-checkbox-fill:bg-checkbox-fill');
+    expect(glyph).not.toHaveClass('bg-surface-submit');
+
+    rerender(<CheckboxGlyph checked />);
+
+    expect(glyph).toHaveClass('rounded-theme-checkbox', 'bg-surface-submit');
+    expect(glyph).not.toHaveClass('theme-checkbox-fill:bg-checkbox-fill');
   });
 });

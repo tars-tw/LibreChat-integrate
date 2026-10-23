@@ -73,20 +73,20 @@ function SourceList({ step }: { step: TTarsToolStep }) {
       <ul className="space-y-1">
         {step.sources.map((source) => (
           <li key={source.filename}>
-            <details className="group rounded-md text-xs text-text-primary">
-              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-1 py-0.5 hover:bg-surface-hover">
-                <FileText className="size-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
+            <details className="group text-text-primary rounded-md text-xs">
+              <summary className="hover:bg-surface-hover flex cursor-pointer list-none items-center gap-2 rounded-md px-1 py-0.5">
+                <FileText className="text-text-secondary size-3.5 shrink-0" aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate" title={source.filename}>
                   {source.filename}
                 </span>
                 {source.chunks > 0 && (
-                  <span className="shrink-0 text-text-secondary">
+                  <span className="text-text-secondary shrink-0">
                     {localize('com_ui_tars_tool_summary_chunks', { count: source.chunks })}
                   </span>
                 )}
               </summary>
               {source.excerpt && (
-                <p className="ml-6 mt-1 whitespace-pre-wrap break-words text-text-secondary">
+                <p className="text-text-secondary mt-1 ml-6 break-words whitespace-pre-wrap">
                   {source.excerpt}
                   {'…'}
                 </p>
@@ -112,13 +112,13 @@ function GeneratedLinks({ step }: { step: TTarsToolStep }) {
             key={link.url}
             src={link.url}
             alt={localize('com_ui_tars_tool_chart_alt')}
-            className="max-h-80 rounded-md border border-border-light"
+            className="border-border-light max-h-80 rounded-md border"
           />
         ) : (
           <a
             key={link.url}
             href={link.url}
-            className="inline-flex items-center gap-1 text-xs text-text-primary underline"
+            className="text-text-primary inline-flex items-center gap-1 text-xs underline"
           >
             <FileOutput className="size-3.5" aria-hidden="true" />
             {localize('com_ui_tars_tool_download')}
@@ -251,7 +251,7 @@ export default function TarsToolCall({
           icon={
             <Icon
               className={cn(
-                'size-4 shrink-0 text-text-secondary',
+                'text-text-secondary size-4 shrink-0',
                 phase === 'running' && 'animate-pulse',
               )}
               aria-hidden="true"
@@ -267,7 +267,7 @@ export default function TarsToolCall({
             <div
               className={cn(
                 toolPanelSpacingClassName,
-                'space-y-3 rounded-lg border border-border-light bg-surface-secondary px-3 py-2',
+                'border-border-light bg-surface-secondary space-y-3 rounded-lg border px-3 py-2',
               )}
             >
               {sql && (

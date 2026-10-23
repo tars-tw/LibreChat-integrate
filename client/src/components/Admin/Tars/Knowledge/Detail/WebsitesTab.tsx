@@ -78,16 +78,16 @@ export default function WebsitesTab({
       />
 
       {visible.length === 0 ? (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize(
             websites.length === 0 ? 'com_ui_tars_kb_ds_no_websites' : 'com_ui_tars_kb_ds_no_match',
           )}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border-light">
+        <div className="border-border-light overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[64rem] border-collapse text-sm">
             <thead className="bg-surface-secondary">
-              <tr className="text-left text-text-secondary">
+              <tr className="text-text-secondary text-left">
                 <th className="w-10 px-3 py-2">
                   <Checkbox
                     checked={allSelected}
@@ -113,18 +113,18 @@ export default function WebsitesTab({
             </thead>
             <tbody>
               {paged.rows.map((site) => (
-                <tr key={site.id} className="border-t border-border-light hover:bg-surface-hover">
+                <tr key={site.id} className="border-border-light hover:bg-surface-hover border-t">
                   <td className="px-3 py-1.5">
                     <Checkbox
                       checked={selected.includes(site.id)}
                       onCheckedChange={() => toggle(site.id)}
-                      aria-label={localize('com_ui_tars_kb_ds_select_one', {
+                      aria-label={localize('com_ui_tars_kb_ds_select_item', {
                         0: websiteLabel(site),
                       })}
                     />
                   </td>
                   <td className="max-w-0 px-3 py-1.5">
-                    <span className="block truncate text-text-primary" title={site.name ?? ''}>
+                    <span className="text-text-primary block truncate" title={site.name ?? ''}>
                       {site.name ?? '—'}
                     </span>
                   </td>
@@ -137,7 +137,7 @@ export default function WebsitesTab({
                         href={site.url}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="flex min-w-0 items-center gap-1 text-brand-primary hover:underline"
+                        className="text-brand-primary flex min-w-0 items-center gap-1 hover:underline"
                         title={site.url}
                       >
                         <span className="truncate">{site.url}</span>
@@ -148,10 +148,10 @@ export default function WebsitesTab({
                   <td className="px-3 py-1.5">
                     <StatusBadge meta={enabledStatusMeta(site.status)} />
                   </td>
-                  <td className="px-3 py-1.5 tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-1.5 tabular-nums">
                     {formatCount(site.tokens)}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1.5 text-text-secondary">
+                  <td className="text-text-secondary px-3 py-1.5 whitespace-nowrap">
                     {formatDateTime(site.created_at, locale)}
                   </td>
                   <td className="px-3 py-1.5">

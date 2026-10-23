@@ -4,7 +4,7 @@ function TarsBrandPanel() {
   const localize = useLocalize();
 
   return (
-    <div className="hidden w-2/5 flex-col items-center justify-center bg-pwc-success p-10 md:flex">
+    <div className="bg-pwc-success hidden w-2/5 flex-col items-center justify-center p-10 md:flex">
       <img
         src="assets/tars/login_page_6.png"
         alt=""

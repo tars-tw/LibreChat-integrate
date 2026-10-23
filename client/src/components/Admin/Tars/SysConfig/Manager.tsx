@@ -68,7 +68,7 @@ export default function SysConfigManager() {
       <button
         type="button"
         onClick={() => toggleSort(field)}
-        className="flex items-center gap-1 hover:text-text-primary"
+        className="hover:text-text-primary flex items-center gap-1"
       >
         {localize(labelKey)}
         {field === sortField &&
@@ -81,7 +81,7 @@ export default function SysConfigManager() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-64 max-w-full">
-          <Search className="icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <Search className="icon-sm text-text-secondary pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
           <Input
             value={search}
             onChange={(e) => {
@@ -101,16 +101,16 @@ export default function SysConfigManager() {
       )}
 
       {!isLoading && filtered.length === 0 && (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary py-12 text-center text-sm">
           {localize('com_ui_tars_sys_config_empty')}
         </p>
       )}
 
       {!isLoading && filtered.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border-light">
+          <div className="border-border-light overflow-x-auto rounded-lg border">
             <table className="w-full min-w-[60rem] table-fixed text-sm">
-              <thead className="bg-surface-secondary text-left text-text-secondary">
+              <thead className="bg-surface-secondary text-text-secondary text-left">
                 <tr>
                   {sortableHeader('key', 'com_ui_tars_sys_config_key', 'w-[22%]')}
                   {sortableHeader('category', 'com_ui_tars_sys_config_category', 'w-[12%]')}
@@ -130,34 +130,34 @@ export default function SysConfigManager() {
                 {rows.map((config) => (
                   <tr
                     key={config.id}
-                    className="border-t border-border-light hover:bg-surface-hover"
+                    className="border-border-light hover:bg-surface-hover border-t"
                   >
                     <td className="px-3 py-2">
                       <span
-                        className="block truncate font-medium text-text-primary"
+                        className="text-text-primary block truncate font-medium"
                         title={config.key}
                       >
                         {config.key}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-text-secondary">
+                    <td className="text-text-secondary px-3 py-2">
                       <span className="block truncate" title={config.category ?? ''}>
                         {config.category ?? '—'}
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <span className="block truncate font-mono text-xs text-text-secondary">
+                      <span className="text-text-secondary block truncate font-mono text-xs">
                         {maskSysConfigValue(config) || '—'}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-text-secondary">
+                    <td className="text-text-secondary px-3 py-2">
                       <span className="block truncate" title={config.description ?? ''}>
                         {config.description ?? '—'}
                       </span>
                     </td>
                     <td className="px-3 py-2">
                       <span
-                        className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${
+                        className={`inline-block rounded-full px-2 py-0.5 text-xs whitespace-nowrap ${
                           isSysConfigActive(config)
                             ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
                             : 'bg-surface-tertiary text-text-secondary'
@@ -175,7 +175,7 @@ export default function SysConfigManager() {
                           aria-label={localize('com_ui_tars_sys_config_edit')}
                           title={localize('com_ui_tars_sys_config_edit')}
                           onClick={() => setEditing(config)}
-                          className="rounded p-1.5 text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
+                          className="text-text-secondary hover:bg-surface-tertiary hover:text-text-primary rounded p-1.5"
                         >
                           <Pencil className="icon-sm" />
                         </button>
@@ -187,7 +187,7 @@ export default function SysConfigManager() {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
+          <div className="text-text-secondary flex flex-wrap items-center justify-between gap-3 text-sm">
             <div className="flex items-center gap-2">
               <span id="tars-sys-config-page-size-label">
                 {localize('com_ui_tars_users_rows_per_page')}

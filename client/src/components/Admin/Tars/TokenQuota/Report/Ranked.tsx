@@ -29,29 +29,29 @@ export default function Ranked({
   const leader = ranked[0]?.value ?? 0;
 
   return (
-    <section className="rounded-xl border border-border-light">
-      <header className="border-b border-border-light px-4 py-2">
-        <h2 className="text-sm font-medium text-text-primary">{title}</h2>
+    <section className="border-border-light rounded-xl border">
+      <header className="border-border-light border-b px-4 py-2">
+        <h2 className="text-text-primary text-sm font-medium">{title}</h2>
       </header>
       {ranked.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-text-secondary">
+        <p className="text-text-secondary px-4 py-6 text-sm">
           {emptyHint ?? localize('com_ui_tars_audit_no_data')}
         </p>
       ) : (
-        <ul className="divide-y divide-border-light">
+        <ul className="divide-border-light divide-y">
           {ranked.map((item) => (
             <li key={item.key} className="px-4 py-3">
               <div className="flex items-baseline justify-between gap-3">
-                <span className="min-w-0 truncate text-sm text-text-primary" title={item.label}>
+                <span className="text-text-primary min-w-0 truncate text-sm" title={item.label}>
                   {item.label}
                 </span>
-                <span className="shrink-0 text-xs tabular-nums text-text-secondary">
+                <span className="text-text-secondary shrink-0 text-xs tabular-nums">
                   {`${item.share ?? percentOf(item.value, total)}% · ${formatTokens(item.value)}`}
                 </span>
               </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
+              <div className="bg-surface-tertiary mt-2 h-1.5 overflow-hidden rounded-full">
                 <div
-                  className="h-full rounded-full bg-brand-primary"
+                  className="bg-brand-primary h-full rounded-full"
                   style={{
                     width: `${leader === 0 ? 0 : Math.round((item.value / leader) * 100)}%`,
                   }}

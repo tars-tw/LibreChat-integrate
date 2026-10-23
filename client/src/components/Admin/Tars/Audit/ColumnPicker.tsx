@@ -33,7 +33,7 @@ export default function ColumnPicker({
         className="w-11/12 md:max-w-md"
         main={
           <div className="space-y-3">
-            <p className="text-sm text-text-secondary">
+            <p className="text-text-secondary text-sm">
               {localize('com_ui_tars_audit_columns_hint')}
             </p>
             <ul className="max-h-[55vh] space-y-1 overflow-y-auto">
@@ -44,8 +44,8 @@ export default function ColumnPicker({
                     <label
                       className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
                         locked
-                          ? 'cursor-not-allowed text-text-secondary'
-                          : 'cursor-pointer text-text-primary hover:bg-surface-tertiary'
+                          ? 'text-text-secondary cursor-not-allowed'
+                          : 'text-text-primary hover:bg-surface-tertiary cursor-pointer'
                       }`}
                     >
                       <Checkbox

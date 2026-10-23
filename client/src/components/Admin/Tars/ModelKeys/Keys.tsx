@@ -64,12 +64,12 @@ export default function Keys() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-text-secondary">{localize('com_ui_tars_keys_intro')}</p>
+      <p className="text-text-secondary text-sm">{localize('com_ui_tars_keys_intro')}</p>
 
       {MODEL_KEY_GROUPS.map((group) => (
-        <section key={group.title} className="rounded-xl border border-border-light">
-          <header className="flex items-center justify-between gap-3 border-b border-border-light px-4 py-2">
-            <h2 className="text-sm font-medium text-text-primary">{group.title}</h2>
+        <section key={group.title} className="border-border-light rounded-xl border">
+          <header className="border-border-light flex items-center justify-between gap-3 border-b px-4 py-2">
+            <h2 className="text-text-primary text-sm font-medium">{group.title}</h2>
             <span
               className={`rounded-full px-2 py-0.5 text-xs ${
                 storedValue(group.fields[0].key) === ''
@@ -93,7 +93,7 @@ export default function Keys() {
                   <Label htmlFor={`tars-key-${field.key}`} className="font-mono text-xs">
                     {field.key}
                   </Label>
-                  <p className="text-xs text-text-secondary">{localize(field.hintKey)}</p>
+                  <p className="text-text-secondary text-xs">{localize(field.hintKey)}</p>
                   <div className="flex items-center gap-2">
                     <Input
                       id={`tars-key-${field.key}`}
@@ -139,7 +139,7 @@ export default function Keys() {
 
       <div className="flex items-center justify-end gap-3">
         {changedKeys.length > 0 && (
-          <span className="text-xs text-text-secondary">
+          <span className="text-text-secondary text-xs">
             {localize('com_ui_tars_keys_pending', { 0: String(changedKeys.length) })}
           </span>
         )}

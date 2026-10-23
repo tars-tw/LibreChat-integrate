@@ -97,7 +97,9 @@ const loadBaseConfig = async (mode) => {
     directory: paths.structuredTools,
   });
   const appConfig = await withTarsMcpConfig(
-    withLangflowAllowedAddress(await AppService({ config, paths, systemTools, expandCustomEndpoint })),
+    withLangflowAllowedAddress(
+      await AppService({ config, paths, systemTools, expandCustomEndpoint }),
+    ),
   );
   scheduleTarsMcpRetry();
   return appConfig;

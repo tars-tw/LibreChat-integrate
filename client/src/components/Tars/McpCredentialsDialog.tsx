@@ -29,7 +29,7 @@ export default function McpCredentialsDialog({
         className="w-11/12 md:max-w-md"
         main={
           <div className="space-y-3">
-            <p className="text-sm text-text-secondary">
+            <p className="text-text-secondary text-sm">
               {localize('com_ui_tars_mcp_creds_dialog_hint')}
             </p>
             <McpCredentialsForm server={server} onSaved={() => onOpenChange(false)} />

@@ -141,10 +141,10 @@ export default function BatchModal({
         aria-label={label}
         className="mt-2"
       />
-      <span className="mt-1.5 text-sm text-text-primary">{label}</span>
+      <span className="text-text-primary mt-1.5 text-sm">{label}</span>
       <div className="min-w-0 space-y-1">
         {control}
-        {hint != null && <p className="text-xs text-text-secondary">{hint}</p>}
+        {hint != null && <p className="text-text-secondary text-xs">{hint}</p>}
       </div>
     </div>
   );
@@ -168,8 +168,8 @@ export default function BatchModal({
             />
 
             {/* Only ticked rows are sent, so an untouched setting is left alone. */}
-            <div className="space-y-4 rounded-lg border border-border-light p-3">
-              <p className="text-xs text-text-secondary">{localize('com_ui_tars_kb_batch_hint')}</p>
+            <div className="border-border-light space-y-4 rounded-lg border p-3">
+              <p className="text-text-secondary text-xs">{localize('com_ui_tars_kb_batch_hint')}</p>
 
               {row(
                 'llm',
@@ -230,7 +230,7 @@ export default function BatchModal({
 
             {/* The embedding model is intentionally absent: the stored vectors
                 were built with it, so swapping it would orphan every chunk. */}
-            <p className="text-xs text-text-secondary">
+            <p className="text-text-secondary text-xs">
               {localize('com_ui_tars_kb_batch_embedding_note')}
             </p>
           </div>

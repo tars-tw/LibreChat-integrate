@@ -79,8 +79,8 @@ export default function ScheduleActionDialog({
 
   const fact = (label: string, value: string) => (
     <div>
-      <p className="text-xs text-text-secondary">{label}</p>
-      <p className="break-words text-sm text-text-primary">{value}</p>
+      <p className="text-text-secondary text-xs">{label}</p>
+      <p className="text-text-primary text-sm break-words">{value}</p>
     </div>
   );
 
@@ -121,7 +121,7 @@ export default function ScheduleActionDialog({
             <div className="min-w-0 space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-text-secondary">{localize('com_ui_tars_kb_status')}</p>
+                  <p className="text-text-secondary text-xs">{localize('com_ui_tars_kb_status')}</p>
                   <ScheduleStatusBadge schedule={schedule} />
                 </div>
                 {fact(localize('com_ui_tars_sched_cadence'), cadence)}
@@ -146,18 +146,18 @@ export default function ScheduleActionDialog({
 
               {schedule.message != null && schedule.message !== '' && (
                 <div>
-                  <p className="text-xs text-text-secondary">
+                  <p className="text-text-secondary text-xs">
                     {localize('com_ui_tars_sched_message')}
                   </p>
-                  <p className="break-words text-sm text-text-primary">{schedule.message}</p>
+                  <p className="text-text-primary text-sm break-words">{schedule.message}</p>
                 </div>
               )}
 
               {/* The flag lives on the document-group link, so only those have it. */}
               {hasSyncAll(schedule) && (
-                <div className="space-y-2 rounded-lg border border-border-light p-3">
+                <div className="border-border-light space-y-2 rounded-lg border p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-text-primary">
+                    <span className="text-text-primary text-sm">
                       {localize('com_ui_tars_kb_ds_sync_all')}
                     </span>
                     <Switch
@@ -169,14 +169,14 @@ export default function ScheduleActionDialog({
                       aria-label={localize('com_ui_tars_kb_ds_sync_all')}
                     />
                   </div>
-                  <p className="text-xs text-text-secondary">
+                  <p className="text-text-secondary text-xs">
                     {localize('com_ui_tars_kb_ds_sync_all_hint')}
                   </p>
                 </div>
               )}
 
               {running && (
-                <p className="flex items-center gap-2 rounded-lg border border-border-light p-3 text-sm text-text-secondary">
+                <p className="border-border-light text-text-secondary flex items-center gap-2 rounded-lg border p-3 text-sm">
                   <Spinner className="size-4" />
                   {localize('com_ui_tars_sched_running_note')}
                 </p>

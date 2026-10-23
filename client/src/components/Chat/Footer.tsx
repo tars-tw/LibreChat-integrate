@@ -148,7 +148,7 @@ function Footer({
         )}
         role="contentinfo"
       >
-        {showDisclaimer && <Disclaimer className="block p-0 text-text-secondary" />}
+        {showDisclaimer && <Disclaimer className="text-text-secondary block p-0" />}
         <div className="flex flex-wrap items-center justify-center gap-2">
           {footerElements.map((contentRender, index) => {
             const isLastElement = index === footerElements.length - 1;

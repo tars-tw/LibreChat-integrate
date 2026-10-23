@@ -60,7 +60,7 @@ export default function ResetPasswordModal({
         className="w-11/12 max-w-md"
         main={
           <div className="space-y-3">
-            <p className="text-sm text-text-secondary">{user.username}</p>
+            <p className="text-text-secondary text-sm">{user.username}</p>
             <div>
               <Label htmlFor="tars-user-new-password">
                 {localize('com_ui_tars_users_new_password')}

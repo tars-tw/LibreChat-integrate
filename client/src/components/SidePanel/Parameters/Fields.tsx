@@ -64,7 +64,7 @@ export default function ParametersFields({
         type="button"
         variant="outline"
         onClick={onReset}
-        className="mt-2 h-9 w-full rounded-xl px-4 font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
+        className="text-text-secondary hover:bg-surface-secondary hover:text-text-primary mt-2 h-9 w-full rounded-xl px-4 font-medium"
       >
         <RotateCcw className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
         {localize('com_ui_reset_var', {

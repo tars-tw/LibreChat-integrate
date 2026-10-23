@@ -20,14 +20,14 @@ export default function FileSystemDetails({
   const row = (labelKey: TranslationKeys, value: string) => (
     <div className="grid grid-cols-3 gap-3 py-1.5">
       <dt className="text-text-secondary">{localize(labelKey)}</dt>
-      <dd className="col-span-2 break-words text-text-primary">{value === '' ? '—' : value}</dd>
+      <dd className="text-text-primary col-span-2 break-words">{value === '' ? '—' : value}</dd>
     </div>
   );
 
   const listRow = (labelKey: TranslationKeys, values: string[]) => (
     <div className="grid grid-cols-3 gap-3 py-1.5">
       <dt className="text-text-secondary">{localize(labelKey)}</dt>
-      <dd className="col-span-2 text-text-primary">
+      <dd className="text-text-primary col-span-2">
         {values.length === 0 ? (
           '—'
         ) : (
@@ -50,7 +50,7 @@ export default function FileSystemDetails({
         showCloseButton={true}
         className="w-11/12 max-w-lg"
         main={
-          <dl className="divide-y divide-border-light text-sm">
+          <dl className="divide-border-light divide-y text-sm">
             {row('com_ui_description', fileSystem.description ?? '')}
             {row('com_ui_tars_fs_protocol', fileSystem.mount_type ?? '')}
             {row('com_ui_tars_fs_host', fileSystem.host ?? '')}

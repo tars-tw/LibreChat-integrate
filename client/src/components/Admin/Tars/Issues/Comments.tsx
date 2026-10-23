@@ -26,7 +26,7 @@ export default function Comments({
   if (error != null && error !== '') {
     return (
       <div className={PANEL_CLASSES}>
-        <p className="text-xs text-text-secondary">
+        <p className="text-text-secondary text-xs">
           {localize('com_ui_tars_issues_comments_error', { 0: error })}
         </p>
       </div>
@@ -36,7 +36,7 @@ export default function Comments({
   if (displayed.length === 0) {
     return (
       <div className={PANEL_CLASSES}>
-        <p className="text-xs text-text-secondary">{localize('com_ui_tars_issues_no_comments')}</p>
+        <p className="text-text-secondary text-xs">{localize('com_ui_tars_issues_no_comments')}</p>
       </div>
     );
   }
@@ -64,17 +64,17 @@ export default function Comments({
                 )}
               </span>
               {comment.author != null && (
-                <span className="truncate text-xs text-text-secondary">{comment.author}</span>
+                <span className="text-text-secondary truncate text-xs">{comment.author}</span>
               )}
             </span>
-            <span className="shrink-0 text-xs text-text-secondary">
+            <span className="text-text-secondary shrink-0 text-xs">
               {formatDateTime(comment.created_at, locale)}
               {comment.edited_at != null && comment.edited_at !== ''
                 ? ` ${localize('com_ui_tars_issues_comment_edited')}`
                 : ''}
             </span>
           </div>
-          <p className="whitespace-pre-wrap text-sm text-text-primary">{comment.body}</p>
+          <p className="text-text-primary text-sm whitespace-pre-wrap">{comment.body}</p>
         </li>
       ))}
     </ul>

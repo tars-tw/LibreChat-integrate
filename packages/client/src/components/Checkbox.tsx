@@ -61,7 +61,7 @@ const CheckboxGlyph: React.FC<{ checked: boolean; className?: string }> = ({
     aria-hidden="true"
     className={cn(
       'border-border-xheavy size-theme-checkbox rounded-theme-checkbox flex shrink-0 items-center justify-center border',
-      checked ? 'bg-surface-inverted text-text-inverted' : 'theme-checkbox-fill:bg-checkbox-fill',
+      checked ? 'bg-surface-submit text-text-on-status' : 'theme-checkbox-fill:bg-checkbox-fill',
       className,
     )}
   >

@@ -25,17 +25,17 @@ export default function Groups({
   const ranked = [...rows].sort((a, b) => b.total_tokens - a.total_tokens);
 
   return (
-    <section className="rounded-xl border border-border-light">
-      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border-light px-4 py-2">
-        <h2 className="text-sm font-medium text-text-primary">
+    <section className="border-border-light rounded-xl border">
+      <header className="border-border-light flex flex-wrap items-baseline justify-between gap-2 border-b px-4 py-2">
+        <h2 className="text-text-primary text-sm font-medium">
           {localize('com_ui_tars_report_group_usage')}
         </h2>
-        <p className="text-xs text-text-secondary">{localize('com_ui_tars_report_ceiling_hint')}</p>
+        <p className="text-text-secondary text-xs">{localize('com_ui_tars_report_ceiling_hint')}</p>
       </header>
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[52rem] text-sm">
-          <thead className="bg-surface-secondary text-left text-text-secondary">
+          <thead className="bg-surface-secondary text-text-secondary text-left">
             <tr>
               <th className="w-[22%] px-3 py-2 font-medium">
                 {localize('com_ui_tars_quota_col_group')}
@@ -60,7 +60,7 @@ export default function Groups({
           <tbody>
             {ranked.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-text-secondary">
+                <td colSpan={6} className="text-text-secondary px-3 py-6 text-center">
                   {localize('com_ui_tars_audit_no_data')}
                 </td>
               </tr>
@@ -75,35 +75,35 @@ export default function Groups({
                 <tr
                   key={groupId}
                   onClick={() => onSelect(groupId, groupName)}
-                  className={`cursor-pointer border-t border-border-light hover:bg-surface-hover ${
+                  className={`border-border-light hover:bg-surface-hover cursor-pointer border-t ${
                     selectedId === groupId ? 'bg-surface-tertiary' : ''
                   }`}
                 >
                   <td className="px-3 py-2">
-                    <span className="flex items-center gap-1.5 text-text-primary">
-                      <ChevronRight className="size-4 shrink-0 text-text-secondary" aria-hidden />
+                    <span className="text-text-primary flex items-center gap-1.5">
+                      <ChevronRight className="text-text-secondary size-4 shrink-0" aria-hidden />
                       <span className="min-w-0 truncate" title={groupName}>
                         {groupName}
                       </span>
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                     {formatTokens(group.user_count)}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                     {formatTokens(group.log_count)}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-text-primary">
+                  <td className="text-text-primary px-3 py-2 text-right tabular-nums">
                     {formatTokens(group.total_tokens)}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-text-secondary">
+                  <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
                     {ceiling?.limit == null
                       ? localize('com_ui_tars_quota_unlimited')
                       : formatTokens(ceiling.limit)}
                   </td>
                   <td className="px-3 py-2">
                     {share == null ? (
-                      <span className="text-xs text-text-secondary">
+                      <span className="text-text-secondary text-xs">
                         {localize('com_ui_tars_report_no_ceiling')}
                       </span>
                     ) : (
@@ -119,7 +119,7 @@ export default function Groups({
                             />
                           )}
                         </div>
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
+                        <div className="bg-surface-tertiary mt-1 h-1.5 overflow-hidden rounded-full">
                           <div
                             className={`h-full rounded-full ${
                               warning ? 'bg-red-500' : 'bg-brand-primary'

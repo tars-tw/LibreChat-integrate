@@ -52,8 +52,8 @@ export default function SchedulesTab({
     }
     if (visible.length === 0) {
       return (
-        <div className="flex flex-col items-center gap-3 py-12 text-sm text-text-secondary">
-          <CalendarClock className="size-8 text-text-tertiary" aria-hidden />
+        <div className="text-text-secondary flex flex-col items-center gap-3 py-12 text-sm">
+          <CalendarClock className="text-text-tertiary size-8" aria-hidden />
           {localize(
             schedules.length === 0 ? 'com_ui_tars_sched_empty' : 'com_ui_tars_kb_ds_no_match',
           )}

@@ -11,16 +11,16 @@ function UsersList({
 }) {
   if (users.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-text-secondary">
+      <p className="text-text-secondary py-8 text-center text-sm">
         {localize('com_ui_tars_roles_usage_users_empty')}
       </p>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border-light">
+    <div className="border-border-light overflow-hidden rounded-lg border">
       <table className="w-full text-sm">
-        <thead className="bg-surface-secondary text-left text-text-secondary">
+        <thead className="bg-surface-secondary text-text-secondary text-left">
           <tr>
             <th className="px-3 py-2 font-medium">{localize('com_ui_tars_users_username')}</th>
             <th className="px-3 py-2 font-medium">{localize('com_auth_email')}</th>
@@ -28,9 +28,9 @@ function UsersList({
         </thead>
         <tbody>
           {users.map((user) => (
-            <tr key={user.id} className="border-t border-border-light">
-              <td className="px-3 py-2 text-text-primary">{user.username}</td>
-              <td className="px-3 py-2 text-text-secondary">{user.email || '—'}</td>
+            <tr key={user.id} className="border-border-light border-t">
+              <td className="text-text-primary px-3 py-2">{user.username}</td>
+              <td className="text-text-secondary px-3 py-2">{user.email || '—'}</td>
             </tr>
           ))}
         </tbody>
@@ -48,16 +48,16 @@ function GroupsList({
 }) {
   if (groups.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-text-secondary">
+      <p className="text-text-secondary py-8 text-center text-sm">
         {localize('com_ui_tars_roles_usage_groups_empty')}
       </p>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border-light">
+    <div className="border-border-light overflow-hidden rounded-lg border">
       <table className="w-full text-sm">
-        <thead className="bg-surface-secondary text-left text-text-secondary">
+        <thead className="bg-surface-secondary text-text-secondary text-left">
           <tr>
             <th className="px-3 py-2 font-medium">{localize('com_ui_tars_groups_name')}</th>
             <th className="px-3 py-2 font-medium">{localize('com_ui_description')}</th>
@@ -65,9 +65,9 @@ function GroupsList({
         </thead>
         <tbody>
           {groups.map((group) => (
-            <tr key={group.id} className="border-t border-border-light">
-              <td className="px-3 py-2 text-text-primary">{group.name}</td>
-              <td className="px-3 py-2 text-text-secondary">{group.description || '—'}</td>
+            <tr key={group.id} className="border-border-light border-t">
+              <td className="text-text-primary px-3 py-2">{group.name}</td>
+              <td className="text-text-secondary px-3 py-2">{group.description || '—'}</td>
             </tr>
           ))}
         </tbody>

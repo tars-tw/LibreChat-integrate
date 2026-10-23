@@ -32,19 +32,19 @@ export default function ResponseDialog({
         className="w-11/12 md:max-w-4xl"
         main={
           <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-            <div className="rounded-lg border-l-4 border-border-medium bg-surface-secondary p-3">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+            <div className="border-border-medium bg-surface-secondary rounded-lg border-l-4 p-3">
+              <p className="text-text-secondary mb-1 text-xs font-semibold tracking-wide uppercase">
                 {localize('com_ui_tars_audit_col_query')}
               </p>
-              <p className="whitespace-pre-wrap break-words text-sm text-text-primary">
+              <p className="text-text-primary text-sm break-words whitespace-pre-wrap">
                 {pair?.query ?? ''}
               </p>
             </div>
             <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+              <p className="text-text-secondary mb-1 text-xs font-semibold tracking-wide uppercase">
                 {localize('com_ui_tars_audit_col_response')}
               </p>
-              <div className="prose dark:prose-invert max-w-none text-sm text-text-primary">
+              <div className="prose dark:prose-invert text-text-primary max-w-none text-sm">
                 <MarkdownLite content={pair?.response ?? ''} codeExecution={false} />
               </div>
             </div>
