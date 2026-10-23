@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react';
 import { Chip, Spinner } from '@librechat/client';
-import { X, User, Users, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
-import type { TTarsMcpPermissionPrincipal } from 'librechat-data-provider';
+import { User, Users, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import type { TTarsMcpPrincipalInfo, TTarsMcpPermissionPrincipal } from 'librechat-data-provider';
 import McpPaginationControls from './McpPaginationControls';
 import { useClientPagination } from './useClientPagination';
 import { mcpActionClass } from './actions';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 
-/** Matches `principalKey` from the share dialog, so the editor's targets and these rows share one identity. */
-export const permissionPrincipalKey = (principal: TTarsMcpPermissionPrincipal): string =>
-  `${principal.principal_type}-${principal.principal_id}`;
+/** Matches `principalKey` from the share dialog, so dialog targets and these rows share one identity. */
+export const permissionPrincipalKey = (
+  principal: Pick<TTarsMcpPrincipalInfo, 'principal_type' | 'principal_id'>,
+): string => `${principal.principal_type}-${principal.principal_id}`;
 
 type SortField = 'name' | 'type' | 'servers' | 'status';
 
@@ -29,16 +30,12 @@ const COMPARE: Record<
 };
 
 /** Only the icon tells users and groups apart (blue / purple); the label stays in the body color. */
-const TYPE_ICON_COLOR = { user: 'text-series-2', group: 'text-series-5' } as const;
+export const TYPE_ICON_COLOR = { user: 'text-series-2', group: 'text-series-5' } as const;
 
 interface McpPermissionPrincipalsProps {
   principals: TTarsMcpPermissionPrincipal[];
   isLoading: boolean;
-  /** The single principal currently loaded in the editor above. */
-  editingKey: string | null;
   onEdit: (principal: TTarsMcpPermissionPrincipal) => void;
-  /** Leaves editing: the editor above drops its target and its unsaved checks. */
-  onCancelEdit: () => void;
   onRemove: (principal: TTarsMcpPermissionPrincipal) => void;
 }
 
@@ -49,9 +46,7 @@ interface McpPermissionPrincipalsProps {
 export default function McpPermissionPrincipals({
   principals,
   isLoading,
-  editingKey,
   onEdit,
-  onCancelEdit,
   onRemove,
 }: McpPermissionPrincipalsProps) {
   const localize = useLocalize();
@@ -143,25 +138,13 @@ export default function McpPermissionPrincipals({
               {pageItems.map((principal) => {
                 const key = permissionPrincipalKey(principal);
                 const isGroup = principal.principal_type === 'group';
-                const isEditing = key === editingKey;
                 const TypeIcon = isGroup ? Users : User;
                 return (
-                  <tr
-                    key={key}
-                    className={cn(
-                      'border-border-light border-t',
-                      isEditing ? 'bg-surface-active-alt' : 'hover:bg-surface-hover',
-                    )}
-                  >
+                  <tr key={key} className="border-border-light hover:bg-surface-hover border-t">
                     <td className="px-3 py-2">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="text-text-primary truncate font-medium">
-                          {principal.name}
-                        </span>
-                        {isEditing && (
-                          <Chip tone="info">{localize('com_ui_tars_mcp_principal_editing')}</Chip>
-                        )}
-                      </div>
+                      <span className="text-text-primary block truncate font-medium">
+                        {principal.name}
+                      </span>
                       {principal.email != null && principal.email !== '' && (
                         <span className="text-text-secondary block truncate text-xs">
                           {principal.email}
@@ -189,18 +172,7 @@ export default function McpPermissionPrincipals({
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex justify-end gap-1">
-                        {principal.is_active && isEditing && (
-                          <button
-                            type="button"
-                            aria-label={`${localize('com_ui_tars_mcp_cancel_editing')} ${principal.name}`}
-                            title={localize('com_ui_tars_mcp_cancel_editing')}
-                            onClick={onCancelEdit}
-                            className={mcpActionClass('neutral')}
-                          >
-                            <X className="icon-sm" />
-                          </button>
-                        )}
-                        {principal.is_active && !isEditing && (
+                        {principal.is_active && (
                           <button
                             type="button"
                             aria-label={`${localize('com_ui_edit')} ${principal.name}`}

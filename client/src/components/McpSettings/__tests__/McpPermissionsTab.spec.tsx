@@ -1,6 +1,6 @@
 import React from 'react';
 import { PrincipalType } from 'librechat-data-provider';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
 import type {
   TPrincipal,
@@ -14,6 +14,7 @@ const mockSave = jest.fn();
 const mockDelete = jest.fn();
 const mockShowToast = jest.fn();
 const mockPermissionsQuery = jest.fn();
+let mockSaveOptions: { onSuccess?: () => void } = {};
 let mockPrincipals: TTarsMcpPermissionPrincipal[] = [];
 let mockPicked: TPrincipal[] = [];
 
@@ -71,15 +72,36 @@ jest.mock('~/data-provider', () => ({
   useTarsMcpPermissionPrincipalsQuery: () => ({ data: mockPrincipals, isLoading: false }),
   useTarsMcpPermissionsQuery: (principal: { type: string; id: string } | null) =>
     mockPermissionsQuery(principal),
-  useSaveTarsMcpPermissionsMutation: () => ({ mutate: mockSave, isLoading: false }),
+  useSaveTarsMcpPermissionsMutation: (options: { onSuccess?: () => void }) => {
+    mockSaveOptions = options;
+    return { mutate: mockSave, isLoading: false };
+  },
   useDeleteTarsMcpPermissionsMutation: () => ({ mutate: mockDelete, isLoading: false }),
+  useTarsMcpServerPermissionsQuery: (serverId: string | null) => ({
+    data: serverId === 's1' ? [] : undefined,
+    isLoading: false,
+  }),
+  useSaveTarsMcpServerPermissionsMutation: () => ({ mutate: jest.fn(), isLoading: false }),
 }));
 
-/** Stands in for the directory combobox: one press adds whatever the test queued up. */
+/** Stands in for the directory combobox: one press adds (or only checks) what the test queued up. */
 jest.mock('~/components/Sharing/PeoplePicker/DirectoryPeoplePicker', () => ({
   __esModule: true,
-  default: ({ onAddPeople }: { onAddPeople: (people: TPrincipal[]) => void }) => (
-    <button type="button" data-testid="pick-people" onClick={() => onAddPeople(mockPicked)} />
+  default: ({
+    onAddPeople,
+    onPendingChange,
+  }: {
+    onAddPeople: (people: TPrincipal[]) => void;
+    onPendingChange?: (people: TPrincipal[]) => void;
+  }) => (
+    <>
+      <button type="button" data-testid="pick-people" onClick={() => onAddPeople(mockPicked)} />
+      <button
+        type="button"
+        data-testid="check-people"
+        onClick={() => onPendingChange?.(mockPicked)}
+      />
+    </>
   ),
 }));
 
@@ -90,13 +112,12 @@ const pick = (...people: TPrincipal[]) => {
 
 const serverCheckbox = (name: string) => screen.getByRole('checkbox', { name });
 
-const editorToggle = () =>
-  screen.getByRole('button', { name: 'com_ui_tars_mcp_permission_editor' });
+const addButton = () => screen.getByRole('button', { name: 'com_ui_tars_mcp_add_permission' });
 
-/** The editor starts folded; most cases work inside it. */
+/** Most cases work inside the dialog that 新增權限 opens. */
 const renderOpen = () => {
   render(<McpPermissionsTab />);
-  fireEvent.click(editorToggle());
+  fireEvent.click(addButton());
 };
 
 beforeEach(() => {
@@ -110,7 +131,7 @@ beforeEach(() => {
 });
 
 describe('McpPermissionsTab', () => {
-  it('opens folded, so the assigned list is what the page shows first', () => {
+  it('keeps the assignment dialog closed until 新增權限 is pressed', () => {
     mockPrincipals = [
       {
         principal_type: 'group',
@@ -124,15 +145,32 @@ describe('McpPermissionsTab', () => {
     ];
     render(<McpPermissionsTab />);
 
-    expect(editorToggle()).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByTestId('pick-people')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'com_ui_save' })).toBeNull();
     expect(screen.getByText('BOSS專用')).toBeInTheDocument();
 
-    fireEvent.click(editorToggle());
+    fireEvent.click(addButton());
 
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByTestId('pick-people')).toBeInTheDocument();
     expect(serverCheckbox('Github-repo')).toBeInTheDocument();
+  });
+
+  it('opens the server-side assignment from an overview row, apart from the principal dialog', () => {
+    render(<McpPermissionsTab />);
+
+    const [githubAssign] = screen.getAllByRole('button', {
+      name: 'com_ui_tars_mcp_assign_server_title',
+    });
+    fireEvent.click(githubAssign);
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('com_ui_tars_mcp_assign_server_title')).toBeInTheDocument();
+    expect(within(dialog).getByText('com_ui_tars_mcp_assigned_empty')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('checkbox', { name: 'Github-repo' })).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /cancel/i }));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it("loads a single target's saved grants into the tree", () => {
@@ -159,6 +197,22 @@ describe('McpPermissionsTab', () => {
       user_ids: ['u1'],
       user_group_ids: ['g1'],
       servers: [{ mcp_server_id: 's2', mcp_tool_ids: [] }],
+    });
+  });
+
+  it('asks for Add before saving picks that were only checked', () => {
+    renderOpen();
+    pick(amy);
+    mockPicked = [bob];
+    fireEvent.click(screen.getByTestId('check-people'));
+
+    expect(screen.getByText('com_ui_tars_mcp_pending_picks')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
+
+    expect(mockSave).not.toHaveBeenCalled();
+    expect(mockShowToast).toHaveBeenCalledWith({
+      message: 'com_ui_tars_mcp_pending_picks',
+      status: 'warning',
     });
   });
 
@@ -197,16 +251,14 @@ describe('McpPermissionsTab', () => {
     ];
     render(<McpPermissionsTab />);
 
-    expect(editorToggle()).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(screen.getByRole('button', { name: 'com_ui_edit Amy' }));
 
-    expect(editorToggle()).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(mockPermissionsQuery).toHaveBeenLastCalledWith({ type: 'user', id: 'u1' });
     expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByText('com_ui_tars_mcp_principal_editing')).toBeInTheDocument();
   });
 
-  it('cancels editing back to no target and an empty tree', () => {
+  it('drops unsaved edits on cancel, so the next dialog starts empty', () => {
     mockPrincipals = [
       {
         principal_type: 'user',
@@ -222,17 +274,30 @@ describe('McpPermissionsTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'com_ui_edit Amy' }));
     expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'true');
 
-    fireEvent.click(screen.getByRole('button', { name: 'com_ui_tars_mcp_cancel_editing Amy' }));
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
-    expect(screen.queryByText('com_ui_tars_mcp_principal_editing')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'com_ui_edit Amy' })).toBeInTheDocument();
-    expect(editorToggle()).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('checkbox', { name: 'Github-repo' })).toBeNull();
 
-    fireEvent.click(editorToggle());
+    fireEvent.click(addButton());
     expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'false');
     fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
     expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('closes the dialog once the save succeeds', () => {
+    renderOpen();
+    pick(amy);
+    fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockSave).toHaveBeenCalled();
+
+    act(() => mockSaveOptions.onSuccess?.());
+
+    expect(mockShowToast).toHaveBeenCalledWith({
+      message: 'com_ui_tars_mcp_permissions_saved',
+      status: 'success',
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('pages a long list of assigned users and groups', () => {
@@ -275,7 +340,7 @@ describe('McpPermissionsTab', () => {
 
     /** Names in the assigned table, top to bottom. */
     const assignedNames = () =>
-      screen
+      within(screen.getByRole('region', { name: 'com_ui_tars_mcp_assigned_title' }))
         .getAllByRole('row')
         .slice(1)
         .map((row) => within(row).getAllByRole('cell')[0].textContent);

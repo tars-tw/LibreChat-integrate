@@ -15,7 +15,7 @@ const SECTION_LIMIT = 200;
 
 /** The panel renders in the dialog's flow rather than floating: a floating list is
  *  clipped by the dialog's own scroll area, while an in-flow one grows the dialog. Each
- *  column (groups, users) scrolls on its own so either can be browsed without the other. */
+ *  column (users, groups) scrolls on its own so either can be browsed without the other. */
 const COLUMN_HEIGHT = 'max-h-[min(24rem,45dvh)]';
 
 const optionKey = (principal: TPrincipalSearchResult) =>
@@ -43,18 +43,24 @@ interface DirectoryPeoplePickerProps {
   onAddPeople: (principals: TPrincipal[]) => void;
   /** `idOnTheSource` of principals already on the share list; they are not offered. */
   excludeIds?: (string | undefined)[];
+  /**
+   * Reports the principals checked but not yet added with Add (empty once they are), so a
+   * host whose own Save would otherwise ignore them can include them or ask for Add first.
+   */
+  onPendingChange?: (principals: TPrincipal[]) => void;
   className?: string;
 }
 
 /**
  * The people picker when a directory (pwc_tars) is configured — the share dialog and
- * MCP 權限設定 both use it: groups and users are listed like an address book in two
+ * MCP 權限設定 both use it: users and groups are listed like an address book in two
  * side-by-side columns that scroll independently (one search filters both), several
  * can be checked at once and show as removable tags, and Add hands them to the caller.
  */
 export default function DirectoryPeoplePicker({
   onAddPeople,
   excludeIds = [],
+  onPendingChange,
   className,
 }: DirectoryPeoplePickerProps) {
   const localize = useLocalize();
@@ -106,6 +112,17 @@ export default function DirectoryPeoplePicker({
         .filter((principal): principal is TPrincipalSearchResult => principal != null),
     [selectedKeys, options],
   );
+
+  /** Reported by identity, not array: hosts re-render with a fresh `excludeIds` array, which
+   *  rebuilds `selected` — reporting every rebuild would loop through the host's state. */
+  const pendingRef = useRef(onPendingChange);
+  pendingRef.current = onPendingChange;
+  const pendingKey = selected.map(optionKey).join('|');
+  const pendingSelected = useRef(selected);
+  pendingSelected.current = selected;
+  useEffect(() => {
+    pendingRef.current?.(pendingSelected.current.map(toPrincipal));
+  }, [pendingKey]);
 
   const sections = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -214,11 +231,12 @@ export default function DirectoryPeoplePicker({
         </div>
       );
     }
-    /** Groups left, users right; stacked (groups first) where the panel is too narrow. */
+    /** Users left, groups right (matching SelectedPrincipalsList); stacked (users first)
+     *  where the panel is too narrow. */
     return (
       <div className="divide-border-light grid grid-cols-1 divide-y md:grid-cols-2 md:divide-x md:divide-y-0">
-        {renderColumn('com_ui_share_directory_groups', sections.groups, 'directory-picker-groups')}
         {renderColumn('com_ui_share_directory_users', sections.users, 'directory-picker-users')}
+        {renderColumn('com_ui_share_directory_groups', sections.groups, 'directory-picker-groups')}
       </div>
     );
   };
