@@ -1,5 +1,5 @@
 const { logger } = require('@librechat/data-schemas');
-const { listAvailableTools } = require('@librechat/api');
+const { listAvailableTools, listTarsPluginCatalog } = require('@librechat/api');
 const { getCachedTools, setCachedTools } = require('~/server/services/Config');
 const { availableTools, toolkits } = require('~/app/clients/tools');
 const { getAppConfig } = require('~/server/services/Config');
@@ -36,13 +36,18 @@ const getAvailableTools = async (req, res) => {
      * run to pause and no resume surface, so attaching one there guarantees a
      * permanent tool error. Scope them out of the assistants listing by route.
      */
+    const isAssistantsRoute = req.baseUrl?.includes('/assistants') === true;
     const toolsOutput = listAvailableTools({
       manifest: availableTools,
       toolkits,
       toolDefinitions,
       githubCompare: appConfig?.githubCompare,
-      forAssistants: req.baseUrl?.includes('/assistants') === true,
+      forAssistants: isAssistantsRoute,
     });
+
+    if (!isAssistantsRoute) {
+      toolsOutput.push(...(await listTarsPluginCatalog(req.user.tarsId)));
+    }
 
     res.status(200).json(toolsOutput);
   } catch (error) {

@@ -831,22 +831,24 @@ const isBuiltInTool = (toolName) =>
   );
 
 /**
- * pwc_tars plugin tools the request may equip: the active 專用腦 must offer the
- * plugin and pwc_tars must have it loaded. Resolving also primes the manifest
- * cache the definition registry reads, so the definition-only path can
+ * pwc_tars plugin tools the request may equip: pwc_tars must have the plugin
+ * loaded, and the chat composer's must also be offered by the active 專用腦 (a
+ * saved agent's were picked in the agent builder). Resolving also primes the
+ * manifest cache the definition registry reads, so the definition-only path can
  * advertise them without another round trip.
  * @param {ServerRequest} req
- * @param {string[]} tools
+ * @param {Object} agent
  * @returns {Promise<Set<string>>}
  */
-const resolveAllowedTarsPluginTools = async (req, tools) => {
-  const pluginTools = tools.filter(isTarsPluginToolName);
+const resolveAllowedTarsPluginTools = async (req, agent) => {
+  const pluginTools = agent.tools.filter(isTarsPluginToolName);
   if (pluginTools.length === 0 || !isTarsConfigured()) {
     return new Set();
   }
   return resolveTarsPluginToolNames(pluginTools, {
     tarsUserId: req.user?.tarsId,
     domainId: req.body?.domain_id,
+    agentId: agent.id,
   });
 };
 
@@ -952,7 +954,7 @@ async function loadToolDefinitionsWrapper({
   const mcpPermissionContext = createMCPPermissionContext(req);
   const canUseMCP = hasMCPTools ? await mcpPermissionContext.canUseServers(req.user) : true;
   const [allowedTarsPluginTools, allowedTarsBuiltinTools] = await Promise.all([
-    resolveAllowedTarsPluginTools(req, agent.tools),
+    resolveAllowedTarsPluginTools(req, agent),
     resolveTarsBuiltinTools(agent.tools, checkCapability),
   ]);
 
@@ -981,8 +983,7 @@ async function loadToolDefinitionsWrapper({
       return checkCapability(AgentCapabilities.chart_agent);
     }
     if (isTarsPluginToolName(tool)) {
-      /** Switched on per brain by a pwc_tars admin; the brain is the gate. */
-      return allowedTarsPluginTools.has(tool);
+      return areToolsEnabled && allowedTarsPluginTools.has(tool);
     }
     if (isTarsBuiltinToolName(tool)) {
       /** pwc_tars must list it, and its chat switch's capability must be on. */
@@ -1889,7 +1890,7 @@ async function loadAgentTools({
   const canUseMCP = hasMCPTools ? await mcpPermissionContext.canUseServers(req.user) : true;
   const canUseTool = await resolveAgentToolPermissions(req, agent.tools, enabledCapabilities);
   const [allowedTarsPluginTools, allowedTarsBuiltinTools] = await Promise.all([
-    resolveAllowedTarsPluginTools(req, agent.tools),
+    resolveAllowedTarsPluginTools(req, agent),
     resolveTarsBuiltinTools(agent.tools, checkCapability),
   ]);
 
@@ -1911,8 +1912,7 @@ async function loadAgentTools({
     } else if (tool === Tools.chart_agent) {
       return checkCapability(AgentCapabilities.chart_agent);
     } else if (isTarsPluginToolName(tool)) {
-      /** Switched on per brain by a pwc_tars admin; the brain is the gate. */
-      return allowedTarsPluginTools.has(tool);
+      return areToolsEnabled && allowedTarsPluginTools.has(tool);
     } else if (isTarsBuiltinToolName(tool)) {
       return allowedTarsBuiltinTools.has(tool);
     } else if (tool === Tools.data_query || tool === Tools.table_task) {
