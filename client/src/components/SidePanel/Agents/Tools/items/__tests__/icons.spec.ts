@@ -81,4 +81,19 @@ describe('getIconForItem', () => {
     const result = getIconForItem(item);
     expect(result.Icon).toBeDefined();
   });
+
+  test('gives a pwc_tars plugin tool the Puzzle instead of the generic tool icon', () => {
+    const tool = (id: string): AgentItem => ({
+      kind: 'tool',
+      id,
+      name: id,
+      description: '',
+      iconKey: 'tool',
+      plugin: makePlugin({ pluginKey: id }),
+    });
+    const plugin = getIconForItem(tool('tars_plugin_text_stats'));
+    const generic = getIconForItem(tool('dalle'));
+    expect(plugin.Icon).not.toBe(generic.Icon);
+    expect(plugin.colorClass).toMatch(/series-3/);
+  });
 });

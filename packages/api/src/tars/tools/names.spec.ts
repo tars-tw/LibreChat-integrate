@@ -1,5 +1,10 @@
 import { AgentCapabilities } from 'librechat-data-provider';
-import { tarsToolsForToggles, withTarsSpreadsheetTools, tarsBuiltinToolCapability } from './names';
+import {
+  tarsToolsForToggles,
+  isPersistableTarsTool,
+  withTarsSpreadsheetTools,
+  tarsBuiltinToolCapability,
+} from './names';
 
 describe('tarsToolsForToggles', () => {
   it('mounts nothing when no pwc_tars switch is on', () => {
@@ -56,5 +61,25 @@ describe('tarsBuiltinToolCapability', () => {
     expect(tarsBuiltinToolCapability('tars_data_query')).toBeUndefined();
     expect(tarsBuiltinToolCapability('tars_generate_file')).toBe(AgentCapabilities.file_agent);
     expect(tarsBuiltinToolCapability('web_search')).toBeUndefined();
+  });
+});
+
+describe('isPersistableTarsTool', () => {
+  const original = process.env.TARS_AUTH_URL;
+
+  afterEach(() => {
+    process.env.TARS_AUTH_URL = original;
+  });
+
+  it('lets a saved agent keep pwc_tars built-ins and plugins while TARS is configured', () => {
+    process.env.TARS_AUTH_URL = 'http://tars.test';
+    expect(isPersistableTarsTool('tars_knowledge_search')).toBe(true);
+    expect(isPersistableTarsTool('tars_plugin_text_stats')).toBe(true);
+    expect(isPersistableTarsTool('web_search')).toBe(false);
+  });
+
+  it('keeps none without TARS', () => {
+    delete process.env.TARS_AUTH_URL;
+    expect(isPersistableTarsTool('tars_plugin_text_stats')).toBe(false);
   });
 });

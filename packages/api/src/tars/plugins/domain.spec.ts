@@ -122,4 +122,46 @@ describe('resolveTarsPluginToolNames', () => {
       resolveTarsPluginToolNames(requested, { tarsUserId: 'u1', domainId: 100 }),
     ).resolves.toEqual(new Set());
   });
+
+  it("keeps a saved agent's loaded plugins whatever the brain switched on", async () => {
+    const fetchMock = mockBackend();
+    await expect(
+      resolveTarsPluginToolNames(requested, {
+        tarsUserId: 'u1',
+        domainId: 235,
+        agentId: 'agent_builder123',
+      }),
+    ).resolves.toEqual(new Set(['tars_plugin_text_stats', 'tars_plugin_summarize_text']));
+    const urls = fetchMock.mock.calls.map(([input]) => String(input));
+    expect(urls.some((url) => url.includes('/api/domain_settings/'))).toBe(false);
+  });
+
+  it("keeps a saved agent's plugins without any brain", async () => {
+    mockBackend();
+    await expect(
+      resolveTarsPluginToolNames(['tars_plugin_text_stats'], {
+        tarsUserId: 'u1',
+        agentId: 'agent_builder123____1',
+      }),
+    ).resolves.toEqual(new Set(['tars_plugin_text_stats']));
+  });
+
+  it('still gates the chat composer (ephemeral agent) on the brain', async () => {
+    mockBackend();
+    await expect(
+      resolveTarsPluginToolNames(requested, {
+        tarsUserId: 'u1',
+        domainId: 235,
+        agentId: 'openAI__gpt-5.4-mini',
+      }),
+    ).resolves.toEqual(new Set());
+  });
+
+  it('allows nothing for an unlinked account, saved agent or not', async () => {
+    const fetchMock = mockBackend();
+    await expect(
+      resolveTarsPluginToolNames(requested, { agentId: 'agent_builder123' }),
+    ).resolves.toEqual(new Set());
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

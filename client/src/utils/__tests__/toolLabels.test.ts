@@ -94,3 +94,27 @@ describe('getToolDisplayLabel', () => {
     expect(getToolDisplayLabel('custom_tool', identityLocalize)).toBe('custom_tool');
   });
 });
+
+describe('getToolDisplayLabel for pwc_tars plugin tools', () => {
+  const localize = (key: string) => key;
+
+  it('uses the display name the agent-builder listing reports', () => {
+    const labels = new Map([['tars_plugin_python_exec', 'Python Calculator']]);
+    expect(getToolDisplayLabel('tars_plugin_python_exec', localize, [], labels)).toBe(
+      'Python Calculator',
+    );
+  });
+
+  it('falls back to the plugin name as a title, never the raw tool id', () => {
+    expect(getToolDisplayLabel('tars_plugin_text_stats', localize)).toBe('Text Stats');
+    expect(getToolDisplayLabel('tars_plugin_python_exec', localize, [], new Map())).toBe(
+      'Python Exec',
+    );
+  });
+
+  it('is not mistaken for an MCP tool when the plugin name contains the delimiter', () => {
+    expect(getToolDisplayLabel('tars_plugin_sync_mcp_logs', localize, ['logs'])).toBe(
+      'Sync Mcp Logs',
+    );
+  });
+});

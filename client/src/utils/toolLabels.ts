@@ -1,4 +1,4 @@
-import { Constants, splitToolCallName } from 'librechat-data-provider';
+import { Constants, splitToolCallName, tarsPluginNameFromToolName } from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks';
 
 /**
@@ -84,11 +84,22 @@ export function parseToolName(
   };
 }
 
+/** A pwc_tars plugin name read as a title (`text_stats` → `Text Stats`), for
+ *  when its manifest's display name is not at hand. */
+function titleFromPluginName(pluginName: string): string {
+  return pluginName
+    .split('_')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 /**
  * Resolve a tool id to a single user-facing short label. Pure string —
  * use `parseToolName` directly when you need structured parts (e.g. to
  * render a code-style badge for the tool name next to the server).
  *
+ *   - pwc_tars plugin → its display name from `pluginLabels`, else its name as a title
  *   - MCP tool  → server name (keeps the header summary short)
  *   - Native   → localized friendly name from {@link TOOL_FRIENDLY_NAME_KEYS}
  *   - Unknown  → raw name
@@ -97,7 +108,12 @@ export function getToolDisplayLabel(
   rawName: string,
   localize: (key: TranslationKeys) => string,
   knownServerNames?: readonly string[],
+  pluginLabels?: ReadonlyMap<string, string>,
 ): string {
+  const pluginName = tarsPluginNameFromToolName(rawName);
+  if (pluginName) {
+    return pluginLabels?.get(rawName) || titleFromPluginName(pluginName);
+  }
   const parsed = parseToolName(rawName, knownServerNames);
   if (parsed.mcpServer) return parsed.mcpServer;
   if (parsed.friendlyKey) return localize(parsed.friendlyKey);
