@@ -36,6 +36,7 @@ import {
   normalizeCodeHighlightThrottleMs,
 } from '~/components/Chat/Messages/Content/Parts/useLazyHighlight';
 import KeyboardShortcutsDialog from '~/components/Nav/KeyboardShortcutsDialog';
+import { TarsPluginLabelsProvider } from '~/Providers/TarsPluginLabelsContext';
 import KeyboardDeleteDialog from '~/components/Nav/KeyboardDeleteDialog';
 import { useUserTermsQuery, useGetStartupConfig } from '~/data-provider';
 import { MobileDrawerScrim } from '~/components/UnifiedSidebar/mobile';
@@ -227,7 +228,9 @@ function RootLayout() {
                         ready={isConfigReady && configError == null}
                         userId={user?.id}
                       >
-                        <Outlet />
+                        <TarsPluginLabelsProvider enabled={config?.tarsAuth === true}>
+                          <Outlet />
+                        </TarsPluginLabelsProvider>
                       </MCPAppsPolicyProvider>
                     </div>
                     {/* Without the strip the scrim exists only for the travel:

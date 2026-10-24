@@ -2,6 +2,7 @@ import {
   AgentCapabilities,
   TARS_SWITCH_TOOLS,
   TARS_TOOL_SWITCHES,
+  isTarsPluginToolName,
   isTarsBuiltinToolName,
 } from 'librechat-data-provider';
 import type { TEphemeralAgent, TTarsBuiltinToolName } from 'librechat-data-provider';
@@ -47,12 +48,13 @@ export function tarsToolsForToggles(toggles?: TarsToolToggles | null): TTarsBuil
 }
 
 /**
- * Whether a saved agent may persist this tool. pwc_tars's built-ins are native
- * tools rather than manifest entries, so the agent save filter would otherwise
- * drop them; the per-turn capability and scope gates still run in ToolService.
+ * Whether a saved agent may persist this tool. pwc_tars's built-ins and plugins
+ * are native tools rather than manifest entries, so the agent save filter would
+ * otherwise drop them; the per-turn capability and scope gates still run in
+ * ToolService.
  */
 export function isPersistableTarsTool(toolName: string | undefined | null): boolean {
-  return isTarsBuiltinToolName(toolName) && isTarsConfigured();
+  return (isTarsBuiltinToolName(toolName) || isTarsPluginToolName(toolName)) && isTarsConfigured();
 }
 
 /**

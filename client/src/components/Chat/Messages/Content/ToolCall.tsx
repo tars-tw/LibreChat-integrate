@@ -16,6 +16,7 @@ import {
 } from './disclosure';
 import { useLocalize, useProgress, useExpandCollapse, useLazyCollapseBody } from '~/hooks';
 import { ToolIcon, getToolIconType, isError, hasRenderableOutput } from './ToolOutput';
+import { useTarsPluginLabels } from '~/Providers/TarsPluginLabelsContext';
 import { cn, getToolDisplayLabel, logger, openInNewTab } from '~/utils';
 import { isToolCallPreparing, useToolPreparation } from './preparation';
 import { useMCPIconMap, useMCPServerNames } from '~/hooks/MCP';
@@ -84,6 +85,7 @@ export default function ToolCall({
   }, [auth]);
 
   const mcpServerNames = useMCPServerNames();
+  const tarsPluginLabels = useTarsPluginLabels();
   const { function_name, domain, isMCPToolCall, mcpServerName } = useMemo(() => {
     if (typeof name !== 'string') {
       return { function_name: '', domain: null, isMCPToolCall: false, mcpServerName: '' };
@@ -130,8 +132,10 @@ export default function ToolCall({
        *  above, so re-parsing it would classify an MCP function that happens to
        *  share a built-in's name (`read_file`, `set_memory`) as that native
        *  tool and show, and announce, an unrelated label. */
-      isMCPToolCall ? function_name : getToolDisplayLabel(function_name, localize, mcpServerNames),
-    [function_name, isMCPToolCall, localize, mcpServerNames],
+      isMCPToolCall
+        ? function_name
+        : getToolDisplayLabel(function_name, localize, mcpServerNames, tarsPluginLabels),
+    [function_name, isMCPToolCall, localize, mcpServerNames, tarsPluginLabels],
   );
   const mcpIconMap = useMCPIconMap();
   const mcpIconUrl = isMCPToolCall ? mcpIconMap.get(mcpServerName) : undefined;
