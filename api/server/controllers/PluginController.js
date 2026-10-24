@@ -3,6 +3,7 @@ const {
   getToolkitKey,
   checkPluginAuth,
   filterUniquePlugins,
+  listTarsPluginCatalog,
   filterGitHubComparePlugins,
 } = require('@librechat/api');
 const { getCachedTools, setCachedTools } = require('~/server/services/Config');
@@ -108,6 +109,10 @@ const getAvailableTools = async (req, res) => {
       }
 
       toolsOutput.push(checkPluginAuth(plugin) ? { ...plugin, authenticated: true } : plugin);
+    }
+
+    if (!isAssistantsRoute) {
+      toolsOutput.push(...(await listTarsPluginCatalog(req.user.tarsId)));
     }
 
     res.status(200).json(toolsOutput);

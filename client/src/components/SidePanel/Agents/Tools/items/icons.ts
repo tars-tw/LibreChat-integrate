@@ -1,3 +1,4 @@
+import { isTarsPluginToolName } from 'librechat-data-provider';
 import {
   Code,
   MessageCircleQuestion,
@@ -9,6 +10,7 @@ import {
   Wrench,
   Server,
   Workflow,
+  Puzzle,
   Zap,
   Layers,
   Network,
@@ -82,6 +84,12 @@ const BUILTIN_ICONS: Record<string, ItemIcon> = {
   },
 };
 
+/** pwc_tars plugin tools wear the Puzzle the chat composer gives them. */
+const TARS_PLUGIN_ICON: ItemIcon = {
+  Icon: Puzzle,
+  colorClass: 'bg-series-3/15 text-series-3',
+};
+
 const KIND_FALLBACK_ICONS: Record<AgentItem['kind'], ItemIcon> = {
   builtin: {
     Icon: Layers,
@@ -120,6 +128,9 @@ function extractIconUrl(item: AgentItem): string | undefined {
 export function getIconForItem(item: AgentItem): ItemIcon {
   if (item.kind === 'builtin') {
     return BUILTIN_ICONS[item.iconKey] ?? KIND_FALLBACK_ICONS.builtin;
+  }
+  if (item.kind === 'tool' && isTarsPluginToolName(item.id)) {
+    return TARS_PLUGIN_ICON;
   }
   const base = KIND_FALLBACK_ICONS[item.kind];
   const iconUrl = extractIconUrl(item);
