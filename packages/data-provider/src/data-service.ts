@@ -1230,6 +1230,28 @@ export const getTarsTokenReportExport = (
   return request.post(endpoints.tarsTokenReportExport(), range);
 };
 
+/** Admin: embedding token usage per group for one period. */
+export const getTarsEmbeddingUsageSummary = (
+  query: t.TTarsEmbeddingUsageQuery,
+): Promise<t.TTarsEmbeddingUsageSummary> => {
+  const { split_by, user_group_ids, user_id, ...rest } = query;
+  return request.get(
+    endpoints.tarsEmbeddingUsageSummary({
+      ...rest,
+      ...(split_by != null ? { split_by } : {}),
+      ...(user_group_ids?.length ? { user_group_ids: user_group_ids.join(',') } : {}),
+      ...(user_id ? { user_id } : {}),
+    }),
+  );
+};
+
+/** Admin: the embedding usage one chat message spent. */
+export const getTarsMessageEmbeddingUsage = (
+  messageId: string,
+): Promise<t.TTarsMessageEmbeddingUsage> => {
+  return request.get(endpoints.tarsMessageEmbeddingUsage(messageId));
+};
+
 export const getTarsTokenSystemDefaults = (): Promise<t.TTarsTokenDefaultsResponse> => {
   return request.get(endpoints.tarsTokenSystemDefaults());
 };

@@ -18,6 +18,7 @@ import {
   isActiveQuota,
   quotaUsageShare,
   providerBadgeClass,
+  SELECT_CLASS,
 } from './helpers';
 import {
   useTarsTokenQuotasQuery,
@@ -28,9 +29,6 @@ import { formatTokens, recentReportRange } from './Report/helpers';
 import TokenQuotaInfo from './TokenQuotaInfo';
 import QuotaModal from './QuotaModal';
 import { useLocalize } from '~/hooks';
-
-const SELECT_CLASS =
-  'h-10 rounded-md border border-border-light bg-surface-primary px-3 text-sm text-text-primary';
 
 /**
  * Per-person overrides, with the consumption pwc_tars counts against each one.

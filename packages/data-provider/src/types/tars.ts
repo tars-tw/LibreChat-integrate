@@ -2130,6 +2130,67 @@ export type TTarsTokenReportUserQuery = TTarsTokenReportRange & {
 export type TTarsTokenReportMembersResponse = { members: TTarsTokenUserUsage[] };
 export type TTarsTokenReportUserResponse = { usage: TTarsTokenUserUsageDetail | null };
 
+/**
+ * Embedding token usage (pwc_tars `embedding_usage_log`). Kept apart from the
+ * chat token report — it never counts against a quota.
+ */
+export type TTarsEmbeddingGroupBy = 'model' | 'purpose' | 'knowledge_base' | 'domain' | 'day';
+export type TTarsEmbeddingSplitBy = Exclude<TTarsEmbeddingGroupBy, 'day'>;
+
+export type TTarsEmbeddingUsageTotals = {
+  input_tokens: number;
+  request_count: number;
+  text_count: number;
+  usage_rows: number;
+};
+
+export type TTarsEmbeddingUsageRow = TTarsEmbeddingUsageTotals & {
+  /** The model / purpose / id / `YYYY-MM-DD` day; null for usage with no such value. */
+  group: string | null;
+  group_label?: string | null;
+  split?: string | null;
+  split_label?: string | null;
+};
+
+export type TTarsEmbeddingUsageQuery = TTarsTokenReportRange & {
+  group_by: TTarsEmbeddingGroupBy;
+  /** Only with `group_by: 'day'`. */
+  split_by?: TTarsEmbeddingSplitBy;
+  /** Keeps the usage recorded for any of these user groups; the totals follow. */
+  user_group_ids?: string[];
+  /** Keeps one pwc_tars user's usage. */
+  user_id?: string;
+};
+
+export type TTarsEmbeddingUsageSummary = {
+  group_by: TTarsEmbeddingGroupBy;
+  split_by: TTarsEmbeddingSplitBy | null;
+  start_date: string;
+  end_date: string;
+  rows: TTarsEmbeddingUsageRow[];
+  /** Over the whole range, so they still add up when `rows_cut_off`. */
+  totals: TTarsEmbeddingUsageTotals;
+  /** A plain report kept the heaviest groups, a split one the latest whole days. */
+  rows_cut_off: boolean;
+};
+
+export type TTarsMessageEmbeddingUsageRow = {
+  id: string;
+  purpose: string;
+  provider: string | null;
+  embedding_model_name: string | null;
+  knowledge_base_id: string | null;
+  input_tokens: number;
+  request_count: number;
+  text_count: number;
+  created_at: string | null;
+};
+
+export type TTarsMessageEmbeddingUsage = {
+  message_id: string;
+  rows: TTarsMessageEmbeddingUsageRow[];
+};
+
 export type TTarsReleaseNote = {
   id: string;
   version: string;

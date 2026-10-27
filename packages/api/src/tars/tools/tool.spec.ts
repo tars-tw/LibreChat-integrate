@@ -268,6 +268,24 @@ describe('createTarsBuiltinTool', () => {
     });
   });
 
+  it('names the brain and the response message so pwc_tars files the search tokens under them', async () => {
+    const fetchMock = mockBackend();
+    const builtin = await createTarsBuiltinTool({
+      toolName: 'tars_knowledge_search',
+      tarsUserId: USER_ID,
+      domainId: 100,
+    });
+
+    await builtin!.invoke(
+      { id: 'call-1', name: 'tars_knowledge_search', type: 'tool_call', args: { query: 'q' } },
+      { configurable: { requestBody: { messageId: 'response-1' } } },
+    );
+    const headers = (toolCallOf(fetchMock)?.[1] as RequestInit).headers as Record<string, string>;
+    expect(headers['X-TARS-User-Id']).toBe(USER_ID);
+    expect(headers['X-TARS-Domain-Id']).toBe('100');
+    expect(headers['X-TARS-Message-Id']).toBe('response-1');
+  });
+
   it('narrows to the named knowledge bases and refuses one outside the brain', async () => {
     const fetchMock = mockBackend();
     const builtin = await createTarsBuiltinTool({

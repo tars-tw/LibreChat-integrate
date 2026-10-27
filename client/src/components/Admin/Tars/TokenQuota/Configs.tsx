@@ -15,6 +15,7 @@ import {
   groupConfigsByGroup,
   providerBadgeClass,
   capOf,
+  SELECT_CLASS,
 } from './helpers';
 import {
   useTarsTokenConfigsQuery,
@@ -25,9 +26,6 @@ import { formatTokens, recentReportRange } from './Report/helpers';
 import TokenQuotaInfo from './TokenQuotaInfo';
 import ConfigModal from './ConfigModal';
 import { useLocalize } from '~/hooks';
-
-const SELECT_CLASS =
-  'h-10 rounded-md border border-border-light bg-surface-primary px-3 text-sm text-text-primary';
 
 /**
  * Group-level quota rules, grouped the way they are read: one user group's
