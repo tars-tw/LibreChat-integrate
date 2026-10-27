@@ -6,7 +6,11 @@ import type { LangflowToolResult } from '~/tars/langflow/client';
 import type { TarsToolRunConfig } from '~/tars/tools/progress';
 import type { TarsAgentBindings } from './bindings';
 import type { TarsAgentScope } from './client';
-import { langflowToolResult, LANGFLOW_TOOL_RESPONSE_FORMAT } from '~/tars/langflow/client';
+import {
+  langflowToolResult,
+  tarsUsageAttribution,
+  LANGFLOW_TOOL_RESPONSE_FORMAT,
+} from '~/tars/langflow/client';
 import { TARS_NOT_LINKED, tarsToolFailureText } from '~/tars/failure';
 import { listTarsAgentScope, runTarsAgent } from './client';
 import { recordTarsCallUsage } from '~/tars/tools/usage';
@@ -224,6 +228,7 @@ export async function createTarsAgentTool(
           domainId: options.domainId,
           model: options.model,
           librechatUserId: options.librechatUserId,
+          usage: tarsUsageAttribution(options.domainId, config),
         });
         recordTarsCallUsage(options.auditTraceOwner, config, result.tokens);
         return langflowToolResult(result.answer, result.trace);

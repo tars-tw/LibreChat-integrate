@@ -17,8 +17,12 @@ const {
   fetchTarsTokenReportExport,
   fetchTarsTokenReportMembers,
   fetchTarsTokenReportOverview,
+  langflowServiceFetch,
+  getTarsEmbeddingUsageConfig,
+  parseTarsEmbeddingUsageRequest,
+  createTarsEmbeddingUsageClient,
 } = require('@librechat/api');
-const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { requireJwtAuth, requireTarsAdmin, configMiddleware } = require('~/server/middleware');
 const { relayTarsError } = require('./relay');
 
 const router = express.Router();
@@ -351,6 +355,55 @@ router.post('/token/report/export', async (req, res) => {
   } catch (err) {
     logger.error('[POST /api/tars/token/report/export] Failed', err);
     return relayTarsError(res, err, 'Failed to export the token usage report');
+  }
+});
+
+/**
+ * @route GET /api/tars/token/embedding/summary
+ * @desc Embedding token usage for the period, grouped by `group_by` (model,
+ *       purpose, knowledge_base, domain, day); a daily report may be split by
+ *       one of the others. `user_group_ids` (comma-separated) and `user_id`
+ *       narrow it. Kept apart from the chat totals: it never counts against a
+ *       quota.
+ * @access Admin (requireTarsAdmin here; pwc_tars only checks the service key)
+ */
+router.get('/token/embedding/summary', configMiddleware, async (req, res) => {
+  const { range, error: rangeError } = rangeOf(req.query);
+  if (rangeError != null) {
+    return res.status(400).json({ error: rangeError });
+  }
+  const { query, error } = parseTarsEmbeddingUsageRequest(range, req.query);
+  if (error != null) {
+    return res.status(400).json({ error });
+  }
+  try {
+    const client = createTarsEmbeddingUsageClient({
+      request: langflowServiceFetch,
+      config: getTarsEmbeddingUsageConfig(req.config),
+    });
+    return res.json(await client.fetchSummary(query));
+  } catch (err) {
+    logger.error('[GET /api/tars/token/embedding/summary] Failed', err);
+    return relayTarsError(res, err, 'Failed to fetch embedding token usage');
+  }
+});
+
+/**
+ * @route GET /api/tars/token/embedding/messages/:messageId
+ * @desc The embedding usage one chat message spent (its knowledge-base searches
+ *       and memory lookups).
+ * @access Admin (requireTarsAdmin here; pwc_tars only checks the service key)
+ */
+router.get('/token/embedding/messages/:messageId', configMiddleware, async (req, res) => {
+  try {
+    const client = createTarsEmbeddingUsageClient({
+      request: langflowServiceFetch,
+      config: getTarsEmbeddingUsageConfig(req.config),
+    });
+    return res.json(await client.fetchMessage(req.params.messageId));
+  } catch (err) {
+    logger.error('[GET /api/tars/token/embedding/messages/:messageId] Failed', err);
+    return relayTarsError(res, err, 'Failed to fetch the embedding usage of the message');
   }
 });
 

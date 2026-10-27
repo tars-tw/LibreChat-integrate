@@ -1,5 +1,6 @@
 import { logger } from '@librechat/data-schemas';
 import type { TTarsTraceArtifact } from 'librechat-data-provider';
+import type { TarsUsageAttribution } from '~/tars/langflow/client';
 import type { TarsKnowledgeBase } from '~/tars/knowledge';
 import {
   langflowTimeoutMs,
@@ -32,6 +33,8 @@ export interface TarsRagAgentInput {
   model?: string;
   /** The account the LLM gateway resolves models and quota for. */
   librechatUserId?: string;
+  /** The chat the search serves; pwc_tars files its embedding usage under it. */
+  usage?: TarsUsageAttribution;
 }
 
 export interface TarsRagAgentResult {
@@ -121,6 +124,7 @@ export async function runTarsRagAgent(
       timeoutMs: langflowTimeoutMs('TARS_RAG_AGENT_TIMEOUT_MS', TARS_CAPABILITY_DEFAULT_TIMEOUT_MS),
       librechatUserId: input.librechatUserId,
       tarsUserId,
+      usage: input.usage,
     },
   );
 

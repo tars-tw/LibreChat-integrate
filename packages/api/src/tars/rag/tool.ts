@@ -5,7 +5,11 @@ import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
 import type { LangflowToolResult } from '~/tars/langflow/client';
 import type { TarsToolRunConfig } from '~/tars/tools/progress';
 import type { TarsRagKnowledgeBase } from './client';
-import { langflowToolResult, LANGFLOW_TOOL_RESPONSE_FORMAT } from '~/tars/langflow/client';
+import {
+  langflowToolResult,
+  tarsUsageAttribution,
+  LANGFLOW_TOOL_RESPONSE_FORMAT,
+} from '~/tars/langflow/client';
 import { listTarsRagKnowledgeBases, runTarsRagAgent } from './client';
 import { TARS_NOT_LINKED, tarsToolFailureText } from '~/tars/failure';
 import { recordTarsCallUsage } from '~/tars/tools/usage';
@@ -166,6 +170,7 @@ export async function createTarsRagTool(
           domainId: options.domainId,
           model: options.model,
           librechatUserId: options.librechatUserId,
+          usage: tarsUsageAttribution(options.domainId, config),
         });
         recordTarsCallUsage(options.auditTraceOwner, config, result.tokens);
         return langflowToolResult(result.answer, result.trace);

@@ -4467,6 +4467,17 @@ export const toolCallPreviewsConfigSchema = z.object({
 
 export type TToolCallPreviewsConfig = z.infer<typeof toolCallPreviewsConfigSchema>;
 
+/**
+ * How long the admin token report waits on pwc_tars's embedding usage routes. A split
+ * daily report reads up to a year of `embedding_usage_log` rows before folding them.
+ */
+export const tarsEmbeddingUsageConfigSchema = z.object({
+  reportTimeoutMs: z.number().int().min(1_000).max(600_000).default(60_000),
+  messageTimeoutMs: z.number().int().min(1_000).max(600_000).default(15_000),
+});
+
+export type TTarsEmbeddingUsageConfig = z.infer<typeof tarsEmbeddingUsageConfigSchema>;
+
 export const configSchema = z.object({
   version: z.string(),
   telemetry: telemetrySchema.optional(),
@@ -4526,6 +4537,7 @@ export const configSchema = z.object({
   toolCallPreviews: toolCallPreviewsConfigSchema.default(() =>
     toolCallPreviewsConfigSchema.parse({}),
   ),
+  tarsEmbeddingUsage: tarsEmbeddingUsageConfigSchema.optional(),
   includedTools: z.array(z.string()).optional(),
   filteredTools: z.array(z.string()).optional(),
   mcpServers: MCPServersSchema.optional(),

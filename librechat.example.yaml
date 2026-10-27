@@ -46,6 +46,13 @@ projects:
 # credentials:
 #   writeFormat: v3
 
+# pwc_tars embedding usage (admin token report): how long LibreChat waits on pwc_tars's
+# embedding-usage routes. A split daily report reads up to a year of usage rows.
+# Every field is optional and defaults to the value shown (1000-600000 ms).
+# tarsEmbeddingUsage:
+#   reportTimeoutMs: 60000   # summary report
+#   messageTimeoutMs: 15000  # one audited message
+
 # Langfuse connections are managed through Settings > Langfuse when available.
 # That flow verifies the credentials and stores the secret key encrypted; do not
 # place a plaintext langfuse.secretKey in this file. Environment-managed central

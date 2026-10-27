@@ -1,23 +1,16 @@
 import { Spinner, OGDialog, OGDialogTemplate } from '@librechat/client';
 import type { TTarsTokenUserUsage } from 'librechat-data-provider';
 import { useTarsTokenReportUserQuery } from '~/data-provider';
+import EmbeddingUsage from './EmbeddingUsage';
 import { formatTokens } from './helpers';
 import { useLocalize } from '~/hooks';
 import Trend from './Trend';
-
-/** One headline number, matching the report's own tiles. */
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border-border-light rounded-xl border p-3">
-      <p className="text-text-secondary text-xs">{label}</p>
-      <p className="text-text-primary mt-1 text-lg font-semibold tabular-nums">{value}</p>
-    </div>
-  );
-}
+import Stat from './Stat';
 
 /**
  * One person's usage across the queried period: the prompt/completion split the
- * group tables cannot show, plus their day-by-day series.
+ * group tables cannot show, their day-by-day series, and the embedding usage
+ * their chats and uploads spent.
  */
 export default function UserDialog({
   user,
@@ -29,8 +22,9 @@ export default function UserDialog({
   onClose: () => void;
 }) {
   const localize = useLocalize();
+  const userId = user?.user_id == null ? '' : String(user.user_id);
   const usageQuery = useTarsTokenReportUserQuery(
-    user == null ? null : { ...range, user_id: String(user.user_id ?? '') },
+    user == null ? null : { ...range, user_id: userId },
   );
   const usage = usageQuery.data;
 
@@ -66,18 +60,22 @@ export default function UserDialog({
               <>
                 <div className="grid gap-3 sm:grid-cols-4">
                   <Stat
+                    compact
                     label={localize('com_ui_tars_report_col_tokens')}
                     value={formatTokens(usage.total_tokens)}
                   />
                   <Stat
+                    compact
                     label={localize('com_ui_tars_usage_input_tokens')}
                     value={formatTokens(usage.prompt_tokens)}
                   />
                   <Stat
+                    compact
                     label={localize('com_ui_tars_usage_output_tokens')}
                     value={formatTokens(usage.completion_tokens)}
                   />
                   <Stat
+                    compact
                     label={localize('com_ui_tars_report_col_logs')}
                     value={formatTokens(usage.log_count)}
                   />
@@ -86,10 +84,12 @@ export default function UserDialog({
                 <Trend
                   days={usage.daily_usage}
                   title={localize('com_ui_tars_report_daily_usage')}
-                  compact={true}
+                  compact
                 />
               </>
             )}
+
+            {userId !== '' && <EmbeddingUsage range={range} userId={userId} compact />}
           </div>
         }
       />
