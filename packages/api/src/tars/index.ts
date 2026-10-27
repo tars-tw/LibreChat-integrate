@@ -6,6 +6,7 @@ export * from './chat';
 export * from './client';
 export * from './domains';
 export * from './directory';
+export * from './embedding';
 export * from './feedback';
 export * from './failure';
 export * from './files';

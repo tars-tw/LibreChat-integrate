@@ -1,6 +1,8 @@
 import { Tools } from 'librechat-data-provider';
 import { logger } from '@librechat/data-schemas';
 import type { TTarsTraceArtifact, TTarsTraceEntry } from 'librechat-data-provider';
+import type { TarsToolRunConfig } from '~/tars/tools/progress';
+import type { TarsQuery } from '~/tars/client';
 import { getTarsModelProfileNames } from '~/tars/models';
 import { getTarsSysConfigValue } from '~/tars/sysconfig';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
@@ -20,6 +22,32 @@ const GATEWAY_HEADER = 'X-Use-Librechat-Gateway';
 const GATEWAY_USER_HEADER = 'X-Librechat-User-Id';
 /** The pwc_tars user acting behind the call; pwc_tars limits knowledge bases to what it may open. */
 const TARS_USER_HEADER = 'X-TARS-User-Id';
+/** Who the call's embedding usage belongs to in pwc_tars `embedding_usage_log`. */
+const USAGE_DOMAIN_HEADER = 'X-TARS-Domain-Id';
+const USAGE_MESSAGE_HEADER = 'X-TARS-Message-Id';
+
+/**
+ * The chat a capability call serves, so pwc_tars files the embedding tokens it
+ * spends (knowledge-base search) under the 專用腦 and the response message. The
+ * conversation mirror later writes that message as the pwc_tars `message.id`,
+ * and pwc_tars fills in the conversation then — a first turn has none yet.
+ */
+export interface TarsUsageAttribution {
+  domainId?: string | number | null;
+  messageId?: string;
+}
+
+/** The attribution of one tool call: its 專用腦, and the response message its run is producing. */
+export function tarsUsageAttribution(
+  domainId: string | number | null | undefined,
+  config?: TarsToolRunConfig,
+): TarsUsageAttribution {
+  const messageId = config?.configurable?.requestBody?.messageId;
+  return {
+    domainId,
+    messageId: typeof messageId === 'string' && messageId !== '' ? messageId : undefined,
+  };
+}
 
 export interface LangflowGeneratedUrl {
   type?: string;
@@ -97,6 +125,8 @@ export interface LangflowRequestOptions {
   librechatUserId?: string;
   /** The linked pwc_tars user; without it pwc_tars refuses knowledge-base access. */
   tarsUserId?: string;
+  /** The chat the call serves; pwc_tars files its embedding usage under it. */
+  usage?: TarsUsageAttribution;
 }
 
 /**
@@ -147,12 +177,15 @@ interface LangflowServiceEnvelope<T> {
 export interface LangflowServiceFetchOptions extends LangflowRequestOptions {
   method?: 'GET' | 'POST';
   body?: Record<string, unknown>;
+  /** Query parameters for a GET route; undefined values are left out. */
+  query?: TarsQuery;
 }
 
-async function langflowServiceHeaders(
-  librechatUserId?: string,
-  tarsUserId?: string,
-): Promise<Record<string, string>> {
+async function langflowServiceHeaders({
+  librechatUserId,
+  tarsUserId,
+  usage,
+}: Omit<LangflowRequestOptions, 'timeoutMs'>): Promise<Record<string, string>> {
   const key = await resolveLangflowServiceKey();
   if (!key) {
     throw new Error(
@@ -168,6 +201,12 @@ async function langflowServiceHeaders(
   }
   if (tarsUserId) {
     headers[TARS_USER_HEADER] = tarsUserId;
+  }
+  if (usage?.domainId != null && usage.domainId !== '') {
+    headers[USAGE_DOMAIN_HEADER] = String(usage.domainId);
+  }
+  if (usage?.messageId) {
+    headers[USAGE_MESSAGE_HEADER] = usage.messageId;
   }
   return headers;
 }
@@ -186,8 +225,9 @@ export async function langflowServiceFetch<T>(
   const envelope = await tarsFetch<LangflowServiceEnvelope<T>>(path, {
     method: options.method ?? 'POST',
     timeoutMs: options.timeoutMs,
-    headers: await langflowServiceHeaders(options.librechatUserId, options.tarsUserId),
+    headers: await langflowServiceHeaders(options),
     body: options.body,
+    query: options.query,
   });
   return envelope?.data;
 }
@@ -210,7 +250,7 @@ export async function langflowServiceStream<T>(
 ): Promise<void> {
   await tarsStream<T>(path, onEvent, {
     timeoutMs: options.timeoutMs,
-    headers: await langflowServiceHeaders(options.librechatUserId, options.tarsUserId),
+    headers: await langflowServiceHeaders(options),
     body: options.body,
     signal: options.signal,
   });

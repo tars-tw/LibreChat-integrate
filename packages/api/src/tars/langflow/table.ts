@@ -10,6 +10,7 @@ import {
   langflowTimeoutMs,
   langflowToolResult,
   toTarsTraceArtifact,
+  tarsUsageAttribution,
   runLangflowCapability,
   resolveLangflowModelName,
   LANGFLOW_TOOL_RESPONSE_FORMAT,
@@ -169,6 +170,7 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
             ),
             librechatUserId: options.librechatUserId,
             tarsUserId: options.tarsUserId,
+            usage: tarsUsageAttribution(domainId, config),
           },
         );
         logger.debug(

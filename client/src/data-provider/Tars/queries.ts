@@ -88,6 +88,9 @@ import type {
   TTarsTokenReportMembersResponse,
   TTarsTokenReportUserQuery,
   TTarsTokenReportUserResponse,
+  TTarsEmbeddingUsageQuery,
+  TTarsEmbeddingUsageSummary,
+  TTarsMessageEmbeddingUsage,
   TTarsReleaseNote,
   TTarsReleaseNotesResponse,
   TTarsWorkflowAccount,
@@ -1157,6 +1160,42 @@ export const useTarsTokenReportUserQuery = (
     {
       enabled: query != null,
       select: (data) => data.usage ?? null,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * Admin: embedding token usage for the report's period. Disabled until a range
+ * is submitted, like the chat report it sits under.
+ */
+export const useTarsEmbeddingUsageQuery = (
+  query: TTarsEmbeddingUsageQuery | null,
+  config?: UseQueryOptions<TTarsEmbeddingUsageSummary>,
+): QueryObserverResult<TTarsEmbeddingUsageSummary> => {
+  return useQuery<TTarsEmbeddingUsageSummary>(
+    [QueryKeys.tarsEmbeddingUsageSummary, query],
+    () => dataService.getTarsEmbeddingUsageSummary(query as TTarsEmbeddingUsageQuery),
+    {
+      enabled: query != null,
+      keepPreviousData: true,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: the embedding usage one audited message spent, loaded when its dialog opens. */
+export const useTarsMessageEmbeddingUsageQuery = (
+  messageId: string | null,
+  config?: UseQueryOptions<TTarsMessageEmbeddingUsage>,
+): QueryObserverResult<TTarsMessageEmbeddingUsage> => {
+  return useQuery<TTarsMessageEmbeddingUsage>(
+    [QueryKeys.tarsMessageEmbeddingUsage, messageId],
+    () => dataService.getTarsMessageEmbeddingUsage(messageId as string),
+    {
+      enabled: !!messageId,
       ...adminQueryOptions,
       ...config,
     },

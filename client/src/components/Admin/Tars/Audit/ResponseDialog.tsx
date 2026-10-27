@@ -1,9 +1,12 @@
 import { OGDialog, OGDialogTemplate } from '@librechat/client';
 import MarkdownLite from '~/components/Chat/Messages/Content/MarkdownLite';
+import MessageEmbeddingUsage from './MessageEmbeddingUsage';
 import { useLocalize } from '~/hooks';
 
 /** The pair the dialog shows; null closes it. */
 export interface ResponsePair {
+  /** The audited message, whose embedding usage is listed under the response. */
+  messageId?: string | null;
   query: string | null;
   response: string | null;
 }
@@ -48,6 +51,7 @@ export default function ResponseDialog({
                 <MarkdownLite content={pair?.response ?? ''} codeExecution={false} />
               </div>
             </div>
+            {pair?.messageId && <MessageEmbeddingUsage messageId={pair.messageId} />}
           </div>
         }
       />

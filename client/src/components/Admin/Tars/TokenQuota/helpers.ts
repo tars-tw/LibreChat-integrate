@@ -30,6 +30,10 @@ export const QUOTA_STATUS_OFF = 'false';
 export const isActiveQuota = (quota: Pick<TTarsTokenUserQuota, 'status'>): boolean =>
   String(quota.status).toLowerCase() === QUOTA_STATUS_ON;
 
+/** The native `<select>` of the token pages' filter bars. */
+export const SELECT_CLASS =
+  'h-10 rounded-md border border-border-light bg-surface-primary px-3 text-sm text-text-primary';
+
 export const BADGE_NEUTRAL =
   'rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary';
 export const BADGE_ON =

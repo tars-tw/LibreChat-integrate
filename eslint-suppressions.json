@@ -532,9 +532,6 @@
     }
   },
   "client/src/components/Admin/Tars/TokenQuota/Report/Trend.tsx": {
-    "shadcn/no-arbitrary-values": {
-      "count": 1
-    },
     "shadcn/no-raw-colors": {
       "count": 4
     }

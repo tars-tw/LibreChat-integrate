@@ -3,6 +3,9 @@ import type {
   TTarsJsonField,
   TTarsMessageTrace,
   TTarsTracePayload,
+  TTarsTokenReportRange,
+  TTarsEmbeddingSplitBy,
+  TTarsEmbeddingGroupBy,
 } from './types/tars';
 import { Tools } from './types/tools';
 
@@ -692,4 +695,47 @@ export function normalizeTarsMessageTrace(raw: unknown): TTarsMessageTrace | nul
           .map((entry) => ({ role: traceText(entry.role) ?? '', content: entry.content ?? null }))
       : [],
   };
+}
+
+/**
+ * Embedding usage report facts (pwc_tars `embedding_usage_log`). The report page
+ * and the admin proxy in `packages/api` validate against these.
+ */
+
+/** What a report can be broken down by, in the order the report page offers them. */
+export const TARS_EMBEDDING_DIMENSIONS: readonly TTarsEmbeddingSplitBy[] = [
+  'purpose',
+  'domain',
+  'knowledge_base',
+  'model',
+];
+
+/** Every `group_by` pwc_tars accepts; only `day` can be split by a dimension. */
+export const TARS_EMBEDDING_GROUP_BY: readonly TTarsEmbeddingGroupBy[] = [
+  'day',
+  ...TARS_EMBEDDING_DIMENSIONS,
+];
+
+/** The longest range pwc_tars summarizes (`MAX_RANGE_DAYS` in `embedding_usage_report.py`). */
+export const TARS_EMBEDDING_MAX_RANGE_DAYS = 366;
+
+const DAY_MS = 86_400_000;
+
+export function isTarsEmbeddingGroupBy(value: unknown): value is TTarsEmbeddingGroupBy {
+  return (
+    typeof value === 'string' && (TARS_EMBEDDING_GROUP_BY as readonly string[]).includes(value)
+  );
+}
+
+export function isTarsEmbeddingSplitBy(value: unknown): value is TTarsEmbeddingSplitBy {
+  return (
+    typeof value === 'string' && (TARS_EMBEDDING_DIMENSIONS as readonly string[]).includes(value)
+  );
+}
+
+/** Whether a range covers more days than pwc_tars summarizes, counting both ends. */
+export function isTarsEmbeddingRangeTooLong({ start_date, end_date }: TTarsTokenReportRange) {
+  return (
+    (Date.parse(end_date) - Date.parse(start_date)) / DAY_MS + 1 > TARS_EMBEDDING_MAX_RANGE_DAYS
+  );
 }

@@ -88,7 +88,13 @@ export default function AuditTable({
           type="button"
           variant="ghost"
           size="icon-xs"
-          onClick={() => onViewResponse({ query: row.user_query, response: row.model_response })}
+          onClick={() =>
+            onViewResponse({
+              messageId: row.message_id,
+              query: row.user_query,
+              response: row.model_response,
+            })
+          }
           aria-label={localize('com_ui_tars_audit_view_response')}
           title={localize('com_ui_tars_audit_view_response')}
         >

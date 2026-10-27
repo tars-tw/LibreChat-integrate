@@ -5,6 +5,8 @@ import type { TTarsTraceArtifact } from 'librechat-data-provider';
 export interface TarsToolRunConfig {
   toolCall?: { id?: string };
   metadata?: { run_id?: string; thread_id?: string };
+  /** The run's `requestBody`; its `messageId` is the response message the call serves. */
+  configurable?: { requestBody?: { messageId?: unknown } };
   signal?: AbortSignal;
 }
 

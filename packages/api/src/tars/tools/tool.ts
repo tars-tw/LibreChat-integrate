@@ -20,6 +20,7 @@ import type { LangflowToolResult } from '~/tars/langflow/client';
 import type { TarsDataFile } from '~/tars/files/sign';
 import {
   langflowToolResult,
+  tarsUsageAttribution,
   resolveLangflowModelName,
   LANGFLOW_TOOL_RESPONSE_FORMAT,
 } from '~/tars/langflow/client';
@@ -389,6 +390,7 @@ export async function createTarsBuiltinTool(
           longRunning: manifest.long_running,
           librechatUserId: options.librechatUserId,
           tarsUserId,
+          usage: tarsUsageAttribution(options.domainId, config),
           onProgress: (message) => options.reportProgress?.(message, config),
           signal: config?.signal,
           auditTrace: options.auditTraceOwner != null,
