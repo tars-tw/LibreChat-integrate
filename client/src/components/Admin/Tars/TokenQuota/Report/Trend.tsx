@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import { BarChart3, Table2 } from 'lucide-react';
 import type { TTarsTokenDailyUsage } from 'librechat-data-provider';
+import type { ReportView } from './Toggle';
 import { formatTokens, shortDate } from './helpers';
 import { useLocalize } from '~/hooks';
-
-const TAB_BASE =
-  'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors hover:text-text-primary';
+import Toggle from './Toggle';
 
 /**
  * Daily token usage for the period, as a bar column per day. Bars are relative
@@ -22,7 +20,7 @@ export default function Trend({
   compact?: boolean;
 }) {
   const localize = useLocalize();
-  const [view, setView] = useState<'chart' | 'table'>('chart');
+  const [view, setView] = useState<ReportView>('chart');
 
   const total = days.reduce((sum, day) => sum + day.total_tokens, 0);
   const average = days.length === 0 ? 0 : total / days.length;
@@ -35,24 +33,7 @@ export default function Trend({
       <header className="border-border-light flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2">
         <div className="flex items-center gap-3">
           <h2 className="text-text-primary text-sm font-medium">{title}</h2>
-          <div className="text-text-secondary flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setView('chart')}
-              className={`${TAB_BASE} ${view === 'chart' ? 'bg-surface-tertiary text-text-primary' : ''}`}
-            >
-              <BarChart3 className="size-4" aria-hidden />
-              {localize('com_ui_tars_usage_view_chart')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('table')}
-              className={`${TAB_BASE} ${view === 'table' ? 'bg-surface-tertiary text-text-primary' : ''}`}
-            >
-              <Table2 className="size-4" aria-hidden />
-              {localize('com_ui_tars_usage_view_table')}
-            </button>
-          </div>
+          <Toggle view={view} onChange={setView} />
         </div>
         <div className="text-text-secondary flex items-center gap-4 text-xs">
           <span className="flex items-center gap-1.5">
@@ -100,7 +81,7 @@ export default function Trend({
             {days.map((day, index) => (
               <span
                 key={day.date}
-                className="text-text-secondary flex-1 text-center text-[10px] tabular-nums"
+                className="text-text-secondary flex-1 text-center text-xs tabular-nums"
               >
                 {index % 3 === 0 ? shortDate(day.date) : ''}
               </span>

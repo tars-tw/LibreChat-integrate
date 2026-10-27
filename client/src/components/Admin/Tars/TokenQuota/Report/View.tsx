@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Download, RotateCcw, Search } from 'lucide-react';
+import { TARS_EMBEDDING_MAX_RANGE_DAYS } from 'librechat-data-provider';
 import { Button, Input, Label, Spinner, useToastContext } from '@librechat/client';
 import type {
   TTarsTokenUserUsage,
@@ -22,23 +23,14 @@ import {
 } from './helpers';
 import Picker, { type PickerOption } from '../../Audit/Picker';
 import { downloadTokenReportCsvs } from './export';
+import EmbeddingUsage from './EmbeddingUsage';
 import UserDialog from './UserDialog';
 import { useLocalize } from '~/hooks';
 import Members from './Members';
 import Groups from './Groups';
 import Ranked from './Ranked';
 import Trend from './Trend';
-
-/** One headline number, matching the audit report's statistics tiles. */
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="border-border-light rounded-xl border p-4">
-      <p className="text-text-secondary text-xs">{label}</p>
-      <p className="text-text-primary mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-      {hint != null && <p className="text-text-secondary mt-0.5 text-xs">{hint}</p>}
-    </div>
-  );
-}
+import Stat from './Stat';
 
 interface Drilldown {
   groupId: string;
@@ -107,7 +99,18 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
     }
     setExporting(true);
     try {
-      await downloadTokenReportCsvs(submitted, localize);
+      const { embeddingLeftOut } = await downloadTokenReportCsvs(submitted, localize);
+      if (embeddingLeftOut != null) {
+        showToast({
+          message:
+            embeddingLeftOut === 'range'
+              ? localize('com_ui_tars_embedding_export_skipped', {
+                  0: String(TARS_EMBEDDING_MAX_RANGE_DAYS),
+                })
+              : localize('com_ui_tars_embedding_export_failed'),
+          status: 'warning',
+        });
+      }
     } catch {
       showToast({ message: localize('com_ui_tars_report_export_failed'), status: 'error' });
     } finally {
@@ -293,6 +296,8 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
               }))}
             />
           </div>
+
+          <EmbeddingUsage range={submitted} userGroupIds={submittedGroups} />
         </>
       )}
 

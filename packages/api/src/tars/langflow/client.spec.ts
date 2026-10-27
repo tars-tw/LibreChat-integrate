@@ -14,6 +14,7 @@ import {
   langflowTimeoutMs,
   langflowToolResult,
   toTarsTraceArtifact,
+  tarsUsageAttribution,
   runLangflowCapability,
   resolveLangflowModelName,
   resolveLangflowServiceKey,
@@ -122,6 +123,43 @@ describe('runLangflowCapability', () => {
     const headers = (call?.[1] as RequestInit).headers as Record<string, string>;
     expect(headers['X-Use-Librechat-Gateway']).toBe('true');
     expect(headers['X-Librechat-User-Id']).toBe('lc-1');
+  });
+
+  it('names the chat the call serves so pwc_tars files its embedding usage under it', async () => {
+    const fetchMock = mockBackend({ status: 200, body: { success: true, data: {} } });
+
+    await runLangflowCapability(
+      '/api/langflow-service/rag',
+      { query: 'q' },
+      {
+        timeoutMs: 1000,
+        usage: tarsUsageAttribution(7, {
+          configurable: { requestBody: { messageId: 'response-1' } },
+        }),
+      },
+    );
+    const call = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes('/api/langflow-service/rag'),
+    );
+    const headers = (call?.[1] as RequestInit).headers as Record<string, string>;
+    expect(headers['X-TARS-Domain-Id']).toBe('7');
+    expect(headers['X-TARS-Message-Id']).toBe('response-1');
+  });
+
+  it('sends no usage headers when the call serves no chat message', async () => {
+    const fetchMock = mockBackend({ status: 200, body: { success: true, data: {} } });
+
+    await runLangflowCapability(
+      '/api/langflow-service/rag',
+      { query: 'q' },
+      { timeoutMs: 1000, usage: tarsUsageAttribution('', { configurable: {} }) },
+    );
+    const call = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes('/api/langflow-service/rag'),
+    );
+    const headers = (call?.[1] as RequestInit).headers as Record<string, string>;
+    expect(headers['X-TARS-Domain-Id']).toBeUndefined();
+    expect(headers['X-TARS-Message-Id']).toBeUndefined();
   });
 
   it('throws before calling pwc_tars when no service key is configured', async () => {
