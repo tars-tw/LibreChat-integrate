@@ -55,6 +55,26 @@ export interface TarsModelProfileInput {
   apiVersion?: string;
   /** Update only: pwc_tars creates every profile enabled. */
   enabled?: boolean;
+  /**
+   * Create only, cloud types: the `sys_config` key whose API key the model uses.
+   * pwc_tars refuses a cloud model without one; the modal picks it automatically
+   * when the type maps to a single key (GOOGLE_VERTEX) and asks otherwise (CLOUD).
+   */
+  sysConfigKey?: string;
+  /** Create only: stored under `sysConfigKey` before pwc_tars checks the key. */
+  apiKeyValue?: string;
+}
+
+/** pwc_tars `GET /api/model/cloud_type_rules` (mirrors `get_cloud_type_rules()`). */
+export interface TarsCloudTypeRules {
+  cloud_types: string[];
+  local_types: string[];
+  local_type_prefixes: string[];
+  type_to_key: Record<string, string>;
+  all_keys: string[];
+  key_labels: Record<string, string>;
+  /** Whether each key holds a usable value; the value itself is never sent. */
+  key_status: Record<string, boolean>;
 }
 
 export interface TarsModelProfileWriteResult {
@@ -132,12 +152,27 @@ export async function fetchTarsModelProfiles(
   return data?.model_profiles ?? [];
 }
 
+/**
+ * The cloud type → `sys_config` key rules the Add Model dialog needs, with each
+ * key's configured/not-configured state. Admin-only on pwc_tars.
+ */
+export async function fetchTarsCloudTypeRules(
+  tarsId: string,
+  baseUrl?: string,
+): Promise<TarsCloudTypeRules | undefined> {
+  return tarsFetch<TarsCloudTypeRules>('/api/model/cloud_type_rules', {
+    query: { user_id: tarsId },
+    baseUrl,
+  });
+}
+
 export async function createTarsModelProfile(
   tarsId: string,
   input: TarsModelProfileInput,
   baseUrl?: string,
 ): Promise<TarsModelProfile> {
   assertValidInput(CREATE_PATH, input, true);
+  const sysConfigKey = input.sysConfigKey?.trim();
   const profile = await tarsFetch<TarsModelProfile>(CREATE_PATH, {
     method: 'POST',
     body: {
@@ -150,6 +185,10 @@ export async function createTarsModelProfile(
       api_version: blankToNull(input.apiVersion),
       created_by: tarsId,
       user_id: tarsId,
+      /** Sent only when a key was chosen; pwc_tars requires it for every cloud type. */
+      ...(sysConfigKey
+        ? { sys_config_key: sysConfigKey, api_key_value: blankToNull(input.apiKeyValue) }
+        : {}),
     },
     baseUrl,
   });

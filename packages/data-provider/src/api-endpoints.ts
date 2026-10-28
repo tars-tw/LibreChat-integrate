@@ -603,6 +603,7 @@ export const tarsModels = () => `${BASE_URL}/api/tars/models`;
 export const tarsModelProfiles = () => `${BASE_URL}/api/tars/model-profiles`;
 export const tarsModelProfile = (id: string) =>
   `${BASE_URL}/api/tars/model-profiles/${encodeURIComponent(id)}`;
+export const tarsCloudTypeRules = () => `${BASE_URL}/api/tars/model-profiles/cloud-type-rules`;
 /** Every model's direct assignees (`sys_model_permission`). */
 export const tarsModelPermissions = () => `${BASE_URL}/api/tars/model-permissions`;
 /** One model's assignees: GET reads them, PUT overwrites them. */

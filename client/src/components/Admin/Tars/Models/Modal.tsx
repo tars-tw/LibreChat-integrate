@@ -13,11 +13,13 @@ import {
 import type {
   TTarsModelType,
   TTarsModelProfile,
+  TTarsCloudTypeRules,
   TTarsModelProfileInput,
 } from 'librechat-data-provider';
 import type { ClipboardEvent } from 'react';
 import type { TranslationKeys } from '~/hooks';
 import {
+  useTarsCloudTypeRulesQuery,
   useCreateTarsModelProfileMutation,
   useUpdateTarsModelProfileMutation,
 } from '~/data-provider';
@@ -28,6 +30,7 @@ import { useLocalize } from '~/hooks';
 /** `Dropdown` shows an empty trigger for '', so "nothing chosen" needs a real option value. */
 const NO_SOURCE = 'none';
 const NO_TYPE = 'none';
+const NO_KEY = 'none';
 
 /**
  * Only local models expose their config here; every other type's config is maintained in
@@ -50,9 +53,29 @@ type FormState = {
   descriptionZh: string;
   descriptionEn: string;
   config: string;
+  /** Create only, cloud types: the `sys_config` key the model's API key lives under. */
+  sysConfigKey: string;
+  /** Create only: a value to store under that key; blank keeps what is stored. */
+  apiKeyValue: string;
 };
 
-type FieldErrors = Partial<Record<'name' | 'type' | 'endpoint' | 'config', TranslationKeys>>;
+type FieldErrors = Partial<
+  Record<'name' | 'type' | 'endpoint' | 'config' | 'sysConfigKey' | 'apiKeyValue', TranslationKeys>
+>;
+
+/**
+ * The `sys_config` keys a cloud type may use: a provider-specific type maps to one key,
+ * the generic `CLOUD` type to all of them. Empty for local types or while the rules are
+ * not loaded.
+ */
+const candidateKeysFor = (type: string, rules?: TTarsCloudTypeRules): string[] => {
+  const upper = type.trim().toUpperCase();
+  if (!rules || !rules.cloud_types.includes(upper)) {
+    return [];
+  }
+  const single = rules.type_to_key[upper];
+  return single ? [single] : rules.all_keys;
+};
 
 const toFormState = (profile?: TTarsModelProfile): FormState => {
   const description = splitDescription(profile?.description);
@@ -65,6 +88,8 @@ const toFormState = (profile?: TTarsModelProfile): FormState => {
     descriptionZh: description.zh,
     descriptionEn: description.en,
     config: formatConfig(profile?.config ?? ''),
+    sysConfigKey: '',
+    apiKeyValue: '',
   };
 };
 
@@ -106,6 +131,25 @@ export default function ModelProfileModal({
   const [errors, setErrors] = useState<FieldErrors>({});
   const [copySource, setCopySource] = useState(NO_SOURCE);
   const showConfig = form.type === CONFIG_EDITABLE_TYPE;
+
+  /**
+   * pwc_tars refuses a cloud model created without the `sys_config` key its API key is
+   * read from, so the create form asks for it. An existing model keeps its key: the
+   * rules are not needed when editing.
+   */
+  const rulesQuery = useTarsCloudTypeRulesQuery({ enabled: !isEdit });
+  const cloudRules = isEdit ? undefined : rulesQuery.data;
+  const candidateKeys = useMemo(
+    () => (isEdit ? [] : candidateKeysFor(form.type, cloudRules)),
+    [isEdit, form.type, cloudRules],
+  );
+  const isCloudType =
+    !isEdit &&
+    cloudRules != null &&
+    cloudRules.cloud_types.includes(form.type.trim().toUpperCase());
+  /** A single candidate is the key; several leave the choice to the admin. */
+  const effectiveKey = candidateKeys.length === 1 ? candidateKeys[0] : form.sysConfigKey;
+  const keyConfigured = effectiveKey !== '' && cloudRules?.key_status[effectiveKey] === true;
 
   const createMutation = useCreateTarsModelProfileMutation({
     onSuccess: () => {
@@ -149,6 +193,39 @@ export default function ModelProfileModal({
       setErrors((prev) => ({ ...prev, [key]: undefined }));
     }
   };
+
+  /** A new type gets a fresh key choice: the old one may not be valid for it. */
+  const handleTypeChange = (value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      type: value === NO_TYPE ? '' : value,
+      sysConfigKey: '',
+      apiKeyValue: '',
+    }));
+    setErrors((prev) => ({
+      ...prev,
+      type: undefined,
+      sysConfigKey: undefined,
+      apiKeyValue: undefined,
+    }));
+  };
+
+  const keyOptions = useMemo(
+    () => [
+      ...(form.sysConfigKey
+        ? []
+        : [{ value: NO_KEY, label: localize('com_ui_tars_models_api_key_select') }]),
+      ...candidateKeys.map((key) => ({
+        value: key,
+        label: `${cloudRules?.key_labels[key] ?? key} — ${localize(
+          cloudRules?.key_status[key] === true
+            ? 'com_ui_tars_models_api_key_configured'
+            : 'com_ui_tars_models_api_key_not_configured',
+        )}`,
+      })),
+    ],
+    [candidateKeys, cloudRules, form.sysConfigKey, localize],
+  );
 
   /** Settings come across as-is; type and endpoint only fill fields still left blank. */
   const handleCopy = (sourceId: string) => {
@@ -222,6 +299,13 @@ export default function ModelProfileModal({
     if (showConfig && !isValidConfig(form.config)) {
       next.config = 'com_ui_tars_models_config_invalid';
     }
+    if (isCloudType) {
+      if (!effectiveKey) {
+        next.sysConfigKey = 'com_ui_tars_models_api_key_select_required';
+      } else if (!keyConfigured && !form.apiKeyValue.trim()) {
+        next.apiKeyValue = 'com_ui_tars_models_api_key_required';
+      }
+    }
     return next;
   };
 
@@ -240,7 +324,13 @@ export default function ModelProfileModal({
       form.descriptionEn,
     );
     if (!isEdit) {
-      createMutation.mutate({ ...fields, description });
+      createMutation.mutate({
+        ...fields,
+        description,
+        ...(isCloudType
+          ? { sysConfigKey: effectiveKey, apiKeyValue: form.apiKeyValue.trim() }
+          : {}),
+      });
       return;
     }
 
@@ -310,7 +400,7 @@ export default function ModelProfileModal({
                 <Dropdown
                   value={form.type || NO_TYPE}
                   options={typeOptions}
-                  onChange={(value) => update('type', value === NO_TYPE ? '' : value)}
+                  onChange={handleTypeChange}
                   variant="field"
                   aria-labelledby="tars-model-type-label"
                   className="mt-1"
@@ -362,6 +452,80 @@ export default function ModelProfileModal({
                 <FieldError messageKey={errors.endpoint} />
               </div>
             </div>
+
+            {!isEdit && rulesQuery.isError && (
+              <p className="text-text-destructive text-xs">
+                {localize('com_ui_tars_models_api_key_rules_unavailable')}
+              </p>
+            )}
+
+            {isCloudType && (
+              <div>
+                <p className="text-text-primary text-sm">
+                  {localize('com_ui_tars_models_api_key')} *
+                </p>
+                <p className="text-text-secondary mt-1 text-xs">
+                  {localize('com_ui_tars_models_api_key_hint')}
+                </p>
+                {candidateKeys.length > 1 ? (
+                  <div className="mt-2">
+                    <Label id="tars-model-api-key-label" className="text-xs">
+                      {localize('com_ui_tars_models_api_key_source')}
+                    </Label>
+                    <Dropdown
+                      value={form.sysConfigKey || NO_KEY}
+                      options={keyOptions}
+                      onChange={(value) => {
+                        update('sysConfigKey', value === NO_KEY ? '' : value);
+                        update('apiKeyValue', '');
+                      }}
+                      variant="field"
+                      aria-labelledby="tars-model-api-key-label"
+                      className="mt-1"
+                    />
+                    <FieldError messageKey={errors.sysConfigKey} />
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs">
+                    <span className="text-text-primary font-medium">
+                      {cloudRules?.key_labels[effectiveKey] ?? effectiveKey}
+                    </span>{' '}
+                    <span
+                      className={keyConfigured ? 'text-text-secondary' : 'text-text-destructive'}
+                    >
+                      {localize(
+                        keyConfigured
+                          ? 'com_ui_tars_models_api_key_configured'
+                          : 'com_ui_tars_models_api_key_not_configured',
+                      )}
+                    </span>
+                  </p>
+                )}
+                {effectiveKey !== '' && (
+                  <div className="mt-2">
+                    <Label htmlFor="tars-model-api-key-value" className="text-xs">
+                      {localize('com_ui_tars_models_api_key_value')}
+                    </Label>
+                    <Input
+                      id="tars-model-api-key-value"
+                      type="password"
+                      className="mt-1"
+                      value={form.apiKeyValue}
+                      autoComplete="new-password"
+                      spellCheck={false}
+                      aria-invalid={errors.apiKeyValue != null}
+                      placeholder={localize(
+                        keyConfigured
+                          ? 'com_ui_tars_models_api_key_value_keep'
+                          : 'com_ui_tars_models_api_key_value_required',
+                      )}
+                      onChange={(e) => update('apiKeyValue', e.target.value)}
+                    />
+                    <FieldError messageKey={errors.apiKeyValue} />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div>
               <p className="text-text-primary text-sm">

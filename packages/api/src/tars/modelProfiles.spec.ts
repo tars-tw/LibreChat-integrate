@@ -12,6 +12,7 @@ import type { JwtPayload } from 'jsonwebtoken';
 import {
   saveTarsModelAssignees,
   fetchTarsModelProfiles,
+  fetchTarsCloudTypeRules,
   createTarsModelProfile,
   updateTarsModelProfile,
   deleteTarsModelProfile,
@@ -108,6 +109,49 @@ describe('createTarsModelProfile', () => {
     });
   });
 
+  it('names the sys_config key a cloud model uses and stores a new value with it', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(201, profile));
+
+    await createTarsModelProfile(
+      'admin-1',
+      {
+        name: 'gpt-5.4',
+        type: 'CLOUD',
+        endpoint: 'https://api.openai.com/v1',
+        sysConfigKey: ' KEY_OPEN_AI_API ',
+        apiKeyValue: 'sk-new',
+      },
+      BASE_URL,
+    );
+
+    expect(parseBody(fetchMock)).toMatchObject({
+      sys_config_key: 'KEY_OPEN_AI_API',
+      api_key_value: 'sk-new',
+    });
+  });
+
+  it('keeps the stored key when no value is given, and sends neither field without a key', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(201, profile));
+
+    await createTarsModelProfile(
+      'admin-1',
+      { name: 'x', type: 'CLOUD', endpoint: 'http://h/v1', sysConfigKey: 'KEY_GEMINI_API' },
+      BASE_URL,
+    );
+    expect(parseBody(fetchMock, 0)).toMatchObject({
+      sys_config_key: 'KEY_GEMINI_API',
+      api_key_value: null,
+    });
+
+    await createTarsModelProfile(
+      'admin-1',
+      { name: 'x', type: 'GOOGLE_VERTEX', endpoint: 'http://h/v1', apiKeyValue: 'ignored' },
+      BASE_URL,
+    );
+    expect(parseBody(fetchMock, 1)).not.toHaveProperty('sys_config_key');
+    expect(parseBody(fetchMock, 1)).not.toHaveProperty('api_key_value');
+  });
+
   it("relays pwc_tars's own validation message", async () => {
     jest
       .spyOn(global, 'fetch')
@@ -120,6 +164,26 @@ describe('createTarsModelProfile', () => {
         BASE_URL,
       ),
     ).rejects.toMatchObject({ status: 400, serverMessage: 'config is not valid JSON' });
+  });
+});
+
+describe('fetchTarsCloudTypeRules', () => {
+  it('reads the rules as the requesting admin', async () => {
+    const rules = {
+      cloud_types: ['CLOUD', 'GOOGLE_VERTEX'],
+      local_types: ['VLLM'],
+      local_type_prefixes: ['VLLM'],
+      type_to_key: { GOOGLE_VERTEX: 'KEY_VERTEX_AI_API' },
+      all_keys: ['KEY_OPEN_AI_API', 'KEY_VERTEX_AI_API'],
+      key_labels: { KEY_OPEN_AI_API: 'OpenAI', KEY_VERTEX_AI_API: 'Vertex AI' },
+      key_status: { KEY_OPEN_AI_API: true, KEY_VERTEX_AI_API: false },
+    };
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, rules));
+
+    await expect(fetchTarsCloudTypeRules('admin-1', BASE_URL)).resolves.toEqual(rules);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${BASE_URL}/api/model/cloud_type_rules?user_id=admin-1`,
+    );
   });
 });
 

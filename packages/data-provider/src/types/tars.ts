@@ -201,6 +201,28 @@ export type TTarsModelProfileInput = {
   apiVersion?: string;
   /** Update only: pwc_tars creates every profile enabled. */
   enabled?: boolean;
+  /**
+   * Create only, cloud types: the pwc_tars `sys_config` key (`KEY_OPEN_AI_API`, ...) whose
+   * API key the model calls the provider with. pwc_tars refuses a cloud model without one.
+   */
+  sysConfigKey?: string;
+  /** Create only: a value to store under `sysConfigKey` before the key is checked. */
+  apiKeyValue?: string;
+};
+
+/**
+ * pwc_tars `GET /api/model/cloud_type_rules`: how a model type maps to the `sys_config`
+ * API key it needs, and whether each key already holds a usable value (never the value).
+ */
+export type TTarsCloudTypeRules = {
+  cloud_types: string[];
+  local_types: string[];
+  local_type_prefixes: string[];
+  /** Provider-specific types; a type left out (the generic `CLOUD`) may use any of `all_keys`. */
+  type_to_key: Record<string, string>;
+  all_keys: string[];
+  key_labels: Record<string, string>;
+  key_status: Record<string, boolean>;
 };
 
 /**

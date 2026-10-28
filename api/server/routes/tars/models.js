@@ -2,6 +2,7 @@ const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const {
   fetchTarsModelProfiles,
+  fetchTarsCloudTypeRules,
   createTarsModelProfile,
   updateTarsModelProfile,
   deleteTarsModelProfile,
@@ -50,6 +51,23 @@ router.get('/model-profiles', requireTarsAdmin, async (req, res) => {
   } catch (error) {
     logger.error('[GET /api/tars/model-profiles] Failed', error);
     return relayTarsError(res, error, 'Failed to fetch pwc_tars model profiles');
+  }
+});
+
+/**
+ * @route GET /api/tars/model-profiles/cloud-type-rules
+ * @desc Which pwc_tars sys_config API key each cloud model type needs, and whether
+ *       each key is configured (never its value). Backs the Add Model dialog's
+ *       API key picker. Declared before any `/model-profiles/:id` route.
+ * @access Admin (pwc_tars)
+ */
+router.get('/model-profiles/cloud-type-rules', requireTarsAdmin, async (req, res) => {
+  try {
+    const rules = await fetchTarsCloudTypeRules(req.user.tarsId);
+    return res.json(rules ?? null);
+  } catch (error) {
+    logger.error('[GET /api/tars/model-profiles/cloud-type-rules] Failed', error);
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars cloud type rules');
   }
 });
 
