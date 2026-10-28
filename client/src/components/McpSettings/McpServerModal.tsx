@@ -18,6 +18,7 @@ import type {
   TTarsMcpServer,
   TTarsMcpServerInput,
   TTarsMcpParsedSpec,
+  TTarsMcpParsedTool,
 } from 'librechat-data-provider';
 import {
   useSyncTarsMcpServerMutation,
@@ -25,8 +26,21 @@ import {
   useUpdateTarsMcpServerMutation,
   useParseTarsMcpOpenapiMutation,
 } from '~/data-provider';
+import { errorMessage } from '~/components/Admin/Tars/Models/helpers';
+import McpOpenapiFixedValues from './McpOpenapiFixedValues';
 import McpCustomApiTools from './McpCustomApiTools';
+import McpStaticHeaders from './McpStaticHeaders';
 import { useLocalize } from '~/hooks';
+import {
+  headersToRows,
+  rowsToHeaders,
+  readBoundValues,
+  withBoundValues,
+  syncCounts,
+  blockedToolsSummary,
+  type BoundValues,
+  type HeaderRow,
+} from './boundValues';
 
 type AuthType = 'none' | 'bearer' | 'api_key' | 'basic' | 'login';
 
@@ -44,7 +58,7 @@ interface AuthForm {
 
 type ServerType = 'openapi' | 'custom_api' | 'external';
 type ExternalTransport = 'streamable_http' | 'stdio';
-type FormTab = 'basic' | 'connection' | 'tools' | 'env';
+type FormTab = 'basic' | 'connection' | 'tools' | 'fixed_values' | 'env';
 
 interface ServerForm {
   name: string;
@@ -60,6 +74,11 @@ interface ServerForm {
   tools: Record<string, unknown>[];
   transport: ExternalTransport;
   externalUrl: string;
+  /** Static headers of an openapi / custom_api server, as rows. */
+  headerRows: HeaderRow[];
+  /** OpenAPI per-tool fixed values (`tool_config.bound_values`). */
+  boundValues: BoundValues;
+  /** External streamable-http headers, edited as JSON. */
   headersJson: string;
   command: string;
   argsText: string;
@@ -150,6 +169,8 @@ function toForm(server?: TTarsMcpServer): ServerForm {
     tools: Array.isArray(config.tools) ? (config.tools as Record<string, unknown>[]) : [],
     transport: config.transport === 'streamable_http' ? 'streamable_http' : 'stdio',
     externalUrl: String(config.url ?? ''),
+    headerRows: headersToRows(config.headers),
+    boundValues: readBoundValues(server?.tool_config),
     headersJson: config.headers ? JSON.stringify(config.headers, null, 2) : '{}',
     command: String(config.command ?? ''),
     argsText: Array.isArray(config.args) ? (config.args as string[]).join('\n') : '',
@@ -173,26 +194,34 @@ export default function McpServerModal({
   const isEdit = server != null;
   const [form, setForm] = useState<ServerForm>(() => toForm(server));
   const [parsed, setParsed] = useState<TTarsMcpParsedSpec | null>(null);
+  const [openapiTools, setOpenapiTools] = useState<TTarsMcpParsedTool[]>([]);
   const [formTab, setFormTab] = useState<FormTab>('basic');
 
   const syncMutation = useSyncTarsMcpServerMutation();
   const parseMutation = useParseTarsMcpOpenapiMutation();
+  const loadToolsMutation = useParseTarsMcpOpenapiMutation();
   const createMutation = useCreateTarsMcpServerMutation();
   const updateMutation = useUpdateTarsMcpServerMutation();
   const isSaving = createMutation.isLoading || updateMutation.isLoading || syncMutation.isLoading;
 
   const showToolsTab = form.type === 'custom_api';
+  const showFixedValuesTab = form.type === 'openapi';
   const showEnvTab = form.type === 'external' && form.transport === 'stdio';
+  /** Static headers are read for openapi and custom_api; external http has its own JSON field. */
+  const showStaticHeaders = form.type === 'openapi' || form.type === 'custom_api';
 
   /** Keeps the active tab valid as the type/transport choice removes tabs from the list. */
   useEffect(() => {
     if (formTab === 'tools' && !showToolsTab) {
       setFormTab('basic');
     }
+    if (formTab === 'fixed_values' && !showFixedValuesTab) {
+      setFormTab('basic');
+    }
     if (formTab === 'env' && !showEnvTab) {
       setFormTab('basic');
     }
-  }, [formTab, showToolsTab, showEnvTab]);
+  }, [formTab, showToolsTab, showFixedValuesTab, showEnvTab]);
 
   const set = <K extends keyof ServerForm>(key: K, value: ServerForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -215,7 +244,34 @@ export default function McpServerModal({
       }
     } catch (error) {
       showToast({
-        message: `${localize('com_ui_tars_mcp_parse_failed')}: ${(error as Error)?.message ?? ''}`,
+        message: `${localize('com_ui_tars_mcp_parse_failed')}: ${errorMessage(error) ?? (error as Error)?.message ?? ''}`,
+        status: 'error',
+      });
+    }
+  };
+
+  /**
+   * Parses the spec with the server's naming options (not its bound values) so
+   * the tool names shown match what sync stores; bindings are keyed by endpoint anyway.
+   */
+  const handleLoadTools = async () => {
+    if (!form.openapiUrl.trim()) {
+      showToast({ message: localize('com_ui_tars_mcp_openapi_url_required'), status: 'error' });
+      return;
+    }
+    const timeout = Number(form.timeout);
+    const { bound_values: _boundValues, ...naming } = server?.tool_config ?? {};
+    try {
+      const { parsed: result } = await loadToolsMutation.mutateAsync({
+        openapi_url: form.openapiUrl.trim(),
+        base_url: form.baseUrl.trim() || undefined,
+        timeout: Number.isFinite(timeout) && timeout > 0 ? timeout : undefined,
+        tool_config: naming,
+      });
+      setOpenapiTools(result.tools ?? []);
+    } catch (error) {
+      showToast({
+        message: `${localize('com_ui_tars_mcp_load_openapi_tools_failed')}: ${errorMessage(error) ?? (error as Error)?.message ?? ''}`,
         status: 'error',
       });
     }
@@ -301,6 +357,14 @@ export default function McpServerModal({
       }
     }
 
+    if (showStaticHeaders) {
+      /** pwc_tars replaces connection_config wholesale, so stored headers must ride along. */
+      const headers = rowsToHeaders(form.headerRows);
+      if (Object.keys(headers).length > 0) {
+        connection.headers = headers;
+      }
+    }
+
     const priority = Number(form.priority);
     const tags = form.tags
       .split(',')
@@ -316,6 +380,10 @@ export default function McpServerModal({
       ...(tags.length > 0 ? { tags } : {}),
       ...(envVars ? { env_vars: envVars } : {}),
       connection_config: connection,
+      /** Fixed values live in tool_config next to the naming options already stored there. */
+      ...(form.type === 'openapi'
+        ? { tool_config: withBoundValues(server?.tool_config, form.boundValues) }
+        : {}),
     };
   };
 
@@ -332,20 +400,27 @@ export default function McpServerModal({
         try {
           const { result } = await syncMutation.mutateAsync(saved.id);
           showToast({
-            message: localize('com_ui_tars_mcp_saved_synced', {
-              created: result?.created ?? 0,
-              updated: result?.updated ?? 0,
-              deleted: result?.deleted ?? 0,
-            }),
+            message: localize('com_ui_tars_mcp_saved_synced', syncCounts(result)),
             status: 'success',
           });
+          const blocked = blockedToolsSummary(result);
+          if (blocked) {
+            showToast({
+              message: localize('com_ui_tars_mcp_tools_blocked', { tools: blocked }),
+              status: 'warning',
+            });
+          }
         } catch {
           showToast({ message: localize('com_ui_tars_mcp_saved_sync_failed'), status: 'warning' });
         }
       }
       onOpenChange(false);
     } catch (error) {
-      showToast({ message: (error as Error)?.message ?? 'Error', status: 'error' });
+      /** pwc_tars refuses a bad static header or fixed value with the reason; show that, not the status code. */
+      showToast({
+        message: errorMessage(error) ?? (error as Error)?.message ?? 'Error',
+        status: 'error',
+      });
     }
   };
 
@@ -712,6 +787,10 @@ export default function McpServerModal({
         </div>
       )}
 
+      {showStaticHeaders && (
+        <McpStaticHeaders value={form.headerRows} onChange={(rows) => set('headerRows', rows)} />
+      )}
+
       {!(form.type === 'external' && form.transport === 'stdio') && authFields}
     </div>
   );
@@ -740,6 +819,11 @@ export default function McpServerModal({
                     {localize('com_ui_tars_mcp_tab_tools_def')}
                   </TabsTrigger>
                 )}
+                {showFixedValuesTab && (
+                  <TabsTrigger value="fixed_values" className={TAB_TRIGGER}>
+                    {localize('com_ui_tars_mcp_tab_fixed_values')}
+                  </TabsTrigger>
+                )}
                 {showEnvTab && (
                   <TabsTrigger value="env" className={TAB_TRIGGER}>
                     {localize('com_ui_tars_mcp_tab_env')}
@@ -758,6 +842,18 @@ export default function McpServerModal({
               {showToolsTab && (
                 <TabsContent value="tools" className={TAB_PANEL}>
                   <McpCustomApiTools value={form.tools} onChange={(tools) => set('tools', tools)} />
+                </TabsContent>
+              )}
+
+              {showFixedValuesTab && (
+                <TabsContent value="fixed_values" className={TAB_PANEL}>
+                  <McpOpenapiFixedValues
+                    tools={openapiTools}
+                    loading={loadToolsMutation.isLoading}
+                    onLoadTools={handleLoadTools}
+                    value={form.boundValues}
+                    onChange={(bound) => set('boundValues', bound)}
+                  />
                 </TabsContent>
               )}
 

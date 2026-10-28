@@ -1850,11 +1850,9 @@ export const syncTarsMcpServer = (id: string): Promise<{ result: t.TTarsMcpSyncR
   return request.post(endpoints.tarsMcpAdminServerSync(id), {});
 };
 
-export const parseTarsMcpOpenapi = (data: {
-  openapi_url?: string;
-  base_url?: string;
-  timeout?: number;
-}): Promise<{ parsed: t.TTarsMcpParsedSpec }> => {
+export const parseTarsMcpOpenapi = (
+  data: t.TTarsMcpParseOpenapiInput,
+): Promise<{ parsed: t.TTarsMcpParsedSpec }> => {
   return request.post(endpoints.tarsMcpAdminParseOpenapi(), data);
 };
 

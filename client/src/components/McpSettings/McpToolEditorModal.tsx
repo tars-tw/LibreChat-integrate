@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import {
   Label,
   Input,
@@ -9,7 +9,7 @@ import {
   OGDialog,
   OGDialogTemplate,
 } from '@librechat/client';
-import { useTarsMcpSystemVariablesQuery } from '~/data-provider';
+import SystemVariablesHint from './SystemVariablesHint';
 import { mcpActionClass } from './actions';
 import { useLocalize } from '~/hooks';
 
@@ -183,44 +183,6 @@ export function validateToolDraft(
 const PARAM_ROW = 'grid grid-cols-[1fr_6.5rem_6.5rem_3.5rem_1fr_1fr_2rem] items-center gap-2';
 const BODY_ROW = 'grid grid-cols-[1fr_6.5rem_3.5rem_1fr_1fr_2rem] items-center gap-2';
 
-/** Lists the bindable `{{TARS_*}}` variables, with an opt-in reveal of the admin's own values. */
-function SystemVariablesHint() {
-  const localize = useLocalize();
-  const [showValues, setShowValues] = useState(false);
-  const { data: variables = [] } = useTarsMcpSystemVariablesQuery();
-  const toggleLabel = localize('com_ui_tars_mcp_fixed_value_preview');
-
-  return (
-    <div className="bg-surface-secondary text-text-secondary space-y-1 rounded-lg p-2 text-xs">
-      <div className="flex items-start justify-between gap-2">
-        <p>{localize('com_ui_tars_mcp_fixed_value_hint')}</p>
-        {variables.length > 0 && (
-          <button
-            type="button"
-            aria-label={toggleLabel}
-            aria-pressed={showValues}
-            title={toggleLabel}
-            onClick={() => setShowValues((prev) => !prev)}
-            className="hover:bg-surface-tertiary hover:text-text-primary shrink-0 rounded p-1"
-          >
-            {showValues ? <Eye className="icon-sm" /> : <EyeOff className="icon-sm" />}
-          </button>
-        )}
-      </div>
-      {variables.length > 0 && (
-        <ul className="space-y-0.5">
-          {variables.map(({ name, value }) => (
-            <li key={name} className="break-all">
-              <code className="bg-surface-tertiary text-text-primary rounded px-1">{`{{${name}}}`}</code>
-              {showValues && <span className="ml-1">= {value ?? '-'}</span>}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 export default function McpToolEditorModal({
   isEdit,
   draft: initialDraft,
@@ -344,7 +306,7 @@ export default function McpToolEditorModal({
               />
             </div>
 
-            <SystemVariablesHint />
+            <SystemVariablesHint hint={localize('com_ui_tars_mcp_fixed_value_hint')} />
 
             <div className="border-border-light space-y-2 rounded-lg border p-3">
               <div className="flex items-center justify-between">
