@@ -35,6 +35,7 @@ import type {
   TTarsMcpSyncResult,
   TTarsMcpToolUpdate,
   TTarsMcpParsedSpec,
+  TTarsMcpParseOpenapiInput,
   TTarsMcpServerInput,
   TTarsMcpBatchDeleteResult,
   TTarsMcpUserServerUpdate,
@@ -952,16 +953,8 @@ export const useSyncTarsMcpServerMutation = (
 };
 
 export const useParseTarsMcpOpenapiMutation = (
-  options?: UseMutationOptions<
-    { parsed: TTarsMcpParsedSpec },
-    unknown,
-    { openapi_url?: string; base_url?: string; timeout?: number }
-  >,
-): UseMutationResult<
-  { parsed: TTarsMcpParsedSpec },
-  unknown,
-  { openapi_url?: string; base_url?: string; timeout?: number }
-> => {
+  options?: UseMutationOptions<{ parsed: TTarsMcpParsedSpec }, unknown, TTarsMcpParseOpenapiInput>,
+): UseMutationResult<{ parsed: TTarsMcpParsedSpec }, unknown, TTarsMcpParseOpenapiInput> => {
   return useMutation((data) => dataService.parseTarsMcpOpenapi(data), options);
 };
 
