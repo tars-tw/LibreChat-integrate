@@ -7,7 +7,20 @@ import ModelProfileModal from '../Modal';
 const mockUpdate = jest.fn();
 const mockCreate = jest.fn();
 
+/** What pwc_tars `cloud_type_rules` answers: OpenAI's key is set, Vertex AI's is not. */
+const cloudRules = {
+  cloud_types: ['CLOUD', 'OPEN_AI', 'GOOGLE_VERTEX'],
+  local_types: ['VLLM'],
+  local_type_prefixes: ['VLLM'],
+  type_to_key: { OPEN_AI: 'KEY_OPEN_AI_API', GOOGLE_VERTEX: 'KEY_VERTEX_AI_API' },
+  all_keys: ['KEY_OPEN_AI_API', 'KEY_VERTEX_AI_API'],
+  key_labels: { KEY_OPEN_AI_API: 'OpenAI', KEY_VERTEX_AI_API: 'Vertex AI' },
+  key_status: { KEY_OPEN_AI_API: true, KEY_VERTEX_AI_API: false },
+};
+const mockRules = { data: cloudRules, isError: false };
+
 jest.mock('~/data-provider', () => ({
+  useTarsCloudTypeRulesQuery: () => mockRules,
   useCreateTarsModelProfileMutation: () => ({ mutate: mockCreate, isLoading: false }),
   useUpdateTarsModelProfileMutation: () => ({ mutate: mockUpdate, isLoading: false }),
 }));
@@ -152,9 +165,83 @@ describe('ModelProfileModal config visibility', () => {
       screen.getByLabelText(/com_ui_tars_models_endpoint/),
       'https://api.openai.com/v1',
     );
+    await user.click(screen.getByRole('combobox', { name: /com_ui_tars_models_api_key_source/ }));
+    await user.click(screen.getByRole('option', { name: /OpenAI/, hidden: true }));
     await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
     expect(mockCreate).toHaveBeenCalledTimes(1);
     expect(mockCreate.mock.calls[0][0]).not.toHaveProperty('config');
+  });
+});
+
+describe('ModelProfileModal cloud API key', () => {
+  const fillBasics = async (user: ReturnType<typeof userEvent.setup>, typeKey: string) => {
+    await user.type(screen.getByLabelText(/com_ui_tars_models_name/), 'new-model');
+    await user.click(screen.getByRole('combobox', { name: /com_ui_tars_models_type/ }));
+    await user.click(screen.getByRole('option', { name: typeKey, hidden: true }));
+    await user.type(screen.getByLabelText(/com_ui_tars_models_endpoint/), 'https://h/v1');
+  };
+
+  it('makes the generic CLOUD type pick one of the keys before saving', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    renderModal();
+    await fillBasics(user, 'com_ui_tars_models_type_cloud');
+
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(screen.getByText('com_ui_tars_models_api_key_select_required')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: /com_ui_tars_models_api_key_source/ }));
+    /** The closed type dropdown's options stay in the DOM; the key picker's come last. */
+    expect(
+      screen
+        .getAllByRole('option', { hidden: true })
+        .map((option) => option.textContent)
+        .slice(-3),
+    ).toEqual([
+      'com_ui_tars_models_api_key_select',
+      'OpenAI — com_ui_tars_models_api_key_configured',
+      'Vertex AI — com_ui_tars_models_api_key_not_configured',
+    ]);
+    await user.click(screen.getByRole('option', { name: /OpenAI/, hidden: true }));
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'CLOUD', sysConfigKey: 'KEY_OPEN_AI_API', apiKeyValue: '' }),
+    );
+  });
+
+  it('resolves a provider type to its own key and demands a value while it is unset', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    renderModal();
+    await fillBasics(user, 'com_ui_tars_models_type_google_vertex');
+
+    expect(
+      screen.queryByRole('combobox', { name: /com_ui_tars_models_api_key_source/ }),
+    ).toBeNull();
+    expect(screen.getByText('Vertex AI')).toBeInTheDocument();
+    expect(screen.getByText('com_ui_tars_models_api_key_not_configured')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(screen.getByText('com_ui_tars_models_api_key_required')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/com_ui_tars_models_api_key_value/), ' vx-secret ');
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ sysConfigKey: 'KEY_VERTEX_AI_API', apiKeyValue: 'vx-secret' }),
+    );
+  });
+
+  it('asks nothing about keys for a local model or when editing', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const { unmount } = renderModal();
+    await fillBasics(user, 'com_ui_tars_models_type_vllm');
+    expect(screen.queryByText(/com_ui_tars_models_api_key_hint/)).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockCreate.mock.calls[0][0]).not.toHaveProperty('sysConfigKey');
+    unmount();
+
+    renderModal(profile);
+    expect(screen.queryByText(/com_ui_tars_models_api_key_hint/)).toBeNull();
   });
 });
 

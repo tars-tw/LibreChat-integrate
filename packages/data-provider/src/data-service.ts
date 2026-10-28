@@ -1771,6 +1771,10 @@ export const createTarsModelProfile = (
   return request.post(endpoints.tarsModelProfiles(), data);
 };
 
+export const getTarsCloudTypeRules = (): Promise<t.TTarsCloudTypeRules> => {
+  return request.get(endpoints.tarsCloudTypeRules());
+};
+
 export const updateTarsModelProfile = (
   id: string,
   data: t.TTarsModelProfileInput,
