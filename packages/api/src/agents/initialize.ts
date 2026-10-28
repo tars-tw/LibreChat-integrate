@@ -131,6 +131,7 @@ import { assertAgentAttachmentLimits, isModelBoundAttachmentFile } from './attac
 import { primeTarsTurnFiles, buildTarsDataFilesContext } from '~/tars/files/turn';
 import { assertModelBoundContent } from '../middleware/modelBoundContent';
 import { resolveAttachedWorkspaceReadFileLines } from '~/code/workspace';
+import { addTarsGeneratedFilesContext } from '~/tars/files/generated';
 import { isValidInstructionsPromptLink } from './instructions/linked';
 import { PARTIAL_RESOLVED_CONVERSATION } from './conversationSymbols';
 import { registerMemoryTools, memoryToolUsageGuard } from './memory';
@@ -1290,8 +1291,9 @@ export async function initializeAgent(
               withText ? 'file_id text' : 'file_id filename type llmDeliveryPath',
             )) as TarsStoredFile[] | null) ?? [],
           getThreadMessages: db.getMessages
-            ? (id) => db.getMessages!({ conversationId: id }, 'messageId parentMessageId files')
+            ? (id, fields) => db.getMessages!({ conversationId: id }, fields)
             : undefined,
+          generatedLinksLimit: appConfig?.config?.tars?.generatedLinksLimit,
         })
       : null;
 
@@ -2971,6 +2973,8 @@ export async function initializeAgent(
     instructionsPromptFacts,
   };
 
+  /** TARS: the thread's generated links, out of summarization's reach. */
+  addTarsGeneratedFilesContext(initializedAgent, tarsFiles?.generatedFilesContext);
   prepareQueuedCodeFileContext(initializedAgent, [initializedAgent], user?.id);
   const queuedFileContext = initializedAgent.dynamicToolContextMap?.queued_code_files;
   if (typeof queuedFileContext === 'string') {

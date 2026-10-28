@@ -1,6 +1,10 @@
 import { Tools } from 'librechat-data-provider';
 import { logger } from '@librechat/data-schemas';
-import type { TTarsTraceArtifact, TTarsTraceEntry } from 'librechat-data-provider';
+import type {
+  TTarsTraceEntry,
+  TTarsGeneratedLink,
+  TTarsTraceArtifact,
+} from 'librechat-data-provider';
 import type { TarsToolRunConfig } from '~/tars/tools/progress';
 import type { TarsQuery } from '~/tars/client';
 import { getTarsModelProfileNames } from '~/tars/models';
@@ -96,19 +100,54 @@ function relayTraceLinks(entry: TTarsTraceEntry): TTarsTraceEntry {
   return entry;
 }
 
-/** The trace artifact of one capability reply; undefined when the run reported none. */
+/**
+ * The charts and files one capability reply generated, relayed and deduplicated.
+ * `chart_url` / `file_url` usually repeat an entry of `generated_urls`; the
+ * relay rewrite leaves an already relayed link as it is, so both spellings
+ * end up the same and collapse into one. A malformed entry is skipped, never
+ * thrown, so it cannot turn a finished run into a tool error.
+ */
+function toGeneratedLinks(data: LangflowCapabilityData): TTarsGeneratedLink[] {
+  const generated = Array.isArray(data.generated_urls) ? data.generated_urls : [];
+  const candidates = [
+    ...generated.map((item) => ({ type: item?.type || 'file', url: item?.url })),
+    { type: 'chart', url: data.chart_url },
+    { type: 'file', url: data.file_url },
+  ];
+  const links: TTarsGeneratedLink[] = [];
+  const seen = new Set<string>();
+  for (const { type, url } of candidates) {
+    const relayed = typeof url === 'string' ? rewriteTarsAssetLinks(url.trim()) : '';
+    if (relayed && !seen.has(relayed)) {
+      seen.add(relayed);
+      links.push({ type, url: relayed });
+    }
+  }
+  return links;
+}
+
+/**
+ * The trace artifact of one capability reply; undefined when the run reported
+ * neither a trace nor a generated link. A run with links but no trace still
+ * gets one, so the files it made stay listed for later turns.
+ */
 export function toTarsTraceArtifact(
   data: LangflowCapabilityData | undefined,
 ): TTarsTraceArtifact | undefined {
-  if (!data?.trace?.length) {
+  if (!data) {
+    return undefined;
+  }
+  const links = toGeneratedLinks(data);
+  if (!data.trace?.length && links.length === 0) {
     return undefined;
   }
   return {
-    trace: data.trace.map(relayTraceLinks),
+    trace: (data.trace ?? []).map(relayTraceLinks),
     mode: data.mode,
     model_name: data.model_name,
     tokens: data.tokens,
     sql: data.sql,
+    ...(links.length > 0 && { links }),
   };
 }
 
