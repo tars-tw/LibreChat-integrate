@@ -80,7 +80,8 @@ const PassthroughChatCompletionController = async (req, res) => {
       getAgent: db.getAgent,
       getMCPServerTools,
     }),
-    initializeAgent: (params) => initializeAgent(params, dbMethods),
+    initializeAgent: (params) =>
+      initializeAgent({ ...params, injectCurrentDate: false }, dbMethods),
     createRun,
     loadAgentTools: loadTools,
     logViolation,
