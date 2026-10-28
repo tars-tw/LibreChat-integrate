@@ -47,6 +47,8 @@ const databaseInput = (body) => ({
   host: (body.host ?? '').trim(),
   port: body.port != null && body.port !== '' ? Number(body.port) : undefined,
   databaseName: (body.databaseName ?? '').trim(),
+  /** Oracle only; anything but an explicit SID means a Service Name. */
+  oracleConnectionType: body.oracleConnectionType === 'sid' ? 'sid' : 'service_name',
   username: (body.username ?? '').trim(),
   password: body.password === '' ? undefined : body.password,
   enabled: body.enabled !== false,

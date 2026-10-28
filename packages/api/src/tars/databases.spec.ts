@@ -91,6 +91,93 @@ describe('createTarsDatabase', () => {
   });
 });
 
+describe('Oracle connection type', () => {
+  const oracleInput = {
+    name: 'erp',
+    dbType: 'Oracle' as const,
+    host: 'ora.internal',
+    port: 1521,
+    databaseName: 'ORCL',
+    username: 'app',
+    password: 'secret',
+  };
+
+  it('creates a SID row with sid only, as pwc_tars connects by whichever is set', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(201, { dataset: storedRow }));
+
+    await createTarsDatabase('user-1', { ...oracleInput, oracleConnectionType: 'sid' }, BASE_URL);
+
+    const body = bodyOf(fetchMock);
+    expect(body.sid).toBe('ORCL');
+    expect(body.database_name).toBe('ORCL');
+    expect(body).not.toHaveProperty('service_name');
+  });
+
+  it('defaults to a Service Name when no type is given', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(201, { dataset: storedRow }));
+
+    await createTarsDatabase('user-1', oracleInput, BASE_URL);
+
+    const body = bodyOf(fetchMock);
+    expect(body.service_name).toBe('ORCL');
+    expect(body).not.toHaveProperty('sid');
+  });
+
+  it('switches an edited row to a Service Name without carrying the old SID', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        buildResponse(200, {
+          dataset_sqls: [{ ...storedRow, db_type: 'Oracle', service_name: null, sid: 'ORCL' }],
+        }),
+      )
+      .mockResolvedValueOnce(buildResponse(200, { dataset: storedRow }));
+
+    await updateTarsDatabase(
+      'user-1',
+      'db-1',
+      { ...oracleInput, databaseName: 'XEPDB1', oracleConnectionType: 'service_name' },
+      BASE_URL,
+    );
+
+    const body = bodyOf(fetchMock, 1);
+    expect(body.service_name).toBe('XEPDB1');
+    expect(body).not.toHaveProperty('sid');
+  });
+
+  it('sends only the SID to the field-level connection test', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { data: { tables: ['EMP'], views: [] } }));
+
+    await testTarsDatabaseConnection({ ...oracleInput, oracleConnectionType: 'sid' }, BASE_URL);
+
+    const body = bodyOf(fetchMock);
+    expect(body.sid).toBe('ORCL');
+    expect(body).not.toHaveProperty('service_name');
+  });
+
+  it('leaves both Oracle fields out of other database kinds', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(201, { dataset: storedRow }));
+
+    await createTarsDatabase(
+      'user-1',
+      { ...connectionInput, username: 'svc_hr', password: 'hunter2', oracleConnectionType: 'sid' },
+      BASE_URL,
+    );
+
+    const body = bodyOf(fetchMock);
+    expect(body).not.toHaveProperty('sid');
+    expect(body).not.toHaveProperty('service_name');
+  });
+});
+
 describe('updateTarsDatabase', () => {
   it('reuses the stored credentials when the form left them blank', async () => {
     const fetchMock = jest

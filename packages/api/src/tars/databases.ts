@@ -1,5 +1,5 @@
 import { TARS_DEFAULT_PORTS, isTarsFileDatabase } from 'librechat-data-provider';
-import type { TTarsDatabaseType } from 'librechat-data-provider';
+import type { TTarsDatabaseType, TTarsOracleConnectionType } from 'librechat-data-provider';
 import type { TarsDatasetDatabase, TarsRawDatabase } from './datasets';
 import { getTarsBaseUrl, tarsFetch, TarsRequestError } from './client';
 import { toSafeDatabase } from './datasets';
@@ -19,8 +19,10 @@ export interface TarsDatabaseInput {
   dbType: TTarsDatabaseType;
   host?: string;
   port?: number;
-  /** For Oracle this is the Service Name; pwc_tars stores it in `database_name`. */
+  /** For Oracle this is the Service Name or SID; pwc_tars also keeps it in `database_name`. */
   databaseName?: string;
+  /** Oracle only: whether `databaseName` is a Service Name (the default) or a SID. */
+  oracleConnectionType?: TTarsOracleConnectionType;
   /** Omitted or empty on update means "keep the stored account". */
   username?: string;
   /** Omitted or empty on update means "keep the stored password". */
@@ -89,6 +91,20 @@ async function fetchRawDatabase(
 }
 
 /**
+ * Oracle names its database by Service Name or SID, and pwc_tars connects by
+ * whichever of `service_name` / `sid` the row carries. Exactly one is sent, as
+ * pwc_tars' own form does; on update pwc_tars clears the other one itself, so
+ * switching type on an existing row does not leave both set.
+ */
+const oracleBody = (input: TarsDatabaseInput): Record<string, string> => {
+  if (input.dbType !== 'Oracle') {
+    return {};
+  }
+  const name = input.databaseName ?? '';
+  return input.oracleConnectionType === 'sid' ? { sid: name } : { service_name: name };
+};
+
+/**
  * pwc_tars' `update_dataset` writes every column it reads from the body, so an
  * omitted field lands as NULL on a NOT NULL column. Both mutations therefore
  * always send the complete row.
@@ -103,6 +119,7 @@ const connectionBody = (
   host: input.host ?? '',
   port: input.port ?? TARS_DEFAULT_PORTS[input.dbType] ?? 0,
   database_name: input.databaseName ?? '',
+  ...oracleBody(input),
   username: credentials.username,
   password: credentials.password,
   status: input.enabled === false ? 0 : 1,
@@ -200,8 +217,7 @@ export async function deleteTarsDatabase(
  *
  * `databaseId` lets an edit form test with the stored credentials still hidden:
  * pass the id and leave the account or password blank. Oracle needs
- * `service_name` in the test body even though the column it is finally stored
- * in is `database_name`.
+ * `service_name` or `sid` in the test body as well as `database_name`.
  */
 export async function testTarsDatabaseConnection(
   input: TarsDatabaseInput & { databaseId?: string },
@@ -223,10 +239,8 @@ export async function testTarsDatabaseConnection(
     database_name: input.databaseName ?? '',
     username: credentials.username,
     password: credentials.password,
+    ...oracleBody(input),
   };
-  if (input.dbType === 'Oracle') {
-    body.service_name = input.databaseName ?? '';
-  }
 
   const response = await tarsFetch<ConnectionTestResponse>('/api/dataset_sql/test_connection', {
     method: 'POST',
