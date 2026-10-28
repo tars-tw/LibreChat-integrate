@@ -86,10 +86,12 @@ export interface TarsMcpLogRow {
 }
 
 export interface TarsMcpSyncResult {
-  synced?: number;
-  created?: number;
-  updated?: number;
-  deleted?: number;
+  synced_count?: number;
+  created_count?: number;
+  updated_count?: number;
+  deleted_count?: number;
+  /** OpenAPI tools withheld because a fixed value names a field the spec no longer has. */
+  blocked_tools?: Array<{ name: string; missing_fields: string[] }>;
   [key: string]: unknown;
 }
 
@@ -195,6 +197,8 @@ export async function adminParseTarsOpenapi(
     openapi_file?: string;
     base_url?: string;
     timeout?: number;
+    /** Naming options so the previewed tool names match what sync stores. */
+    tool_config?: Record<string, unknown>;
   },
   asUser: string,
 ): Promise<TarsMcpParsedSpec | undefined> {

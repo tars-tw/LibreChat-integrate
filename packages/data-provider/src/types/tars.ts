@@ -951,7 +951,19 @@ export type TTarsMcpLog = {
 
 export type TTarsMcpLogsResponse = { logs: TTarsMcpLog[] };
 
+/** An OpenAPI tool pwc_tars withheld on sync because a fixed value names a field the spec no longer has. */
+export type TTarsMcpBlockedTool = {
+  name: string;
+  missing_fields: string[];
+};
+
+/** pwc_tars `POST /api/mcp/servers/<id>/sync` data; the `_count` keys are what it sends. */
 export type TTarsMcpSyncResult = {
+  synced_count?: number;
+  created_count?: number;
+  updated_count?: number;
+  deleted_count?: number;
+  blocked_tools?: TTarsMcpBlockedTool[];
   synced?: number;
   created?: number;
   updated?: number;
@@ -980,13 +992,53 @@ export type TTarsMcpBatchDeleteResult = {
   failed_count: number;
 };
 
+/**
+ * One field of a parsed OpenAPI tool and where the request carries it
+ * (`path` / `query` / `header` / `cookie`, or `body` for a request-body property).
+ */
+export type TTarsMcpOpenapiField = {
+  in: string;
+  name: string;
+  type?: string;
+  required?: boolean;
+  description?: string;
+};
+
+export type TTarsMcpParsedTool = {
+  name?: string;
+  description?: string;
+  method?: string;
+  path?: string;
+  fields?: TTarsMcpOpenapiField[];
+};
+
+/** What the OpenAPI parser is given (pwc_tars `POST /parse-openapi`). */
+export type TTarsMcpParseOpenapiInput = {
+  openapi_url?: string;
+  base_url?: string;
+  timeout?: number;
+  /** Naming options (prefix, snake_case …) so previewed tool names match what sync stores. */
+  tool_config?: Record<string, unknown>;
+};
+
 /** Preview of a parsed OpenAPI/Swagger spec (pwc_tars `POST /parse-openapi`). */
 export type TTarsMcpParsedSpec = {
   api_info?: Record<string, unknown>;
   base_url?: string;
-  tools?: Array<{ name?: string; description?: string; method?: string; path?: string }>;
+  tools?: TTarsMcpParsedTool[];
   tool_count?: number;
   login_hint?: Record<string, unknown> | null;
+};
+
+/**
+ * A fixed value for one field of an OpenAPI tool, stored in
+ * `tool_config.bound_values` under the tool's `"METHOD /path"` key. pwc_tars
+ * fills it (resolving `{{TARS_*}}` variables) and hides the field from the AI.
+ */
+export type TTarsMcpBoundValue = {
+  in: string;
+  name: string;
+  value: string;
 };
 
 /** One tool in the user panel, with the user's own enable state. */

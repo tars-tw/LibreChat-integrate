@@ -42,6 +42,7 @@ import { filterManagedServers } from './servers';
 import ServerTypeBadge from './ServerTypeBadge';
 import McpUserToolsTab from './McpUserToolsTab';
 import McpServerModal from './McpServerModal';
+import { syncCounts, blockedToolsSummary } from './boundValues';
 import { mcpActionClass } from './actions';
 import McpLogsTab from './McpLogsTab';
 
@@ -191,13 +192,16 @@ export default function McpSettingsView() {
     try {
       const { result } = await syncMutation.mutateAsync(server.id);
       showToast({
-        message: localize('com_ui_tars_mcp_sync_result', {
-          created: result?.created ?? 0,
-          updated: result?.updated ?? 0,
-          deleted: result?.deleted ?? 0,
-        }),
+        message: localize('com_ui_tars_mcp_sync_result', syncCounts(result)),
         status: 'success',
       });
+      const blocked = blockedToolsSummary(result);
+      if (blocked) {
+        showToast({
+          message: localize('com_ui_tars_mcp_tools_blocked', { tools: blocked }),
+          status: 'warning',
+        });
+      }
     } catch (error) {
       showToast({
         message: `${localize('com_ui_tars_mcp_sync_failed')}: ${(error as Error)?.message ?? ''}`,
