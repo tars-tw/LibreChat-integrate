@@ -43,6 +43,12 @@ endpoints:
       - file_agent
       - skills
       - context
+    # Append "Current date: YYYY-MM-DD (Weekday)" (user's timezone) to every agent turn, as
+    # pwc_tars's own chat does, so relative ranges ("the last month") reach tools as real
+    # dates instead of the model's training-era guess. Skipped for agents whose instructions
+    # already use {{current_date}} / {{current_datetime}} / {{iso_datetime}}, and for the
+    # LLM gateway (/api/agents/v1m), whose caller builds the whole prompt. Default: true.
+    injectCurrentDate: true
 
   custom:
     # Local (地端) models served by vLLM. This endpoint is fully auto-discovered

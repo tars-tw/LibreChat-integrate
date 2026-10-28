@@ -298,6 +298,8 @@ function hasTemporalSpecialVars(text: string): boolean {
   return temporalSpecialVarRegex.test(text);
 }
 
+const currentDateInstruction = 'Current date: {{current_date}}';
+
 function appendAdditionalInstructions(agent: Agent, text?: string | null): void {
   if (text == null || text === '') {
     return;
@@ -1097,6 +1099,12 @@ export interface InitializeAgentParams {
    * meta user messages before the LLM call.
    */
   manualSkills?: string[];
+  /**
+   * `false` keeps today's date out of the prompt even when
+   * `endpoints.agents.injectCurrentDate` is on. The LLM gateway passes it: its
+   * caller (pwc_tars) builds the whole prompt, date included.
+   */
+  injectCurrentDate?: boolean;
 }
 
 /**
@@ -2679,6 +2687,13 @@ export async function initializeAgent(
     }
   }
 
+  /** Without a date the model guesses "today" from its training data, so relative ranges
+   * ("the last month") reach tools as dates a year or more in the past. */
+  const shouldInjectCurrentDate =
+    params.injectCurrentDate !== false &&
+    appConfig?.endpoints?.agents?.injectCurrentDate === true &&
+    !hasTemporalSpecialVars(agent.instructions ?? '');
+
   if (agent.instructions && agent.instructions !== '') {
     const resolvedInstructions = replaceSpecialVars({
       text: agent.instructions,
@@ -2692,6 +2707,17 @@ export async function initializeAgent(
     } else {
       agent.instructions = resolvedInstructions;
     }
+  }
+
+  if (shouldInjectCurrentDate) {
+    appendAdditionalInstructions(
+      agent,
+      replaceSpecialVars({
+        text: currentDateInstruction,
+        now: runtime.turnStartedAt,
+        timezone: runtime.requestBody.timezone,
+      }),
+    );
   }
 
   const repositoryInstructionBlock = repositoryInstructionSource
