@@ -4950,7 +4950,7 @@
   "com_ui_tars_embedding_load_failed": "Failed to load embedding usage",
   "com_ui_tars_embedding_none": "No embedding usage was recorded for this message",
   "com_ui_tars_embedding_not_in_quota": "Embedding tokens are recorded separately and never count against a chat quota.",
-  "com_ui_tars_embedding_other": "Other",
+  "com_ui_tars_embedding_other_label": "Other",
   "com_ui_tars_embedding_purpose_kb_ingest": "Knowledge base ingestion",
   "com_ui_tars_embedding_purpose_kb_query": "Knowledge base search",
   "com_ui_tars_embedding_purpose_mcp_tool_rank": "MCP tool ranking",

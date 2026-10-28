@@ -3508,7 +3508,7 @@
   "com_ui_tars_embedding_load_failed": "載入 Embedding 用量失敗",
   "com_ui_tars_embedding_none": "此訊息沒有 Embedding 用量紀錄",
   "com_ui_tars_embedding_not_in_quota": "Embedding token 另行記錄，不計入聊天配額。",
-  "com_ui_tars_embedding_other": "其他",
+  "com_ui_tars_embedding_other_label": "其他",
   "com_ui_tars_embedding_purpose_kb_ingest": "知識庫寫入",
   "com_ui_tars_embedding_purpose_kb_query": "知識庫檢索",
   "com_ui_tars_embedding_purpose_mcp_tool_rank": "MCP 工具排序",
