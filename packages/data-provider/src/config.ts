@@ -1704,6 +1704,10 @@ export const agentsEndpointSchema = baseEndpointSchema
       /** Graph steps an agent run may take; a run with fewer than 1 cannot take a step. */
       recursionLimit: z.number().int().min(1).optional(),
       disableBuilder: z.boolean().optional().default(false),
+      /** Tells every agent turn today's date (in the user's timezone), as pwc_tars's own chat
+       * does. Skipped for agents whose instructions already use `{{current_date}}`-style vars,
+       * and for the LLM gateway, whose caller builds the whole prompt. */
+      injectCurrentDate: z.boolean().optional().default(true),
       /** Optional workspace guidance acquisition budget, separate from command execution. */
       repositoryInstructions: z
         .object({
@@ -2223,6 +2227,7 @@ export const agentsEndpointSchema = baseEndpointSchema
   )
   .prefault({
     disableBuilder: false,
+    injectCurrentDate: true,
     capabilities: defaultAgentCapabilities,
     maxCitations: 30,
     maxCitationsPerFile: 7,
