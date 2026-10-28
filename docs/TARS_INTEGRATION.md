@@ -256,6 +256,7 @@ npm run build
 
 | 日期 | 檔案 | 變更內容 | 相關 commit |
 |---|---|---|---|
+| 2026-10-27 | `librechat.yaml` | 新增可選的 `tars.generatedLinksLimit`(預設 `20`,`0` 為關閉):對話中 TARS 工具產生過的圖表與檔案,每輪最多重新列給模型最新的幾筆,對話被摘要壓縮後模型仍拿得到連結。不設即為預設值,既有部署不用改;`.env` 無異動。 | `feat/tars_generated_file_links_no_summarization`(待 commit) |
 | 2026-10-17 | `librechat.yaml` | `mcpServers.langflow` 改名為 `mcpServers.workflow`,`title` 改 `Workflow`、`description` 改中文;key 會顯示在代理建構器工具庫與對話的工具呼叫卡片,也是工具名後綴(`<flow>_mcp_workflow`),必須是 `workflow`(程式依 `TARS_WORKFLOW_MCP_SERVER_NAME` 同步 Workflow agent)。既有 agent 上的 `*_mcp_langflow` 工具在後端啟動時自動改名,不用手動遷移。Workflow 頁網址改為 `/workflow`,舊的 `/langflow` 會轉址。`.env` 無異動。 | `feature/workflow-branding`(待 commit) |
 | 2026-10-15 | `librechat.yaml`、`.env` | 開啟排程聊天(upstream 預設關閉):`librechat.yaml` 的 `interface` 新增 `schedules: { use: true, create: true }`,側欄出現「排程」入口(角色權限 `SCHEDULES` 預設即開)。`.env.example` 的 `SCHEDULES_SINGLE_PROCESS=true` 改為預設開啟;既有 `.env` 沒有這行要補上,否則排程不會觸發。多個 LibreChat process 的部署改用 Redis,見 §1.3 排程說明。 | `feat/enable-scheduled-chats`(待 commit) |
 | 2026-10-14 | `.env` | `.env.example` 直接帶 `TARS_LANGFLOW_SSO_SECRET` 預設值,與 pwc_tars `infra/langflow/.env.example` 相同,兩邊照範例檔複製即可;既有 `.env` 若是自己產生的值,改成範例檔的值,或維持兩邊相同即可。 | `feat/hard-code-langflow-sso-secret`(待 commit)、pwc_tars `feature/hard-code-langflow-sso-secret` |

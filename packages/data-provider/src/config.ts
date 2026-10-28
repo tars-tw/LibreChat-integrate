@@ -40,6 +40,7 @@ import {
   scheduledMCPReadOnlyPolicySchema,
 } from './types/scheduleConsent';
 import { partialWithoutDefaults } from './zod';
+import { tarsConfigSchema } from './tars';
 
 export const AGENT_BACKGROUND_COMPLETION_RESULT_MAX_CHARS_DEFAULT = 24 * 1024;
 export const AGENT_BACKGROUND_COMPLETION_RESULT_MAX_CHARS_HARD_MAX = 64 * 1024;
@@ -4510,6 +4511,7 @@ export const configSchema = z.object({
   credentials: credentialsConfigSchema.optional(),
   memory: memorySchema.optional(),
   summarization: summarizationConfigSchema.optional(),
+  tars: tarsConfigSchema.optional(),
   skillSync: skillSyncConfigSchema,
   skillDeletion: z
     .object({
