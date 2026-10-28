@@ -95,7 +95,7 @@ export default function EmbeddingUsage({
         {
           dimension: chartBy,
           labelOf: (row) => embeddingValueLabel(chartBy, row.split, row.split_label, localize),
-          otherLabel: localize('com_ui_tars_embedding_other'),
+          otherLabel: localize('com_ui_tars_embedding_other_label'),
         },
         dayData,
       ),
