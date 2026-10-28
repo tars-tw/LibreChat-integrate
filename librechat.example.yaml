@@ -836,6 +836,10 @@ endpoints:
   #     create_file: 131072
   #   # (optional) Disable the builder interface for agents
   #   disableBuilder: false
+  #   # (optional) Append "Current date: YYYY-MM-DD (Weekday)" in the user's timezone to every
+  #   # agent turn. Skipped when the instructions already use {{current_date}}-style vars and
+  #   # for the LLM gateway (/api/agents/v1m). Defaults to true; set false to turn it off.
+  #   injectCurrentDate: true
   #   # (optional) When conversation titles are generated:
   #   #   immediate (default): generate as soon as the request is made, in parallel
   #   #     with the response, from the user's first message (title appears within ~1-2s).

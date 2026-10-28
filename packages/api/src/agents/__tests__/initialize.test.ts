@@ -2263,6 +2263,70 @@ describe('initializeAgent — stable and dynamic instruction fields', () => {
     expect(result.additional_instructions).toBeUndefined();
   });
 
+  describe('injectCurrentDate', () => {
+    const initializeWithDate = async (
+      setup: (mocks: ReturnType<typeof createMocks>) => void,
+      injectCurrentDate?: boolean,
+    ) => {
+      const mocks = createMocks();
+      const { agent, req, res, loadTools, db } = mocks;
+      req.config = { endpoints: { agents: { injectCurrentDate: true } } } as never;
+      req.turnStartedAt = new Date('2026-10-28T01:30:00.000Z').getTime();
+      req.body = { timezone: 'Asia/Taipei' };
+      setup(mocks);
+      return initializeAgent(
+        {
+          req,
+          res,
+          agent,
+          loadTools,
+          endpointOption: { endpoint: EModelEndpoint.agents },
+          allowedProviders: new Set([Providers.OPENAI]),
+          isInitialAgent: true,
+          injectCurrentDate,
+        },
+        db,
+      );
+    };
+
+    it('tells an agent without instructions the date in the request timezone', async () => {
+      const result = await initializeWithDate(() => undefined);
+
+      expect(result.additional_instructions).toBe('Current date: 2026-10-28 (Wednesday)');
+    });
+
+    it('keeps stable instructions and puts the date in the dynamic tail', async () => {
+      const result = await initializeWithDate(({ agent }) => {
+        agent.instructions = 'You answer law questions.';
+      });
+
+      expect(result.instructions).toBe('You answer law questions.');
+      expect(result.additional_instructions).toBe('Current date: 2026-10-28 (Wednesday)');
+    });
+
+    it('does not repeat the date for instructions that already use temporal vars', async () => {
+      const result = await initializeWithDate(({ agent }) => {
+        agent.instructions = 'Today is {{current_date}}.';
+      });
+
+      expect(result.additional_instructions).toBe('Today is 2026-10-28 (Wednesday).');
+    });
+
+    it('stays off when the config disables it', async () => {
+      const result = await initializeWithDate(({ req }) => {
+        req.config = { endpoints: { agents: { injectCurrentDate: false } } } as never;
+      });
+
+      expect(result.additional_instructions).toBeUndefined();
+    });
+
+    it('stays off when the caller opts out, as the LLM gateway does', async () => {
+      const result = await initializeWithDate(() => undefined, false);
+
+      expect(result.additional_instructions).toBeUndefined();
+    });
+  });
+
   it('appends generated artifact guidance without replacing existing dynamic instructions', async () => {
     const { generateArtifactsPrompt } = jest.requireMock('~/prompts') as {
       generateArtifactsPrompt: jest.Mock;
