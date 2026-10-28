@@ -1,10 +1,23 @@
 import { logger } from '@librechat/data-schemas';
 import { Constants } from 'librechat-data-provider';
-import type { ThreadMessage } from '~/utils/message';
+import type { TarsGeneratedLinkMessage } from './generated';
 import type { TarsDataFile } from './sign';
+import {
+  collectTarsGeneratedLinks,
+  TARS_GENERATED_LINK_FIELDS,
+  buildTarsGeneratedFilesContext,
+} from './generated';
 import { isTarsConfigured } from '~/tars/client';
 import { getThreadData } from '~/utils/message';
 import { isTarsSpreadsheet } from './sign';
+
+/**
+ * The message fields `getThreadMessages` is asked to load: the parent chain, its
+ * uploads, and the generated links of its `tars_trace` attachments. An
+ * attachment's own `file_id` stays out on purpose, so which files the data
+ * tools see does not change.
+ */
+export const TARS_THREAD_MESSAGE_FIELDS: string = `messageId parentMessageId files ${TARS_GENERATED_LINK_FIELDS}`;
 
 /** The fields of a LibreChat file this module reads. */
 export interface TarsStoredFile {
@@ -31,6 +44,11 @@ export interface TarsTurnFiles {
    * `file_input`; read only when a plugin actually runs.
    */
   loadFileInput: () => Promise<string>;
+  /**
+   * The runtime-context block listing the charts and files TARS tools
+   * generated earlier in the thread; null when there are none.
+   */
+  generatedFilesContext: string | null;
 }
 
 export interface TarsTurnFilesSource {
@@ -41,7 +59,13 @@ export interface TarsTurnFilesSource {
   parentMessageId?: string | null;
   /** The requesting user's own files among `fileIds`, in any order. */
   findOwnedFiles: (fileIds: string[], withText: boolean) => Promise<TarsStoredFile[]>;
-  getThreadMessages?: (conversationId: string) => Promise<ThreadMessage[] | null>;
+  /** Loads the conversation's messages with the given projection. */
+  getThreadMessages?: (
+    conversationId: string,
+    fields: string,
+  ) => Promise<TarsGeneratedLinkMessage[] | null>;
+  /** `tars.generatedLinksLimit`; the schema default when unset. */
+  generatedLinksLimit?: number;
 }
 
 const EMPTY: TarsTurnFiles = {
@@ -51,6 +75,7 @@ const EMPTY: TarsTurnFiles = {
   imageFiles: [],
   otherFiles: [],
   loadFileInput: async () => '',
+  generatedFilesContext: null,
 };
 
 const filesByRequest = new WeakMap<object, TarsTurnFiles>();
@@ -61,7 +86,7 @@ export function getTarsTurnFiles(req: object): TarsTurnFiles | undefined {
   return filesByRequest.get(req);
 }
 
-async function readThreadFileIds(source: TarsTurnFilesSource): Promise<string[]> {
+async function readThread(source: TarsTurnFilesSource): Promise<TarsGeneratedLinkMessage[]> {
   const { conversationId, parentMessageId, getThreadMessages } = source;
   if (!conversationId || !getThreadMessages) {
     return [];
@@ -69,8 +94,7 @@ async function readThreadFileIds(source: TarsTurnFilesSource): Promise<string[]>
   if (!parentMessageId || parentMessageId === Constants.NO_PARENT) {
     return [];
   }
-  const messages = await getThreadMessages(conversationId);
-  return messages?.length ? getThreadData(messages, parentMessageId).fileIds : [];
+  return (await getThreadMessages(conversationId, TARS_THREAD_MESSAGE_FIELDS)) ?? [];
 }
 
 /**
@@ -79,13 +103,18 @@ async function readThreadFileIds(source: TarsTurnFilesSource): Promise<string[]>
  * chain (never a sibling branch). Spreadsheets go to pwc_tars's data tools;
  * files whose text the model reads feed a plugin's `file_input`. Every
  * attachment lands in exactly one kind, so the audit trace lists — and an admin
- * can download — each file the turn could see.
+ * can download — each file the turn could see. The same walk lists the charts
+ * and files TARS tools generated, so the thread is read once for both.
  */
 export async function resolveTarsTurnFiles(source: TarsTurnFilesSource): Promise<TarsTurnFiles> {
-  const threadFileIds = await readThreadFileIds(source);
+  const thread = await readThread(source);
+  const { messageIds, fileIds: threadFileIds } = getThreadData(thread, source.parentMessageId);
+  const generatedFilesContext = buildTarsGeneratedFilesContext(
+    collectTarsGeneratedLinks(thread, messageIds, source.generatedLinksLimit),
+  );
   const fileIds = [...new Set([...source.requestFileIds, ...threadFileIds])];
   if (fileIds.length === 0) {
-    return EMPTY;
+    return { ...EMPTY, generatedFilesContext };
   }
   const byId = new Map(
     (await source.findOwnedFiles(fileIds, false)).map((file) => [file.file_id, file]),
@@ -126,7 +155,15 @@ export async function resolveTarsTurnFiles(source: TarsTurnFilesSource): Promise
       .filter(Boolean)
       .join('\n\n');
   };
-  return { dataFiles, textFiles, providerFiles, imageFiles, otherFiles, loadFileInput };
+  return {
+    dataFiles,
+    textFiles,
+    providerFiles,
+    imageFiles,
+    otherFiles,
+    loadFileInput,
+    generatedFilesContext,
+  };
 }
 
 /**

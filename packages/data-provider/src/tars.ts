@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type {
   TTarsTraceRow,
   TTarsJsonField,
@@ -739,3 +740,10 @@ export function isTarsEmbeddingRangeTooLong({ start_date, end_date }: TTarsToken
     (Date.parse(end_date) - Date.parse(start_date)) / DAY_MS + 1 > TARS_EMBEDDING_MAX_RANGE_DAYS
   );
 }
+
+/** pwc_tars integration levers, `tars` in librechat.yaml. */
+export const tarsConfigSchema = z.object({
+  /** Newest charts and files TARS tools generated earlier in a conversation that every turn
+   *  re-lists for the model, outside the summarizable history. `0` lists none. */
+  generatedLinksLimit: z.number().int().min(0).max(200).default(20),
+});

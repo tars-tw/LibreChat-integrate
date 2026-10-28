@@ -82,6 +82,7 @@ The chat switches 知識庫檢索 / 資料庫查詢 / 產生圖表 / 產生檔�
 - **UI**: each call returns `content_and_artifact`; the artifact rides the existing `tars_trace` attachment as `{ trace: [], step }` (`TTarsToolStep`: pwc_tars summary, source files with chunk counts + excerpt, relayed chart/file links, capped output), so `callbacks.js` needed no change. `TarsToolCall.tsx` (routed by `isTarsBuiltinToolName` in `Part.tsx`) reads the streaming args into the label — 「正在檢索知識庫 · 台北 成田 班機」 — and settles into 「已檢索知識庫 · 9 段內容 · 2 份文件」, expanding to the sources, the SQL, a rendered result table, or the chart. While a run streams the card is folded into upstream's activity group, so `live.ts` `toolCallLine` has one TARS branch (`getTarsToolLine`, shared copy in `Content/tars.ts`) that makes the fold's live header read the same sentence — re-attach it if a rebase rewrites `toolCallLine`.
 - **pwc_tars-side changes**: `builtin_tool_runner.BUILTIN_TOOLS` lets `create_chart` / `generate_file` take the optional `knowledge_base_id` (+ spreadsheet) bindings, so they can `sql` against the bound database like in pwc_tars's chat; the `/tools/<name>/stream` route and `emit` / `abort_event` on `run_tool`; the table task's per-group progress.
 - **Live progress**: every direct call (built-ins and `tars_plugin_*`) goes to `POST /api/langflow-service/tools/<name>/stream` (pwc_tars `tool_stream.stream_tool`: the tool runs on a worker thread with a fresh app context carrying the request's `flask.g`, its `Status` / `AgentProgress` events stream as `{type:'progress'}` SSE frames, then `{type:'result'}` or `{type:'error'}`, 15s keepalives, and a closed stream aborts the tool); `runTarsServiceTool` (`tars/tools/client.ts`, on `tarsStream` in `tars/client.ts`) falls back to the JSON route when the stream route 404s. Progress reaches the card the way web-search results do: `initialize.js` hands its `createAttachmentEmitter` to `loadToolsForExecution`, which wraps it in `createTarsProgressReporter` (`tars/tools/progress.ts`) as `options.tarsProgress`; the tool reports against `config.toolCall.id` as a live-only `tars_trace` attachment `{ trace: [], progress }` with the fixed `file_id` `tars-progress-<toolCallId>`, so the client upserts one line in place and nothing is persisted. `TarsToolCall` and the fold header (`getTarsToolProgress` in `Content/tars.ts`, threaded through `live.ts`) show it while the call runs. `run_table_task` reports 「已處理 k / N 列…」 as each row group finishes (pwc_tars `executor.map_one_row_group`).
+- **Generated links survive summarization**: a chart / file link exists in the history only as tool output and reply text, both of which summarization may drop, so it is also listed outside the summarizable history. Every link rides the call's `tars_trace` artifact (`step.links` for built-ins, `links` for nested runs; `toTarsTraceArtifact` keeps a trace-less reply that generated something). At turn start `resolveTarsTurnFiles` reads them off the parent chain's attachments in the same thread read and walk as the spreadsheets (`TARS_THREAD_MESSAGE_FIELDS` projects only the attachments' link fields) and lists the newest `tars.generatedLinksLimit` (librechat.yaml, default 20, `0` = off; schema in data-provider `src/tars.ts`) as `generatedFilesContext`, which `addTarsGeneratedFilesContext` (`tars/files/generated.ts`) puts in the initialized agent's `dynamicToolContextMap['tars_generated_files']` — on the agent, not on the map `loadTools` returns, because a turn that loads no tools gets no map back. Within a turn `refreshTarsTurnGeneratedLinks` (`tars/files/live.ts`) appends each new link to the running `AgentContext.additionalInstructions` and sets its private `systemRunnableStale`, so the next model call rebuilds the system prompt. `attachTarsGeneratedLinks` wraps the `ON_TOOL_EXECUTE` handler `getDefaultHandlers` registers and runs `refreshTarsTurnGeneratedLinks` on each successful result before the batch settles; chat tools always run event-driven (`definitionsOnly: true`), which never emits `on_tool_end`. If an `@librechat/agents` bump drops that private field, the hook warns and does nothing, and `live.spec.ts` fails.
 - Not yet: the database schema is read through `tars_sql_schema` (one extra model round) rather than pre-listed in the prompt as pwc_tars does.
 
 `tars_agent` (`/api/langflow-service/agent`, `packages/api/src/tars/agent/`) and the individual loop tools (`sql_agent`, `rag_agent`, `chart_agent`, `data_query`, `table_task`) remain only for saved agents that list them explicitly and for Langflow; the chat no longer mounts them.
@@ -213,7 +214,8 @@ cd api && npx jest strategies/tarsStrategy
 
 Finally, confirm the integration seams survived the auto-merges — textual success is
 not semantic success. The load-bearing ones: `primeTarsTurnFiles` in
-`packages/api/src/agents/initialize.ts`, the TARS tool gates in
+`packages/api/src/agents/initialize.ts` and `addTarsGeneratedFilesContext` right after
+its `initializedAgent` literal (`tars/files/agent.spec.ts` fails if it is lost), the TARS tool gates in
 `api/server/services/ToolService.js`, the tool construction in `handleTools.js`,
 `mirrorChatToTars` in `agents/request.js`,
 `withTarsMcpConfig` in `api/server/services/Config/app.js`, `stampTarsStepTiming`
@@ -228,8 +230,10 @@ lost), `noteTarsFinishReason` after `collectedUsage.push` in `ModelEndHandler`
 `MCPManager.callTool` and `noteTarsMcpToolCall` right after `mcpManager.callTool` in
 `services/MCP.js` (an MCP `isError` reaches the audit trace only through these two;
 `mcp/__tests__/MCPManager.tarsToolError.spec.ts` and
-`services/__tests__/MCP.tarsToolError.spec.js` fail if either is lost), and on the
-frontend `TarsPromptsButton`.
+`services/__tests__/MCP.tarsToolError.spec.js` fail if either is lost),
+`attachTarsGeneratedLinks` right after the `ON_TOOL_EXECUTE` registration in
+`getDefaultHandlers` (`agents/callbacks.js`; same standalone-line rule, guarded by the
+same `tarsStepTiming.spec.js`), and on the frontend `TarsPromptsButton`.
 
 ---
 

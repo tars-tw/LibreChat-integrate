@@ -1,15 +1,16 @@
 import mongoose from 'mongoose';
-import { Constants } from 'librechat-data-provider';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { Constants, Tools } from 'librechat-data-provider';
 import { createMethods, createModels } from '@librechat/data-schemas';
 import type { AllMethods } from '@librechat/data-schemas';
 import type { TarsStoredFile, TarsTurnFilesSource } from './turn';
-import type { ThreadMessage } from '~/utils/message';
+import type { TarsGeneratedLinkMessage } from './generated';
 import {
   getTarsTurnFiles,
   primeTarsTurnFiles,
   resolveTarsTurnFiles,
   buildTarsDataFilesContext,
+  TARS_THREAD_MESSAGE_FIELDS,
 } from './turn';
 
 const OWNER = new mongoose.Types.ObjectId().toString();
@@ -59,6 +60,17 @@ const addMessage = (messageId: string, parentMessageId: string, fileIds: string[
     files: fileIds.map((file_id) => ({ file_id })),
   });
 
+const addReply = (messageId: string, parentMessageId: string, attachments: unknown[]) =>
+  mongoose.models.Message.create({
+    messageId,
+    parentMessageId,
+    conversationId: CONVO,
+    user: OWNER,
+    isCreatedByUser: false,
+    text: messageId,
+    attachments,
+  });
+
 /** Wired the way `initializeAgent` wires it, against the real File / Message collections. */
 const source = (overrides: Partial<TarsTurnFilesSource> = {}): TarsTurnFilesSource => ({
   requestFileIds: [],
@@ -70,12 +82,13 @@ const source = (overrides: Partial<TarsTurnFilesSource> = {}): TarsTurnFilesSour
       {},
       withText ? 'file_id text' : 'file_id filename type llmDeliveryPath',
     )) as TarsStoredFile[] | null) ?? [],
-  getThreadMessages: async (conversationId) =>
-    (await methods.getMessages({ conversationId }, 'messageId parentMessageId files')).map(
-      ({ messageId, parentMessageId, files }): ThreadMessage => ({
+  getThreadMessages: async (conversationId, fields) =>
+    (await methods.getMessages({ conversationId }, fields)).map(
+      ({ messageId, parentMessageId, files, attachments }): TarsGeneratedLinkMessage => ({
         messageId,
         parentMessageId: parentMessageId ?? undefined,
-        files: files as ThreadMessage['files'],
+        files: files as TarsGeneratedLinkMessage['files'],
+        attachments: attachments as TarsGeneratedLinkMessage['attachments'],
       }),
     ),
   ...overrides,
@@ -141,6 +154,116 @@ describe('resolveTarsTurnFiles', () => {
     );
     expect(files.dataFiles.map((file) => file.id)).toEqual(['sheet-now']);
     expect(getThreadMessages).not.toHaveBeenCalled();
+  });
+});
+
+describe('resolveTarsTurnFiles generated links', () => {
+  const report = '/api/tars/static/generate_output/kb/report.xlsx?sig=a';
+  const chart = '/api/tars/static/quickchart/kb/chart.png?sig=b';
+  /** The names the context block lists, in its order. */
+  const listed = (context: string | null) =>
+    [...(context ?? '').matchAll(/^- \w+: !?\[([^\]]+)\]/gm)].map((match) => match[1]);
+
+  beforeEach(async () => {
+    await addMessage('u1', NO_PARENT);
+    await addReply('a1', 'u1', [
+      {
+        type: Tools.tars_trace,
+        toolCallId: 'c1',
+        [Tools.tars_trace]: {
+          step: { tool: 'generate_file', ok: true, links: [{ type: 'file', url: report }] },
+        },
+      },
+      {
+        type: Tools.web_search,
+        toolCallId: 'c2',
+        [Tools.web_search]: { organic: [{ link: 'https://example.com' }] },
+      },
+    ]);
+    await addMessage('u2', 'a1');
+    await addReply('a2', 'u2', [
+      {
+        type: Tools.tars_trace,
+        toolCallId: 'c3',
+        [Tools.tars_trace]: {
+          trace: [{ type: 'turn', turn: 1 }],
+          links: [{ type: 'chart', url: chart }],
+        },
+      },
+    ]);
+    await addReply('a2-alt', 'u2', [
+      {
+        type: Tools.tars_trace,
+        [Tools.tars_trace]: {
+          links: [{ type: 'file', url: '/api/tars/static/generate_output/kb/x.xlsx' }],
+        },
+      },
+    ]);
+    await addMessage('u3', 'a2');
+  });
+
+  it('lists the links of the parent chain through the projected thread, with no files attached', async () => {
+    const getThreadMessages = jest.fn(source().getThreadMessages);
+    const files = await resolveTarsTurnFiles(source({ parentMessageId: 'u3', getThreadMessages }));
+
+    expect(getThreadMessages).toHaveBeenCalledWith(CONVO, TARS_THREAD_MESSAGE_FIELDS);
+    expect(files.dataFiles).toEqual([]);
+    expect(files.generatedFilesContext).toContain('# Generated files Runtime Context');
+    expect(files.generatedFilesContext).toContain(`- file: [report.xlsx](${report})`);
+    expect(files.generatedFilesContext).toContain(`- chart: ![chart.png](${chart})`);
+    expect(listed(files.generatedFilesContext)).toEqual(['report.xlsx', 'chart.png']);
+  });
+
+  it('loads only the link fields of the attachments', async () => {
+    const [reply] = await methods.getMessages(
+      { conversationId: CONVO, messageId: 'a1' },
+      TARS_THREAD_MESSAGE_FIELDS,
+    );
+
+    expect(reply.attachments).toEqual([
+      {
+        type: Tools.tars_trace,
+        [Tools.tars_trace]: { step: { links: [{ type: 'file', url: report }] } },
+      },
+      { type: Tools.web_search },
+    ]);
+  });
+
+  it('lists nothing for a new conversation', async () => {
+    const files = await resolveTarsTurnFiles(source({ parentMessageId: NO_PARENT }));
+    expect(files.generatedFilesContext).toBeNull();
+  });
+
+  it('keeps only the newest links `tars.generatedLinksLimit` allows', async () => {
+    const files = await resolveTarsTurnFiles(
+      source({ parentMessageId: 'u3', generatedLinksLimit: 1 }),
+    );
+    expect(listed(files.generatedFilesContext)).toEqual(['chart.png']);
+  });
+
+  it('still resolves the spreadsheets when a stored trace is malformed', async () => {
+    const later = '/api/tars/static/generate_output/kb/later.pdf?sig=c';
+    /** Written past Mongoose, which would otherwise cast the attachments. */
+    await mongoose.models.Message.collection.insertOne({
+      messageId: 'a3',
+      parentMessageId: 'u3',
+      conversationId: CONVO,
+      user: OWNER,
+      isCreatedByUser: false,
+      text: 'a3',
+      attachments: [
+        null,
+        { type: Tools.tars_trace, [Tools.tars_trace]: { links: 'x', step: { links: 5 } } },
+        { type: Tools.tars_trace, [Tools.tars_trace]: { links: [{ type: 'file', url: later }] } },
+      ],
+    });
+    await addFile('sheet-1', 'sales.xlsx');
+    await addMessage('u4', 'a3', ['sheet-1']);
+
+    const files = await resolveTarsTurnFiles(source({ parentMessageId: 'u4' }));
+
+    expect(files.dataFiles).toEqual([{ id: 'sheet-1', filename: 'sales.xlsx' }]);
+    expect(listed(files.generatedFilesContext)).toEqual(['report.xlsx', 'chart.png', 'later.pdf']);
   });
 });
 

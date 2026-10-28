@@ -108,3 +108,58 @@ describe('TARS finish reason seam in the model-end handler', () => {
     expect(tarsFinishReasonOf(collectedUsage[0])).toBe('length');
   });
 });
+
+/**
+ * Same guard for the tool-execute handler: a TARS call's generated links must
+ * reach the running agent's instructions before its batch settles, which is
+ * what keeps them from summarization (`attachTarsGeneratedLinks`,
+ * packages/api/src/tars/files/live.ts).
+ */
+describe('TARS generated-links seam in the tool-execute handler', () => {
+  it('lists the links of a settled TARS call in the running agent instructions', async () => {
+    const { Tools } = require('librechat-data-provider');
+    const { DynamicStructuredTool } = require('@langchain/core/tools');
+    const { z } = require('zod');
+    const url = '/api/tars/static/generate_output/kb/report.xlsx?sig=a';
+    const tool = new DynamicStructuredTool({
+      name: 'tars_generate_file',
+      description: 'Generates a file',
+      schema: z.object({ title: z.string() }),
+      responseFormat: 'content_and_artifact',
+      func: async () => [
+        'File created',
+        { [Tools.tars_trace]: { step: { links: [{ type: 'file', url }] } } },
+      ],
+    });
+    const handlers = getDefaultHandlers({
+      res: { write: jest.fn() },
+      aggregateContent: jest.fn(),
+      contentParts: [],
+      stepMap: new Map(),
+      toolEndCallback: jest.fn(),
+      collectedUsage: [],
+      toolExecuteOptions: { loadTools: async () => ({ loadedTools: [tool] }) },
+    });
+    const context = { additionalInstructions: 'BASE', systemRunnableStale: false };
+
+    const results = await new Promise((resolve, reject) =>
+      handlers[GraphEvents.ON_TOOL_EXECUTE].handle(
+        GraphEvents.ON_TOOL_EXECUTE,
+        {
+          toolCalls: [{ id: 'call_1', name: 'tars_generate_file', args: { title: 'report' } }],
+          agentId: 'primary',
+          configurable: { thread_id: 'convo-1', user_id: 'user-1' },
+          metadata: { langgraph_node: 'tools=primary', thread_id: 'convo-1' },
+          resolve,
+          reject,
+        },
+        {},
+        { getAgentContext: () => context },
+      ),
+    );
+
+    expect(results).toEqual([expect.objectContaining({ status: 'success' })]);
+    expect(context.additionalInstructions).toContain(`- file: [report.xlsx](${url})`);
+    expect(context.systemRunnableStale).toBe(true);
+  });
+});
