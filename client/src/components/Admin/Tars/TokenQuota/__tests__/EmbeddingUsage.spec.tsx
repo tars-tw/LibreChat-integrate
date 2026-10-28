@@ -159,12 +159,12 @@ describe('EmbeddingUsage', () => {
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(8));
     expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
       ...Array.from({ length: 7 }, (_, index) => `kb${index}`),
-      'com_ui_tars_embedding_other',
+      'com_ui_tars_embedding_other_label',
     ]);
 
     await userEvent.click(screen.getByRole('button', { name: 'com_ui_tars_usage_view_table' }));
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
-    expect(headers).toContain('com_ui_tars_embedding_other');
+    expect(headers).toContain('com_ui_tars_embedding_other_label');
     expect(headers).not.toContain('kb7');
     expect(screen.getByRole('cell', { name: '185' })).toBeInTheDocument();
   });
