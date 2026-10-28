@@ -323,6 +323,13 @@ export type TTarsDatasetDatabase = {
   updated_at: string | null;
 };
 
+/**
+ * How an Oracle connection names its database: a Service Name (current Oracle
+ * releases) or a SID (older servers such as 11g). pwc_tars stores the chosen
+ * one in `service_name` or `sid` and connects by it.
+ */
+export type TTarsOracleConnectionType = 'service_name' | 'sid';
+
 /** Payload the application-database form submits. */
 export type TTarsDatabaseInput = {
   name: string;
@@ -330,8 +337,10 @@ export type TTarsDatabaseInput = {
   dbType: TTarsDatabaseType;
   host?: string;
   port?: number;
-  /** For Oracle this is the Service Name; pwc_tars stores it in `database_name`. */
+  /** For Oracle this is the Service Name or SID; pwc_tars also keeps it in `database_name`. */
   databaseName?: string;
+  /** Oracle only: which of the two `databaseName` is. Defaults to a Service Name. */
+  oracleConnectionType?: TTarsOracleConnectionType;
   username?: string;
   /** Blank on edit means "keep the stored password" — the browser never has it. */
   password?: string;

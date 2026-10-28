@@ -1,6 +1,10 @@
 import { Database, FileCode2, Layers, Server, Table2 } from 'lucide-react';
 import { TARS_DATABASE_TYPES, TARS_DEFAULT_PORTS } from 'librechat-data-provider';
-import type { TTarsDatabaseType, TTarsDatasetDatabase } from 'librechat-data-provider';
+import type {
+  TTarsDatabaseType,
+  TTarsDatasetDatabase,
+  TTarsOracleConnectionType,
+} from 'librechat-data-provider';
 import type { LucideIcon } from 'lucide-react';
 
 export {
@@ -33,7 +37,9 @@ export interface DatabaseForm {
   dbType: TTarsDatabaseType;
   host: string;
   port: string;
+  /** Database name; for Oracle, the Service Name or SID named by `oracleConnectionType`. */
   databaseName: string;
+  oracleConnectionType: TTarsOracleConnectionType;
   /** Both start blank on edit — pwc_tars credentials never reach the browser. */
   username: string;
   password: string;
@@ -48,11 +54,20 @@ export const emptyDatabaseForm: DatabaseForm = {
   host: '',
   port: defaultPort(TARS_DATABASE_TYPES[0]),
   databaseName: '',
+  oracleConnectionType: 'service_name',
   username: '',
   password: '',
   enabled: true,
   allowedKmIds: [],
 };
+
+/**
+ * Rows saved before pwc_tars persisted `sid` carry neither value; they connect
+ * by Service Name, so only a row with a SID and no Service Name reads as SID.
+ */
+export const oracleConnectionTypeOf = (
+  database: Pick<TTarsDatasetDatabase, 'service_name' | 'sid'>,
+): TTarsOracleConnectionType => (database.sid && !database.service_name ? 'sid' : 'service_name');
 
 export const toDatabaseForm = (database: TTarsDatasetDatabase): DatabaseForm => ({
   ...emptyDatabaseForm,
@@ -62,6 +77,7 @@ export const toDatabaseForm = (database: TTarsDatasetDatabase): DatabaseForm => 
   host: database.host ?? '',
   port: database.port != null ? String(database.port) : '',
   databaseName: database.database_name ?? '',
+  oracleConnectionType: oracleConnectionTypeOf(database),
   enabled: database.status !== 0,
   allowedKmIds: database.allowed_km_ids ?? [],
 });

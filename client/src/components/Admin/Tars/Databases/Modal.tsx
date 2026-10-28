@@ -3,6 +3,7 @@ import { CheckCircle2, PlugZap, Search, XCircle } from 'lucide-react';
 import { TARS_DATABASE_TYPES, TARS_SQLITE_EXTENSIONS } from 'librechat-data-provider';
 import {
   Button,
+  Dropdown,
   Input,
   Label,
   OGDialog,
@@ -11,7 +12,11 @@ import {
   Switch,
   useToastContext,
 } from '@librechat/client';
-import type { TTarsDatabaseType, TTarsDatasetDatabase } from 'librechat-data-provider';
+import type {
+  TTarsDatabaseType,
+  TTarsDatasetDatabase,
+  TTarsOracleConnectionType,
+} from 'librechat-data-provider';
 import type { DatabaseForm } from './helpers';
 import {
   NAME_MAX,
@@ -36,6 +41,8 @@ import { useLocalize } from '~/hooks';
 import Picker from '../Audit/Picker';
 
 const isFile = (dbType: TTarsDatabaseType): boolean => dbType === 'SQLite';
+
+const ORACLE_CONNECTION_TYPES: TTarsOracleConnectionType[] = ['service_name', 'sid'];
 
 /**
  * Create or edit an application-database connection.
@@ -102,6 +109,9 @@ export default function DatabaseModal({
 
   const fileBacked = isFile(form.dbType);
   const oracle = form.dbType === 'Oracle';
+  const oracleNameKey =
+    form.oracleConnectionType === 'sid' ? 'com_ui_tars_db_sid' : 'com_ui_tars_db_service_name';
+  const databaseNameKey = oracle ? oracleNameKey : 'com_ui_tars_db_database';
   /** A new SQLite row has no file on the pwc_tars side yet, so nothing to open. */
   const canTest = fileBacked
     ? isEdit
@@ -121,6 +131,7 @@ export default function DatabaseModal({
     host: form.host.trim(),
     port: form.port.trim() === '' ? undefined : Number(form.port),
     databaseName: form.databaseName.trim(),
+    ...(oracle ? { oracleConnectionType: form.oracleConnectionType } : {}),
     username: form.username.trim(),
     password: form.password,
     enabled: form.enabled,
@@ -333,9 +344,31 @@ export default function DatabaseModal({
                     </div>
                   </div>
 
+                  {oracle && (
+                    <div className="space-y-1.5">
+                      <Label>{localize('com_ui_tars_db_oracle_connection_type')}</Label>
+                      <Dropdown
+                        value={form.oracleConnectionType}
+                        onChange={(value) => {
+                          testMutation.reset();
+                          set('oracleConnectionType', value as TTarsOracleConnectionType);
+                        }}
+                        ariaLabel={localize('com_ui_tars_db_oracle_connection_type')}
+                        options={ORACLE_CONNECTION_TYPES.map((type) => ({
+                          value: type,
+                          label: localize(
+                            type === 'sid' ? 'com_ui_tars_db_sid' : 'com_ui_tars_db_service_name',
+                          ),
+                        }))}
+                        sizeClasses="w-full"
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+
                   <div className="space-y-1.5">
                     <Label htmlFor="tars-db-database">
-                      {localize(oracle ? 'com_ui_tars_db_service_name' : 'com_ui_tars_db_database')}
+                      {localize(databaseNameKey)}
                       <span className="text-pwc-danger ml-0.5">*</span>
                     </Label>
                     <Input
