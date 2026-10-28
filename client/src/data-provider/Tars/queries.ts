@@ -8,6 +8,7 @@ import type {
   TTarsSysConfig,
   TTarsModelProfile,
   TTarsModelProfilesResponse,
+  TTarsCloudTypeRules,
   TTarsPrincipalInfo,
   TTarsModelPermission,
   TTarsModelPermissionsResponse,
@@ -671,6 +672,17 @@ export const useTarsModelProfilesQuery = (
     [QueryKeys.tarsModelProfiles],
     () => dataService.getTarsModelProfiles(),
     { select: (data) => data.profiles ?? [], ...adminQueryOptions, ...config },
+  );
+};
+
+/** Admin: the cloud type → API key rules and key status for the Add Model dialog. */
+export const useTarsCloudTypeRulesQuery = (
+  config?: UseQueryOptions<TTarsCloudTypeRules>,
+): QueryObserverResult<TTarsCloudTypeRules> => {
+  return useQuery<TTarsCloudTypeRules>(
+    [QueryKeys.tarsCloudTypeRules],
+    () => dataService.getTarsCloudTypeRules(),
+    { ...adminQueryOptions, ...config },
   );
 };
 
