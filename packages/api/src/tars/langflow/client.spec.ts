@@ -8,8 +8,10 @@ jest.mock('@librechat/data-schemas', () => ({
 }));
 
 import { Tools } from 'librechat-data-provider';
+import type { LangflowCapabilityData } from './client';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
+import { rewriteTarsAssetLinks } from '~/tars/assets';
 import {
   langflowTimeoutMs,
   langflowToolResult,
@@ -240,6 +242,58 @@ describe('run trace artifact', () => {
     expect(toTarsTraceArtifact({ answer: 'a' })).toBeUndefined();
     expect(toTarsTraceArtifact({ answer: 'a', trace: [] })).toBeUndefined();
     expect(toTarsTraceArtifact(undefined)).toBeUndefined();
+  });
+
+  it('lists each generated chart and file once, relayed', () => {
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'trace-test-secret';
+    const file = 'http://tars.test/static/generate_output/kb/report_ab12cd.xlsx';
+    const chart = 'http://tars.test/static/quickchart/kb/chart_1.png';
+    const artifact = toTarsTraceArtifact({
+      answer: 'a',
+      trace,
+      generated_urls: [
+        { type: 'chart', url: chart },
+        { type: 'file', url: file },
+      ],
+      /** Already relayed by `runLangflowCapability`, so it must collapse into the entry above. */
+      file_url: rewriteTarsAssetLinks(file),
+    });
+
+    expect(artifact?.links).toEqual([
+      { type: 'chart', url: rewriteTarsAssetLinks(chart) },
+      { type: 'file', url: rewriteTarsAssetLinks(file) },
+    ]);
+    expect(artifact?.links?.every((link) => link.url.startsWith('/api/tars/static/'))).toBe(true);
+  });
+
+  it('skips malformed generated_urls instead of failing the reply', () => {
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'trace-test-secret';
+    const file = 'http://tars.test/static/generate_output/kb/report_ab12cd.xlsx';
+    const malformed = [null, { type: 'file' }, { type: 'file', url: file }];
+
+    expect(
+      toTarsTraceArtifact({
+        answer: 'a',
+        trace,
+        generated_urls: malformed as unknown as LangflowCapabilityData['generated_urls'],
+      })?.links,
+    ).toEqual([{ type: 'file', url: rewriteTarsAssetLinks(file) }]);
+    expect(
+      toTarsTraceArtifact({
+        answer: 'a',
+        trace,
+        generated_urls: {} as unknown as LangflowCapabilityData['generated_urls'],
+      }),
+    ).not.toHaveProperty('links');
+  });
+
+  it('keeps a reply that generated a file without reporting a trace', () => {
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'trace-test-secret';
+    const file = 'http://tars.test/static/generate_output/kb/report_ab12cd.xlsx';
+    expect(toTarsTraceArtifact({ answer: 'a', file_url: file })).toMatchObject({
+      trace: [],
+      links: [{ type: 'file', url: rewriteTarsAssetLinks(file) }],
+    });
   });
 
   it('shapes the content_and_artifact tuple the tool-end callback expects', () => {

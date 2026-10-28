@@ -2303,11 +2303,20 @@ export type TTarsTraceArtifact = {
   /** Set instead of `trace` by a directly called built-in tool (`tars_*`). */
   step?: TTarsToolStep;
   /**
+   * Charts / files the nested run generated, already routed through
+   * LibreChat's relay. Kept apart from the answer text so a later turn can
+   * list them without reading them back out of a reply.
+   */
+  links?: TTarsGeneratedLink[];
+  /**
    * The newest progress line of a call still running (e.g. which rows a table
    * task is on). Live-only: sent while the call works, never persisted.
    */
   progress?: string;
 };
+
+/** One chart or file a pwc_tars tool generated: `chart`, `file`, or what pwc_tars named it. */
+export type TTarsGeneratedLink = { type: string; url: string };
 
 /** One knowledge-base document a search drew from, for the card's source list. */
 export type TTarsToolSource = {
@@ -2330,7 +2339,7 @@ export type TTarsToolStep = {
   summary?: string;
   sources?: TTarsToolSource[];
   /** Generated chart / file links, already routed through LibreChat's relay. */
-  links?: { type: string; url: string }[];
+  links?: TTarsGeneratedLink[];
   /** The output as the model read it, capped for display. */
   output?: string;
   truncated?: boolean;

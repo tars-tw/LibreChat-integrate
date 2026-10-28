@@ -674,6 +674,9 @@ function getDefaultHandlers({
   if (toolExecuteOptions) {
     handlers[GraphEvents.ON_TOOL_EXECUTE] = createToolExecuteHandler(toolExecuteOptions);
   }
+  /** TARS: lists each TARS call's generated links in the running prompt, out of summarization's
+   *  reach. One standalone line; `?.` because upstream specs mock `@librechat/api`. */
+  require('@librechat/api').attachTarsGeneratedLinks?.(handlers);
 
   handlers[GraphEvents.ON_SUBAGENT_UPDATE] = {
     /**
