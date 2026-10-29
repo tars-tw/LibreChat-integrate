@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import KnowledgeManager from './Manager';
+import TarsPage from '../Page';
 
 /** Full-page pwc_tars knowledge-base administration (知識庫管理). */
 export default function KnowledgeView() {
@@ -14,13 +15,8 @@ export default function KnowledgeView() {
   }
 
   return (
-    <div className="bg-presentation h-full w-full overflow-y-auto">
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <h1 className="text-text-primary text-2xl font-semibold">
-          {localize('com_ui_tars_nav_kb_list')}
-        </h1>
-        <KnowledgeManager />
-      </div>
-    </div>
+    <TarsPage title={localize('com_ui_tars_nav_kb_list')}>
+      <KnowledgeManager />
+    </TarsPage>
   );
 }

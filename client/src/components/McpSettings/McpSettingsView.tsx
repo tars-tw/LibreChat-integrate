@@ -39,6 +39,7 @@ import { useLocalize, useIsTarsAdmin } from '~/hooks';
 import McpBulkDeleteModal from './McpBulkDeleteModal';
 import { useAuthContext } from '~/hooks/AuthContext';
 import McpPermissionsTab from './McpPermissionsTab';
+import TarsPage from '~/components/Admin/Tars/Page';
 import { filterManagedServers } from './servers';
 import ServerTypeBadge from './ServerTypeBadge';
 import McpUserToolsTab from './McpUserToolsTab';
@@ -211,12 +212,8 @@ export default function McpSettingsView() {
   };
 
   return (
-    <div className="bg-presentation h-full w-full overflow-y-auto">
-      <div className="mx-auto max-w-7xl space-y-8 p-6">
-        <h1 className="text-text-primary text-2xl font-semibold">
-          {localize('com_ui_tars_mcp_settings')}
-        </h1>
-
+    <>
+      <TarsPage title={localize('com_ui_tars_mcp_settings')} className="space-y-8">
         <Tabs value={tab} onValueChange={(value) => setTab(value as SettingsTab)}>
           <TabsList variant="underline">
             <TabsTrigger value="mytools" variant="underline">
@@ -519,7 +516,7 @@ export default function McpSettingsView() {
             </TabsContent>
           )}
         </Tabs>
-      </div>
+      </TarsPage>
 
       {(creating || editing != null) && (
         <McpServerModal
@@ -569,6 +566,6 @@ export default function McpSettingsView() {
           }}
         />
       )}
-    </div>
+    </>
   );
 }
