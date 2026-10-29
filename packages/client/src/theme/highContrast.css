@@ -75,11 +75,16 @@ html.high-contrast .text-link {
  * Radix tab triggers mark selection with a `surface-tertiary` fill, which is the
  * plain canvas in both palettes — a selected tab computes to the same colour as
  * its unselected siblings, leaving the current section unmarked. Same remedy,
- * inset so it reads inside the row's own radius.
+ * inset so it reads inside the row's own radius. Underline tabs already carry a
+ * non-colour marker, so they only get a heavier bar instead of the outline.
  */
-html.high-contrast [role='tab'][data-state='active'] {
+html.high-contrast [role='tab'][data-state='active']:not([data-variant='underline']) {
   outline: 3px solid rgb(var(--text-primary));
   outline-offset: -3px;
+}
+
+html.high-contrast [role='tab'][data-variant='underline'][data-state='active'] {
+  border-bottom-width: 3px;
 }
 
 /**

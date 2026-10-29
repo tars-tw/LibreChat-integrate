@@ -21,11 +21,8 @@
     }
   },
   "client/src/components/Admin/Tars/Audit/Manager.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 1
-    },
     "shadcn/no-restyle": {
-      "count": 6
+      "count": 3
     }
   },
   "client/src/components/Admin/Tars/Audit/Picker.tsx": {
@@ -244,11 +241,8 @@
     }
   },
   "client/src/components/Admin/Tars/Knowledge/Detail/Manager.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 1
-    },
     "shadcn/no-restyle": {
-      "count": 10
+      "count": 5
     }
   },
   "client/src/components/Admin/Tars/Knowledge/Detail/ModelsDialog.tsx": {
@@ -333,11 +327,8 @@
     }
   },
   "client/src/components/Admin/Tars/ModelKeys/Manager.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 1
-    },
     "shadcn/no-restyle": {
-      "count": 4
+      "count": 2
     }
   },
   "client/src/components/Admin/Tars/ModelKeys/Usage.tsx": {
@@ -496,11 +487,8 @@
     }
   },
   "client/src/components/Admin/Tars/TokenQuota/Manager.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 1
-    },
     "shadcn/no-restyle": {
-      "count": 8
+      "count": 4
     }
   },
   "client/src/components/Admin/Tars/TokenQuota/QuotaModal.tsx": {
@@ -1430,19 +1418,16 @@
     }
   },
   "client/src/components/McpSettings/McpServerModal.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 1
-    },
     "shadcn/no-restyle": {
-      "count": 13
+      "count": 8
     }
   },
   "client/src/components/McpSettings/McpSettingsView.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 3
+      "count": 2
     },
     "shadcn/no-restyle": {
-      "count": 10
+      "count": 6
     }
   },
   "client/src/components/McpSettings/McpToolEditorModal.tsx": {

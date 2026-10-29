@@ -77,8 +77,6 @@ const STATUS_LABEL_KEYS: Record<ServerStatus, TranslationKeys> = {
 
 /** `TabsContent` ships with `mt-2 p-6`; each panel owns its own spacing instead. */
 const TAB_PANEL = 'mt-4 p-0';
-/** The shared trigger only shifts the background when active, which reads as barely selected. */
-const TAB_TRIGGER = 'data-[state=active]:text-brand-primary';
 /** One hint per tab, rendered in a single shared spot so every tab reads consistently. */
 const TAB_HINT_KEYS: Record<SettingsTab, TranslationKeys> = {
   mytools: 'com_ui_tars_mcp_my_tools_hint',
@@ -220,22 +218,22 @@ export default function McpSettingsView() {
         </h1>
 
         <Tabs value={tab} onValueChange={(value) => setTab(value as SettingsTab)}>
-          <TabsList className="w-fit">
-            <TabsTrigger value="mytools" className={TAB_TRIGGER}>
+          <TabsList variant="underline">
+            <TabsTrigger value="mytools" variant="underline">
               {localize('com_ui_tars_mcp_tab_my_tools')}
             </TabsTrigger>
             {isTarsAdmin && (
-              <TabsTrigger value="servers" className={TAB_TRIGGER}>
+              <TabsTrigger value="servers" variant="underline">
                 {localize('com_ui_tars_mcp_tab_servers')}
               </TabsTrigger>
             )}
             {isTarsAdmin && (
-              <TabsTrigger value="permissions" className={TAB_TRIGGER}>
+              <TabsTrigger value="permissions" variant="underline">
                 {localize('com_ui_tars_mcp_tab_permissions')}
               </TabsTrigger>
             )}
             {isTarsAdmin && (
-              <TabsTrigger value="logs" className={TAB_TRIGGER}>
+              <TabsTrigger value="logs" variant="underline">
                 {localize('com_ui_tars_mcp_tab_logs')}
               </TabsTrigger>
             )}

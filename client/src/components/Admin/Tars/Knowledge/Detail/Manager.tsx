@@ -25,8 +25,6 @@ import Header from './Header';
 
 /** `TabsContent` ships with `mt-2 p-6`; each panel owns its own spacing instead. */
 const TAB_PANEL = 'mt-4 p-0';
-/** The shared trigger only shifts the background when active, which reads as barely selected. */
-const TAB_TRIGGER = 'data-[state=active]:text-brand-primary';
 
 /** One knowledge base's datasets, split by kind. */
 export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeBaseId: string }) {
@@ -85,24 +83,24 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
       />
 
       <Tabs defaultValue="documents">
-        <TabsList className="w-fit">
-          <TabsTrigger value="documents" className={TAB_TRIGGER}>
+        <TabsList variant="underline">
+          <TabsTrigger value="documents" variant="underline">
             {localize('com_ui_tars_kb_stat_documents')}
             {count(data?.documents.length ?? 0)}
           </TabsTrigger>
-          <TabsTrigger value="websites" className={TAB_TRIGGER}>
+          <TabsTrigger value="websites" variant="underline">
             {localize('com_ui_tars_kb_stat_websites')}
             {count(data?.websites.length ?? 0)}
           </TabsTrigger>
-          <TabsTrigger value="databases" className={TAB_TRIGGER}>
+          <TabsTrigger value="databases" variant="underline">
             {localize('com_ui_tars_kb_stat_database')}
             {count(data?.databases.length ?? 0)}
           </TabsTrigger>
-          <TabsTrigger value="file-systems" className={TAB_TRIGGER}>
+          <TabsTrigger value="file-systems" variant="underline">
             {localize('com_ui_tars_kb_stat_file_systems')}
             {count(data?.file_systems.length ?? 0)}
           </TabsTrigger>
-          <TabsTrigger value="schedules" className={TAB_TRIGGER}>
+          <TabsTrigger value="schedules" variant="underline">
             {localize('com_ui_tars_nav_kb_schedule')}
           </TabsTrigger>
         </TabsList>
