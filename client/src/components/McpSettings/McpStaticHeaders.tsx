@@ -1,7 +1,7 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { Button, Input, Label } from '@librechat/client';
-import SystemVariablesHint from './SystemVariablesHint';
 import type { HeaderRow } from './boundValues';
+import SystemVariablesHint from './SystemVariablesHint';
 import { mcpActionClass } from './actions';
 import { useLocalize } from '~/hooks';
 
