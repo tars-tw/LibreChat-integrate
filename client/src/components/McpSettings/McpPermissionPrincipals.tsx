@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Chip, Spinner } from '@librechat/client';
+import { Chip, Spinner, FilterInput } from '@librechat/client';
 import { User, Users, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import type { TTarsMcpPrincipalInfo, TTarsMcpPermissionPrincipal } from 'librechat-data-provider';
 import McpPaginationControls from './McpPaginationControls';
@@ -29,6 +29,9 @@ const COMPARE: Record<
   status: (a, b) => Number(b.is_active) - Number(a.is_active) || byName(a, b),
 };
 
+const matchesSearch = (principal: TTarsMcpPermissionPrincipal, needle: string) =>
+  [principal.name, principal.email].some((field) => field?.toLowerCase().includes(needle) === true);
+
 /** Only the icon tells users and groups apart (blue / purple); the label stays in the body color. */
 export const TYPE_ICON_COLOR = { user: 'text-series-2', group: 'text-series-5' } as const;
 
@@ -53,14 +56,19 @@ export default function McpPermissionPrincipals({
   /** `null` keeps pwc_tars's order (groups first, each by name) until a header is clicked. */
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
+  const [search, setSearch] = useState('');
 
   const sorted = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    const matched = needle
+      ? principals.filter((principal) => matchesSearch(principal, needle))
+      : principals;
     if (sortField == null) {
-      return principals;
+      return matched;
     }
     const compare = COMPARE[sortField];
-    return [...principals].sort((a, b) => (sortAsc ? compare(a, b) : compare(b, a)));
-  }, [principals, sortField, sortAsc]);
+    return [...matched].sort((a, b) => (sortAsc ? compare(a, b) : compare(b, a)));
+  }, [principals, search, sortField, sortAsc]);
 
   const { page, setPage, pageSize, setPageSize, pageCount, pageItems } =
     useClientPagination(sorted);
@@ -101,13 +109,26 @@ export default function McpPermissionPrincipals({
 
   return (
     <section className="space-y-3" aria-labelledby="tars-mcp-assigned-title">
-      <div>
-        <h2 id="tars-mcp-assigned-title" className="text-text-primary text-sm font-medium">
-          {localize('com_ui_tars_mcp_assigned_title')}
-        </h2>
-        <p className="text-text-secondary mt-1 text-xs">
-          {localize('com_ui_tars_mcp_assigned_hint')}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 id="tars-mcp-assigned-title" className="text-text-primary text-sm font-medium">
+            {localize('com_ui_tars_mcp_assigned_title')}
+          </h2>
+          <p className="text-text-secondary mt-1 text-xs">
+            {localize('com_ui_tars_mcp_assigned_hint')}
+          </p>
+        </div>
+        <FilterInput
+          inputId="tars-mcp-assigned-search"
+          label={localize('com_ui_tars_mcp_assigned_search')}
+          surface="presentation"
+          containerClassName="w-64 max-w-full"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(0);
+          }}
+        />
       </div>
 
       {isLoading && (
@@ -120,7 +141,12 @@ export default function McpPermissionPrincipals({
           {localize('com_ui_tars_mcp_assigned_empty')}
         </p>
       )}
-      {!isLoading && principals.length > 0 && (
+      {!isLoading && principals.length > 0 && sorted.length === 0 && (
+        <p className="border-border-medium text-text-secondary rounded-lg border border-dashed py-6 text-center text-sm">
+          {localize('com_ui_no_results_found')}
+        </p>
+      )}
+      {!isLoading && sorted.length > 0 && (
         <div className="border-border-light overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[40rem] text-sm">
             <thead className="bg-surface-secondary text-text-secondary text-left">
@@ -201,7 +227,7 @@ export default function McpPermissionPrincipals({
           </table>
         </div>
       )}
-      {!isLoading && principals.length > 0 && (
+      {!isLoading && sorted.length > 0 && (
         <McpPaginationControls
           labelId="tars-mcp-assigned-page-size-label"
           page={page}
