@@ -1,5 +1,7 @@
 import {
+  signTarsFileRefs,
   isTarsSpreadsheet,
+  isServableInScope,
   signTarsDataFileRefs,
   verifyTarsFileSignature,
   toTarsDataFileRefsContext,
@@ -18,6 +20,7 @@ const parse = (path: string) => {
     userId: url.searchParams.get('u') ?? '',
     expires: Number(url.searchParams.get('exp')),
     signature: url.searchParams.get('sig') ?? '',
+    scope: (url.searchParams.get('s') ?? undefined) as 'workflow' | undefined,
   };
 };
 
@@ -59,6 +62,36 @@ describe('verifyTarsFileSignature', () => {
     expect(verifyTarsFileSignature({ ...ref, userId: 'user-2' }, NOW)).toBe(false);
     expect(verifyTarsFileSignature({ ...ref, expires: ref.expires + 60 }, NOW)).toBe(false);
     expect(verifyTarsFileSignature({ ...ref, signature: '' }, NOW)).toBe(false);
+  });
+});
+
+describe('workflow scope', () => {
+  const pdf = [{ id: 'doc-1', filename: 'M14D5121632A(2S).pdf' }];
+
+  it('names its scope in the reference and verifies only in that scope', () => {
+    const ref = parse(signTarsFileRefs(pdf, 'user-1', 'workflow', NOW)[0].path);
+
+    expect(ref.scope).toBe('workflow');
+    expect(verifyTarsFileSignature(ref, NOW)).toBe(true);
+    expect(verifyTarsFileSignature({ ...ref, scope: 'data' }, NOW)).toBe(false);
+    expect(verifyTarsFileSignature({ ...ref, scope: 'other' as 'data' }, NOW)).toBe(false);
+  });
+
+  it('keeps spreadsheet references scope-less and out of the workflow scope', () => {
+    const ref = parse(signTarsDataFileRefs(files, 'user-1', NOW)[0].path);
+
+    expect(ref.scope).toBeUndefined();
+    expect(verifyTarsFileSignature(ref, NOW)).toBe(true);
+    expect(verifyTarsFileSignature({ ...ref, scope: 'workflow' }, NOW)).toBe(false);
+  });
+
+  it('serves the types a flow reads in the workflow scope, spreadsheets only in the data scope', () => {
+    expect(isServableInScope('workflow', 'spec.PDF')).toBe(true);
+    expect(isServableInScope('workflow', 'board.png')).toBe(true);
+    expect(isServableInScope('workflow', 'memo.mp3')).toBe(false);
+    expect(isServableInScope('workflow', 'sheet.xlsx')).toBe(false);
+    expect(isServableInScope('data', 'spec.pdf')).toBe(false);
+    expect(isServableInScope('data', 'sheet.xlsx')).toBe(true);
   });
 });
 
