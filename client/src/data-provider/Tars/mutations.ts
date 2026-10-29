@@ -9,6 +9,8 @@ import type {
   TTarsDomainInput,
   TTarsPluginToolsResponse,
   TTarsPromptInput,
+  TTarsPromptCategoryRenameInput,
+  TTarsPromptCategoryRenameResponse,
   TTarsKnowledgeBase,
   TTarsSysConfigUpdate,
   TTarsDocumentReprocess,
@@ -809,6 +811,31 @@ export const useDeleteTarsPromptMutation = (
       domainId?: string;
       knowledgeBaseId?: string;
     }) => dataService.deleteTarsPrompt(id, { domainId, knowledgeBaseId }),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidatePrompts(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+/** Renames a category across one tier's prompts, or merges it into another. */
+export const useRenameTarsPromptCategoryMutation = (
+  options?: UseMutationOptions<
+    TTarsPromptCategoryRenameResponse,
+    unknown,
+    TTarsPromptCategoryRenameInput
+  >,
+): UseMutationResult<
+  TTarsPromptCategoryRenameResponse,
+  unknown,
+  TTarsPromptCategoryRenameInput
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    (data: TTarsPromptCategoryRenameInput) => dataService.renameTarsPromptCategory(data),
     {
       ...options,
       onSuccess: (...args) => {

@@ -190,6 +190,40 @@ export async function updateTarsPrompt(
   return data.prompt;
 }
 
+/** Which category to move, and to what; the scope ids pick the tier as on create. */
+export interface TarsPromptCategoryRename {
+  old_category: string;
+  new_category: string;
+  domain_id?: string | number;
+  knowledge_base_id?: string;
+}
+
+/**
+ * Moves every prompt of one tier from `old_category` to `new_category` in a
+ * single pwc_tars transaction. pwc_tars keeps categories on the prompts
+ * themselves, so this is both a rename and — into an existing category — the
+ * only way to delete one. Personal scope is always the caller's own prompts.
+ */
+export async function renameTarsPromptCategory(
+  tarsId: string,
+  input: TarsPromptCategoryRename,
+  baseUrl?: string,
+): Promise<{ updated_count: number }> {
+  const data = await tarsFetch<{ updated_count?: number }>('/api/prompt/rename_category', {
+    method: 'PUT',
+    body: {
+      old_category: input.old_category,
+      new_category: input.new_category,
+      domain_id: input.domain_id,
+      knowledge_base_id: input.knowledge_base_id,
+      user_id: tarsId,
+      updated_by: tarsId,
+    },
+    baseUrl,
+  });
+  return { updated_count: data?.updated_count ?? 0 };
+}
+
 export async function deleteTarsPrompt(
   promptId: string,
   scope?: { domainId?: string | number; knowledgeBaseId?: string },

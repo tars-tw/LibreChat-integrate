@@ -1,7 +1,6 @@
 import { Fragment } from 'react';
 import * as Menu from '@ariakit/react/menu';
 import { useNavigate } from 'react-router-dom';
-import { DropdownMenuSeparator } from '@librechat/client';
 import {
   Boxes,
   BrainCircuit,
@@ -348,7 +347,9 @@ export default function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
       {visibleMenu.map((node) => (
         <Fragment key={node.labelKey}>
           <AdminMenuItem node={node} onNavigate={onNavigate} />
-          {node.labelKey === 'com_ui_tars_nav_audit' && <DropdownMenuSeparator />}
+          {node.labelKey === 'com_ui_tars_nav_audit' && (
+            <Menu.MenuSeparator className="bg-surface-hover -mx-1 my-1 h-px border-0" />
+          )}
         </Fragment>
       ))}
     </>

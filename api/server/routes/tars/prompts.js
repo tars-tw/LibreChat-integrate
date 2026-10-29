@@ -6,6 +6,7 @@ const {
   updateTarsPrompt,
   deleteTarsPrompt,
   fetchTarsPromptsForChat,
+  renameTarsPromptCategory,
   fetchTarsDomainKnowledgeBases,
   fetchTarsKnowledgeBasePrompts,
 } = require('@librechat/api');
@@ -79,6 +80,27 @@ router.post('/prompts', async (req, res) => {
   } catch (error) {
     logger.error('[POST /api/tars/prompts] Failed to create pwc_tars prompt', error);
     return relayTarsError(res, error, 'Failed to create pwc_tars prompt');
+  }
+});
+
+/**
+ * @route PUT /api/tars/prompts/categories/rename
+ * @desc Move one tier's prompts from `old_category` to `new_category` (rename, or
+ *       delete a category by merging it into another). `domain_id` /
+ *       `knowledge_base_id` pick the tier; otherwise the user's personal prompts.
+ * @access Private
+ */
+router.put('/prompts/categories/rename', async (req, res) => {
+  if (!isTarsConfigured() || !req.user?.tarsId) {
+    return res.status(400).json({ error: 'pwc_tars is not configured' });
+  }
+
+  try {
+    const result = await renameTarsPromptCategory(req.user.tarsId, req.body ?? {});
+    return res.json(result);
+  } catch (error) {
+    logger.error('[PUT /api/tars/prompts/categories/rename] Failed to rename category', error);
+    return relayTarsError(res, error, 'Failed to rename pwc_tars prompt category');
   }
 });
 

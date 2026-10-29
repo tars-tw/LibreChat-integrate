@@ -784,6 +784,22 @@ export type TTarsPromptInput = {
   knowledge_base_id?: string;
 };
 
+/**
+ * Moves one tier's prompts from `old_category` to `new_category`: a rename, or
+ * (into an existing category) how a category is deleted. The scope ids pick the
+ * tier as on create; neither means the user's personal prompts.
+ */
+export type TTarsPromptCategoryRenameInput = {
+  old_category: string;
+  new_category: string;
+  domain_id?: string | number;
+  knowledge_base_id?: string;
+};
+
+export type TTarsPromptCategoryRenameResponse = {
+  updated_count: number;
+};
+
 /** A pwc_tars system parameter (系統參數設定). Mirrors `SysConfig.to_dict()`. */
 export type TTarsSysConfig = {
   id: number;

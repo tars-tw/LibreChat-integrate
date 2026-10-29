@@ -6,15 +6,19 @@ import {
   useTarsKnowledgeBasePromptsQuery,
 } from '~/data-provider';
 
-const uniqueCategories = (prompts: TTarsPrompt[]): string[] => {
-  const unique = new Set<string>();
+/** A scope's categories (trimmed, sorted) and how many of its prompts use each. */
+const summarizeCategories = (
+  prompts: TTarsPrompt[],
+): { categories: string[]; categoryCounts: Record<string, number> } => {
+  const categoryCounts: Record<string, number> = {};
   for (const prompt of prompts) {
     const category = prompt.category?.trim();
     if (category) {
-      unique.add(category);
+      categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
     }
   }
-  return Array.from(unique).sort((a, b) => a.localeCompare(b));
+  const categories = Object.keys(categoryCounts).sort((a, b) => a.localeCompare(b));
+  return { categories, categoryCounts };
 };
 
 /**
@@ -33,6 +37,7 @@ export default function useScopedTarsPrompts({
 }): {
   prompts: TTarsPrompt[];
   categories: string[];
+  categoryCounts: Record<string, number>;
   isLoading: boolean;
   basePath: string;
 } {
@@ -49,7 +54,7 @@ export default function useScopedTarsPrompts({
       const prompts = kbQuery.data ?? [];
       return {
         prompts,
-        categories: uniqueCategories(prompts),
+        ...summarizeCategories(prompts),
         isLoading: kbQuery.isLoading,
         basePath: `/prompts/knowledge-base/${knowledgeBaseId}`,
       };
@@ -60,7 +65,7 @@ export default function useScopedTarsPrompts({
       );
       return {
         prompts,
-        categories: uniqueCategories(prompts),
+        ...summarizeCategories(prompts),
         isLoading: domainQuery.isLoading,
         basePath: `/prompts/domain/${domainId}`,
       };
@@ -68,7 +73,7 @@ export default function useScopedTarsPrompts({
     const prompts = personalQuery.data?.prompts ?? [];
     return {
       prompts,
-      categories: uniqueCategories(prompts),
+      ...summarizeCategories(prompts),
       isLoading: personalQuery.isLoading,
       basePath: '/prompts',
     };

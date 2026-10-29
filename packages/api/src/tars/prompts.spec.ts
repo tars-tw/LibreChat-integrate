@@ -7,7 +7,11 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
-import { fetchTarsPromptsForChat, fetchTarsDomainKnowledgeBases } from './prompts';
+import {
+  fetchTarsPromptsForChat,
+  renameTarsPromptCategory,
+  fetchTarsDomainKnowledgeBases,
+} from './prompts';
 import type { TarsPrompt } from './prompts';
 
 const BASE_URL = 'http://tars.test';
@@ -153,5 +157,40 @@ describe('fetchTarsDomainKnowledgeBases', () => {
       { id: 'kb-1', name: 'KB One' },
       { id: 'kb-9', name: 'kb-9' },
     ]);
+  });
+});
+
+describe('renameTarsPromptCategory', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('moves the scope to the new category as the caller, never as a body-supplied user', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { message: 'ok', updated_count: 3 }));
+
+    const result = await renameTarsPromptCategory(
+      'u1',
+      {
+        old_category: 'test',
+        new_category: '測試',
+        domain_id: 208,
+        ...({ user_id: 'someone-else' } as object),
+      },
+      BASE_URL,
+    );
+
+    expect(result).toEqual({ updated_count: 3 });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe(`${BASE_URL}/api/prompt/rename_category`);
+    expect(init?.method).toBe('PUT');
+    expect(JSON.parse(String(init?.body))).toEqual({
+      old_category: 'test',
+      new_category: '測試',
+      domain_id: 208,
+      user_id: 'u1',
+      updated_by: 'u1',
+    });
   });
 });

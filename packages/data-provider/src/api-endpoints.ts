@@ -506,6 +506,7 @@ export const tarsPrompts = (domainId?: string | number) =>
   domainId != null && domainId !== ''
     ? `${BASE_URL}/api/tars/prompts?domain_id=${encodeURIComponent(String(domainId))}`
     : `${BASE_URL}/api/tars/prompts`;
+export const tarsPromptCategoryRename = () => `${BASE_URL}/api/tars/prompts/categories/rename`;
 export const tarsKnowledgeBasePrompts = (knowledgeBaseId: string) =>
   `${BASE_URL}/api/tars/prompts/knowledge-base/${encodeURIComponent(knowledgeBaseId)}`;
 export const tarsPrompt = (id: string, query?: { domainId?: string; knowledgeBaseId?: string }) => {
