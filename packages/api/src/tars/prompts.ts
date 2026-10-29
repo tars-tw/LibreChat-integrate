@@ -17,6 +17,8 @@ export interface TarsPrompt {
   description: string | null;
   category: string | null;
   content: string;
+  /** Quick `/command`; absent from a pwc_tars that predates the column */
+  command?: string | null;
   status: number;
   created_by: string;
   created_at: string;
@@ -32,8 +34,7 @@ interface PromptsResponse {
 
 /**
  * Create/update payload. pwc_tars routes the prompt by which id is present.
- * `command` is forwarded for the forthcoming pwc_tars column; the current
- * backend ignores unknown fields.
+ * An empty `command` clears it; leaving it out keeps the stored one.
  */
 export interface TarsPromptInput {
   name: string;

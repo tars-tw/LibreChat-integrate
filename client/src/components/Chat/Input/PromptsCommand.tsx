@@ -12,6 +12,7 @@ import {
 } from '~/utils';
 import { activateCatalog, useLocalize, usePromptContentResolver } from '~/hooks';
 import useChatScopedRequest from '~/hooks/Prompts/useChatScopedRequest';
+import useTarsPromptCommands from '~/hooks/Tars/useTarsPromptCommands';
 import useInitPopoverInput from '~/hooks/Input/useInitPopoverInput';
 import { useRecordPromptUsage } from '~/data-provider';
 import { VariableDialog } from '~/components/Prompts';
@@ -76,9 +77,10 @@ function PromptsCommand({
   const { mutate: recordUsage } = useRecordPromptUsage();
   const resolvePromptContent = usePromptContentResolver();
   const promptGroupsContext = usePromptGroupsContext();
-  const { allPromptGroups, hasAccess, requestAllPromptGroups } = promptGroupsContext ?? {};
-  const { data, isLoading } = allPromptGroups ?? {};
+  const { hasAccess, requestAllPromptGroups } = promptGroupsContext ?? {};
   const showPromptsPopover = useRecoilValue(store.showPromptsPopoverFamily(index));
+  /** TARS: `/` lists the chat brain's pwc_tars prompts, not LibreChat prompt groups */
+  const { data, isLoading } = useTarsPromptCommands(showPromptsPopover);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);

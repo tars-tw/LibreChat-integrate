@@ -50,6 +50,7 @@ function Panel({ domain, onInsert }: { domain: TTarsDomain; onInsert: (text: str
     const matches = (prompt: TTarsPrompt) =>
       !term ||
       prompt.name.toLowerCase().includes(term) ||
+      (prompt.command ?? '').toLowerCase().includes(term) ||
       (prompt.category ?? '').toLowerCase().includes(term) ||
       prompt.content.toLowerCase().includes(term);
 
