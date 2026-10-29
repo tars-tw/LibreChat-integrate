@@ -1621,11 +1621,6 @@
       "count": 1
     }
   },
-  "client/src/components/Prompts/Tars/CategorySelector.tsx": {
-    "shadcn/no-restyle": {
-      "count": 2
-    }
-  },
   "client/src/components/Prompts/Tars/Form.tsx": {
     "shadcn/no-raw-colors": {
       "count": 3

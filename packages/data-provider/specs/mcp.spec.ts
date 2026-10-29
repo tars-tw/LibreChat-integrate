@@ -56,6 +56,26 @@ describe('MCP server title validation', () => {
 });
 
 describe('MCPOptionsSchema', () => {
+  /** An unset `${VAR}` leaves a relative path; that must fail the entry, not throw out of the parse. */
+  describe('URLs that do not parse', () => {
+    it.each(['streamable-http', 'sse', 'websocket'])('rejects a relative %s URL', (type) => {
+      const parse = () => MCPOptionsSchema.safeParse({ type, url: '/api/v1/tars/mcp/streamable' });
+      expect(parse).not.toThrow();
+      expect(parse().success).toBe(false);
+    });
+
+    it('rejects a relative proxy URL', () => {
+      const parse = () =>
+        MCPOptionsSchema.safeParse({
+          type: 'streamable-http',
+          url: 'https://mcp-server.com/http',
+          proxy: 'localhost:8080',
+        });
+      expect(parse).not.toThrow();
+      expect(parse().success).toBe(false);
+    });
+  });
+
   describe('OBO transport support', () => {
     it('should accept obo on SSE transport', () => {
       const result = MCPOptionsSchema.safeParse({

@@ -397,14 +397,29 @@ const BaseOptionsSchema = z.object({
     .optional(),
 });
 
+/**
+ * A URL's protocol, or `undefined` when it does not parse. Zod v4 keeps running refinements
+ * after `url()` has already rejected the value, so a refinement that constructs a `URL` must not
+ * throw: an unresolved `${VAR}` would otherwise abort the whole config parse instead of failing
+ * this one entry.
+ */
+const parseProtocol = (val: string): string | undefined => {
+  try {
+    return new URL(val).protocol;
+  } catch {
+    return undefined;
+  }
+};
+
 const ProxyUrlSchema = z
   .string()
   .transform((val: string) => extractEnvVariable(val))
   .pipe(z.string().url())
   .refine(
     (val: string) => {
-      const protocol = new URL(val).protocol;
+      const protocol = parseProtocol(val);
       return (
+        protocol == null ||
         protocol === 'http:' ||
         protocol === 'https:' ||
         protocol === 'socks:' ||
@@ -506,8 +521,8 @@ export const WebSocketOptionsSchema = BaseOptionsSchema.extend({
     .pipe(z.string().url())
     .refine(
       (val: string) => {
-        const protocol = new URL(val).protocol;
-        return protocol === 'ws:' || protocol === 'wss:';
+        const protocol = parseProtocol(val);
+        return protocol == null || protocol === 'ws:' || protocol === 'wss:';
       },
       {
         message: 'WebSocket URL must start with ws:// or wss://',
@@ -541,7 +556,7 @@ export const SSEOptionsSchema = BaseOptionsSchema.extend({
     .pipe(z.string().url())
     .refine(
       (val: string) => {
-        const protocol = new URL(val).protocol;
+        const protocol = parseProtocol(val);
         return protocol !== 'ws:' && protocol !== 'wss:';
       },
       {
@@ -576,7 +591,7 @@ export const StreamableHTTPOptionsSchema = BaseOptionsSchema.extend({
     .pipe(z.string().url())
     .refine(
       (val: string) => {
-        const protocol = new URL(val).protocol;
+        const protocol = parseProtocol(val);
         return protocol !== 'ws:' && protocol !== 'wss:';
       },
       {

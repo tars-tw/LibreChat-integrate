@@ -1,8 +1,8 @@
 import { useState, memo, useRef, useCallback } from 'react';
 import { useSetAtom } from 'jotai';
 import * as Menu from '@ariakit/react/menu';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { GearIcon, Avatar } from '@librechat/client';
+import { useRecoilValue, useSetRecoilState } from 'recoil';
 import {
   Archive,
   CircleHelp,
@@ -68,7 +68,9 @@ function HelpSubmenu({
         <Keyboard className="icon-md" aria-hidden="true" />
         {localize('com_shortcut_keyboard_shortcuts')}
       </Menu.MenuItem>
-      {showLegalDivider && <Menu.MenuSeparator className="bg-surface-hover -mx-1 my-1 h-px border-0" />}
+      {showLegalDivider && (
+        <Menu.MenuSeparator className="bg-surface-hover -mx-1 my-1 h-px border-0" />
+      )}
       {hasTos && (
         <Menu.MenuItem
           onClick={() => {

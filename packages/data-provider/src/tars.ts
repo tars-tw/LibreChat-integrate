@@ -763,7 +763,7 @@ export const tarsConfigSchema = z.object({
       /** Attachments per call, the message being answered first, then earlier ones up the thread. */
       maxFiles: z.number().int().min(1).max(50).default(10),
     })
-    .default({}),
+    .prefault({}),
 });
 
 export type TTarsWorkflowFilesConfig = z.infer<typeof tarsConfigSchema>['workflowFiles'];
