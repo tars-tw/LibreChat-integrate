@@ -368,6 +368,15 @@ export const isTarsLocalEndpointName = (endpoint: string | null | undefined): bo
  */
 export const TARS_WORKFLOW_MCP_SERVER_NAME = 'workflow';
 
+/**
+ * The reserved Workflow tool argument that carries the turn's attachments as signed references
+ * (`[{id, filename, path}]`, `path` relative to LibreChat's origin). LibreChat adds it after the
+ * model has produced its arguments, so the model never sees it; Langflow (`api/v1/tars/tools.py`)
+ * removes it before the flow runs and hands the files to Chat Input only for a flow that opted in
+ * by putting Chat Input's Files field on the node.
+ */
+export const TARS_WORKFLOW_FILES_ARGUMENT = '__librechat_files';
+
 /** Langflow flows are mirrored into agents under this id prefix (`packages/api/src/langflow/sync.ts`). */
 export const TARS_LANGFLOW_AGENT_ID_PREFIX = 'agent_langflow_';
 
@@ -746,4 +755,15 @@ export const tarsConfigSchema = z.object({
   /** Newest charts and files TARS tools generated earlier in a conversation that every turn
    *  re-lists for the model, outside the summarizable history. `0` lists none. */
   generatedLinksLimit: z.number().int().min(0).max(200).default(20),
+  /** The conversation's attachments sent along with each Workflow (Langflow) tool call. A flow
+   *  receives them only once it opts in, so enabling this changes nothing for other flows. */
+  workflowFiles: z
+    .object({
+      enabled: z.boolean().default(true),
+      /** Attachments per call, the message being answered first, then earlier ones up the thread. */
+      maxFiles: z.number().int().min(1).max(50).default(10),
+    })
+    .default({}),
 });
+
+export type TTarsWorkflowFilesConfig = z.infer<typeof tarsConfigSchema>['workflowFiles'];

@@ -39,6 +39,8 @@ export interface TarsTurnFiles {
   imageFiles: TarsDataFile[];
   /** Attachments kept out of the prompt (`llmDeliveryPath: none` or unset), read by tools if at all. */
   otherFiles: TarsDataFile[];
+  /** Every attachment above, the message being answered first, then up the thread. */
+  attachments: TarsDataFile[];
   /**
    * The thread's text attachments' extracted text, joined for a plugin's
    * `file_input`; read only when a plugin actually runs.
@@ -74,6 +76,7 @@ const EMPTY: TarsTurnFiles = {
   providerFiles: [],
   imageFiles: [],
   otherFiles: [],
+  attachments: [],
   loadFileInput: async () => '',
   generatedFilesContext: null,
 };
@@ -124,12 +127,14 @@ export async function resolveTarsTurnFiles(source: TarsTurnFilesSource): Promise
   const providerFiles: TarsDataFile[] = [];
   const imageFiles: TarsDataFile[] = [];
   const otherFiles: TarsDataFile[] = [];
+  const attachments: TarsDataFile[] = [];
   for (const fileId of fileIds) {
     const file = byId.get(fileId);
     if (!file) {
       continue;
     }
     const ref = { id: file.file_id, filename: file.filename ?? file.file_id };
+    attachments.push(ref);
     if (isTarsSpreadsheet(file.filename)) {
       dataFiles.push(ref);
     } else if (typeof file.type === 'string' && file.type.startsWith('image/')) {
@@ -161,6 +166,7 @@ export async function resolveTarsTurnFiles(source: TarsTurnFilesSource): Promise
     providerFiles,
     imageFiles,
     otherFiles,
+    attachments,
     loadFileInput,
     generatedFilesContext,
   };

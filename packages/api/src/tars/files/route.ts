@@ -1,6 +1,7 @@
 import { logger } from '@librechat/data-schemas';
 import type { Request, Response } from 'express';
-import { isTarsSpreadsheet, verifyTarsFileSignature } from './sign';
+import type { TarsFileScope } from './sign';
+import { isServableInScope, verifyTarsFileSignature } from './sign';
 import { isTarsConfigured } from '~/tars/client';
 
 /** A stored LibreChat file the route can stream. */
@@ -75,11 +76,21 @@ export function pipeTarsDownload(
   stream.pipe(res);
 }
 
+/** `s` names the reference's scope; references without one are pwc_tars's spreadsheet refs. */
+function scopeOf(value: unknown): TarsFileScope | null {
+  const scope = queryString(value);
+  if (!scope || scope === 'data') {
+    return 'data';
+  }
+  return scope === 'workflow' ? scope : null;
+}
+
 /**
- * Serves one spreadsheet to pwc_tars's data tools. pwc_tars holds no
- * LibreChat session, so the signed reference is the whole authorization: it
- * names the file and its owner, expires within minutes, and only csv / xlsx /
- * xls files are ever served.
+ * Serves one file to a service that holds no LibreChat session: pwc_tars's
+ * data tools (csv / xlsx / xls) or a Langflow flow (the attachment types it
+ * reads). The signed reference is the whole authorization: it names the file,
+ * its owner and its scope, expires within minutes, and the scope decides which
+ * file types are ever served.
  */
 export function createTarsFileHandler<TFile extends TarsDownloadableFile>(
   deps: TarsFileRouteDeps<TFile>,
@@ -91,19 +102,23 @@ export function createTarsFileHandler<TFile extends TarsDownloadableFile>(
     }
     const { fileId } = req.params;
     const userId = queryString(req.query.u);
-    const valid = verifyTarsFileSignature({
-      fileId,
-      userId,
-      expires: Number(queryString(req.query.exp)),
-      signature: queryString(req.query.sig),
-    });
+    const scope = scopeOf(req.query.s);
+    const valid =
+      scope != null &&
+      verifyTarsFileSignature({
+        scope,
+        fileId,
+        userId,
+        expires: Number(queryString(req.query.exp)),
+        signature: queryString(req.query.sig),
+      });
     if (!valid) {
       res.status(403).end();
       return;
     }
     try {
       const file = await deps.findFile(fileId, userId);
-      if (!file || !isTarsSpreadsheet(file.filename)) {
+      if (!file || !isServableInScope(scope, file.filename)) {
         res.status(404).end();
         return;
       }
