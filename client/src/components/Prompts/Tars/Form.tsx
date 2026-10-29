@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller, FormProvider } from 'react-hook-form';
@@ -56,7 +56,7 @@ export default function TarsPromptForm({
   const navigate = useNavigate();
   const { showToast } = useToastContext();
   const isSmallScreen = useMediaQuery('(max-width: 768px)');
-  const { prompts, categories, isLoading, basePath } = useScopedTarsPrompts({
+  const { prompts, categories, categoryCounts, isLoading, basePath } = useScopedTarsPrompts({
     domainId,
     knowledgeBaseId,
   });
@@ -77,14 +77,20 @@ export default function TarsPromptForm({
     formState: { errors, isValid, isSubmitting },
   } = methods;
 
+  /** Reset only when another prompt opens: a refetch (after a save or a category
+   *  rename) must not wipe edits that are not saved yet. */
+  const loadedPromptId = useRef<string | null>(null);
+
   useEffect(() => {
     if (!isEdit) {
+      loadedPromptId.current = null;
       reset(emptyValues);
       return;
     }
-    if (!prompt) {
+    if (!prompt || loadedPromptId.current === String(prompt.id)) {
       return;
     }
+    loadedPromptId.current = String(prompt.id);
     reset({
       name: prompt.name,
       category: prompt.category ?? '',
@@ -162,6 +168,9 @@ export default function TarsPromptForm({
               value={category}
               onChange={(value) => setValue('category', value, { shouldDirty: true })}
               categories={categories}
+              categoryCounts={categoryCounts}
+              domainId={domainId}
+              knowledgeBaseId={knowledgeBaseId}
             />
           </div>
         ) : null}
@@ -211,6 +220,9 @@ export default function TarsPromptForm({
                       value={field.value}
                       onChange={field.onChange}
                       categories={categories}
+                      categoryCounts={categoryCounts}
+                      domainId={domainId}
+                      knowledgeBaseId={knowledgeBaseId}
                     />
                     <div
                       className={cn(

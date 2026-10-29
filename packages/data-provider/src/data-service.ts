@@ -1746,6 +1746,12 @@ export const updateTarsPrompt = (
   return request.put(endpoints.tarsPrompt(id), data);
 };
 
+export const renameTarsPromptCategory = (
+  data: t.TTarsPromptCategoryRenameInput,
+): Promise<t.TTarsPromptCategoryRenameResponse> => {
+  return request.put(endpoints.tarsPromptCategoryRename(), data);
+};
+
 export const deleteTarsPrompt = (
   id: string,
   query?: { domainId?: string; knowledgeBaseId?: string },
