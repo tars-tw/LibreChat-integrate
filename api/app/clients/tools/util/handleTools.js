@@ -35,6 +35,7 @@ const {
   createTarsDataTool,
   createTarsTableTaskTool,
   getTarsTurnFiles,
+  attachWorkflowFiles,
   ASK_USER_QUESTION_TOOL_NAME,
   resolveWebSearchSSRFAgents,
   buildWebSearchDynamicContext,
@@ -768,6 +769,12 @@ const loadTools = async ({
       },
     })),
   );
+  /** TARS: Workflow (Langflow) calls carry the turn's attachments; keep as its own statement. */
+  attachWorkflowFiles(loadedTools, {
+    getTurnFiles: () => getTarsTurnFiles(options.req),
+    userId: user,
+    config: options.req?.config?.config?.tars?.workflowFiles,
+  });
   return { loadedTools, toolContextMap, dynamicToolContextMap, primedCodeFiles };
 };
 

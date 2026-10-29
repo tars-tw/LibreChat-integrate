@@ -5,7 +5,7 @@ import { Readable } from 'stream';
 import type { AddressInfo } from 'net';
 import type { TarsDownloadableFile } from './route';
 import { sendTarsFileStream, createTarsFileHandler, tarsAttachmentDisposition } from './route';
-import { signTarsDataFileRefs } from './sign';
+import { signTarsFileRefs, signTarsDataFileRefs } from './sign';
 
 const CSV = 'region,amount\nnorth,10\n';
 
@@ -55,6 +55,19 @@ describe('createTarsFileHandler', () => {
     expect((await request(app).get(pathFor('sheet-1', 'user-2'))).status).toBe(404);
     expect((await request(app).get(pathFor('doc-1'))).status).toBe(404);
     expect(openStream).not.toHaveBeenCalled();
+  });
+
+  it('serves a document to a workflow reference, never to a spreadsheet one', async () => {
+    const workflowPath = signTarsFileRefs(
+      [{ id: 'doc-1', filename: 'notes.pdf' }],
+      'user-1',
+      'workflow',
+    )[0].path;
+
+    expect((await request(app).get(workflowPath)).status).toBe(200);
+    expect((await request(app).get(workflowPath.replace('&s=workflow', ''))).status).toBe(403);
+    expect((await request(app).get(`${pathFor('doc-1')}&s=workflow`)).status).toBe(403);
+    expect((await request(app).get(`${pathFor('sheet-1')}&s=other`)).status).toBe(403);
   });
 
   it('is absent when TARS is not configured', async () => {

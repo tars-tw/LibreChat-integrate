@@ -216,7 +216,9 @@ Finally, confirm the integration seams survived the auto-merges — textual succ
 not semantic success. The load-bearing ones: `primeTarsTurnFiles` in
 `packages/api/src/agents/initialize.ts` and `addTarsGeneratedFilesContext` right after
 its `initializedAgent` literal (`tars/files/agent.spec.ts` fails if it is lost), the TARS tool gates in
-`api/server/services/ToolService.js`, the tool construction in `handleTools.js`,
+`api/server/services/ToolService.js`, the tool construction in `handleTools.js`
+(including `attachWorkflowFiles` after `loadMCPTools`, which hands the turn's attachments
+to Langflow flows — `langflow/files.spec.ts` covers the wrapper, not the call site),
 `mirrorChatToTars` in `agents/request.js`,
 `withTarsMcpConfig` in `api/server/services/Config/app.js`, `stampTarsStepTiming`
 in the `ON_RUN_STEP_CLOSED` handler of `agents/callbacks.js` and in the
