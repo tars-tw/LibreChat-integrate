@@ -1473,7 +1473,7 @@
   "com_ui_collapse_thoughts": "Collapse Thoughts",
   "com_ui_command_exit_code": "exit code {{0}}",
   "com_ui_command_finished": "Ran command",
-  "com_ui_command_placeholder": "Optional: Enter a command for the prompt or name will be used",
+  "com_ui_command_placeholder": "Optional: Type \"/command\" in chat to bring up this prompt, or name will be used",
   "com_ui_command_terminated": "terminated by {{0}}",
   "com_ui_command_timed_out": "timed out",
   "com_ui_command_timeout_note": "Time limit reached. Output may be incomplete.",

@@ -747,6 +747,8 @@ export type TTarsPrompt = {
   description: string | null;
   category: string | null;
   content: string;
+  /** Quick `/command`; absent from a pwc_tars that predates the column */
+  command?: string | null;
   status: number;
   created_by: string;
   created_at: string;
@@ -768,8 +770,8 @@ export type TTarsPromptsResponse = {
 };
 
 /**
- * Create/update payload for a "我的提示". `command` is sent for the forthcoming
- * pwc_tars column and is ignored by the current backend.
+ * Create/update payload for a "我的提示". An empty `command` clears it; leaving
+ * it out keeps the stored one.
  */
 export type TTarsPromptInput = {
   name: string;

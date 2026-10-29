@@ -11,26 +11,14 @@ import {
   OGDialogTemplate,
   useToastContext,
 } from '@librechat/client';
-import type { TTarsPrompt, TPromptGroup, TTarsPromptScope } from 'librechat-data-provider';
+import type { TTarsPrompt, TTarsPromptScope } from 'librechat-data-provider';
+import { tarsPromptAsGroup, detectVariables, cn } from '~/utils';
 import { useDeleteTarsPromptMutation } from '~/data-provider';
 import { useLocalize, useSubmitMessage } from '~/hooks';
 import VariableDialog from '../dialogs/VariableDialog';
 import CategoryIcon from '../utils/CategoryIcon';
-import { detectVariables, cn } from '~/utils';
 
 const PROMPT_PATH = '/prompts';
-
-/**
- * `VariableForm` is shaped around a LibreChat prompt group; a pwc_tars prompt has
- * no group, so it is adapted here. The absent `_id` is deliberate — it keeps the
- * form from recording usage against a non-existent LibreChat group.
- */
-const asPromptGroup = (prompt: TTarsPrompt): TPromptGroup =>
-  ({
-    name: prompt.name,
-    category: prompt.category ?? '',
-    productionPrompt: { prompt: prompt.content },
-  }) as TPromptGroup;
 
 function TarsPromptItem({
   prompt,
@@ -168,7 +156,7 @@ function TarsPromptItem({
         <VariableDialog
           open={isVariableDialogOpen}
           onClose={() => setVariableDialogOpen(false)}
-          group={asPromptGroup(prompt)}
+          group={tarsPromptAsGroup(prompt)}
         />
       )}
       {isManageable && (

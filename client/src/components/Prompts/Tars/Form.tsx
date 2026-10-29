@@ -41,9 +41,7 @@ const emptyValues: TarsPromptFormValues = {
 /**
  * Create/edit form for a pwc_tars "提示", scoped by whichever id the route
  * carries: a specialized brain's own prompts, a knowledge base's own
- * prompts, or (neither given) the user's personal prompts. `command` is sent
- * along for the forthcoming pwc_tars column and is currently ignored by the
- * backend.
+ * prompts, or (neither given) the user's personal prompts.
  */
 export default function TarsPromptForm({
   promptId,
@@ -92,7 +90,7 @@ export default function TarsPromptForm({
       category: prompt.category ?? '',
       prompt: prompt.content,
       oneliner: prompt.description ?? '',
-      command: '',
+      command: prompt.command ?? '',
     });
   }, [isEdit, prompt, reset]);
 
@@ -283,7 +281,12 @@ export default function TarsPromptForm({
             name="command"
             control={control}
             render={({ field }) => (
-              <Command initialValue={field.value} onValueChange={field.onChange} tabIndex={0} />
+              <Command
+                initialValue={field.value}
+                onValueChange={field.onChange}
+                tabIndex={0}
+                allowUnicode
+              />
             )}
           />
           <div className="mt-4 flex items-center justify-between gap-2">

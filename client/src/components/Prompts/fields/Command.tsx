@@ -1,9 +1,18 @@
-import { useId, useState, useEffect } from 'react';
+import { useId, useRef, useState, useEffect } from 'react';
 import { Input } from '@librechat/client';
 import { SquareSlash } from 'lucide-react';
 import { Constants } from 'librechat-data-provider';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
+
+/** LibreChat prompt groups only accept lowercase ASCII commands; `allowUnicode`
+ *  keeps letters and digits of any script, for pwc_tars prompts. */
+const sanitizeCommand = (value: string, allowUnicode: boolean): string => {
+  const hyphenated = value.toLowerCase().replace(/\s/g, '-');
+  return allowUnicode
+    ? hyphenated.replace(/[^\p{L}\p{M}\p{N}-]/gu, '')
+    : hyphenated.replace(/[^a-z0-9-]/g, '');
+};
 
 const Command = ({
   initialValue,
@@ -11,6 +20,7 @@ const Command = ({
   disabled,
   tabIndex,
   labelBgClassName = 'bg-surface-primary-alt',
+  allowUnicode = false,
 }: {
   initialValue?: string;
   onValueChange?: (value: string) => void;
@@ -18,10 +28,14 @@ const Command = ({
   tabIndex?: number;
   /** Surface the floating label notches out of; must match whatever sits behind the field */
   labelBgClassName?: string;
+  allowUnicode?: boolean;
 }) => {
   const localize = useLocalize();
   const commandId = useId();
+  const isComposing = useRef(false);
   const [command, setCommand] = useState(initialValue || '');
+  /** IME text still being composed; sanitizing it mid-composition would wipe the candidate */
+  const [draft, setDraft] = useState<string | null>(null);
   const [charCount, setCharCount] = useState(initialValue?.length || 0);
 
   useEffect(() => {
@@ -33,15 +47,31 @@ const Command = ({
     setCharCount(command.length);
   }, [command]);
 
-  const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
-    let newValue = e.target.value.toLowerCase();
-
-    newValue = newValue.replace(/\s/g, '-').replace(/[^a-z0-9-]/g, '');
+  const commitValue = (rawValue: string) => {
+    const newValue = sanitizeCommand(rawValue, allowUnicode);
 
     if (newValue.length <= Constants.COMMANDS_MAX_LENGTH) {
       setCommand(newValue);
       onValueChange?.(newValue);
     }
+  };
+
+  const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    if (isComposing.current) {
+      setDraft(e.target.value);
+      return;
+    }
+    commitValue(e.target.value);
+  };
+
+  const handleCompositionStart = () => {
+    isComposing.current = true;
+  };
+
+  const handleCompositionEnd: React.CompositionEventHandler<HTMLInputElement> = (e) => {
+    isComposing.current = false;
+    setDraft(null);
+    commitValue(e.currentTarget.value);
   };
 
   if (disabled === true && !command) {
@@ -63,8 +93,10 @@ const Command = ({
             tabIndex={tabIndex}
             disabled={disabled}
             placeholder=" "
-            value={command}
+            value={draft ?? command}
             onChange={handleInputChange}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
             className="peer w-full border-none"
             aria-label={localize('com_ui_command_placeholder')}
           />
