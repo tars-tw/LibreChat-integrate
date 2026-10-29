@@ -675,14 +675,18 @@ export const useTarsModelProfilesQuery = (
   );
 };
 
-/** Admin: the cloud type → API key rules and key status for the Add Model dialog. */
+/**
+ * Admin: the cloud type → API key rules and key status for the Add Model dialog.
+ * Re-read on every open: a key set or cleared since (API Keys tab, an earlier model)
+ * changes what the dialog must ask for.
+ */
 export const useTarsCloudTypeRulesQuery = (
   config?: UseQueryOptions<TTarsCloudTypeRules>,
 ): QueryObserverResult<TTarsCloudTypeRules> => {
   return useQuery<TTarsCloudTypeRules>(
     [QueryKeys.tarsCloudTypeRules],
     () => dataService.getTarsCloudTypeRules(),
-    { ...adminQueryOptions, ...config },
+    { ...adminQueryOptions, refetchOnMount: 'always', ...config },
   );
 };
 

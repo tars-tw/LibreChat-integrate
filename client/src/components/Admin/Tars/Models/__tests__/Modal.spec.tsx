@@ -17,7 +17,10 @@ const cloudRules = {
   key_labels: { KEY_OPEN_AI_API: 'OpenAI', KEY_VERTEX_AI_API: 'Vertex AI' },
   key_status: { KEY_OPEN_AI_API: true, KEY_VERTEX_AI_API: false },
 };
-const mockRules = { data: cloudRules, isError: false };
+const mockRules: { data?: typeof cloudRules; isError: boolean } = {
+  data: cloudRules,
+  isError: false,
+};
 
 jest.mock('~/data-provider', () => ({
   useTarsCloudTypeRulesQuery: () => mockRules,
@@ -73,6 +76,8 @@ const renderModal = (target?: TTarsModelProfile) =>
 beforeEach(() => {
   mockUpdate.mockClear();
   mockCreate.mockClear();
+  mockRules.data = cloudRules;
+  mockRules.isError = false;
 });
 
 describe('ModelProfileModal type and endpoint', () => {
@@ -242,6 +247,25 @@ describe('ModelProfileModal cloud API key', () => {
 
     renderModal(profile);
     expect(screen.queryByText(/com_ui_tars_models_api_key_hint/)).toBeNull();
+  });
+
+  it('holds a cloud model back until the rules load, but not a local one', async () => {
+    mockRules.data = undefined;
+    mockRules.isError = true;
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    renderModal();
+    await fillBasics(user, 'com_ui_tars_models_type_cloud');
+
+    expect(screen.getByRole('button', { name: 'com_ui_save' })).toBeDisabled();
+    expect(screen.getByText('com_ui_tars_models_api_key_rules_unavailable')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: /com_ui_tars_models_type/ }));
+    await user.click(
+      screen.getByRole('option', { name: 'com_ui_tars_models_type_vllm', hidden: true }),
+    );
+    expect(screen.queryByText('com_ui_tars_models_api_key_rules_unavailable')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockCreate).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -150,6 +150,9 @@ export default function ModelProfileModal({
   /** A single candidate is the key; several leave the choice to the admin. */
   const effectiveKey = candidateKeys.length === 1 ? candidateKeys[0] : form.sysConfigKey;
   const keyConfigured = effectiveKey !== '' && cloudRules?.key_status[effectiveKey] === true;
+  /** Without the rules a cloud type cannot be told apart or given its key, so it waits. */
+  const awaitingRules =
+    !isEdit && cloudRules == null && form.type !== '' && form.type !== CONFIG_EDITABLE_TYPE;
 
   const createMutation = useCreateTarsModelProfileMutation({
     onSuccess: () => {
@@ -453,7 +456,7 @@ export default function ModelProfileModal({
               </div>
             </div>
 
-            {!isEdit && rulesQuery.isError && (
+            {awaitingRules && rulesQuery.isError && (
               <p className="text-text-destructive text-xs">
                 {localize('com_ui_tars_models_api_key_rules_unavailable')}
               </p>
@@ -605,7 +608,7 @@ export default function ModelProfileModal({
           </div>
         }
         buttons={
-          <Button variant="submit" onClick={handleSave} disabled={isSaving}>
+          <Button variant="submit" onClick={handleSave} disabled={isSaving || awaitingRules}>
             {isSaving ? <Spinner /> : localize('com_ui_save')}
           </Button>
         }
