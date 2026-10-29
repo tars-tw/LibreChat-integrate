@@ -21,6 +21,16 @@ import type {
   TTarsMcpParsedTool,
 } from 'librechat-data-provider';
 import {
+  headersToRows,
+  rowsToHeaders,
+  readBoundValues,
+  withBoundValues,
+  syncCounts,
+  blockedToolsSummary,
+  type BoundValues,
+  type HeaderRow,
+} from './boundValues';
+import {
   useSyncTarsMcpServerMutation,
   useCreateTarsMcpServerMutation,
   useUpdateTarsMcpServerMutation,
@@ -31,16 +41,6 @@ import McpOpenapiFixedValues from './McpOpenapiFixedValues';
 import McpCustomApiTools from './McpCustomApiTools';
 import McpStaticHeaders from './McpStaticHeaders';
 import { useLocalize } from '~/hooks';
-import {
-  headersToRows,
-  rowsToHeaders,
-  readBoundValues,
-  withBoundValues,
-  syncCounts,
-  blockedToolsSummary,
-  type BoundValues,
-  type HeaderRow,
-} from './boundValues';
 
 type AuthType = 'none' | 'bearer' | 'api_key' | 'basic' | 'login';
 
