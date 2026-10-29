@@ -235,7 +235,9 @@ lost), `noteTarsFinishReason` after `collectedUsage.push` in `ModelEndHandler`
 `services/__tests__/MCP.tarsToolError.spec.js` fail if either is lost),
 `attachTarsGeneratedLinks` right after the `ON_TOOL_EXECUTE` registration in
 `getDefaultHandlers` (`agents/callbacks.js`; same standalone-line rule, guarded by the
-same `tarsStepTiming.spec.js`), and on the frontend `TarsPromptsButton`.
+same `tarsStepTiming.spec.js`), and on the frontend `TarsPromptsButton` and the
+`useTarsPromptCommands` source in `PromptsCommand.tsx` (the `/` picker lists pwc_tars
+prompts, matched by their `command` or name; `PromptsCommand.spec.tsx` routes it to its fixture).
 
 ---
 

@@ -1,5 +1,5 @@
 import { specialVariables } from 'librechat-data-provider';
-import type { TPromptGroup } from 'librechat-data-provider';
+import type { TPromptGroup, TTarsPrompt } from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks';
 import { getResponseErrorCode } from './errors';
 
@@ -83,6 +83,19 @@ export function formatDateTime(dateTimeString: string) {
 
   return `${formattedDate}, ${formattedTime}`;
 }
+
+/**
+ * `VariableForm` and the slash-command picker are shaped around a LibreChat
+ * prompt group; a pwc_tars prompt has no group, so it is adapted here. The
+ * absent `_id` is deliberate — it keeps them from recording usage against a
+ * non-existent LibreChat group.
+ */
+export const tarsPromptAsGroup = (prompt: TTarsPrompt): TPromptGroup =>
+  ({
+    name: prompt.name,
+    category: prompt.category ?? '',
+    productionPrompt: { prompt: prompt.content },
+  }) as TPromptGroup;
 
 export const mapPromptGroups = (groups: TPromptGroup[]): Record<string, TPromptGroup> => {
   return groups.reduce(

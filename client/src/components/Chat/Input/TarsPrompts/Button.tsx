@@ -1,20 +1,14 @@
-import { memo, useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { memo, useRef, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { NotebookPen } from 'lucide-react';
 import { TooltipAnchor } from '@librechat/client';
-import type { TTarsDomain } from 'librechat-data-provider';
-import useTarsPromptsDomainId from '~/hooks/Tars/useTarsPromptsDomainId';
-import { useTarsDomainsQuery } from '~/data-provider';
+import useTarsPromptsDomain from '~/hooks/Tars/useTarsPromptsDomain';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 import Panel from './Panel';
 
-const DEFAULT_DOMAIN_NAME = 'general';
 const GAP = 8;
 const MAX_PANEL_WIDTH = 384;
-
-const resolveDefaultDomain = (domains: TTarsDomain[]): TTarsDomain | undefined =>
-  domains.find((domain) => domain.name.trim().toLowerCase() === DEFAULT_DOMAIN_NAME) ?? domains[0];
 
 /**
  * "我的提示" entry point in the chat composer. Opens a panel listing the
@@ -35,16 +29,7 @@ function PromptsButton({
   const [coords, setCoords] = useState<{ left: number; bottom: number } | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const { data: domains = [] } = useTarsDomainsQuery();
-  const domainId = useTarsPromptsDomainId();
-
-  const effectiveDomain = useMemo(() => {
-    const target = domainId ? String(domainId) : null;
-    return (
-      (target && domains.find((domain) => String(domain.id) === target)) ||
-      resolveDefaultDomain(domains)
-    );
-  }, [domains, domainId]);
+  const effectiveDomain = useTarsPromptsDomain();
 
   const reposition = useCallback(() => {
     const rect = anchorRef.current?.getBoundingClientRect();
@@ -83,7 +68,7 @@ function PromptsButton({
     [insertPrompt],
   );
 
-  if (!domains.length || !effectiveDomain) {
+  if (!effectiveDomain) {
     return null;
   }
 

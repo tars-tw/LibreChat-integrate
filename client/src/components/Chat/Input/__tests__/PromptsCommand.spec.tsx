@@ -57,6 +57,12 @@ jest.mock('~/Providers', () => ({
   useChatContext: () => ({ conversation: mockConversation.current }),
 }));
 
+/** TARS: the picker lists pwc_tars prompts; route that source to the same fixture. */
+jest.mock('~/hooks/Tars/useTarsPromptCommands', () => ({
+  __esModule: true,
+  default: () => mockPromptGroupsContext().allPromptGroups ?? {},
+}));
+
 /** The real token lives in a module-level map keyed by composer index, which
  *  `useNewConvo` renews on a new-chat reset and keeps otherwise; the mock
  *  swaps in a plain symbol a test can renew by assignment. */
