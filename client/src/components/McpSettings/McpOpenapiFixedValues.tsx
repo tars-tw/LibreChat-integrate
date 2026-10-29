@@ -2,9 +2,6 @@ import { useEffect, useState } from 'react';
 import { RefreshCw, Trash2 } from 'lucide-react';
 import { Button, Dropdown, Input, Label, Spinner } from '@librechat/client';
 import type { TTarsMcpParsedTool } from 'librechat-data-provider';
-import SystemVariablesHint from './SystemVariablesHint';
-import { mcpActionClass } from './actions';
-import { useLocalize } from '~/hooks';
 import {
   endpointOf,
   boundValueOf,
@@ -12,6 +9,9 @@ import {
   isStaleBinding,
   type BoundValues,
 } from './boundValues';
+import SystemVariablesHint from './SystemVariablesHint';
+import { mcpActionClass } from './actions';
+import { useLocalize } from '~/hooks';
 
 const FIELD_ROW = 'grid grid-cols-[1fr_4.5rem_4.5rem_3rem_1.5fr_1.5fr] items-center gap-2';
 const BOUND_ROW = 'grid grid-cols-[1.5fr_4.5rem_1fr_1.5fr_2rem] items-center gap-2';

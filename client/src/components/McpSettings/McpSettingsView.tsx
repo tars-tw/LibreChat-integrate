@@ -31,6 +31,7 @@ import {
   useSyncTarsMcpServerMutation,
   useDeleteTarsMcpServerMutation,
 } from '~/data-provider';
+import { syncCounts, blockedToolsSummary } from './boundValues';
 import McpPaginationControls from './McpPaginationControls';
 import { useClientPagination } from './useClientPagination';
 import McpServerToolsPanel from './McpServerToolsPanel';
@@ -42,7 +43,6 @@ import { filterManagedServers } from './servers';
 import ServerTypeBadge from './ServerTypeBadge';
 import McpUserToolsTab from './McpUserToolsTab';
 import McpServerModal from './McpServerModal';
-import { syncCounts, blockedToolsSummary } from './boundValues';
 import { mcpActionClass } from './actions';
 import McpLogsTab from './McpLogsTab';
 
