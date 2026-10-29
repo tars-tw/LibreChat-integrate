@@ -100,8 +100,6 @@ const DEFAULT_AUTH: AuthForm = {
 
 /** `TabsContent` ships with `mt-2 p-6`; each panel owns its own spacing instead. */
 const TAB_PANEL = 'mt-4 p-0';
-/** The shared trigger only shifts the background when active, which reads as barely selected. */
-const TAB_TRIGGER = 'data-[state=active]:text-brand-primary';
 
 const textareaClass =
   'mt-1 w-full resize-none rounded-lg border border-border-light bg-transparent px-3 py-2 font-mono text-xs text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-heavy';
@@ -807,25 +805,25 @@ export default function McpServerModal({
         main={
           <div className="max-h-[65vh] overflow-y-auto pr-1">
             <Tabs value={formTab} onValueChange={(value) => setFormTab(value as FormTab)}>
-              <TabsList className="-ml-3 w-fit">
-                <TabsTrigger value="basic" className={TAB_TRIGGER}>
+              <TabsList variant="underline">
+                <TabsTrigger value="basic" variant="underline">
                   {localize('com_ui_tars_mcp_tab_basic')}
                 </TabsTrigger>
-                <TabsTrigger value="connection" className={TAB_TRIGGER}>
+                <TabsTrigger value="connection" variant="underline">
                   {localize('com_ui_tars_mcp_tab_connection')}
                 </TabsTrigger>
                 {showToolsTab && (
-                  <TabsTrigger value="tools" className={TAB_TRIGGER}>
+                  <TabsTrigger value="tools" variant="underline">
                     {localize('com_ui_tars_mcp_tab_tools_def')}
                   </TabsTrigger>
                 )}
                 {showFixedValuesTab && (
-                  <TabsTrigger value="fixed_values" className={TAB_TRIGGER}>
+                  <TabsTrigger value="fixed_values" variant="underline">
                     {localize('com_ui_tars_mcp_tab_fixed_values')}
                   </TabsTrigger>
                 )}
                 {showEnvTab && (
-                  <TabsTrigger value="env" className={TAB_TRIGGER}>
+                  <TabsTrigger value="env" variant="underline">
                     {localize('com_ui_tars_mcp_tab_env')}
                   </TabsTrigger>
                 )}

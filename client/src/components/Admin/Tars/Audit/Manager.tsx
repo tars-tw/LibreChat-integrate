@@ -22,8 +22,6 @@ import AuditTable from './Table';
 
 /** `TabsContent` ships with `mt-2 p-6`; each panel owns its own spacing instead. */
 const TAB_PANEL = 'mt-3 p-0';
-/** The shared trigger only shifts the background when active, which reads as barely selected. */
-const TAB_TRIGGER = 'data-[state=active]:text-brand-primary';
 
 const toQuery = (filters: FilterState): TTarsAuditQuery => ({
   start_date: filters.start,
@@ -115,16 +113,16 @@ export default function AuditManager() {
       />
 
       <Tabs defaultValue="report">
-        <TabsList className="w-fit">
-          <TabsTrigger value="report" className={TAB_TRIGGER}>
+        <TabsList variant="underline">
+          <TabsTrigger value="report" variant="underline">
             {localize('com_ui_tars_audit_tab_report')}
             {hasRun ? ` (${reportRows.length})` : ''}
           </TabsTrigger>
-          <TabsTrigger value="feedback" className={TAB_TRIGGER}>
+          <TabsTrigger value="feedback" variant="underline">
             {localize('com_ui_tars_audit_tab_feedback')}
             {hasRun ? ` (${feedbackRows.length})` : ''}
           </TabsTrigger>
-          <TabsTrigger value="stats" className={TAB_TRIGGER}>
+          <TabsTrigger value="stats" variant="underline">
             {localize('com_ui_tars_audit_tab_stats')}
           </TabsTrigger>
         </TabsList>
