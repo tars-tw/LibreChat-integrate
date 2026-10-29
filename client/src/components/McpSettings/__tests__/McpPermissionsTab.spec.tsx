@@ -14,7 +14,6 @@ const mockSave = jest.fn();
 const mockDelete = jest.fn();
 const mockShowToast = jest.fn();
 const mockPermissionsQuery = jest.fn();
-let mockSaveOptions: { onSuccess?: () => void } = {};
 let mockPrincipals: TTarsMcpPermissionPrincipal[] = [];
 let mockPicked: TPrincipal[] = [];
 
@@ -70,12 +69,9 @@ jest.mock('~/data-provider', () => ({
   }),
   usePrincipalDirectoryQuery: () => ({ data: { enabled: true, users: [], groups: [] } }),
   useTarsMcpPermissionPrincipalsQuery: () => ({ data: mockPrincipals, isLoading: false }),
-  useTarsMcpPermissionsQuery: (principal: { type: string; id: string } | null) =>
-    mockPermissionsQuery(principal),
-  useSaveTarsMcpPermissionsMutation: (options: { onSuccess?: () => void }) => {
-    mockSaveOptions = options;
-    return { mutate: mockSave, isLoading: false };
-  },
+  useTarsMcpPermissionsQueries: (principals: Array<{ type: string; id: string }>) =>
+    mockPermissionsQuery(principals),
+  useSaveTarsMcpPermissionsMutation: () => ({ mutateAsync: mockSave }),
   useDeleteTarsMcpPermissionsMutation: () => ({ mutate: mockDelete, isLoading: false }),
   useTarsMcpServerPermissionsQuery: (serverId: string | null) => ({
     data: serverId === 's1' ? [] : undefined,
@@ -112,6 +108,12 @@ const pick = (...people: TPrincipal[]) => {
 
 const serverCheckbox = (name: string) => screen.getByRole('checkbox', { name });
 
+/** Saving awaits every request before it toasts and closes, so the click is flushed in `act`. */
+const clickSave = () =>
+  act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
+  });
+
 const addButton = () => screen.getByRole('button', { name: 'com_ui_tars_mcp_add_permission' });
 
 /** Most cases work inside the dialog that 新增權限 opens. */
@@ -124,10 +126,10 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockPicked = [];
   mockPrincipals = [];
-  mockPermissionsQuery.mockImplementation((principal: { id: string } | null) => ({
-    data: principal ? (savedRows[principal.id] ?? []) : undefined,
-    isFetching: false,
-  }));
+  mockSave.mockResolvedValue({ result: {} });
+  mockPermissionsQuery.mockImplementation((principals: Array<{ id: string }>) =>
+    principals.map((principal) => ({ data: savedRows[principal.id] ?? [] })),
+  );
 });
 
 describe('McpPermissionsTab', () => {
@@ -177,24 +179,51 @@ describe('McpPermissionsTab', () => {
     renderOpen();
     pick(amy);
 
-    expect(mockPermissionsQuery).toHaveBeenLastCalledWith({ type: 'user', id: 'u1' });
+    expect(mockPermissionsQuery).toHaveBeenLastCalledWith([{ type: 'user', id: 'u1' }]);
     expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'true');
     expect(serverCheckbox('Redmine')).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByText('com_ui_tars_mcp_all_tools')).toBeInTheDocument();
   });
 
-  it('saves every picked user and group with the checked servers', () => {
+  it('saves each picked user and group with its own grants plus the checked servers', async () => {
     renderOpen();
     pick(amy, boss);
 
     expect(screen.getByText('com_ui_tars_mcp_multi_principal_warning')).toBeInTheDocument();
-    expect(mockPermissionsQuery).toHaveBeenLastCalledWith(null);
+    expect(mockPermissionsQuery).toHaveBeenLastCalledWith([
+      { type: 'user', id: 'u1' },
+      { type: 'group', id: 'g1' },
+    ]);
+    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'mixed');
 
     fireEvent.click(serverCheckbox('Redmine'));
-    fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    await clickSave();
 
+    expect(mockSave).toHaveBeenCalledTimes(2);
     expect(mockSave).toHaveBeenCalledWith({
       user_ids: ['u1'],
+      user_group_ids: [],
+      servers: [
+        { mcp_server_id: 's1', mcp_tool_ids: [] },
+        { mcp_server_id: 's2', mcp_tool_ids: [] },
+      ],
+    });
+    expect(mockSave).toHaveBeenCalledWith({
+      user_ids: [],
+      user_group_ids: ['g1'],
+      servers: [{ mcp_server_id: 's2', mcp_tool_ids: [] }],
+    });
+  });
+
+  it('sends targets that end up with the same grants in one request', async () => {
+    renderOpen();
+    pick(bob, boss);
+    fireEvent.click(serverCheckbox('Redmine'));
+    await clickSave();
+
+    expect(mockSave).toHaveBeenCalledTimes(1);
+    expect(mockSave).toHaveBeenCalledWith({
+      user_ids: ['u2'],
       user_group_ids: ['g1'],
       servers: [{ mcp_server_id: 's2', mcp_tool_ids: [] }],
     });
@@ -227,14 +256,77 @@ describe('McpPermissionsTab', () => {
     });
   });
 
-  it('clears the tree once the last target is removed', () => {
+  it('keeps tools checked before a target is added', async () => {
     renderOpen();
-    pick(amy);
-    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByRole('button', { name: /Github-repo/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'list_repos' }));
+    pick(bob);
 
-    fireEvent.click(screen.getByRole('button', { name: /com_ui_remove_user/ }));
+    expect(mockPermissionsQuery).toHaveBeenLastCalledWith([{ type: 'user', id: 'u2' }]);
+    expect(screen.getByRole('checkbox', { name: 'list_repos' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'mixed');
+    await clickSave();
+    expect(mockSave).toHaveBeenCalledWith({
+      user_ids: ['u2'],
+      user_group_ids: [],
+      servers: [{ mcp_server_id: 's1', mcp_tool_ids: ['t-list'] }],
+    });
+  });
+
+  it("takes only a removed target's own grants off the tree", async () => {
+    renderOpen();
+    pick(amy, bob);
+    fireEvent.click(serverCheckbox('Redmine'));
+    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'mixed');
+
+    const [removeAmy] = screen.getAllByRole('button', { name: /com_ui_remove_user/ });
+    fireEvent.click(removeAmy);
 
     expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'false');
+    expect(serverCheckbox('Redmine')).toHaveAttribute('aria-checked', 'true');
+    await clickSave();
+    expect(mockSave).toHaveBeenCalledTimes(1);
+    expect(mockSave).toHaveBeenCalledWith({
+      user_ids: ['u2'],
+      user_group_ids: [],
+      servers: [{ mcp_server_id: 's2', mcp_tool_ids: [] }],
+    });
+  });
+
+  it('remembers an unchecked server when targets change', () => {
+    renderOpen();
+    pick(amy);
+    fireEvent.click(serverCheckbox('Github-repo'));
+    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(screen.getByRole('button', { name: /com_ui_remove_user/ }));
+    pick(amy);
+
+    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it("cycles a server the targets hold differently back to each one's own grants", async () => {
+    renderOpen();
+    pick(amy, bob);
+    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'mixed');
+
+    fireEvent.click(serverCheckbox('Github-repo'));
+    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(serverCheckbox('Github-repo'));
+    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(serverCheckbox('Github-repo'));
+    expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'mixed');
+
+    await clickSave();
+    expect(mockSave).toHaveBeenCalledWith({
+      user_ids: ['u1'],
+      user_group_ids: [],
+      servers: [{ mcp_server_id: 's1', mcp_tool_ids: [] }],
+    });
+    expect(mockSave).toHaveBeenCalledWith({ user_ids: ['u2'], user_group_ids: [], servers: [] });
   });
 
   it('edits an assigned principal from its saved grants', () => {
@@ -254,7 +346,7 @@ describe('McpPermissionsTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'com_ui_edit Amy' }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(mockPermissionsQuery).toHaveBeenLastCalledWith({ type: 'user', id: 'u1' });
+    expect(mockPermissionsQuery).toHaveBeenLastCalledWith([{ type: 'user', id: 'u1' }]);
     expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'true');
   });
 
@@ -285,19 +377,56 @@ describe('McpPermissionsTab', () => {
     expect(mockSave).not.toHaveBeenCalled();
   });
 
-  it('closes the dialog once the save succeeds', () => {
+  it('closes the dialog once the save succeeds', async () => {
     renderOpen();
     pick(amy);
-    fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    await clickSave();
     expect(mockSave).toHaveBeenCalled();
-
-    act(() => mockSaveOptions.onSuccess?.());
 
     expect(mockShowToast).toHaveBeenCalledWith({
       message: 'com_ui_tars_mcp_permissions_saved',
       status: 'success',
     });
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('filters the assigned users and groups by name or email', () => {
+    mockPrincipals = [
+      {
+        principal_type: 'user',
+        principal_id: 'u1',
+        name: 'Amy',
+        email: 'amy@pwc.com',
+        is_active: true,
+        mcp_server_ids: ['s1'],
+        server_count: 1,
+      },
+      {
+        principal_type: 'group',
+        principal_id: 'g1',
+        name: 'BOSS專用',
+        email: null,
+        is_active: true,
+        mcp_server_ids: ['s1'],
+        server_count: 1,
+      },
+    ];
+    render(<McpPermissionsTab />);
+    const assigned = screen.getByRole('region', { name: 'com_ui_tars_mcp_assigned_title' });
+    const search = within(assigned).getByRole('textbox', {
+      name: 'com_ui_tars_mcp_assigned_search',
+    });
+
+    fireEvent.change(search, { target: { value: 'boss' } });
+    expect(within(assigned).getByText('BOSS專用')).toBeInTheDocument();
+    expect(within(assigned).queryByText('Amy')).toBeNull();
+
+    fireEvent.change(search, { target: { value: 'PWC.COM' } });
+    expect(within(assigned).getByText('Amy')).toBeInTheDocument();
+    expect(within(assigned).queryByText('BOSS專用')).toBeNull();
+
+    fireEvent.change(search, { target: { value: 'nobody' } });
+    expect(within(assigned).getByText('com_ui_no_results_found')).toBeInTheDocument();
   });
 
   it('pages a long list of assigned users and groups', () => {
@@ -419,9 +548,8 @@ describe('McpPermissionsTab', () => {
   describe('picking single tools', () => {
     const expandGithub = () => fireEvent.click(screen.getByRole('button', { name: /Github-repo/ }));
     const toolCheckbox = (name: string) => screen.getByRole('checkbox', { name });
-    const save = () => fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
 
-    it('checks only the clicked tool on an unchecked server', () => {
+    it('checks only the clicked tool on an unchecked server', async () => {
       renderOpen();
       pick(bob);
       expandGithub();
@@ -432,13 +560,13 @@ describe('McpPermissionsTab', () => {
       expect(toolCheckbox('get_file')).toHaveAttribute('aria-checked', 'false');
       expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'mixed');
       expect(screen.getByText('com_ui_tars_mcp_tools_selected')).toBeInTheDocument();
-      save();
+      await clickSave();
       expect(mockSave).toHaveBeenCalledWith(
         expect.objectContaining({ servers: [{ mcp_server_id: 's1', mcp_tool_ids: ['t-list'] }] }),
       );
     });
 
-    it('keeps the other tools when one is unchecked from a whole server', () => {
+    it('keeps the other tools when one is unchecked from a whole server', async () => {
       renderOpen();
       pick(amy);
       expandGithub();
@@ -449,13 +577,13 @@ describe('McpPermissionsTab', () => {
       expect(toolCheckbox('list_repos')).toHaveAttribute('aria-checked', 'true');
       expect(toolCheckbox('get_file')).toHaveAttribute('aria-checked', 'false');
       expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'mixed');
-      save();
+      await clickSave();
       expect(mockSave).toHaveBeenCalledWith(
         expect.objectContaining({ servers: [{ mcp_server_id: 's1', mcp_tool_ids: ['t-list'] }] }),
       );
     });
 
-    it('becomes the whole server once every tool is checked one by one', () => {
+    it('becomes the whole server once every tool is checked one by one', async () => {
       renderOpen();
       pick(bob);
       expandGithub();
@@ -465,7 +593,7 @@ describe('McpPermissionsTab', () => {
 
       expect(screen.getByText('com_ui_tars_mcp_all_tools')).toBeInTheDocument();
       expect(serverCheckbox('Github-repo')).toHaveAttribute('aria-checked', 'true');
-      save();
+      await clickSave();
       expect(mockSave).toHaveBeenCalledWith(
         expect.objectContaining({ servers: [{ mcp_server_id: 's1', mcp_tool_ids: [] }] }),
       );

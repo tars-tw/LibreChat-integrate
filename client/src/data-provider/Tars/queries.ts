@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import { QueryKeys, dataService } from 'librechat-data-provider';
 import type {
   TTarsDomain,
@@ -468,26 +468,18 @@ export const useTarsMcpPermissionPrincipalsQuery = (
   );
 };
 
-/** Admin: one user's or group's own MCP grants (`null` = nothing to load). */
-export const useTarsMcpPermissionsQuery = (
-  principal: { type: TTarsMcpPrincipalType; id: string } | null,
-  config?: UseQueryOptions<TTarsMcpPermissionsResponse, unknown, TTarsMcpPermission[]>,
-): QueryObserverResult<TTarsMcpPermission[]> => {
-  return useQuery<TTarsMcpPermissionsResponse, unknown, TTarsMcpPermission[]>(
-    [QueryKeys.tarsMcpPermissions, principal?.type ?? '', principal?.id ?? ''],
-    () =>
-      dataService.getTarsMcpPermissions(
-        principal?.type as TTarsMcpPrincipalType,
-        principal?.id as string,
-      ),
-    {
-      select: (data) => data.permissions ?? [],
-      enabled: principal != null,
+/** Admin: each listed user's or group's own MCP grants, one query per principal, in order. */
+export const useTarsMcpPermissionsQueries = (
+  principals: Array<{ type: TTarsMcpPrincipalType; id: string }>,
+): QueryObserverResult<TTarsMcpPermission[]>[] =>
+  useQueries({
+    queries: principals.map((principal) => ({
+      queryKey: [QueryKeys.tarsMcpPermissions, principal.type, principal.id],
+      queryFn: () => dataService.getTarsMcpPermissions(principal.type, principal.id),
+      select: (data: TTarsMcpPermissionsResponse) => data.permissions ?? [],
       ...adminQueryOptions,
-      ...config,
-    },
-  );
-};
+    })),
+  });
 
 /** Admin: one server's assignees with their tool scope (`null` = nothing to load). */
 export const useTarsMcpServerPermissionsQuery = (

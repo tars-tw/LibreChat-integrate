@@ -1,6 +1,6 @@
 import { Spinner, Checkbox } from '@librechat/client';
 import type { TTarsMcpTool } from 'librechat-data-provider';
-import type { ToolScope } from './grants';
+import type { ToolScope, CheckState } from './grants';
 import { grantedToolIds, isToolGranted } from './grants';
 import { useLocalize } from '~/hooks';
 
@@ -11,6 +11,8 @@ interface McpToolChecklistProps {
   onToggle: (toolId: string, checked: boolean) => void;
   /** The last granted tool cannot be unchecked — the grant is removed as a whole instead. */
   keepOne?: boolean;
+  /** Each tool's state when it is not read off `scope` alone, e.g. across several targets. */
+  stateOf?: (toolId: string) => CheckState;
 }
 
 /** One server's tools with a checkbox each, as both permission editors show them. */
@@ -20,6 +22,7 @@ export default function McpToolChecklist({
   scope,
   onToggle,
   keepOne = false,
+  stateOf,
 }: McpToolChecklistProps) {
   const localize = useLocalize();
   const granted = grantedToolIds(
@@ -37,7 +40,8 @@ export default function McpToolChecklist({
       )}
       {!isLoading &&
         tools.map((tool) => {
-          const isChecked = isToolGranted(scope, tool.id);
+          const checkState = stateOf ? stateOf(tool.id) : isToolGranted(scope, tool.id);
+          const isChecked = checkState !== false;
           const isLocked = isLastGranted(tool.id);
           return (
             <li key={tool.id}>
@@ -47,7 +51,7 @@ export default function McpToolChecklist({
               >
                 <Checkbox
                   aria-label={tool.name}
-                  checked={isChecked}
+                  checked={checkState}
                   disabled={isLocked}
                   onCheckedChange={(checked) => onToggle(tool.id, checked === true)}
                   className="mt-0.5 shrink-0"
