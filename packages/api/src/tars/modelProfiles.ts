@@ -10,6 +10,7 @@ import {
   invalidateTarsLocalModelsCache,
   invalidateTarsModelProfilesCache,
 } from './models';
+import { invalidateTarsSysConfigCache } from './sysconfig';
 import { tarsFetch, TarsRequestError } from './client';
 
 /** A pwc_tars `model_profile` row as the model admin page sees it. Mirrors `ModelProfile.to_json()`. */
@@ -173,6 +174,7 @@ export async function createTarsModelProfile(
 ): Promise<TarsModelProfile> {
   assertValidInput(CREATE_PATH, input, true);
   const sysConfigKey = input.sysConfigKey?.trim();
+  const apiKeyValue = sysConfigKey ? blankToNull(input.apiKeyValue) : null;
   const profile = await tarsFetch<TarsModelProfile>(CREATE_PATH, {
     method: 'POST',
     body: {
@@ -186,13 +188,15 @@ export async function createTarsModelProfile(
       created_by: tarsId,
       user_id: tarsId,
       /** Sent only when a key was chosen; pwc_tars requires it for every cloud type. */
-      ...(sysConfigKey
-        ? { sys_config_key: sysConfigKey, api_key_value: blankToNull(input.apiKeyValue) }
-        : {}),
+      ...(sysConfigKey ? { sys_config_key: sysConfigKey, api_key_value: apiKeyValue } : {}),
     },
     baseUrl,
   });
   invalidateModelCaches();
+  /** pwc_tars stored the value as that key, which LibreChat's own provider endpoints read too. */
+  if (apiKeyValue) {
+    invalidateTarsSysConfigCache();
+  }
   return profile;
 }
 

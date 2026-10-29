@@ -25,6 +25,7 @@ import {
   getTarsUserModelProfileNames,
   invalidateTarsModelProfilesCache,
 } from './models';
+import * as sysconfig from './sysconfig';
 import { TarsRequestError } from './client';
 
 const BASE_URL = 'http://tars.test';
@@ -111,6 +112,7 @@ describe('createTarsModelProfile', () => {
 
   it('names the sys_config key a cloud model uses and stores a new value with it', async () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(201, profile));
+    const invalidateKeys = jest.spyOn(sysconfig, 'invalidateTarsSysConfigCache');
 
     await createTarsModelProfile(
       'admin-1',
@@ -128,10 +130,12 @@ describe('createTarsModelProfile', () => {
       sys_config_key: 'KEY_OPEN_AI_API',
       api_key_value: 'sk-new',
     });
+    expect(invalidateKeys).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the stored key when no value is given, and sends neither field without a key', async () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(201, profile));
+    const invalidateKeys = jest.spyOn(sysconfig, 'invalidateTarsSysConfigCache');
 
     await createTarsModelProfile(
       'admin-1',
@@ -150,6 +154,7 @@ describe('createTarsModelProfile', () => {
     );
     expect(parseBody(fetchMock, 1)).not.toHaveProperty('sys_config_key');
     expect(parseBody(fetchMock, 1)).not.toHaveProperty('api_key_value');
+    expect(invalidateKeys).not.toHaveBeenCalled();
   });
 
   it("relays pwc_tars's own validation message", async () => {

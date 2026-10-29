@@ -1363,6 +1363,11 @@ export const useCreateTarsModelProfileMutation = (
     ...options,
     onSuccess: (...args) => {
       invalidateModelProfiles(queryClient);
+      /** A value sent with the model was stored as that provider's sys_config key. */
+      if (args[1].sysConfigKey && args[1].apiKeyValue) {
+        queryClient.invalidateQueries([QueryKeys.tarsSysConfigs], { refetchType: 'all' });
+        queryClient.invalidateQueries([QueryKeys.endpoints]);
+      }
       options?.onSuccess?.(...args);
     },
   });
