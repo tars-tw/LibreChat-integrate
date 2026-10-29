@@ -8,8 +8,6 @@ import Quotas from './Quotas';
 
 /** `TabsContent` ships with `mt-2 p-6`; each panel owns its own spacing instead. */
 const TAB_PANEL = 'mt-3 p-0';
-/** The shared trigger only shifts the background when active, which reads as barely selected. */
-const TAB_TRIGGER = 'data-[state=active]:text-brand-primary';
 
 /**
  * Token quota administration and reporting (Token 配額與報表). The report leads
@@ -23,17 +21,17 @@ export default function TokenQuotaManager() {
 
   return (
     <Tabs defaultValue="report">
-      <TabsList className="w-fit">
-        <TabsTrigger value="report" className={TAB_TRIGGER}>
+      <TabsList variant="underline">
+        <TabsTrigger value="report" variant="underline">
           {localize('com_ui_tars_report_tab')}
         </TabsTrigger>
-        <TabsTrigger value="configs" className={TAB_TRIGGER}>
+        <TabsTrigger value="configs" variant="underline">
           {localize('com_ui_tars_quota_tab_configs')}
         </TabsTrigger>
-        <TabsTrigger value="quotas" className={TAB_TRIGGER}>
+        <TabsTrigger value="quotas" variant="underline">
           {localize('com_ui_tars_quota_tab_users')}
         </TabsTrigger>
-        <TabsTrigger value="defaults" className={TAB_TRIGGER}>
+        <TabsTrigger value="defaults" variant="underline">
           {localize('com_ui_tars_quota_tab_defaults')}
         </TabsTrigger>
       </TabsList>
