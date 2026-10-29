@@ -120,9 +120,6 @@ export default function McpPermissionServers({
                 <tr>
                   <th className="px-3 py-2 font-medium">{localize('com_ui_name')}</th>
                   <th className="w-32 px-3 py-2 font-medium">{localize('com_ui_tars_mcp_type')}</th>
-                  <th className="w-24 px-3 py-2 font-medium">
-                    {localize('com_ui_tars_mcp_permissions_tools_header')}
-                  </th>
                   <th className="w-24 px-3 py-2 font-medium">{localize('com_ui_user')}</th>
                   <th className="w-24 px-3 py-2 font-medium">{localize('com_ui_group')}</th>
                   <th className="w-20 px-3 py-2 text-right font-medium">
@@ -152,7 +149,6 @@ export default function McpPermissionServers({
                     <td className="px-3 py-2 whitespace-nowrap">
                       <ServerTypeBadge type={server.type} />
                     </td>
-                    <td className="text-text-secondary px-3 py-2">{server.tool_count ?? 0}</td>
                     <td className="px-1.5 py-1">{renderAssignees(server, 'user')}</td>
                     <td className="px-1.5 py-1">{renderAssignees(server, 'group')}</td>
                     <td className="px-3 py-2">

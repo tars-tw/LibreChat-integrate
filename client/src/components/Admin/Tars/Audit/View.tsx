@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import AuditManager from './Manager';
+import TarsPage from '../Page';
 
 /** Full-page pwc_tars message audit report (訊息稽核報表). */
 export default function AuditView() {
@@ -14,13 +15,8 @@ export default function AuditView() {
   }
 
   return (
-    <div className="bg-presentation h-full w-full overflow-y-auto">
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <h1 className="text-text-primary text-2xl font-semibold">
-          {localize('com_ui_tars_nav_audit_messages')}
-        </h1>
-        <AuditManager />
-      </div>
-    </div>
+    <TarsPage title={localize('com_ui_tars_nav_audit_messages')}>
+      <AuditManager />
+    </TarsPage>
   );
 }
