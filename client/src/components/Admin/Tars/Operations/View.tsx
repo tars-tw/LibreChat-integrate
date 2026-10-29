@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import OperationsManager from './Manager';
+import TarsPage from '../Page';
 
 /** Full-page pwc_tars system operation audit (系統操作稽核). */
 export default function OperationsView() {
@@ -14,13 +15,8 @@ export default function OperationsView() {
   }
 
   return (
-    <div className="bg-presentation h-full w-full overflow-y-auto">
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <h1 className="text-text-primary text-2xl font-semibold">
-          {localize('com_ui_tars_nav_audit_operations')}
-        </h1>
-        <OperationsManager />
-      </div>
-    </div>
+    <TarsPage title={localize('com_ui_tars_nav_audit_operations')}>
+      <OperationsManager />
+    </TarsPage>
   );
 }

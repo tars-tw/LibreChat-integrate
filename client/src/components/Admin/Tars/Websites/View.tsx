@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import WebsiteManager from './Manager';
+import TarsPage from '../Page';
 
 /** Full-page pwc_tars website administration (外部網站). */
 export default function WebsiteView() {
@@ -14,13 +15,8 @@ export default function WebsiteView() {
   }
 
   return (
-    <div className="bg-presentation h-full w-full overflow-y-auto">
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <h1 className="text-text-primary text-2xl font-semibold">
-          {localize('com_ui_tars_nav_websites')}
-        </h1>
-        <WebsiteManager />
-      </div>
-    </div>
+    <TarsPage title={localize('com_ui_tars_nav_websites')}>
+      <WebsiteManager />
+    </TarsPage>
   );
 }

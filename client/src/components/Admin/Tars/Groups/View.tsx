@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import GroupManager from './Manager';
+import TarsPage from '../Page';
 
 /** Full-page pwc_tars user group administration (群組管理). */
 export default function GroupsView() {
@@ -14,13 +15,8 @@ export default function GroupsView() {
   }
 
   return (
-    <div className="bg-presentation h-full w-full overflow-y-auto">
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <h1 className="text-text-primary text-2xl font-semibold">
-          {localize('com_ui_tars_nav_groups')}
-        </h1>
-        <GroupManager />
-      </div>
-    </div>
+    <TarsPage title={localize('com_ui_tars_nav_groups')}>
+      <GroupManager />
+    </TarsPage>
   );
 }

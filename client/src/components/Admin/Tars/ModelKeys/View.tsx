@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import ModelKeysManager from './Manager';
+import TarsPage from '../Page';
 
 /** Full-page pwc_tars model key administration (模型金鑰管理). */
 export default function ModelKeysView() {
@@ -14,13 +15,8 @@ export default function ModelKeysView() {
   }
 
   return (
-    <div className="bg-presentation h-full w-full overflow-y-auto">
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <h1 className="text-text-primary text-2xl font-semibold">
-          {localize('com_ui_tars_nav_model_keys')}
-        </h1>
-        <ModelKeysManager />
-      </div>
-    </div>
+    <TarsPage title={localize('com_ui_tars_nav_model_keys')}>
+      <ModelKeysManager />
+    </TarsPage>
   );
 }

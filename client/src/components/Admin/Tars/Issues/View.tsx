@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import IssuesManager from './Manager';
+import TarsPage from '../Page';
 
 /** Full-page pwc_tars issue reporting (問題回報). */
 export default function IssuesView() {
@@ -14,13 +15,13 @@ export default function IssuesView() {
   }
 
   return (
-    <div className="bg-presentation h-full w-full overflow-y-auto lg:overflow-hidden">
-      <div className="mx-auto flex min-h-full max-w-7xl flex-col gap-6 p-6 lg:h-full">
-        <h1 className="text-text-primary shrink-0 text-2xl font-semibold">
-          {localize('com_ui_tars_nav_issues')}
-        </h1>
-        <IssuesManager />
-      </div>
-    </div>
+    <TarsPage
+      title={localize('com_ui_tars_nav_issues')}
+      className="flex min-h-full flex-col gap-6 lg:h-full"
+      shellClassName="lg:overflow-hidden"
+      titleClassName="shrink-0"
+    >
+      <IssuesManager />
+    </TarsPage>
   );
 }
