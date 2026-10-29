@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { PrincipalType } from 'librechat-data-provider';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
@@ -15,10 +15,21 @@ import type {
   TTarsMcpServer,
   TTarsMcpPermission,
   TTarsMcpPrincipalType,
+  TTarsMcpPermissionSavePayload,
 } from 'librechat-data-provider';
+import type { Edits, Grants, ToolScope } from './grants';
+import {
+  unionScope,
+  applyEdits,
+  toggleToolEdit,
+  toolCheckState,
+  applyServerEdit,
+  serverCheckState,
+  toggleServerEdit,
+} from './grants';
 import {
   useTarsMcpServerQuery,
-  useTarsMcpPermissionsQuery,
+  useTarsMcpPermissionsQueries,
   useSaveTarsMcpPermissionsMutation,
 } from '~/data-provider';
 import DirectoryPeoplePicker from '~/components/Sharing/PeoplePicker/DirectoryPeoplePicker';
@@ -28,11 +39,8 @@ import { principalKey } from '~/components/Sharing/shareChanges';
 import McpPaginationControls from './McpPaginationControls';
 import { useClientPagination } from './useClientPagination';
 import McpToolChecklist from './McpToolChecklist';
-import { toggleToolScope } from './grants';
 import { useLocalize } from '~/hooks';
 
-/** Selection state: serverId → checked toolId set; empty set = whole server (`mcp_tool_ids: []`). */
-type Selection = Map<string, Set<string>>;
 type ToggleTool = (
   serverId: string,
   allToolIds: string[],
@@ -43,16 +51,19 @@ type ToggleTool = (
 /** Checkbox gutter, flexible name column, fixed tool-count column — shared by the header and every row so columns line up. */
 const PERMISSIONS_ROW_GRID = 'grid grid-cols-[2.5rem_1fr_5rem] items-center gap-2 px-3 py-2';
 
+const EMPTY_GRANTS: Grants = new Map();
+
 function PermissionServerRow({
   server,
-  checkedTools,
+  scopes,
   isExpanded,
   onToggleExpanded,
   onToggleServer,
   onToggleTool,
 }: {
   server: TTarsMcpServer;
-  checkedTools: Set<string> | undefined;
+  /** Every target's scope on this server with the edits applied; checked only when all hold it. */
+  scopes: ToolScope[];
   isExpanded: boolean;
   onToggleExpanded: () => void;
   onToggleServer: (checked: boolean) => void;
@@ -61,19 +72,15 @@ function PermissionServerRow({
   const localize = useLocalize();
   const { data: detail, isLoading } = useTarsMcpServerQuery(isExpanded ? server.id : null);
   const tools: TTarsMcpTool[] = detail?.tools ?? [];
-  const isServerChecked = checkedTools != null;
-  /** A stored subset is a partial grant (an empty set means the whole server). */
-  const isPartial = (checkedTools?.size ?? 0) > 0;
-  let serverCheckState: boolean | 'indeterminate' = false;
-  if (isServerChecked) {
-    serverCheckState = isPartial ? 'indeterminate' : true;
-  }
+  const union = unionScope(scopes);
+  const isServerChecked = union != null;
   const allToolIds = tools.map((tool) => tool.id);
   let selectionLabel = '';
-  if (isServerChecked) {
-    selectionLabel = isPartial
-      ? localize('com_ui_tars_mcp_tools_selected', { count: checkedTools?.size ?? 0 })
-      : localize('com_ui_tars_mcp_all_tools');
+  if (union != null) {
+    selectionLabel =
+      union.size > 0
+        ? localize('com_ui_tars_mcp_tools_selected', { count: union.size })
+        : localize('com_ui_tars_mcp_all_tools');
   }
 
   return (
@@ -85,7 +92,7 @@ function PermissionServerRow({
       >
         <Checkbox
           aria-label={server.name}
-          checked={serverCheckState}
+          checked={serverCheckState(scopes)}
           onCheckedChange={(checked) => onToggleServer(checked === true)}
         />
         <button
@@ -116,7 +123,8 @@ function PermissionServerRow({
         <McpToolChecklist
           tools={tools}
           isLoading={isLoading}
-          scope={checkedTools}
+          scope={union}
+          stateOf={(toolId) => toolCheckState(scopes, toolId)}
           onToggle={(toolId, checked) => onToggleTool(server.id, allToolIds, toolId, checked)}
         />
       )}
@@ -130,12 +138,38 @@ const toPrincipalType = (principal: TPrincipal): TTarsMcpPrincipalType =>
 /** Directory principals carry the pwc_tars id as `idOnTheSource`; LibreChat's own `id` is unset. */
 const tarsIdOf = (principal: TPrincipal): string => principal.idOnTheSource ?? '';
 
-const toSelection = (rows: TTarsMcpPermission[]): Selection =>
+const toGrants = (rows: TTarsMcpPermission[]): Grants =>
   new Map(
     rows
       .filter((row) => row.is_enabled)
       .map((row) => [row.mcp_server_id, new Set(row.mcp_tool_ids ?? [])]),
   );
+
+/**
+ * What saving writes: each target its own saved grants plus the admin's edits, never
+ * another target's. Targets that end up with the same grants share one request.
+ */
+const toSavePayloads = (
+  targets: TPrincipal[],
+  owns: Grants[],
+  edits: Edits,
+): TTarsMcpPermissionSavePayload[] => {
+  const byResult = new Map<string, TTarsMcpPermissionSavePayload>();
+  targets.forEach((target, index) => {
+    const servers = [...applyEdits(owns[index], edits)]
+      .map(([serverId, toolIds]) => ({
+        mcp_server_id: serverId,
+        mcp_tool_ids: [...toolIds].sort(),
+      }))
+      .sort((a, b) => a.mcp_server_id.localeCompare(b.mcp_server_id));
+    const key = JSON.stringify(servers);
+    const payload = byResult.get(key) ?? { user_ids: [], user_group_ids: [], servers };
+    const ids = toPrincipalType(target) === 'group' ? payload.user_group_ids : payload.user_ids;
+    ids.push(tarsIdOf(target));
+    byResult.set(key, payload);
+  });
+  return [...byResult.values()];
+};
 
 interface McpPermissionEditorProps {
   /** Managed servers offered on the tree. */
@@ -147,9 +181,10 @@ interface McpPermissionEditorProps {
 
 /**
  * Assigns MCP servers / tools to pwc_tars users and groups (`sys_mcp_permission`) in a
- * dialog: pick the people like in the share dialog, check servers/tools, and save — a
- * full overwrite of every picked user's and group's grants. It mounts per opening, so
- * every assignment starts from a clean tree.
+ * dialog: pick the people like in the share dialog, check servers/tools, and save. Every
+ * picked target keeps its own saved grants with the admin's checks and unchecks applied
+ * on top, so removing a target takes only its own grants off the tree. It mounts per
+ * opening, so every assignment starts from a clean tree.
  */
 export default function McpPermissionEditor({
   servers,
@@ -159,10 +194,10 @@ export default function McpPermissionEditor({
   const localize = useLocalize();
   const { showToast } = useToastContext();
   const [targets, setTargets] = useState<TPrincipal[]>(initialTargets);
-  const [selection, setSelection] = useState<Selection>(new Map());
+  /** The admin's checks and unchecks, kept apart from the targets' grants and applied to every target. */
+  const [edits, setEdits] = useState<Edits>(new Map());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  /** The single target whose saved grants are on the tree; later refetches keep the admin's edits. */
-  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   /**
    * Checked in the picker but not added yet. Unlike the server dialog these are not saved
    * implicitly: adding is what loads a principal's grants onto the tree, and saving
@@ -179,65 +214,30 @@ export default function McpPermissionEditor({
     pageItems: pageServers,
   } = useClientPagination(servers);
 
-  const singleTarget = targets.length === 1 ? targets[0] : null;
-  const singleKey = singleTarget ? principalKey(singleTarget) : null;
-  const singlePrincipal = useMemo(
-    () =>
-      singleTarget ? { type: toPrincipalType(singleTarget), id: tarsIdOf(singleTarget) } : null,
-    [singleTarget],
+  const principals = useMemo(
+    () => targets.map((target) => ({ type: toPrincipalType(target), id: tarsIdOf(target) })),
+    [targets],
   );
-  const { data: savedRows, isFetching: savedLoading } = useTarsMcpPermissionsQuery(singlePrincipal);
-  const isLoadingTarget = singleKey != null && singleKey !== loadedKey;
-
-  useEffect(() => {
-    if (!isLoadingTarget || savedRows == null || savedLoading) {
-      return;
-    }
-    setSelection(toSelection(savedRows));
-    setLoadedKey(singleKey);
-  }, [isLoadingTarget, savedRows, savedLoading, singleKey]);
-
-  const updateTargets = (next: TPrincipal[]) => {
-    setTargets(next);
-    /** No target left — the checked servers/tools belonged to the one just removed. */
-    if (next.length === 0) {
-      setSelection(new Map());
-      setLoadedKey(null);
-    }
-  };
+  const savedQueries = useTarsMcpPermissionsQueries(principals);
+  const isLoadingTargets = savedQueries.some((query) => query.data == null);
+  /** Each loaded target's saved grants, in `targets` order once none is loading. */
+  const owns = savedQueries.flatMap((query) => (query.data == null ? [] : [toGrants(query.data)]));
+  /** Before any target is in, the tree shows the edits alone. */
+  const shownOwns = owns.length > 0 ? owns : [EMPTY_GRANTS];
 
   const handleAddPeople = (people: TPrincipal[]) => {
     const known = new Set(targets.map(principalKey));
-    updateTargets([...targets, ...people.filter((person) => !known.has(principalKey(person)))]);
+    setTargets([...targets, ...people.filter((person) => !known.has(principalKey(person)))]);
   };
 
   const removeTarget = (key: string) =>
-    updateTargets(targets.filter((target) => principalKey(target) !== key));
+    setTargets(targets.filter((target) => principalKey(target) !== key));
 
-  const toggleServer = useCallback((serverId: string, checked: boolean) => {
-    setSelection((prev) => {
-      const next = new Map(prev);
-      if (checked) {
-        next.set(serverId, new Set());
-      } else {
-        next.delete(serverId);
-      }
-      return next;
-    });
-  }, []);
+  const toggleServer = (serverId: string, checked: boolean) =>
+    setEdits((prev) => toggleServerEdit(prev, shownOwns, serverId, checked));
 
-  const toggleTool = useCallback<ToggleTool>((serverId, allToolIds, toolId, checked) => {
-    setSelection((prev) => {
-      const next = new Map(prev);
-      const scope = toggleToolScope(next.get(serverId), allToolIds, toolId, checked);
-      if (scope == null) {
-        next.delete(serverId);
-      } else {
-        next.set(serverId, scope);
-      }
-      return next;
-    });
-  }, []);
+  const toggleTool: ToggleTool = (serverId, allToolIds, toolId, checked) =>
+    setEdits((prev) => toggleToolEdit(prev, shownOwns, serverId, allToolIds, toolId, checked));
 
   const toggleExpanded = (serverId: string) => {
     setExpanded((prev) => {
@@ -251,19 +251,9 @@ export default function McpPermissionEditor({
     });
   };
 
-  const saveMutation = useSaveTarsMcpPermissionsMutation({
-    onSuccess: () => {
-      showToast({ message: localize('com_ui_tars_mcp_permissions_saved'), status: 'success' });
-      onClose();
-    },
-    onError: (error: unknown) =>
-      showToast({
-        message: errorMessage(error) ?? (error as Error)?.message ?? 'Error',
-        status: 'error',
-      }),
-  });
+  const saveMutation = useSaveTarsMcpPermissionsMutation();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (pending.length > 0) {
       showToast({
         message: localize('com_ui_tars_mcp_pending_picks', { count: pending.length }),
@@ -275,16 +265,24 @@ export default function McpPermissionEditor({
       showToast({ message: localize('com_ui_tars_mcp_principal_required'), status: 'error' });
       return;
     }
-    const idsOf = (type: TTarsMcpPrincipalType) =>
-      targets.filter((target) => toPrincipalType(target) === type).map(tarsIdOf);
-    saveMutation.mutate({
-      user_ids: idsOf('user'),
-      user_group_ids: idsOf('group'),
-      servers: [...selection.entries()].map(([serverId, toolIds]) => ({
-        mcp_server_id: serverId,
-        mcp_tool_ids: [...toolIds],
-      })),
-    });
+    if (isLoadingTargets) {
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await Promise.all(
+        toSavePayloads(targets, owns, edits).map((payload) => saveMutation.mutateAsync(payload)),
+      );
+      showToast({ message: localize('com_ui_tars_mcp_permissions_saved'), status: 'success' });
+      onClose();
+    } catch (error) {
+      showToast({
+        message: errorMessage(error) ?? (error as Error)?.message ?? 'Error',
+        status: 'error',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -325,7 +323,7 @@ export default function McpPermissionEditor({
                   <span aria-hidden="true" />
                   <span className="flex items-center gap-2">
                     {localize('com_ui_name')}
-                    {isLoadingTarget && <Spinner className="icon-sm" />}
+                    {isLoadingTargets && <Spinner className="icon-sm" />}
                   </span>
                   <span className="text-right">
                     {localize('com_ui_tars_mcp_permissions_tools_header')}
@@ -335,7 +333,9 @@ export default function McpPermissionEditor({
                   <PermissionServerRow
                     key={server.id}
                     server={server}
-                    checkedTools={selection.get(server.id)}
+                    scopes={shownOwns.map((own) =>
+                      applyServerEdit(own.get(server.id), edits.get(server.id)),
+                    )}
                     isExpanded={expanded.has(server.id)}
                     onToggleExpanded={() => toggleExpanded(server.id)}
                     onToggleServer={(checked) => toggleServer(server.id, checked)}
@@ -363,12 +363,8 @@ export default function McpPermissionEditor({
           </div>
         }
         buttons={
-          <Button
-            variant="submit"
-            onClick={handleSave}
-            disabled={saveMutation.isLoading || isLoadingTarget}
-          >
-            {saveMutation.isLoading ? <Spinner /> : localize('com_ui_save')}
+          <Button variant="submit" onClick={handleSave} disabled={isSaving || isLoadingTargets}>
+            {isSaving ? <Spinner /> : localize('com_ui_save')}
           </Button>
         }
       />
