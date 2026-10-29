@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import SysConfigManager from './Manager';
+import TarsPage from '../Page';
 
 /** Full-page pwc_tars system parameter administration (系統參數設定). */
 export default function SysConfigView() {
@@ -14,13 +15,8 @@ export default function SysConfigView() {
   }
 
   return (
-    <div className="bg-presentation h-full w-full overflow-y-auto">
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <h1 className="text-text-primary text-2xl font-semibold">
-          {localize('com_ui_tars_sys_config')}
-        </h1>
-        <SysConfigManager />
-      </div>
-    </div>
+    <TarsPage title={localize('com_ui_tars_sys_config')}>
+      <SysConfigManager />
+    </TarsPage>
   );
 }

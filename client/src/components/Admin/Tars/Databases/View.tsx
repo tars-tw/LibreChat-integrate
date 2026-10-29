@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useLocalize, useHasTarsRouteAccess } from '~/hooks';
 import DatabaseManager from './Manager';
+import TarsPage from '../Page';
 
 /** Full-page pwc_tars application-database administration (應用資料庫). */
 export default function DatabaseView() {
@@ -14,13 +15,8 @@ export default function DatabaseView() {
   }
 
   return (
-    <div className="bg-presentation h-full w-full overflow-y-auto">
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <h1 className="text-text-primary text-2xl font-semibold">
-          {localize('com_ui_tars_nav_app_db')}
-        </h1>
-        <DatabaseManager />
-      </div>
-    </div>
+    <TarsPage title={localize('com_ui_tars_nav_app_db')}>
+      <DatabaseManager />
+    </TarsPage>
   );
 }
