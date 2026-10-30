@@ -1138,6 +1138,23 @@ export type TTarsMcpDomainServer = {
 
 export type TTarsMcpDomainToolsResponse = { servers: TTarsMcpDomainServer[] };
 
+/** What a share target lacks on one gateway server. */
+export type TTarsMcpShareGap = {
+  mcp_server_id: string;
+  server_name: string;
+  /** Not assigned the server at all, rather than missing some of its tools. */
+  no_access: boolean;
+  tool_names: string[];
+};
+
+/** A share target refused because it is not assigned tools the agent uses. */
+export type TTarsMcpShareBlock = {
+  principal_type: 'user' | 'group';
+  idOnTheSource: string;
+  name: string;
+  servers: TTarsMcpShareGap[];
+};
+
 /**
  * A pwc_tars account as surfaced to the LibreChat client. Mirrors the backend
  * `TarsUser` (pwc_tars `SysUser.to_dict()`) plus the two fields the listing
