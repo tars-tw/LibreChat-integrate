@@ -46,6 +46,7 @@ const fileSystemInput = (body) => ({
   hostName: (body.hostName ?? '').trim(),
   account: (body.account ?? '').trim(),
   password: body.password ?? '',
+  enabled: typeof body.enabled === 'boolean' ? body.enabled : undefined,
   allowedKmIds: toIdList(body.allowedKmIds),
 });
 

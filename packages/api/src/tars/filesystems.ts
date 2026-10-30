@@ -33,6 +33,7 @@ export interface TarsFileSystemInput {
   account?: string;
   /** Omitted or empty on update means "keep the stored password". */
   password?: string;
+  enabled?: boolean;
   allowedKmIds?: string[];
 }
 
@@ -117,7 +118,11 @@ export async function createTarsFileSystem(
     '/api/dataset_file_system/create_dataset_file_system',
     {
       method: 'POST',
-      body: { ...connectionBody(input), status: 1, created_by: tarsId },
+      body: {
+        ...connectionBody(input),
+        status: input.enabled === false ? 0 : 1,
+        created_by: tarsId,
+      },
       baseUrl,
     },
   );
@@ -132,8 +137,8 @@ export async function createTarsFileSystem(
  * pwc_tars merges field by field and keeps the stored value for anything
  * falsy, so a blank account or password means "keep what is stored" — which is
  * what the form needs, since neither is ever sent to the browser. `status` is
- * deliberately not sent: the same merge would drop a 0, making the value
- * unsettable, so enablement stays read-only here.
+ * sent only when `enabled` is given; pwc_tars compares it with `is not None`,
+ * so 0 (disabled) is applied rather than dropped.
  */
 export async function updateTarsFileSystem(
   tarsId: string,
@@ -145,7 +150,11 @@ export async function updateTarsFileSystem(
     `/api/dataset_file_system/update_dataset_file_system/${encodeURIComponent(fileSystemId)}`,
     {
       method: 'PUT',
-      body: { ...connectionBody(input), updated_by: tarsId },
+      body: {
+        ...connectionBody(input),
+        ...(input.enabled != null ? { status: input.enabled ? 1 : 0 } : {}),
+        updated_by: tarsId,
+      },
       baseUrl,
     },
   );
