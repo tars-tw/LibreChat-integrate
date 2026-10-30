@@ -12,7 +12,7 @@ import {
   Switch,
   useToastContext,
 } from '@librechat/client';
-import type { TTarsDatasetFileSystemLink, TTarsDatasetLimits } from 'librechat-data-provider';
+import type { TTarsDatasetLimits } from 'librechat-data-provider';
 import {
   useImportTarsFileSystemMutation,
   useTarsFileSystemFilesQuery,
@@ -62,12 +62,10 @@ type ChunkOverride = { chunkSize?: number; overlap?: number };
  */
 export default function FileSystemImportDialog({
   knowledgeBaseId,
-  linked,
   limits,
   onClose,
 }: {
   knowledgeBaseId: string;
-  linked: TTarsDatasetFileSystemLink[];
   limits: TTarsDatasetLimits;
   onClose: () => void;
 }) {
@@ -90,7 +88,7 @@ export default function FileSystemImportDialog({
 
   const filesQuery = useTarsFileSystemFilesQuery(knowledgeBaseId, browseId);
 
-  /** A server already linked here would be re-imported rather than added. */
+  /** A server already linked here stays listed: each folder is its own association. */
   const available = useMemo(() => sourcesQuery.data ?? [], [sourcesQuery.data]);
 
   useEffect(() => {

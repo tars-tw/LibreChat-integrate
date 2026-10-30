@@ -8,6 +8,7 @@ const mockIdleMutation = { mutate: jest.fn(), isLoading: false };
 
 jest.mock('~/data-provider', () => ({
   useTarsFileSystemSourcesQuery: () => ({ data: [] }),
+  useImportTarsFileSystemMutation: () => mockIdleMutation,
   useRebuildTarsFileSystemMutation: () => mockIdleMutation,
   useRefreshTarsFileSystemMutation: () => mockIdleMutation,
   useReprocessTarsFileSystemMutation: () => mockIdleMutation,
@@ -67,7 +68,7 @@ const tick = (name: string) =>
   screen.getByRole('checkbox', { name: `com_ui_tars_kb_ds_select_item ${name}` });
 
 describe('FileSystemsTab batch unlink', () => {
-  it('asks first, then unlinks the ticked groups by their file-system id', async () => {
+  it('asks first, then unlinks the ticked groups by their association id', async () => {
     const user = userEvent.setup();
     const onBatchUnlink = renderTab();
 
@@ -80,7 +81,7 @@ describe('FileSystemsTab batch unlink', () => {
     expect(onBatchUnlink).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: 'com_ui_tars_kb_ds_unlink' }));
-    expect(onBatchUnlink).toHaveBeenCalledWith(['fs-1', 'fs-3']);
+    expect(onBatchUnlink).toHaveBeenCalledWith(['link-fs-1', 'link-fs-3']);
     expect(screen.queryByRole('button', { name: /com_ui_tars_kb_ds_batch_unlink/ })).toBeNull();
   });
 
@@ -92,6 +93,6 @@ describe('FileSystemsTab batch unlink', () => {
     await user.click(screen.getByRole('button', { name: /com_ui_tars_kb_ds_batch_unlink/ }));
     await user.click(screen.getByRole('button', { name: 'com_ui_tars_kb_ds_unlink' }));
 
-    expect(onBatchUnlink).toHaveBeenCalledWith(['fs-1', 'fs-2', 'fs-3']);
+    expect(onBatchUnlink).toHaveBeenCalledWith(['link-fs-1', 'link-fs-2', 'link-fs-3']);
   });
 });
