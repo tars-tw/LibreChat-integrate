@@ -9,8 +9,8 @@ jest.mock('@librechat/data-schemas', () => ({
 
 import type { TarsAvailableToolRow } from './client';
 import type { TarsMcpUserServer } from './user';
+import { filterVisibleTarsMcpConfigs, getUserTarsMcpTools } from './user';
 import { clearTarsMcpEntryNames } from './names';
-import { getUserTarsMcpTools } from './user';
 
 const BASE_URL = 'http://tars.test';
 const USER_ID = 'tars-user-1';
@@ -164,5 +164,92 @@ describe('getUserTarsMcpTools', () => {
     const servers = await getUserTarsMcpTools(USER_ID);
 
     expect(servers.map((server) => [server.id, server.user_enabled])).toEqual([['s-github', true]]);
+  });
+});
+
+describe('filterVisibleTarsMcpConfigs', () => {
+  const savedUrl = process.env.TARS_AUTH_URL;
+  const configs = {
+    workflow: { title: 'yaml' },
+    tars: { title: 'legacy aggregate' },
+    tars_github: { title: 'Github-repo' },
+    tars_redmine: { title: 'Redmine' },
+    tars_maps: { title: 'Google Maps' },
+  };
+
+  beforeEach(() => {
+    process.env.TARS_AUTH_URL = BASE_URL;
+    clearTarsMcpEntryNames();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    if (savedUrl === undefined) {
+      delete process.env.TARS_AUTH_URL;
+    } else {
+      process.env.TARS_AUTH_URL = savedUrl;
+    }
+  });
+
+  it('keeps only assigned, opted-in gateway entries and every other server', async () => {
+    mockTars(
+      [],
+      [
+        userServer({ id: 's-github', code: 'github', user_enabled: true }),
+        userServer({ id: 's-redmine', code: 'redmine', user_enabled: false }),
+      ],
+    );
+
+    await expect(filterVisibleTarsMcpConfigs(configs, USER_ID)).resolves.toEqual({
+      workflow: configs.workflow,
+      tars: configs.tars,
+      tars_github: configs.tars_github,
+    });
+  });
+
+  it('hides every gateway entry from a user with no assignment', async () => {
+    mockTars([], []);
+
+    await expect(filterVisibleTarsMcpConfigs(configs, USER_ID)).resolves.toEqual({
+      workflow: configs.workflow,
+      tars: configs.tars,
+    });
+  });
+
+  it('fails closed for an unlinked account without asking pwc_tars', async () => {
+    const urls = mockTars([], []);
+
+    await expect(filterVisibleTarsMcpConfigs(configs, undefined)).resolves.toEqual({
+      workflow: configs.workflow,
+      tars: configs.tars,
+    });
+    expect(urls).toEqual([]);
+  });
+
+  it('fails closed when pwc_tars cannot be reached', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue({ status: 500, ok: false, json: async () => ({}) } as Response);
+
+    await expect(filterVisibleTarsMcpConfigs(configs, USER_ID)).resolves.toEqual({
+      workflow: configs.workflow,
+      tars: configs.tars,
+    });
+  });
+
+  it('skips the pwc_tars read when no gateway entry is configured', async () => {
+    const urls = mockTars([], []);
+    const yamlOnly = { workflow: configs.workflow };
+
+    await expect(filterVisibleTarsMcpConfigs(yamlOnly, USER_ID)).resolves.toBe(yamlOnly);
+    expect(urls).toEqual([]);
+  });
+
+  it('leaves the config alone when the gateway is not configured', async () => {
+    delete process.env.TARS_AUTH_URL;
+    const urls = mockTars([], []);
+
+    await expect(filterVisibleTarsMcpConfigs(configs, USER_ID)).resolves.toBe(configs);
+    expect(urls).toEqual([]);
   });
 });

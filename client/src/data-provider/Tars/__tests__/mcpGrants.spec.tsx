@@ -7,6 +7,7 @@ import {
   useUpdateTarsUserMutation,
   useSyncTarsMcpServerMutation,
   useDeleteTarsMcpToolMutation,
+  useUpdateTarsMcpUserServerMutation,
   useBulkDeleteTarsUsersMutation,
   useDeleteTarsMcpServerMutation,
   useUpdateTarsMcpServerMutation,
@@ -40,6 +41,7 @@ jest.mock('librechat-data-provider', () => {
       bulkDeleteTarsUsers: resolved(),
       deleteTarsUserGroup: resolved(),
       updateTarsUserGroup: resolved(),
+      updateTarsMcpUserServer: resolved(),
     },
   };
 });
@@ -117,6 +119,17 @@ describe('MCP grant cache sync', () => {
       mcp_server_id: 's1',
       principals: [],
     });
+  });
+
+  it('refreshes the native MCP listings after a user opts a server in', async () => {
+    const invalidate = await run(useUpdateTarsMcpUserServerMutation, {
+      id: 's1',
+      data: { is_enabled: true },
+    });
+
+    for (const key of [QueryKeys.mcpServers, QueryKeys.mcpTools, QueryKeys.mcpConnectionStatus]) {
+      expect(invalidate).toHaveBeenCalledWith([key]);
+    }
   });
 
   it('leaves the grant views alone when a server is only edited', async () => {

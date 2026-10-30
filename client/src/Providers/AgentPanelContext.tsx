@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { useRecoilValue } from 'recoil';
 import { useLocation } from 'react-router-dom';
-import { EModelEndpoint } from 'librechat-data-provider';
+import { EModelEndpoint, isTarsMcpServerName } from 'librechat-data-provider';
 import type { MCP, Action, TPlugin } from 'librechat-data-provider';
 import type { AgentPanelContextType, MCPServerInfo } from '~/common';
 import {
@@ -104,6 +104,11 @@ export function AgentPanelProvider({
 
     if (mcpData?.servers) {
       for (const [serverName, serverData] of Object.entries(mcpData.servers)) {
+        /** `tars_*` entries are per user (assigned and opted in): one the manager
+         * hid must not return through the tools listing, however fresh that is. */
+        if (isTarsMcpServerName(serverName) && !configuredServers.has(serverName)) {
+          continue;
+        }
         // Get title and description from config with fallbacks
         const serverConfig = availableMCPServersMap?.[serverName];
         const serverStatus = connectionStatus?.[serverName];
