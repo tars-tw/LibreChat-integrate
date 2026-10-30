@@ -164,7 +164,7 @@ export function ChipModes({ modes, multiple = false }: ChipModesProps) {
         gutter={6}
         unmountOnHide
         onClick={(event) => event.stopPropagation()}
-        className="animate-composer-popover border-border-menu bg-surface-menu rounded-theme-menu-panel z-50 min-w-[10rem] border p-1 shadow-lg outline-hidden"
+        className="animate-composer-popover border-border-menu bg-surface-menu rounded-theme-menu-panel z-50 max-h-[min(24rem,var(--popover-available-height,24rem))] max-w-[min(340px,calc(100vw-2rem))] min-w-[10rem] overflow-y-auto overscroll-contain border p-1 shadow-lg outline-hidden"
       >
         {modes.map((mode) => (
           <Ariakit.MenuItem
@@ -175,7 +175,9 @@ export function ChipModes({ modes, multiple = false }: ChipModesProps) {
             onClick={mode.onSelect}
             className="text-text-secondary data-[active-item]:bg-surface-hover data-[active-item]:text-text-primary flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm"
           >
-            <span className="truncate">{mode.label}</span>
+            <span className="truncate" title={mode.label}>
+              {mode.label}
+            </span>
             {mode.active && <Check className="size-4 shrink-0" aria-hidden="true" />}
           </Ariakit.MenuItem>
         ))}
