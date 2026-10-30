@@ -306,19 +306,26 @@ describe('batchDeleteTarsDatasets', () => {
       dataset_sql_ids: [],
       dataset_api_ids: [],
       dataset_file_system_ids: [],
+      dataset_file_system_association_ids: [],
     });
   });
 
-  it('unlinks document groups by their file-system id', async () => {
+  it('unlinks document groups by their association id', async () => {
     const fetchMock = jest
       .spyOn(global, 'fetch')
       .mockResolvedValue(buildResponse(202, { message: 'started' }));
 
-    await batchDeleteTarsDatasets('user-1', 'kb-1', { fileSystemIds: ['fs-1', 'fs-2'] }, BASE_URL);
+    await batchDeleteTarsDatasets(
+      'user-1',
+      'kb-1',
+      { fileSystemAssociationIds: ['link-1', 'link-2'] },
+      BASE_URL,
+    );
 
     expect(bodyOf(fetchMock)).toMatchObject({
       document_ids: [],
-      dataset_file_system_ids: ['fs-1', 'fs-2'],
+      dataset_file_system_ids: [],
+      dataset_file_system_association_ids: ['link-1', 'link-2'],
     });
   });
 });

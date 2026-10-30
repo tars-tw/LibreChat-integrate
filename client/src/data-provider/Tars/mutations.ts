@@ -459,21 +459,24 @@ export const useRefreshTarsFileSystemMutation = (
   options?: UseMutationOptions<
     { success: boolean },
     unknown,
-    { fileSystemId: string; chunkSize?: number; overlap?: number }
+    { fileSystemId: string; associationId: string; chunkSize?: number; overlap?: number }
   >,
 ) =>
   useDatasetMutation(
     knowledgeBaseId,
     ({
       fileSystemId,
+      associationId,
       chunkSize,
       overlap,
     }: {
       fileSystemId: string;
+      associationId: string;
       chunkSize?: number;
       overlap?: number;
     }) =>
       dataService.refreshTarsFileSystemDataset(knowledgeBaseId, fileSystemId, {
+        associationId,
         chunkSize,
         overlap,
       }),
@@ -485,21 +488,24 @@ export const useRebuildTarsFileSystemMutation = (
   options?: UseMutationOptions<
     { success: boolean },
     unknown,
-    { fileSystemId: string; chunkSize?: number; overlap?: number }
+    { fileSystemId: string; associationId: string; chunkSize?: number; overlap?: number }
   >,
 ) =>
   useDatasetMutation(
     knowledgeBaseId,
     ({
       fileSystemId,
+      associationId,
       chunkSize,
       overlap,
     }: {
       fileSystemId: string;
+      associationId: string;
       chunkSize?: number;
       overlap?: number;
     }) =>
       dataService.rebuildTarsFileSystemDataset(knowledgeBaseId, fileSystemId, {
+        associationId,
         chunkSize,
         overlap,
       }),
@@ -508,23 +514,35 @@ export const useRebuildTarsFileSystemMutation = (
 
 export const useReprocessTarsFileSystemMutation = (
   knowledgeBaseId: string,
-  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { fileSystemId: string; associationId: string }
+  >,
 ) =>
   useDatasetMutation(
     knowledgeBaseId,
-    (fileSystemId: string) =>
-      dataService.reprocessTarsFileSystemDataset(knowledgeBaseId, fileSystemId),
+    ({ fileSystemId, associationId }: { fileSystemId: string; associationId: string }) =>
+      dataService.reprocessTarsFileSystemDataset(knowledgeBaseId, fileSystemId, {
+        associationId,
+      }),
     options,
   );
 
 export const useUnlinkTarsFileSystemMutation = (
   knowledgeBaseId: string,
-  options?: UseMutationOptions<{ success: boolean }, unknown, string>,
+  options?: UseMutationOptions<
+    { success: boolean },
+    unknown,
+    { fileSystemId: string; associationId: string }
+  >,
 ) =>
   useDatasetMutation(
     knowledgeBaseId,
-    (fileSystemId: string) =>
-      dataService.unlinkTarsFileSystemDataset(knowledgeBaseId, fileSystemId),
+    ({ fileSystemId, associationId }: { fileSystemId: string; associationId: string }) =>
+      dataService.unlinkTarsFileSystemDataset(knowledgeBaseId, fileSystemId, {
+        associationId,
+      }),
     options,
   );
 
@@ -1003,7 +1021,9 @@ export const useUpdateTarsMcpUserServerMutation = (
     {
       ...options,
       onSuccess: (...args) => {
-        queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+        /** The native MCP listings depend on the opt-in too, so an enabled server
+         *  reaches the agent builder without waiting for their refresh interval. */
+        invalidateTarsMcp(queryClient);
         options?.onSuccess?.(...args);
       },
     },

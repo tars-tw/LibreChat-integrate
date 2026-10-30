@@ -5760,6 +5760,11 @@ export function isTarsMcpServerName(serverName: string): boolean {
   );
 }
 
+/** Whether an agent's tool entry (a tool key or a server token) targets a pwc_tars gateway server. */
+export function isTarsMcpToolKey(tool: string): boolean {
+  return tool.includes(`${Constants.mcp_delimiter}${TARS_MCP_SERVER_PREFIX}`);
+}
+
 /**
  * Derives the injected MCP server name for a pwc_tars server code. The output
  * alphabet is exactly `normalizeServerName`'s pass-through set, so

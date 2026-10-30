@@ -95,6 +95,7 @@ const {
   userCanUseMCPServers,
 } = require('~/server/services/MCP');
 const { hasCapability } = require('~/server/middleware/roles/capabilities');
+const tarsAgentShare = require('~/server/services/tarsAgentShare');
 const { attachOwnerContacts } = require('~/server/services/Agents/ownerContact');
 const { instructionsPromptAccess } = require('~/server/services/Agents/instructionsPrompt');
 const { getMCPServersRegistry } = require('~/config');
@@ -1377,6 +1378,11 @@ const updateAgentHandler = async (req, res) => {
       }
     }
 
+    const shareRefusal = await tarsAgentShare.refuseAddedTools(existingAgent, updateData.tools);
+    if (shareRefusal) {
+      return res.status(shareRefusal.status).json(shareRefusal.body);
+    }
+
     if (updateData.code_environment_id === null) {
       delete updateData.code_environment_id;
       updateData.$unset = { code_environment_id: 1 };
@@ -2148,6 +2154,11 @@ const revertAgentVersionHandler = async (req, res) => {
       blockFilteredActionContent(req, res, actions)
     ) {
       return;
+    }
+
+    const shareRefusal = await tarsAgentShare.refuseAddedTools(existingAgent, revertVersion.tools);
+    if (shareRefusal) {
+      return res.status(shareRefusal.status).json(shareRefusal.body);
     }
 
     let updatedAgent = await db.revertAgentVersion({ id }, version_index);

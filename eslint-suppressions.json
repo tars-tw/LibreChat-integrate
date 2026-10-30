@@ -184,18 +184,21 @@
   },
   "client/src/components/Admin/Tars/Knowledge/Detail/DatabasesTab.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 1
+      "count": 3
     },
     "shadcn/no-restyle": {
-      "count": 1
+      "count": 3
     }
   },
   "client/src/components/Admin/Tars/Knowledge/Detail/DocumentRowActions.tsx": {
+    "shadcn/no-arbitrary-values": {
+      "count": 3
+    },
     "shadcn/no-raw-colors": {
-      "count": 1
+      "count": 4
     },
     "shadcn/no-restyle": {
-      "count": 1
+      "count": 7
     }
   },
   "client/src/components/Admin/Tars/Knowledge/Detail/FileSystemImportDialog.tsx": {
@@ -206,20 +209,12 @@
       "count": 2
     }
   },
-  "client/src/components/Admin/Tars/Knowledge/Detail/FileSystemsTab.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 2
-    },
-    "shadcn/no-restyle": {
-      "count": 2
-    }
-  },
   "client/src/components/Admin/Tars/Knowledge/Detail/GroupDocumentsDialog.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 6
+      "count": 4
     },
     "shadcn/no-restyle": {
-      "count": 9
+      "count": 10
     }
   },
   "client/src/components/Admin/Tars/Knowledge/Detail/GroupScheduleSection.tsx": {
@@ -274,11 +269,14 @@
     }
   },
   "client/src/components/Admin/Tars/Knowledge/Detail/WebsitesTab.tsx": {
+    "shadcn/no-arbitrary-values": {
+      "count": 2
+    },
     "shadcn/no-raw-colors": {
       "count": 2
     },
     "shadcn/no-restyle": {
-      "count": 1
+      "count": 3
     }
   },
   "client/src/components/Admin/Tars/Knowledge/Manager.tsx": {
@@ -640,9 +638,6 @@
     },
     "shadcn/no-inline-styles": {
       "count": 1
-    },
-    "shadcn/no-raw-colors": {
-      "count": 2
     }
   },
   "client/src/components/Auth/LoginForm.tsx": {

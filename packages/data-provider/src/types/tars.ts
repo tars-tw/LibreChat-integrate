@@ -594,6 +594,7 @@ export type TTarsFileSystemImportInput = {
   /** A folder as the file listing reported it; binds the group to it. Blank binds the whole path. */
   selectedFolder?: string;
   tags?: string;
+  existingAssociationId?: string;
 };
 
 export type TTarsDatasetBatchDelete = {
@@ -601,7 +602,7 @@ export type TTarsDatasetBatchDelete = {
   websiteIds?: string[];
   databaseIds?: string[];
   /** Document groups to unlink, by `dataset_file_system_id`; their documents go with them. */
-  fileSystemIds?: string[];
+  fileSystemAssociationIds?: string[];
 };
 
 /** The dataset kinds pwc_tars can schedule. */
@@ -637,6 +638,9 @@ export type TTarsSchedule = {
   message: string | null;
   /** Only meaningful for `file_system` schedules; it lives on the group link. */
   is_sync_all: boolean;
+  dataset_file_system_to_knowledge_base_id?: string | null;
+  association_id?: string | null;
+  directory_path?: string | null;
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -645,6 +649,7 @@ export type TTarsSchedule = {
 export type TTarsScheduleInput = {
   datasetId: string;
   datasetType: TTarsScheduleDatasetType;
+  associationId?: string;
   knowledgeBaseId: string;
   frequency: number;
   frequencyUnit: string;
@@ -667,6 +672,7 @@ export type TTarsDocument = {
   knowledge_base_ids?: string | null;
   /** Set when the document came in through a document group. */
   dataset_file_system_id?: string | null;
+  dataset_file_system_to_knowledge_base_id?: string | null;
   size?: number | null;
   extension?: string | null;
   mime_type?: string | null;
@@ -1137,6 +1143,23 @@ export type TTarsMcpDomainServer = {
 };
 
 export type TTarsMcpDomainToolsResponse = { servers: TTarsMcpDomainServer[] };
+
+/** What a share target lacks on one gateway server. */
+export type TTarsMcpShareGap = {
+  mcp_server_id: string;
+  server_name: string;
+  /** Not assigned the server at all, rather than missing some of its tools. */
+  no_access: boolean;
+  tool_names: string[];
+};
+
+/** A share target refused because it is not assigned tools the agent uses. */
+export type TTarsMcpShareBlock = {
+  principal_type: 'user' | 'group';
+  idOnTheSource: string;
+  name: string;
+  servers: TTarsMcpShareGap[];
+};
 
 /**
  * A pwc_tars account as surfaced to the LibreChat client. Mirrors the backend

@@ -37,6 +37,7 @@ const {
   persistMCPAuthorizationTransaction,
   resolveMCPOAuthTarget,
   canAccessMCPOAuthFlow,
+  filterVisibleTarsMcpConfigs,
 } = require('@librechat/api');
 const {
   createMCPServerController,
@@ -1064,15 +1065,18 @@ router.get('/connection/status', requireJwtAuth, configMiddleware, async (req, r
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    const { mcpConfig, appConnections, userConnections, oauthServers } = await getMCPSetupData(
-      user.id,
-      {
-        role: user.role,
-        idOnTheSource: user.idOnTheSource,
-        tenantId: getTenantId(),
-        appConfig: req.config,
-      },
-    );
+    const {
+      mcpConfig: allConfigs,
+      appConnections,
+      userConnections,
+      oauthServers,
+    } = await getMCPSetupData(user.id, {
+      role: user.role,
+      idOnTheSource: user.idOnTheSource,
+      tenantId: getTenantId(),
+      appConfig: req.config,
+    });
+    const mcpConfig = await filterVisibleTarsMcpConfigs(allConfigs, user.tarsId);
     const runtimeContext = createMCPStatusRuntimeContext(user, mcpConfig, Object.keys(mcpConfig));
     const connectionStatus = Object.fromEntries(
       await Promise.all(

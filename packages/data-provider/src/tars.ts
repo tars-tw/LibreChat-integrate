@@ -10,6 +10,13 @@ import type {
 } from './types/tars';
 import { Tools } from './types/tools';
 
+/** A share target is not assigned tools the agent uses; `blocked` lists who lacks what. */
+export const TARS_MCP_SHARE_BLOCKED = 'TARS_MCP_SHARE_BLOCKED';
+/** An audience that cannot be checked one by one (everyone, a role) on an agent with MCP tools. */
+export const TARS_MCP_PUBLIC_SHARE_BLOCKED = 'TARS_MCP_PUBLIC_SHARE_BLOCKED';
+/** pwc_tars could not answer, so the share stays refused. */
+export const TARS_MCP_SHARE_CHECK_UNAVAILABLE = 'TARS_MCP_SHARE_CHECK_UNAVAILABLE';
+
 /**
  * Shared pwc_tars data-source facts. Both the form in the browser and the
  * proxy in `packages/api` validate against these, so the two can never drift.

@@ -39,6 +39,8 @@ export interface TarsSchedule {
   message: string | null;
   /** Only meaningful for `file_system` schedules; it lives on the link row. */
   is_sync_all: boolean;
+  association_id?: string | null;
+  directory_path?: string | null;
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -54,6 +56,7 @@ export interface TarsScheduleInput {
   startTime: string;
   endTime?: string;
   description?: string;
+  associationId?: string;
 }
 
 export interface TarsScheduleUpdate {
@@ -109,6 +112,7 @@ export async function createTarsSchedule(
       end_time: toTarsDateTime(input.endTime),
       execution_type: 'auto',
       description: input.description ?? '',
+      ...(input.associationId ? { association_id: input.associationId } : {}),
       created_by: tarsId,
       status: 1,
     },

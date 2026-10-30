@@ -101,6 +101,7 @@ export default function AgentFooter({
               resourceId={agent_id}
               resourceName={agent?.name ?? ''}
               resourceType={ResourceType.AGENT}
+              hidePublicSharing
             />
           )}
         {(agent?.author === user?.id || user?.role === SystemRoles.ADMIN || canShareRemoteAgent) &&
@@ -112,6 +113,7 @@ export default function AgentFooter({
               resourceId={agent_id}
               resourceName={agent?.name ?? ''}
               resourceType={ResourceType.REMOTE_AGENT}
+              hidePublicSharing
             >
               <Button
                 variant="outline"

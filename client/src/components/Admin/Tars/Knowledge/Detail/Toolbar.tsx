@@ -1,4 +1,4 @@
-import { Button, Input, Spinner } from '@librechat/client';
+import { Button, Dropdown, Input, Spinner } from '@librechat/client';
 import { Plus, RotateCw, Search, Trash2, Wrench } from 'lucide-react';
 import { useLocalize } from '~/hooks';
 
@@ -19,6 +19,9 @@ export default function Toolbar({
   addLabel,
   onAdd,
   addDisabled,
+  sourceFilter,
+  onSourceFilterChange,
+  sourceOptions,
 }: {
   search: string;
   onSearchChange: (value: string) => void;
@@ -35,6 +38,10 @@ export default function Toolbar({
   addLabel?: string;
   onAdd?: () => void;
   addDisabled?: boolean;
+  /** Documents only: filter by file source. */
+  sourceFilter?: string;
+  onSourceFilterChange?: (value: string) => void;
+  sourceOptions?: { value: string; label: string }[];
 }) {
   const localize = useLocalize();
 
@@ -53,6 +60,16 @@ export default function Toolbar({
           className="pl-9"
         />
       </div>
+
+      {sourceFilter !== undefined && onSourceFilterChange != null && sourceOptions != null && (
+        <Dropdown
+          value={sourceFilter}
+          onChange={onSourceFilterChange}
+          options={sourceOptions}
+          aria-label={localize('com_ui_tars_kb_ds_file_source')}
+          sizeClasses="min-w-[9rem]"
+        />
+      )}
 
       <Button
         variant="ghost"

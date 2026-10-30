@@ -19,7 +19,7 @@ import {
   TooltipAnchor,
   useToastContext,
 } from '@librechat/client';
-import type { TPrincipal } from 'librechat-data-provider';
+import type { TPrincipal, TTarsMcpShareBlock } from 'librechat-data-provider';
 import {
   usePeoplePickerPermissions,
   useResourcePermissionState,
@@ -32,10 +32,11 @@ import { computeShareChanges, dedupeNewShares, principalKey } from './shareChang
 import DirectoryPeoplePicker from './PeoplePicker/DirectoryPeoplePicker';
 import UnifiedPeopleSearch from './PeoplePicker/UnifiedPeopleSearch';
 import PeoplePickerAdminSettings from './PeoplePickerAdminSettings';
+import { mcpShareBlocks, permissionErrorKey } from './errors';
 import PublicSharingToggle from './PublicSharingToggle';
 import { SelectedPrincipalsList } from './PeoplePicker';
 import { useGetStartupConfig } from '~/data-provider';
-import { permissionErrorKey } from './errors';
+import McpShareBlocks from './McpShareBlocks';
 import { cn } from '~/utils';
 
 export default function GenericGrantAccessDialog({
@@ -45,6 +46,7 @@ export default function GenericGrantAccessDialog({
   resourceType,
   onGrantAccess,
   disabled = false,
+  hidePublicSharing = false,
   buttonClassName,
   children,
 }: {
@@ -54,6 +56,8 @@ export default function GenericGrantAccessDialog({
   resourceType: ResourceType;
   onGrantAccess?: (shares: TPrincipal[], isPublic: boolean, publicRole?: AccessRoleIds) => void;
   disabled?: boolean;
+  /** Offers no public sharing; a resource that is already public keeps the toggle to turn it off. */
+  hidePublicSharing?: boolean;
   buttonClassName?: string;
   children?: React.ReactNode;
 }) {
@@ -99,6 +103,7 @@ export default function GenericGrantAccessDialog({
   const [hasChanges, setHasChanges] = useState(false);
   /** Directory picks checked but not added with the picker's Add yet; Save includes them. */
   const [pendingShares, setPendingShares] = useState<TPrincipal[]>([]);
+  const [shareBlocks, setShareBlocks] = useState<TTarsMcpShareBlock[]>([]);
   const [defaultPermissionId, setDefaultPermissionId] = useState<AccessRoleIds | undefined>(
     config?.defaultViewerRoleId,
   );
@@ -204,6 +209,7 @@ export default function GenericGrantAccessDialog({
       return;
     }
 
+    setShareBlocks([]);
     try {
       // Diff persisted shares against the working list. Keyed by stable `id`
       // (falling back to idOnTheSource) so the same principal is never simultaneously
@@ -239,6 +245,7 @@ export default function GenericGrantAccessDialog({
       setHasChanges(false);
     } catch (error) {
       console.error('Error updating permissions:', error);
+      setShareBlocks(mcpShareBlocks(error));
       showToast({
         message: localize(permissionErrorKey(error)),
         status: 'error',
@@ -254,6 +261,7 @@ export default function GenericGrantAccessDialog({
     setPublicRole(currentPublicRole || config?.defaultViewerRoleId || '');
     setHasChanges(false);
     setPendingShares([]);
+    setShareBlocks([]);
   };
 
   const handleModalOpenChange = (open: boolean) => {
@@ -274,6 +282,11 @@ export default function GenericGrantAccessDialog({
   // Check if there are any changes to save
   const hasPublicChanges = isPublic !== currentIsPublic || publicRole !== currentPublicRole;
   const submitButtonActive = hasDraft || hasPublicChanges;
+  const showPublicSharing = canSharePublic && (!hidePublicSharing || currentIsPublic);
+  /** Taking someone off the list settles their part of the refusal. */
+  const visibleShareBlocks = shareBlocks.filter((block) =>
+    sharesToSave.some((share) => share.idOnTheSource === block.idOnTheSource),
+  );
 
   // On permissions load failure, keep a compact trigger-sized button so the layout holds,
   // surfacing the error (and a retry on click) through a tooltip.
@@ -405,6 +418,10 @@ export default function GenericGrantAccessDialog({
                       </Alert>
                     )}
 
+                    {visibleShareBlocks.length > 0 && (
+                      <McpShareBlocks blocks={visibleShareBlocks} />
+                    )}
+
                     {allShares.length === 0 ? (
                       <div className="border-border-medium rounded-xl border border-dashed px-5 py-8 text-center">
                         <div className="bg-surface-tertiary text-text-secondary mx-auto flex size-10 items-center justify-center rounded-full">
@@ -431,7 +448,7 @@ export default function GenericGrantAccessDialog({
                 )}
               </div>
 
-              {canSharePublic && (
+              {showPublicSharing && (
                 <div className="border-border-light mt-4 border-t pt-4">
                   <PublicSharingToggle
                     isPublic={isPublic}
@@ -445,7 +462,7 @@ export default function GenericGrantAccessDialog({
             </section>
           )}
 
-          {canSharePublic && !canManagePrincipals && (
+          {showPublicSharing && !canManagePrincipals && (
             <section className="w-full">
               <PublicSharingToggle
                 isPublic={isPublic}

@@ -9,6 +9,7 @@ import {
   OGDialog,
   OGDialogTemplate,
   Spinner,
+  Switch,
   useToastContext,
 } from '@librechat/client';
 import type { TTarsFileProtocol, TTarsFileSystemSource } from 'librechat-data-provider';
@@ -162,6 +163,7 @@ export default function FileSystemModal({
     hostName: form.hostName.trim(),
     account: form.account.trim(),
     password: form.password,
+    enabled: form.enabled,
     allowedKmIds: form.allowedKmIds,
   });
 
@@ -328,6 +330,16 @@ export default function FileSystemModal({
                 </div>
               </div>
             </section>
+
+            <div className="flex items-center gap-2">
+              <Label htmlFor="tars-fs-enabled">{localize('com_ui_active')}</Label>
+              <Switch
+                id="tars-fs-enabled"
+                aria-label={localize('com_ui_active')}
+                checked={form.enabled}
+                onCheckedChange={(checked) => set('enabled', checked)}
+              />
+            </div>
 
             <section className="space-y-3">
               <p className="text-text-primary text-sm font-medium">
