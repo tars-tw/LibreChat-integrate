@@ -1,4 +1,5 @@
-import { Constants } from 'librechat-data-provider';
+import { logger } from '@librechat/data-schemas';
+import { Constants, TARS_MCP_SERVER_PREFIX } from 'librechat-data-provider';
 import type { TarsAvailableToolRow } from './client';
 import {
   tarsMcpFetch,
@@ -6,6 +7,7 @@ import {
   PROXIED_SERVER_TYPES,
   invalidateTarsMcpToolsCache,
 } from './client';
+import { isTarsMcpEnabled } from './config';
 import { gatewayNameFor } from './names';
 
 /**
@@ -174,6 +176,51 @@ export async function getUserTarsMcpSettings(tarsUserId: string): Promise<TarsMc
     ...server,
     gateway_name: gatewayNameFor(server.id, server.code) ?? undefined,
   }));
+}
+
+/** Only the injected per-server entries are assignment-scoped; the legacy `tars` aggregate is not. */
+const isGatewayEntry = (serverName: string): boolean =>
+  serverName.startsWith(TARS_MCP_SERVER_PREFIX);
+
+async function visibleGatewayNames(tarsUserId?: string | null): Promise<Set<string>> {
+  if (!tarsUserId) {
+    return new Set();
+  }
+  try {
+    const servers = await getUserTarsMcpSettings(tarsUserId);
+    return new Set(
+      servers.flatMap((server) =>
+        server.user_enabled && server.gateway_name != null ? [server.gateway_name] : [],
+      ),
+    );
+  } catch (error) {
+    logger.warn(
+      `[tars-mcp] Failed to read MCP settings for pwc_tars user ${tarsUserId}; hiding gateway entries`,
+      error,
+    );
+    return new Set();
+  }
+}
+
+/**
+ * Narrows a resolved MCP config map to the `tars_*` gateway entries the user
+ * may see: assigned to them or an active group (`sys_mcp_permission`) and opted
+ * in. The config itself is shared by every user, so a listing that skips this
+ * hands the whole pwc_tars catalog to anyone. Fails closed: an unlinked account
+ * or an unreachable pwc_tars lists no gateway entry. Other servers pass through,
+ * and a config without gateway entries costs no pwc_tars call.
+ */
+export async function filterVisibleTarsMcpConfigs<T>(
+  configs: Record<string, T>,
+  tarsUserId?: string | null,
+): Promise<Record<string, T>> {
+  if (!isTarsMcpEnabled() || !Object.keys(configs).some(isGatewayEntry)) {
+    return configs;
+  }
+  const visible = await visibleGatewayNames(tarsUserId);
+  return Object.fromEntries(
+    Object.entries(configs).filter(([name]) => !isGatewayEntry(name) || visible.has(name)),
+  );
 }
 
 export async function updateUserTarsMcpServer(

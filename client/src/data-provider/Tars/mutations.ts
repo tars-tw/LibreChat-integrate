@@ -1003,7 +1003,9 @@ export const useUpdateTarsMcpUserServerMutation = (
     {
       ...options,
       onSuccess: (...args) => {
-        queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+        /** The native MCP listings depend on the opt-in too, so an enabled server
+         *  reaches the agent builder without waiting for their refresh interval. */
+        invalidateTarsMcp(queryClient);
         options?.onSuccess?.(...args);
       },
     },

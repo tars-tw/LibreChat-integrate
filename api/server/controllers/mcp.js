@@ -25,6 +25,7 @@ const {
   getMCPErrorResponse,
   prepareMCPServerOAuthDeletion,
   cleanupDeletedMCPServerOAuthUsers,
+  filterVisibleTarsMcpConfigs,
 } = require('@librechat/api');
 const {
   Constants,
@@ -140,7 +141,10 @@ const getMCPTools = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const mcpConfig = await resolveAllMcpConfigs(userId, req.user);
+    const mcpConfig = await filterVisibleTarsMcpConfigs(
+      await resolveAllMcpConfigs(userId, req.user),
+      req.user.tarsId,
+    );
     const mcpApps = resolveMCPAppsPolicy(
       req.config?.mcpSettings?.apps,
       undefined,
@@ -359,7 +363,10 @@ const getMCPServersList = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const serverConfigs = await resolveAllMcpConfigs(userId, req.user);
+    const serverConfigs = await filterVisibleTarsMcpConfigs(
+      await resolveAllMcpConfigs(userId, req.user),
+      req.user.tarsId,
+    );
     const canEditByServer = await computeCanEditByServer(req, serverConfigs, {
       skipCapabilityWithoutDbIds: true,
     });
