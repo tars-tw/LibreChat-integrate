@@ -43,6 +43,7 @@ export interface FileSystemForm {
   /** Both start blank on edit — pwc_tars credentials never reach the browser. */
   account: string;
   password: string;
+  enabled: boolean;
   allowedKmIds: string[];
 }
 
@@ -56,6 +57,7 @@ export const emptyFileSystemForm: FileSystemForm = {
   hostName: '',
   account: '',
   password: '',
+  enabled: true,
   allowedKmIds: [],
 };
 
@@ -68,6 +70,7 @@ export const toFileSystemForm = (fileSystem: TTarsFileSystemSource): FileSystemF
   port: fileSystem.port != null ? String(fileSystem.port) : '',
   path: fileSystem.path ?? '',
   hostName: fileSystem.host_name ?? '',
+  enabled: fileSystem.status === 1,
   allowedKmIds: fileSystem.allowed_km_ids ?? [],
 });
 
