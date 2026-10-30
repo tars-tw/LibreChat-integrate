@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Checkbox, useToastContext } from '@librechat/client';
+import { Checkbox, Dropdown, useToastContext } from '@librechat/client';
 import type { TTarsDocument, TTarsDatasetLimits } from 'librechat-data-provider';
 import {
   useDeleteTarsDocumentMutation,
@@ -19,6 +19,7 @@ import UploadDialog from './UploadDialog';
 import { relayedError } from '../helpers';
 import StatusBadge from './StatusBadge';
 import Toolbar from './Toolbar';
+const ALL_SOURCES = '__all__';
 
 /** The file datasets of a knowledge base. */
 export default function DocumentsTab({
@@ -45,6 +46,7 @@ export default function DocumentsTab({
   const { showToast } = useToastContext();
 
   const [search, setSearch] = useState('');
+  const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES);
   const [selected, setSelected] = useState<string[]>([]);
   const [showUpload, setShowUpload] = useState(false);
   const [renaming, setRenaming] = useState<TTarsDocument | null>(null);
@@ -53,8 +55,15 @@ export default function DocumentsTab({
   const [details, setDetails] = useState<TTarsDocument | null>(null);
 
   const visible = useMemo(
-    () => documents.filter((doc) => matchesName(doc.filename, search)),
-    [documents, search],
+    () =>
+      documents.filter((doc) => {
+        const matchesSearch = matchesName(doc.filename, search);
+        const matchesSource =
+          sourceFilter === ALL_SOURCES || doc.file_source?.trim().toUpperCase() === sourceFilter;
+
+        return matchesSearch && matchesSource;
+      }),
+    [documents, search, sourceFilter],
   );
 
   /** The filtered list is what gets paged, so a search resets to page one
@@ -111,6 +120,22 @@ export default function DocumentsTab({
       }),
   });
 
+  const sourceOptions = useMemo(
+    () => [
+      { value: ALL_SOURCES, label: localize('com_ui_tars_kb_ds_all_sources') },
+      ...Array.from(
+        new Set(
+          documents
+            .map((doc) => doc.file_source?.trim().toUpperCase())
+            .filter((source): source is string => Boolean(source)),
+        ),
+      )
+        .sort()
+        .map((source) => ({ value: source, label: source })),
+    ],
+    [documents, localize],
+  );
+
   const toggle = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]));
 
@@ -121,6 +146,9 @@ export default function DocumentsTab({
       <Toolbar
         search={search}
         onSearchChange={setSearch}
+        sourceFilter={sourceFilter}
+        onSourceFilterChange={setSourceFilter}
+        sourceOptions={sourceOptions}
         onRefresh={onRefresh}
         isRefreshing={isRefreshing}
         selectedCount={selected.length}
@@ -157,6 +185,9 @@ export default function DocumentsTab({
                 <th className="w-[40%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_kb_ds_name')}
                 </th>
+                <th className="px-3 py-2 font-medium">
+                  {localize('com_ui_tars_kb_ds_file_source')}
+                </th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_status')}</th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_ds_words')}</th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_tokens')}</th>
@@ -179,6 +210,11 @@ export default function DocumentsTab({
                   <td className="max-w-0 px-3 py-1.5">
                     <span className="text-text-primary block truncate" title={doc.filename}>
                       {doc.filename}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <span className="text-text-secondary">
+                      {doc.file_source ? doc.file_source.toUpperCase() : '—'}
                     </span>
                   </td>
                   <td className="px-3 py-1.5">
