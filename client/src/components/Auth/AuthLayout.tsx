@@ -97,16 +97,21 @@ function AuthLayout({
     return (
       <div className="relative flex min-h-screen bg-white">
         <Banner />
+        {startupConfig?.tarsVersion && (
+          <span className="text-border-chrome-heavy absolute bottom-4 left-4 z-10 text-xs">
+            {startupConfig.tarsVersion}
+          </span>
+        )}
         <BrandLogo className="absolute top-3 left-3 z-10 h-8 w-auto object-contain" />
         <main className="flex w-full flex-col items-center justify-center px-6 py-10 md:w-3/5">
           <div className="w-full max-w-md text-center">
             <h1
-              className="text-5xl font-bold tracking-[0.12em] text-gray-900"
+              className="text-button-primary text-5xl font-bold tracking-[0.12em]"
               style={{ fontFamily: '"Times New Roman", serif' }}
             >
               {localize('com_auth_tars_brand')}
             </h1>
-            <p className="mt-2 mb-6 text-sm text-gray-500">
+            <p className="text-text-muted mt-2 mb-6 text-sm">
               {localize(
                 isTarsRegister ? 'com_auth_tars_register_subtitle' : 'com_auth_tars_subtitle',
               )}
