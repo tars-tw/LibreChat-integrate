@@ -150,6 +150,7 @@ export default function DatabasesTab({
                         onClick={() => setBinding(database)}
                         aria-label={localize('com_ui_tars_kb_ds_adjust_tables')}
                         title={localize('com_ui_tars_kb_ds_adjust_tables')}
+                        className="text-brand-primary hover:text-brand-primary"
                       >
                         <Table2 className="size-4" aria-hidden />
                       </Button>
