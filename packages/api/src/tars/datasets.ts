@@ -561,6 +561,8 @@ export interface TarsFileSystemImportInput {
    */
   selectedFolder?: string;
   tags?: string;
+  /** Edit mode: re-point this existing association instead of creating a new one. */
+  existingAssociationId?: string;
 }
 
 /** Imports a document group (`POST /api/knowledge_detail/upload_file_server_files`). */
@@ -588,6 +590,9 @@ export async function importTarsFileSystemDataset(
       ...(input.overlap != null ? { overlap: input.overlap } : {}),
       selected_folder: input.selectedFolder ?? '',
       tags: input.tags ?? '',
+      ...(input.existingAssociationId
+        ? { existing_association_id: input.existingAssociationId }
+        : {}),
     },
   });
 }
@@ -595,13 +600,14 @@ export async function importTarsFileSystemDataset(
 /**
  * Pulls anything new or newer from the file server
  * (`POST /api/knowledge_detail/refresh_file_server_files`). pwc_tars reads the
- * connection itself, so only the ids travel.
+ * connection itself, so only the ids travel. `associationId` picks which of the
+ * group's associations (directories) to sync.
  */
 export async function refreshTarsFileSystemDataset(
   tarsId: string,
   knowledgeBaseId: string,
   fileSystemId: string,
-  chunk: { chunkSize?: number; overlap?: number } = {},
+  chunk: { associationId?: string; chunkSize?: number; overlap?: number } = {},
   baseUrl?: string,
 ): Promise<void> {
   await tarsFetch('/api/knowledge_detail/refresh_file_server_files', {
@@ -612,6 +618,7 @@ export async function refreshTarsFileSystemDataset(
       user_id: tarsId,
       knowledge_base_id: knowledgeBaseId,
       dataset_file_system_id: fileSystemId,
+      ...(chunk.associationId ? { association_id: chunk.associationId } : {}),
       new_file_chunk_size: chunk.chunkSize ?? 1000,
       new_file_overlap_size: chunk.overlap ?? 100,
     },
@@ -619,11 +626,11 @@ export async function refreshTarsFileSystemDataset(
 }
 
 /**
- * Deletes every existing document in a group (records, chunks and vectors)
- * and re-downloads and re-imports everything from the source file server
- * (`POST /api/knowledge_detail/rebuild_file_server_files`). Destructive and
- * irreversible — pwc_tars rejects it with 409 while any document in the
- * group is still actively processing. Per-file chunk/overlap settings are
+ * Deletes every existing document in one association (records, chunks and
+ * vectors) and re-downloads and re-imports everything from the source file
+ * server (`POST /api/knowledge_detail/rebuild_file_server_files`). Destructive
+ * and irreversible — pwc_tars rejects it with 409 while any document in the
+ * association is still actively processing. Per-file chunk/overlap settings are
  * preserved by source path on the pwc_tars side; the values here only apply
  * to files the source server has never held before.
  */
@@ -631,7 +638,7 @@ export async function rebuildTarsFileSystemDataset(
   tarsId: string,
   knowledgeBaseId: string,
   fileSystemId: string,
-  chunk: { chunkSize?: number; overlap?: number } = {},
+  chunk: { associationId?: string; chunkSize?: number; overlap?: number } = {},
   baseUrl?: string,
 ): Promise<void> {
   await tarsFetch('/api/knowledge_detail/rebuild_file_server_files', {
@@ -642,17 +649,19 @@ export async function rebuildTarsFileSystemDataset(
       user_id: tarsId,
       knowledge_base_id: knowledgeBaseId,
       dataset_file_system_id: fileSystemId,
+      ...(chunk.associationId ? { association_id: chunk.associationId } : {}),
       new_file_chunk_size: chunk.chunkSize ?? 1000,
       new_file_overlap_size: chunk.overlap ?? 100,
     },
   });
 }
 
-/** Reprocesses every unfinished document in a group (`reupload_batch_file`). */
+/** Reprocesses every unfinished document in one association (`reupload_batch_file`). */
 export async function reprocessTarsFileSystemDataset(
   tarsId: string,
   knowledgeBaseId: string,
   fileSystemId: string,
+  options: { associationId?: string } = {},
   baseUrl?: string,
 ): Promise<void> {
   await tarsFetch('/api/knowledge_detail/reupload_batch_file', {
@@ -663,15 +672,17 @@ export async function reprocessTarsFileSystemDataset(
       user_id: tarsId,
       knowledge_base_id: knowledgeBaseId,
       dataset_file_system_id: fileSystemId,
+      ...(options.associationId ? { association_id: options.associationId } : {}),
     },
   });
 }
 
-/** Unlinks a document group, deleting the documents it brought in. */
+/** Unlinks one association of a document group, deleting the documents it brought in. */
 export async function unlinkTarsFileSystemDataset(
   tarsId: string,
   knowledgeBaseId: string,
   fileSystemId: string,
+  options: { associationId?: string } = {},
   baseUrl?: string,
 ): Promise<void> {
   await tarsFetch('/api/dataset_file_system/unlink_file_system', {
@@ -682,6 +693,7 @@ export async function unlinkTarsFileSystemDataset(
       user_id: tarsId,
       knowledge_base_id: knowledgeBaseId,
       dataset_file_system_id: fileSystemId,
+      ...(options.associationId ? { association_id: options.associationId } : {}),
     },
   });
 }
@@ -691,7 +703,7 @@ export async function unlinkTarsFileSystemDataset(
  * (`POST /api/knowledge_detail/batch_delete_datasets`).
  *
  * pwc_tars answers 202 and does the work on a background thread, so a caller
- * must refetch rather than treat the response as "deleted". A document group
+ * must refetch rather than treat the response as "deleted". An association
  * that still has a file processing is skipped there and only logged, so it
  * stays linked until it is unlinked again.
  */
@@ -702,7 +714,7 @@ export async function batchDeleteTarsDatasets(
     documentIds?: string[];
     websiteIds?: string[];
     databaseIds?: string[];
-    fileSystemIds?: string[];
+    fileSystemAssociationIds?: string[];
   },
   baseUrl?: string,
 ): Promise<void> {
@@ -716,7 +728,8 @@ export async function batchDeleteTarsDatasets(
       dataset_website_ids: ids.websiteIds ?? [],
       dataset_sql_ids: ids.databaseIds ?? [],
       dataset_api_ids: [],
-      dataset_file_system_ids: ids.fileSystemIds ?? [],
+      dataset_file_system_ids: [],
+      dataset_file_system_association_ids: ids.fileSystemAssociationIds ?? [],
     },
   });
 }

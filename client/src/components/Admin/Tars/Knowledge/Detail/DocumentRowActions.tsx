@@ -40,6 +40,7 @@ export default function DocumentRowActions({
         onClick={onDetails}
         aria-label={localize('com_ui_tars_kb_document_details')}
         title={localize('com_ui_tars_kb_document_details')}
+        className="hover:text-pwc-info text-[rgb(var(--pwc-info))]"
       >
         <Info className="size-4" aria-hidden />
       </Button>
@@ -49,6 +50,7 @@ export default function DocumentRowActions({
         onClick={onViewChunks}
         aria-label={localize('com_ui_tars_kb_view_chunks')}
         title={localize('com_ui_tars_kb_view_chunks')}
+        className="text-[rgb(var(--pwc-info-cyan))] hover:text-[rgb(var(--pwc-info-cyan))]"
       >
         <Layers className="size-4" aria-hidden />
       </Button>
@@ -70,6 +72,7 @@ export default function DocumentRowActions({
         title={localize(
           processing ? 'com_ui_tars_kb_reprocess_processing_hint' : 'com_ui_tars_kb_reprocess',
         )}
+        className="text-green-700 hover:text-green-700"
       >
         <RefreshCw className="size-4" aria-hidden />
       </Button>

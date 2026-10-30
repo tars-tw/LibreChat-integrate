@@ -251,8 +251,17 @@ router.get('/knowledge-bases/:id/file-systems/:fsId/files', async (req, res) => 
  * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
-  const { name, syncAll, uploadOnly, files, chunkSize, overlap, selectedFolder, tags } =
-    req.body ?? {};
+  const {
+    name,
+    syncAll,
+    uploadOnly,
+    files,
+    chunkSize,
+    overlap,
+    selectedFolder,
+    tags,
+    existingAssociationId,
+  } = req.body ?? {};
   if (!name) {
     return res.status(400).json({ error: 'name is required' });
   }
@@ -269,6 +278,8 @@ router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
       overlap: overlap != null ? Number(overlap) : undefined,
       selectedFolder: typeof selectedFolder === 'string' ? selectedFolder : undefined,
       tags,
+      existingAssociationId:
+        typeof existingAssociationId === 'string' ? existingAssociationId : undefined,
     });
     return res.status(201).json({ success: true });
   } catch (error) {
@@ -283,9 +294,10 @@ router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
  * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/file-systems/:fsId/refresh', async (req, res) => {
-  const { chunkSize, overlap } = req.body ?? {};
+  const { associationId, chunkSize, overlap } = req.body ?? {};
   try {
     await refreshTarsFileSystemDataset(req.user.tarsId, req.params.id, req.params.fsId, {
+      associationId: typeof associationId === 'string' ? associationId : undefined,
       chunkSize: chunkSize != null ? Number(chunkSize) : undefined,
       overlap: overlap != null ? Number(overlap) : undefined,
     });
@@ -304,9 +316,10 @@ router.post('/knowledge-bases/:id/file-systems/:fsId/refresh', async (req, res) 
  * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/file-systems/:fsId/rebuild', async (req, res) => {
-  const { chunkSize, overlap } = req.body ?? {};
+  const { associationId, chunkSize, overlap } = req.body ?? {};
   try {
     await rebuildTarsFileSystemDataset(req.user.tarsId, req.params.id, req.params.fsId, {
+      associationId: typeof associationId === 'string' ? associationId : undefined,
       chunkSize: chunkSize != null ? Number(chunkSize) : undefined,
       overlap: overlap != null ? Number(overlap) : undefined,
     });
@@ -319,12 +332,15 @@ router.post('/knowledge-bases/:id/file-systems/:fsId/rebuild', async (req, res) 
 
 /**
  * @route POST /api/tars/knowledge-bases/:id/file-systems/:fsId/reprocess
- * @desc Reprocess every document in the group that did not finish.
+ * @desc Reprocess every document in the association that did not finish.
  * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/file-systems/:fsId/reprocess', async (req, res) => {
+  const { associationId } = req.body ?? {};
   try {
-    await reprocessTarsFileSystemDataset(req.user.tarsId, req.params.id, req.params.fsId);
+    await reprocessTarsFileSystemDataset(req.user.tarsId, req.params.id, req.params.fsId, {
+      associationId: typeof associationId === 'string' ? associationId : undefined,
+    });
     return res.json({ success: true });
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/file-systems/:fsId/reprocess] Failed', error);
@@ -334,12 +350,15 @@ router.post('/knowledge-bases/:id/file-systems/:fsId/reprocess', async (req, res
 
 /**
  * @route DELETE /api/tars/knowledge-bases/:id/file-systems/:fsId
- * @desc Unlink the group, deleting the documents it brought in.
+ * @desc Unlink one association, deleting the documents it brought in.
  * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.delete('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
+  const { associationId } = req.query ?? {};
   try {
-    await unlinkTarsFileSystemDataset(req.user.tarsId, req.params.id, req.params.fsId);
+    await unlinkTarsFileSystemDataset(req.user.tarsId, req.params.id, req.params.fsId, {
+      associationId: typeof associationId === 'string' ? associationId : undefined,
+    });
     return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/knowledge-bases/:id/file-systems/:fsId] Failed', error);
@@ -354,12 +373,12 @@ router.delete('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
  * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/datasets/batch-delete', async (req, res) => {
-  const { documentIds, websiteIds, databaseIds, fileSystemIds } = req.body ?? {};
+  const { documentIds, websiteIds, databaseIds, fileSystemAssociationIds } = req.body ?? {};
   const total =
     (documentIds?.length ?? 0) +
     (websiteIds?.length ?? 0) +
     (databaseIds?.length ?? 0) +
-    (fileSystemIds?.length ?? 0);
+    (fileSystemAssociationIds?.length ?? 0);
   if (total === 0) {
     return res.status(400).json({ error: 'At least one id is required' });
   }
@@ -369,7 +388,7 @@ router.post('/knowledge-bases/:id/datasets/batch-delete', async (req, res) => {
       documentIds,
       websiteIds,
       databaseIds,
-      fileSystemIds,
+      fileSystemAssociationIds,
     });
     return res.status(202).json({ accepted: total });
   } catch (error) {

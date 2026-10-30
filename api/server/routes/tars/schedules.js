@@ -41,8 +41,16 @@ router.get('/schedules', async (req, res) => {
  * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/schedules', async (req, res) => {
-  const { datasetId, datasetType, knowledgeBaseId, frequency, frequencyUnit, startTime, endTime } =
-    req.body ?? {};
+  const {
+    datasetId,
+    datasetType,
+    knowledgeBaseId,
+    frequency,
+    frequencyUnit,
+    startTime,
+    endTime,
+    associationId,
+  } = req.body ?? {};
 
   if (!datasetId || !knowledgeBaseId || !startTime || !frequencyUnit) {
     return res.status(400).json({
@@ -66,6 +74,7 @@ router.post('/schedules', async (req, res) => {
       frequencyUnit,
       startTime,
       endTime,
+      associationId: typeof associationId === 'string' ? associationId : undefined,
     });
     return res.status(201).json({ schedule });
   } catch (error) {

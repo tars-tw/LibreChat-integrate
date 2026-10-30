@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { RefreshCcw, RotateCcw, RotateCw, Search, Unlink } from 'lucide-react';
+import { Pencil, RefreshCcw, RotateCcw, RotateCw, Search, Unlink } from 'lucide-react';
 import { Button, Input, OGDialog, OGDialogTemplate, useToastContext } from '@librechat/client';
 import type {
   TTarsDocument,
@@ -59,6 +59,7 @@ export default function GroupDocumentsDialog({
   onSync,
   onReprocessGroup,
   onRebuild,
+  onEdit,
   onUnlink,
   onViewChunks,
   onClose,
@@ -73,6 +74,7 @@ export default function GroupDocumentsDialog({
   onSync: () => void;
   onReprocessGroup: () => void;
   onRebuild: () => void;
+  onEdit: () => void;
   onUnlink: () => void;
   onViewChunks: (document: TTarsDocument) => void;
   onClose: () => void;
@@ -89,8 +91,8 @@ export default function GroupDocumentsDialog({
   const [details, setDetails] = useState<TTarsDocument | null>(null);
 
   const groupDocuments = useMemo(
-    () => documents.filter((doc) => doc.dataset_file_system_id === link.dataset_file_system_id),
-    [documents, link.dataset_file_system_id],
+    () => documents.filter((doc) => doc.dataset_file_system_to_knowledge_base_id === link.id),
+    [documents, link.id],
   );
 
   const counts = useMemo(() => {
@@ -173,7 +175,7 @@ export default function GroupDocumentsDialog({
   const statusBadge = (status: number | null, label: string, count: number) => {
     const active = statusFilter === status;
     const className =
-      status === null ? 'bg-brand-primary/10 text-brand-primary' : docStatusMeta(status).className;
+      status === null ? 'bg-surface-tertiary text-text-secondary' : docStatusMeta(status).className;
     return (
       <button
         type="button"
@@ -191,7 +193,9 @@ export default function GroupDocumentsDialog({
     <>
       <OGDialog open={true} onOpenChange={(open) => !open && onClose()}>
         <OGDialogTemplate
-          title={localize('com_ui_tars_kb_ds_group_documents', { 0: fileSystemLabel(link) })}
+          title={localize('com_ui_tars_kb_ds_group_documents', {
+            0: `${fileSystemLabel(link)} · ${boundFolderLabel(link, source?.path, localize)}`,
+          })}
           className="w-11/12 md:max-w-5xl"
           showCloseButton={true}
           mainClassName="min-w-0"
@@ -212,21 +216,21 @@ export default function GroupDocumentsDialog({
                   ))}
                 </dl>
               </section>
+              <div className="relative w-full sm:max-w-xs">
+                <Search
+                  className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+                  aria-hidden
+                />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={localize('com_ui_tars_kb_ds_search')}
+                  aria-label={localize('com_ui_tars_kb_ds_search')}
+                  className="pl-9"
+                />
+              </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative min-w-[14rem]">
-                    <Search
-                      className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-                      aria-hidden
-                    />
-                    <Input
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder={localize('com_ui_tars_kb_ds_search')}
-                      aria-label={localize('com_ui_tars_kb_ds_search')}
-                      className="pl-9"
-                    />
-                  </div>
                   {statusBadge(null, localize('com_ui_tars_kb_ds_total'), groupDocuments.length)}
                   {statusBadge(
                     DOC_STATUS.completed,
@@ -251,6 +255,16 @@ export default function GroupDocumentsDialog({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isGroupBusy}
+                    onClick={onEdit}
+                    className="gap-1.5"
+                  >
+                    <Pencil className="size-4" aria-hidden />
+                    {localize('com_ui_tars_kb_ds_edit')}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -280,15 +294,6 @@ export default function GroupDocumentsDialog({
                   >
                     <RotateCcw className="size-4" aria-hidden />
                     {localize('com_ui_tars_kb_ds_rebuild')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onUnlink}
-                    className="text-pwc-danger hover:text-pwc-danger gap-1.5"
-                  >
-                    <Unlink className="size-4" aria-hidden />
-                    {localize('com_ui_tars_kb_ds_unlink')}
                   </Button>
                 </div>
               </div>
@@ -376,9 +381,20 @@ export default function GroupDocumentsDialog({
             </div>
           }
           buttons={
-            <Button variant="secondary" onClick={onClose}>
-              {localize('com_ui_close')}
-            </Button>
+            <div className="flex w-full items-center justify-between">
+              <Button
+                variant="outline"
+                onClick={onUnlink}
+                className="text-pwc-danger hover:text-pwc-danger gap-1.5"
+              >
+                <Unlink className="size-4" aria-hidden />
+                {localize('com_ui_tars_kb_ds_unlink')}
+              </Button>
+
+              <Button variant="secondary" onClick={onClose}>
+                {localize('com_ui_close')}
+              </Button>
+            </div>
           }
         />
       </OGDialog>

@@ -48,7 +48,7 @@ export default function GroupScheduleSection({
    */
   const schedule =
     (schedulesQuery.data ?? []).find(
-      (row) => row.dataset_type === 'file_system' && row.dataset_id === link.dataset_file_system_id,
+      (row) => row.dataset_type === 'file_system' && row.association_id === link.id,
     ) ?? null;
 
   const [enabled, setEnabled] = useState(schedule != null && !isStopped(schedule));
@@ -112,6 +112,7 @@ export default function GroupScheduleSection({
         await createMutation.mutateAsync({
           datasetId: link.dataset_file_system_id,
           datasetType: 'file_system',
+          associationId: link.id,
           knowledgeBaseId,
           ...scheduleInput(),
         });

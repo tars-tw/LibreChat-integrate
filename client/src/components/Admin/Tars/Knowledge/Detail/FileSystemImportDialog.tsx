@@ -91,10 +91,7 @@ export default function FileSystemImportDialog({
   const filesQuery = useTarsFileSystemFilesQuery(knowledgeBaseId, browseId);
 
   /** A server already linked here would be re-imported rather than added. */
-  const available = useMemo(() => {
-    const bound = new Set(linked.map((link) => link.dataset_file_system_id));
-    return (sourcesQuery.data ?? []).filter((source) => !bound.has(source.id));
-  }, [sourcesQuery.data, linked]);
+  const available = useMemo(() => sourcesQuery.data ?? [], [sourcesQuery.data]);
 
   useEffect(() => {
     if (sourceId === '' && available.length > 0) {

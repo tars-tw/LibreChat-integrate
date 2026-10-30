@@ -43,7 +43,7 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
     onSuccess: (result, variables) =>
       showToast({
         message:
-          (variables.fileSystemIds?.length ?? 0) > 0
+          (variables.fileSystemAssociationIds?.length ?? 0) > 0
             ? localize('com_ui_tars_kb_ds_batch_unlink_started', { 0: String(result.accepted) })
             : localize('com_ui_tars_kb_ds_batch_started', { 0: String(result.accepted) }),
         status: 'success',
@@ -158,7 +158,9 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
             locale={locale}
             onRefresh={refresh}
             isRefreshing={isRefreshing}
-            onBatchUnlink={(fileSystemIds) => batchDeleteMutation.mutate({ fileSystemIds })}
+            onBatchUnlink={(fileSystemAssociationIds) =>
+              batchDeleteMutation.mutate({ fileSystemAssociationIds })
+            }
             isBatchUnlinking={batchDeleteMutation.isLoading}
             onViewChunks={(document: TTarsDocument) =>
               setChunkSource({ kind: 'document', document })

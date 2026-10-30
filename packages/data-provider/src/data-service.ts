@@ -1611,7 +1611,7 @@ export const importTarsFileSystemDataset = (
 export const refreshTarsFileSystemDataset = (
   id: string,
   fsId: string,
-  data: { chunkSize?: number; overlap?: number },
+  data: { associationId?: string; chunkSize?: number; overlap?: number },
 ): Promise<{ success: boolean }> => {
   return request.post(endpoints.tarsKnowledgeBaseFileSystemRefresh(id, fsId), data);
 };
@@ -1619,7 +1619,7 @@ export const refreshTarsFileSystemDataset = (
 export const rebuildTarsFileSystemDataset = (
   id: string,
   fsId: string,
-  data: { chunkSize?: number; overlap?: number },
+  data: { associationId?: string; chunkSize?: number; overlap?: number },
 ): Promise<{ success: boolean }> => {
   return request.post(endpoints.tarsKnowledgeBaseFileSystemRebuild(id, fsId), data);
 };
@@ -1627,15 +1627,21 @@ export const rebuildTarsFileSystemDataset = (
 export const reprocessTarsFileSystemDataset = (
   id: string,
   fsId: string,
+  data: { associationId?: string } = {},
 ): Promise<{ success: boolean }> => {
-  return request.post(endpoints.tarsKnowledgeBaseFileSystemReprocess(id, fsId), {});
+  return request.post(endpoints.tarsKnowledgeBaseFileSystemReprocess(id, fsId), data);
 };
 
 export const unlinkTarsFileSystemDataset = (
   id: string,
   fsId: string,
+  params: { associationId?: string } = {},
 ): Promise<{ success: boolean }> => {
-  return request.delete(endpoints.tarsKnowledgeBaseFileSystem(id, fsId));
+  const suffix =
+    params.associationId != null && params.associationId !== ''
+      ? `?associationId=${encodeURIComponent(params.associationId)}`
+      : '';
+  return request.delete(`${endpoints.tarsKnowledgeBaseFileSystem(id, fsId)}${suffix}`);
 };
 
 export const batchDeleteTarsDatasets = (
