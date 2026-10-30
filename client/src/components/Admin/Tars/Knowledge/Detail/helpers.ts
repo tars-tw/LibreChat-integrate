@@ -28,16 +28,17 @@ export interface StatusMeta {
 const STATUS_META: Record<number, StatusMeta> = {
   [DOC_STATUS.uploaded]: {
     labelKey: 'com_ui_tars_kb_status_uploaded',
-    className: 'bg-surface-tertiary text-text-secondary',
+    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
   },
   [DOC_STATUS.processing]: {
     labelKey: 'com_ui_tars_kb_status_processing',
-    className: 'bg-surface-tertiary text-text-secondary',
+    className:
+      'bg-pwc-orange-100 text-pwc-orange-700 dark:bg-pwc-orange-900/40 dark:text-pwc-orange-300',
     spinning: true,
   },
   [DOC_STATUS.completed]: {
     labelKey: 'com_ui_tars_kb_status_completed',
-    className: 'bg-pwc-success/15 text-pwc-success',
+    className: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
   },
   [DOC_STATUS.failed]: {
     labelKey: 'com_ui_tars_kb_status_failed',
@@ -59,7 +60,7 @@ export const enabledStatusMeta = (status: number | null | undefined): StatusMeta
   status === 1
     ? {
         labelKey: 'com_ui_tars_kb_ds_enabled',
-        className: 'bg-pwc-success/15 text-pwc-success',
+        className: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
       }
     : {
         labelKey: 'com_ui_tars_kb_ds_disabled',
