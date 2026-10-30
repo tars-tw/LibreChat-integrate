@@ -31,6 +31,7 @@ const {
   configMiddleware,
 } = require('~/server/middleware');
 const { checkPeoplePickerAccess } = require('~/server/middleware/checkPeoplePickerAccess');
+const tarsAgentShare = require('~/server/services/tarsAgentShare');
 const tarsSharing = require('~/server/services/tarsSharing');
 const db = require('~/models');
 const { findMCPServerByObjectId, getSkillById } = db;
@@ -221,6 +222,7 @@ router.put(
   checkShareAccessUnlessAgentAdmin,
   checkSharePublicAccess,
   rejectSharedLinkOwnerPermissionChanges,
+  tarsAgentShare.guard,
   configMiddleware,
   updateResourcePermissions,
 );

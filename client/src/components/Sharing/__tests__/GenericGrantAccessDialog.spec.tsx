@@ -1,6 +1,6 @@
 import React from 'react';
-import { PrincipalType, ResourceType } from 'librechat-data-provider';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { PrincipalType, ResourceType, TARS_MCP_SHARE_BLOCKED } from 'librechat-data-provider';
 import '@testing-library/jest-dom/extend-expect';
 import type { TPrincipal } from 'librechat-data-provider';
 import GenericGrantAccessDialog from '../GenericGrantAccessDialog';
@@ -101,13 +101,14 @@ jest.mock('../PeoplePicker', () => ({
   SelectedPrincipalsList: () => <div data-testid="principals-list" />,
 }));
 
-const renderDialog = () =>
+const renderDialog = (props: { hidePublicSharing?: boolean } = {}) =>
   render(
     <GenericGrantAccessDialog
       resourceDbId="agent-db-1"
       resourceId="agent-1"
       resourceName="Test Agent"
       resourceType={ResourceType.AGENT}
+      {...props}
     />,
   );
 
@@ -319,6 +320,43 @@ describe('GenericGrantAccessDialog - permissions load failure', () => {
       expect(mutateAsync.mock.calls[0][0].data.updated).toHaveLength(2);
     });
 
+    it('names who a share was refused for and clears that with the draft', async () => {
+      const mutateAsync = openDirectoryDialog();
+      mutateAsync.mockRejectedValue({
+        response: {
+          data: {
+            code: TARS_MCP_SHARE_BLOCKED,
+            blocked: [
+              {
+                principal_type: 'user',
+                idOnTheSource: 't-amy',
+                name: 'Amy',
+                servers: [
+                  { mcp_server_id: 's1', server_name: 'Maps', no_access: true, tool_names: [] },
+                ],
+              },
+            ],
+          },
+        },
+      });
+
+      fireEvent.click(screen.getByTestId('check-picks'));
+      await act(async () => {
+        fireEvent.click(saveButton());
+      });
+
+      expect(screen.getByText('Amy')).toBeInTheDocument();
+      expect(screen.getByText('com_ui_tars_mcp_share_blocked')).toBeInTheDocument();
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'com_ui_tars_mcp_share_blocked', status: 'error' }),
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_share_var' }));
+
+      expect(screen.queryByText('com_ui_tars_mcp_share_blocked')).not.toBeInTheDocument();
+    });
+
     it('drops the checked picks when the dialog is closed without saving', async () => {
       const mutateAsync = openDirectoryDialog();
 
@@ -328,6 +366,26 @@ describe('GenericGrantAccessDialog - permissions load failure', () => {
 
       expect(saveButton()).toBeDisabled();
       expect(mutateAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('public sharing on an agent bound to MCP tools', () => {
+    const openDialog = (state: Record<string, unknown> = {}) => {
+      mockUseResourcePermissionState.mockReturnValue(baseState(state));
+      renderDialog({ hidePublicSharing: true });
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_share_var' }));
+    };
+
+    it('is not offered', () => {
+      openDialog();
+
+      expect(screen.queryByTestId('public-toggle')).not.toBeInTheDocument();
+    });
+
+    it('stays available to turn off on an agent that is already public', () => {
+      openDialog({ currentIsPublic: true, isPublic: true });
+
+      expect(screen.getByTestId('public-toggle')).toBeInTheDocument();
     });
   });
 

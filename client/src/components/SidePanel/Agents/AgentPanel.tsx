@@ -40,6 +40,7 @@ import { createProviderOption, getDefaultAgentFormValues } from '~/utils';
 import { useResourcePermissions } from '~/hooks/useResourcePermissions';
 import { useAgentPanelContext } from '~/Providers/AgentPanelContext';
 import { resolveCapabilityTools } from './Tools/items/capabilities';
+import { agentSaveShareError } from '~/components/Sharing/errors';
 import ResetApprovals from '~/components/Agents/ResetApprovals';
 import AgentPanelSkeleton from './AgentPanelSkeleton';
 import AdvancedPanel from './Advanced/AdvancedPanel';
@@ -803,6 +804,11 @@ export default function AgentPanel() {
           message: localize(instructionsPromptErrorKeys[instructionsPromptErrorCode]),
           status: 'error',
         });
+        return;
+      }
+      const shareError = agentSaveShareError(err, localize);
+      if (shareError) {
+        showToast({ message: shareError, status: 'error' });
         return;
       }
       const error = err as Error;

@@ -7,6 +7,7 @@ import {
   useRevertAgentVersionMutation,
   useGetExpandedAgentByIdQuery,
 } from '~/data-provider';
+import { agentSaveShareError } from '~/components/Sharing/errors';
 import { isActiveVersion } from './isActiveVersion';
 import { useAgentPanelContext } from '~/Providers';
 import VersionContent from './VersionContent';
@@ -38,9 +39,10 @@ export default function VersionPanel() {
       });
       refetch();
     },
-    onError: () => {
+    onError: (error) => {
       showToast({
-        message: localize('com_ui_agent_version_restore_error'),
+        message:
+          agentSaveShareError(error, localize) ?? localize('com_ui_agent_version_restore_error'),
         status: 'error',
       });
     },

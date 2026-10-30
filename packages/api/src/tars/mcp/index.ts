@@ -3,4 +3,5 @@ export * from './client';
 export * from './config';
 export * from './names';
 export * from './server';
+export * from './share';
 export * from './user';
