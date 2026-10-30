@@ -162,6 +162,7 @@ export default function WebsitesTab({
                         onClick={() => onViewChunks(site)}
                         aria-label={localize('com_ui_tars_kb_view_chunks')}
                         title={localize('com_ui_tars_kb_view_chunks')}
+                        className="text-[rgb(var(--pwc-info-cyan))] hover:text-[rgb(var(--pwc-info-cyan))]"
                       >
                         <Layers className="size-4" aria-hidden />
                       </Button>
