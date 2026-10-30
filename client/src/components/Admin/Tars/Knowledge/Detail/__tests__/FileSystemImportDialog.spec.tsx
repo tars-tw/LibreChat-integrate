@@ -68,14 +68,7 @@ jest.mock('~/hooks', () => ({
 }));
 
 const renderDialog = () =>
-  render(
-    <FileSystemImportDialog
-      knowledgeBaseId="kb-1"
-      linked={[]}
-      limits={LIMITS}
-      onClose={jest.fn()}
-    />,
-  );
+  render(<FileSystemImportDialog knowledgeBaseId="kb-1" limits={LIMITS} onClose={jest.fn()} />);
 
 const browse = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(screen.getByLabelText(/com_ui_tars_kb_ds_group_name/), 'Reports');

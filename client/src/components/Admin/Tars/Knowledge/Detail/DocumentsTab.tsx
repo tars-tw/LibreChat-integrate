@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Checkbox, Dropdown, useToastContext } from '@librechat/client';
+import { Checkbox, useToastContext } from '@librechat/client';
 import type { TTarsDocument, TTarsDatasetLimits } from 'librechat-data-provider';
 import {
   useDeleteTarsDocumentMutation,

@@ -163,7 +163,7 @@ export default function FileSystemEditDialog({
     }
     if (filesQuery.isError) {
       return (
-        <p className="text-pwc-danger text-sm">
+        <p className="text-text-destructive text-sm">
           {relayedError(filesQuery.error) ?? localize('com_ui_tars_kb_ds_connect_failed')}
         </p>
       );
@@ -185,7 +185,7 @@ export default function FileSystemEditDialog({
             className="w-full"
           />
           <p
-            className={`text-xs ${boundFolder !== '' ? 'text-brand-primary' : 'text-text-secondary'}`}
+            className={`text-xs ${boundFolder !== '' ? 'text-accent-primary' : 'text-text-secondary'}`}
           >
             {boundFolder !== ''
               ? localize('com_ui_tars_kb_ds_folder_bound_hint', { 0: boundFolder })
@@ -215,17 +215,14 @@ export default function FileSystemEditDialog({
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search
-              className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-              aria-hidden
-            />
+          <div className="border-border-control focus-within:border-border-heavy flex min-w-0 flex-1 items-center rounded-lg border ps-3">
+            <Search className="text-text-secondary size-4 shrink-0" aria-hidden />
             <Input
+              variant="flush"
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
               placeholder={localize('com_ui_tars_audit_search_placeholder')}
               aria-label={localize('com_ui_tars_kb_ds_filter_files')}
-              className="pl-9"
             />
           </div>
           <span className="text-text-secondary shrink-0 text-sm">
@@ -336,7 +333,7 @@ export default function FileSystemEditDialog({
         )}
 
         {invalidFiles.size > 0 && (
-          <p className="text-pwc-danger text-xs">
+          <p className="text-text-destructive text-xs">
             {localize('com_ui_tars_kb_ds_chunk_invalid', {
               0: String(limits.max_chunk_size),
               1: String(limits.max_overlap),
@@ -362,7 +359,9 @@ export default function FileSystemEditDialog({
                   currentFolder === '' ? localize('com_ui_tars_kb_ds_whole_source') : currentFolder,
               })}
             </p>
-            <p className="text-pwc-danger text-xs">{localize('com_ui_tars_kb_ds_edit_warning')}</p>
+            <p className="text-text-destructive text-xs">
+              {localize('com_ui_tars_kb_ds_edit_warning')}
+            </p>
             {body()}
           </div>
         }

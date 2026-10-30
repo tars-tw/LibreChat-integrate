@@ -341,9 +341,8 @@ export default function FileSystemsTab({
                           onClick={() => setViewing(link)}
                           aria-label={localize('com_ui_tars_kb_ds_view')}
                           title={localize('com_ui_tars_kb_ds_view')}
-                          className="text-brand-primary hover:text-brand-primary"
                         >
-                          <Eye className="size-4" aria-hidden />
+                          <Eye className="text-accent-primary size-4" aria-hidden />
                         </Button>
                         <Button
                           variant="ghost"
@@ -352,9 +351,8 @@ export default function FileSystemsTab({
                           onClick={() => setSyncing(link)}
                           aria-label={localize('com_ui_tars_kb_ds_sync')}
                           title={localize('com_ui_tars_kb_ds_sync')}
-                          className="hover:text-pwc-info text-[rgb(var(--pwc-info))]"
                         >
-                          <RefreshCcw className="size-4" aria-hidden />
+                          <RefreshCcw className="text-text-warning size-4" aria-hidden />
                         </Button>
                         <Button
                           variant="ghost"
@@ -382,9 +380,8 @@ export default function FileSystemsTab({
                           onClick={() => setUnlinking(link)}
                           aria-label={localize('com_ui_tars_kb_ds_unlink')}
                           title={localize('com_ui_tars_kb_ds_unlink')}
-                          className="text-pwc-danger hover:text-pwc-danger"
                         >
-                          <Unlink className="size-4" aria-hidden />
+                          <Unlink className="text-text-destructive size-4" aria-hidden />
                         </Button>
                       </div>
                     </td>
