@@ -6,7 +6,9 @@ import type {
   TTarsDatasetLimits,
   TTarsDocument,
 } from 'librechat-data-provider';
+import type { EditValue } from './FileSystemEditDialog';
 import {
+  useImportTarsFileSystemMutation,
   useRebuildTarsFileSystemMutation,
   useRefreshTarsFileSystemMutation,
   useTarsFileSystemSourcesQuery,
@@ -23,10 +25,12 @@ import {
   recordedChunkLabel,
 } from './helpers';
 import FileSystemImportDialog from './FileSystemImportDialog';
+import FileSystemEditDialog from './FileSystemEditDialog';
 import GroupDocumentsDialog from './GroupDocumentsDialog';
 import Pagination, { usePagination } from '../Pagination';
 import { formatDateTime } from '../../Users/helpers';
 import ConfirmDialog from './ConfirmDialog';
+import { relayedError } from '../helpers';
 import StatusBadge from './StatusBadge';
 import SyncDialog from './SyncDialog';
 import { useLocalize } from '~/hooks';
@@ -58,7 +62,7 @@ export default function FileSystemsTab({
   locale: string;
   onRefresh: () => void;
   isRefreshing: boolean;
-  onBatchUnlink: (fileSystemIds: string[]) => void;
+  onBatchUnlink: (associationIds: string[]) => void;
   isBatchUnlinking: boolean;
   onViewChunks: (document: TTarsDocument) => void;
 }) {
@@ -76,9 +80,13 @@ export default function FileSystemsTab({
   );
   const [rebuilding, setRebuilding] = useState<TTarsDatasetFileSystemLink | null>(null);
   const [viewing, setViewing] = useState<TTarsDatasetFileSystemLink | null>(null);
+  const [editing, setEditing] = useState<TTarsDatasetFileSystemLink | null>(null);
 
   const visible = useMemo(
-    () => links.filter((link) => matchesName(fileSystemLabel(link), search)),
+    () =>
+      links.filter((link) =>
+        matchesName(`${fileSystemLabel(link)} ${link.directory_path ?? ''}`, search),
+      ),
     [links, search],
   );
 
@@ -99,7 +107,7 @@ export default function FileSystemsTab({
 
   /** A refetch can drop a group a background unlink finished, so stale ticks never count. */
   const selectedIds = useMemo(() => {
-    const linked = new Set(links.map((link) => link.dataset_file_system_id));
+    const linked = new Set(links.map((link) => link.id));
     return selected.filter((id) => linked.has(id));
   }, [links, selected]);
 
@@ -107,8 +115,7 @@ export default function FileSystemsTab({
     setSelected((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]));
 
   const allSelected =
-    paged.rows.length > 0 &&
-    paged.rows.every((link) => selectedIds.includes(link.dataset_file_system_id));
+    paged.rows.length > 0 && paged.rows.every((link) => selectedIds.includes(link.id));
 
   /**
    * How many of the group's documents finished. pwc_tars ingests on a
@@ -118,7 +125,7 @@ export default function FileSystemsTab({
   const progress = useMemo(() => {
     const counts = new Map<string, { done: number; total: number }>();
     documents.forEach((doc) => {
-      const groupId = doc.dataset_file_system_id;
+      const groupId = doc.dataset_file_system_to_knowledge_base_id;
       if (groupId == null || groupId === '') {
         return;
       }
@@ -152,11 +159,13 @@ export default function FileSystemsTab({
   });
 
   const unlinkMutation = useUnlinkTarsFileSystemMutation(knowledgeBaseId, {
-    onSuccess: () => {
-      showToast({ message: localize('com_ui_tars_kb_ds_unlinked'), status: 'success' });
-      setUnlinking(null);
-    },
-    onError,
+    onSuccess: () =>
+      showToast({ message: localize('com_ui_tars_kb_ds_unlinked'), status: 'success' }),
+    onError: (error) =>
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+        status: 'error',
+      }),
   });
 
   const rebuildMutation = useRebuildTarsFileSystemMutation(knowledgeBaseId, {
@@ -167,8 +176,48 @@ export default function FileSystemsTab({
     onError,
   });
 
+  /**
+   * Editing re-imports through the same endpoint as an import, with the
+   * association's id. The dialogs close at once and the request carries on, so
+   * this stays up here where it is not unmounted with them.
+   */
+  const editMutation = useImportTarsFileSystemMutation(knowledgeBaseId, {
+    onSuccess: () =>
+      showToast({ message: localize('com_ui_tars_kb_ds_edit_done'), status: 'success' }),
+    onError: (error) =>
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_kb_ds_edit_failed'),
+        status: 'error',
+      }),
+  });
+
+  const confirmEdit = (link: TTarsDatasetFileSystemLink, { folder, syncAll, files }: EditValue) => {
+    /** The association keeps the chunking it was imported with; each file carries its own. */
+    const { chunkSize, overlap } = recordedChunk(link);
+    showToast({ message: localize('com_ui_tars_kb_ds_edit_started'), status: 'info' });
+    setEditing(null);
+    setViewing(null);
+    editMutation.mutate({
+      fileSystemId: link.dataset_file_system_id,
+      data: {
+        name: fileSystemLabel(link),
+        existingAssociationId: link.id,
+        syncAll,
+        uploadOnly: link.is_upload_only === true,
+        chunkSize,
+        overlap,
+        selectedFolder: folder,
+        files,
+      },
+    });
+  };
+
   const isBusy =
-    refreshMutation.isLoading || reprocessMutation.isLoading || rebuildMutation.isLoading;
+    refreshMutation.isLoading ||
+    reprocessMutation.isLoading ||
+    rebuildMutation.isLoading ||
+    editMutation.isLoading ||
+    unlinkMutation.isLoading;
 
   return (
     <div className="space-y-3">
@@ -192,30 +241,31 @@ export default function FileSystemsTab({
         </p>
       ) : (
         <div className="border-border-light overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[64rem] border-collapse text-sm">
+          <table className="w-full min-w-[72rem] border-collapse text-sm">
             <thead className="bg-surface-secondary">
               <tr className="text-text-secondary text-left">
                 <th className="w-10 px-3 py-2">
                   <Checkbox
                     checked={allSelected}
                     onCheckedChange={(checked) =>
-                      setSelected(
-                        checked === true
-                          ? paged.rows.map((link) => link.dataset_file_system_id)
-                          : [],
-                      )
+                      setSelected(checked === true ? paged.rows.map((link) => link.id) : [])
                     }
                     aria-label={localize('com_ui_tars_kb_ds_select_all')}
                   />
                 </th>
-                <th className="w-[24%] px-3 py-2 font-medium">
+                <th className="w-[25%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_kb_ds_name')}
+                </th>
+                <th className="w-[15%] px-3 py-2 font-medium">
+                  {localize('com_ui_tars_kb_ds_file_server')}
                 </th>
                 <th className="w-[20%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_kb_ds_bind_folder')}
                 </th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_status')}</th>
-                <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_ds_progress')}</th>
+                <th className="w-[4%] px-3 py-2 font-medium whitespace-nowrap">
+                  {localize('com_ui_tars_kb_ds_progress')}
+                </th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_ds_sync_mode')}</th>
                 <th className="px-3 py-2 font-medium">
                   {localize('com_ui_tars_kb_ds_chunk_settings')}
@@ -228,18 +278,16 @@ export default function FileSystemsTab({
             </thead>
             <tbody>
               {paged.rows.map((link) => {
-                const counts = progress.get(link.dataset_file_system_id) ?? { done: 0, total: 0 };
-                const folder = boundFolderLabel(
-                  link,
-                  sourcesById.get(link.dataset_file_system_id)?.path,
-                  localize,
-                );
+                const counts = progress.get(link.id) ?? { done: 0, total: 0 };
+                const source = sourcesById.get(link.dataset_file_system_id);
+
+                const folder = boundFolderLabel(link, source?.path, localize);
                 return (
                   <tr key={link.id} className="border-border-light hover:bg-surface-hover border-t">
                     <td className="px-3 py-1.5">
                       <Checkbox
-                        checked={selectedIds.includes(link.dataset_file_system_id)}
-                        onCheckedChange={() => toggle(link.dataset_file_system_id)}
+                        checked={selectedIds.includes(link.id)}
+                        onCheckedChange={() => toggle(link.id)}
                         aria-label={localize('com_ui_tars_kb_ds_select_item', {
                           0: fileSystemLabel(link),
                         })}
@@ -251,6 +299,14 @@ export default function FileSystemsTab({
                         title={fileSystemLabel(link)}
                       >
                         {fileSystemLabel(link)}
+                      </span>
+                    </td>
+                    <td className="max-w-0 px-3 py-1.5">
+                      <span
+                        className="text-text-secondary block truncate"
+                        title={source?.name ?? ''}
+                      >
+                        {source?.name ?? '-'}
                       </span>
                     </td>
                     <td className="max-w-0 px-3 py-1.5">
@@ -285,6 +341,7 @@ export default function FileSystemsTab({
                           onClick={() => setViewing(link)}
                           aria-label={localize('com_ui_tars_kb_ds_view')}
                           title={localize('com_ui_tars_kb_ds_view')}
+                          className="text-brand-primary hover:text-brand-primary"
                         >
                           <Eye className="size-4" aria-hidden />
                         </Button>
@@ -295,6 +352,7 @@ export default function FileSystemsTab({
                           onClick={() => setSyncing(link)}
                           aria-label={localize('com_ui_tars_kb_ds_sync')}
                           title={localize('com_ui_tars_kb_ds_sync')}
+                          className="hover:text-pwc-info text-[rgb(var(--pwc-info))]"
                         >
                           <RefreshCcw className="size-4" aria-hidden />
                         </Button>
@@ -315,7 +373,6 @@ export default function FileSystemsTab({
                           onClick={() => setRebuilding(link)}
                           aria-label={localize('com_ui_tars_kb_ds_rebuild')}
                           title={localize('com_ui_tars_kb_ds_rebuild')}
-                          className="text-pwc-danger"
                         >
                           <RotateCcw className="size-4" aria-hidden />
                         </Button>
@@ -325,7 +382,7 @@ export default function FileSystemsTab({
                           onClick={() => setUnlinking(link)}
                           aria-label={localize('com_ui_tars_kb_ds_unlink')}
                           title={localize('com_ui_tars_kb_ds_unlink')}
-                          className="text-pwc-danger"
+                          className="text-pwc-danger hover:text-pwc-danger"
                         >
                           <Unlink className="size-4" aria-hidden />
                         </Button>
@@ -344,7 +401,6 @@ export default function FileSystemsTab({
       {showImport && (
         <FileSystemImportDialog
           knowledgeBaseId={knowledgeBaseId}
-          linked={links}
           limits={limits}
           onClose={() => setShowImport(false)}
         />
@@ -377,7 +433,15 @@ export default function FileSystemsTab({
           confirmLabel={localize('com_ui_tars_kb_ds_unlink')}
           destructive
           isBusy={unlinkMutation.isLoading}
-          onConfirm={() => unlinkMutation.mutate(unlinking.dataset_file_system_id)}
+          onConfirm={() => {
+            showToast({ message: localize('com_ui_tars_kb_ds_unlink_started'), status: 'info' });
+            unlinkMutation.mutate({
+              fileSystemId: unlinking.dataset_file_system_id,
+              associationId: unlinking.id,
+            });
+            setUnlinking(null);
+            setViewing(null);
+          }}
           onClose={() => setUnlinking(null)}
         />
       )}
@@ -390,6 +454,7 @@ export default function FileSystemsTab({
           onConfirm={({ chunkSize, overlap }) =>
             refreshMutation.mutate({
               fileSystemId: syncing.dataset_file_system_id,
+              associationId: syncing.id,
               chunkSize,
               overlap,
             })
@@ -406,7 +471,12 @@ export default function FileSystemsTab({
           })}
           confirmLabel={localize('com_ui_tars_kb_ds_reprocess_group')}
           isBusy={reprocessMutation.isLoading}
-          onConfirm={() => reprocessMutation.mutate(reprocessingGroup.dataset_file_system_id)}
+          onConfirm={() =>
+            reprocessMutation.mutate({
+              fileSystemId: reprocessingGroup.dataset_file_system_id,
+              associationId: reprocessingGroup.id,
+            })
+          }
           onClose={() => setReprocessingGroup(null)}
         />
       )}
@@ -425,11 +495,22 @@ export default function FileSystemsTab({
             const { chunkSize, overlap } = recordedChunk(rebuilding);
             rebuildMutation.mutate({
               fileSystemId: rebuilding.dataset_file_system_id,
+              associationId: rebuilding.id,
               chunkSize,
               overlap,
             });
           }}
           onClose={() => setRebuilding(null)}
+        />
+      )}
+
+      {editing != null && (
+        <FileSystemEditDialog
+          knowledgeBaseId={knowledgeBaseId}
+          link={editing}
+          limits={limits}
+          onConfirm={(value) => confirmEdit(editing, value)}
+          onClose={() => setEditing(null)}
         />
       )}
 
@@ -442,6 +523,7 @@ export default function FileSystemsTab({
           locale={locale}
           isGroupBusy={isBusy}
           onSync={() => setSyncing(viewing)}
+          onEdit={() => setEditing(viewing)}
           onReprocessGroup={() => setReprocessingGroup(viewing)}
           onRebuild={() => setRebuilding(viewing)}
           onUnlink={() => setUnlinking(viewing)}

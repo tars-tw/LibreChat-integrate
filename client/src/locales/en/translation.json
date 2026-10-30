@@ -5549,5 +5549,16 @@
   "com_ui_tars_about_per_page": "{{0}} per page",
   "com_ui_tars_about_select_version": "Select a version to view its details.",
   "com_ui_tars_nav_ai_design": "AI Design",
-  "com_ui_tars_nav_model_management": "Model Management"
+  "com_ui_tars_nav_model_management": "Model Management",
+  "com_ui_tars_kb_ds_edit": "Change folder / files",
+  "com_ui_tars_kb_ds_edit_title": "Change folder / files: {{0}}",
+  "com_ui_tars_kb_ds_edit_current": "Current folder: {{0}}",
+  "com_ui_tars_kb_ds_edit_warning": "On confirm, this association's current documents are removed and re-imported from the new folder or files. The schedule and chunk settings are kept.",
+  "com_ui_tars_kb_ds_edit_confirm": "Confirm change",
+  "com_ui_tars_kb_ds_edit_started": "Submitted. Processing in the background — check the list later for the result.",
+  "com_ui_tars_kb_ds_edit_done": "Change complete",
+  "com_ui_tars_kb_ds_edit_failed": "Change failed",
+  "com_ui_tars_kb_ds_edit_chunk_hint": "Files you leave alone keep the chunking this association was imported with ({{0}}); you can also set it per file below.",
+  "com_ui_tars_kb_ds_unlink_started": "Unlinking in the background — check the list later to confirm.",
+  "com_ui_tars_kb_ds_all_sources": "All Sources"
 }
