@@ -28,6 +28,10 @@ import type {
   TTarsFileSystemTestInput,
   TTarsWebsiteImportInput,
   TTarsFileSystemImportInput,
+  TTarsDatasetLevelInput,
+  TTarsDatasetLevelResult,
+  TTarsDataSecurityAssignmentSavePayload,
+  TTarsDataSecurityAssignmentSaveResult,
   TTarsDatasetBatchDelete,
   TTarsSchedule,
   TTarsScheduleInput,
@@ -433,6 +437,41 @@ export const useUpdateTarsDatabasePromptMutation = (
       ...options,
       onSuccess: (...args) => {
         queryClient.invalidateQueries([QueryKeys.tarsDatabasePrompt, knowledgeBaseId]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useSetTarsDatasetLevelMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<
+    { result: TTarsDatasetLevelResult },
+    unknown,
+    TTarsDatasetLevelInput
+  >,
+) =>
+  useDatasetMutation(
+    knowledgeBaseId,
+    (data: TTarsDatasetLevelInput) => dataService.setTarsDatasetLevel(knowledgeBaseId, data),
+    options,
+  );
+
+type SecuritySave = { levelId: string; data: TTarsDataSecurityAssignmentSavePayload };
+type SecuritySaveResponse = { result: TTarsDataSecurityAssignmentSaveResult };
+
+export const useSaveTarsKnowledgeBaseSecurityMutation = (
+  knowledgeBaseId: string,
+  options?: UseMutationOptions<SecuritySaveResponse, unknown, SecuritySave>,
+): UseMutationResult<SecuritySaveResponse, unknown, SecuritySave> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ levelId, data }: SecuritySave) =>
+      dataService.saveTarsKnowledgeBaseSecurity(knowledgeBaseId, levelId, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseSecurity, knowledgeBaseId]);
         options?.onSuccess?.(...args);
       },
     },

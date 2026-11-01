@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ExternalLink, Layers, Pencil, Trash2 } from 'lucide-react';
 import { Button, Checkbox, useToastContext } from '@librechat/client';
-import type { TTarsDatasetWebsite } from 'librechat-data-provider';
+import { ExternalLink, Layers, Pencil, ShieldCheck, Trash2 } from 'lucide-react';
+import type { TTarsDatasetWebsite, TTarsDataSecurityLevel } from 'librechat-data-provider';
 import { enabledStatusMeta, formatCount, matchesName, websiteLabel } from './helpers';
 import { useDeleteTarsWebsiteMutation } from '~/data-provider';
 import Pagination, { usePagination } from '../Pagination';
 import { formatDateTime } from '../../Users/helpers';
+import LevelDialog, { LevelChip } from './Level';
 import WebsiteDialog from './WebsiteDialog';
 import ConfirmDialog from './ConfirmDialog';
 import StatusBadge from './StatusBadge';
@@ -16,6 +17,7 @@ import Toolbar from './Toolbar';
 export default function WebsitesTab({
   knowledgeBaseId,
   websites,
+  levels,
   locale,
   onRefresh,
   isRefreshing,
@@ -24,6 +26,7 @@ export default function WebsitesTab({
 }: {
   knowledgeBaseId: string;
   websites: TTarsDatasetWebsite[];
+  levels: TTarsDataSecurityLevel[];
   locale: string;
   onRefresh: () => void;
   isRefreshing: boolean;
@@ -38,6 +41,8 @@ export default function WebsitesTab({
   /** `undefined` = closed, `null` = import, a row = edit. */
   const [editing, setEditing] = useState<TTarsDatasetWebsite | null | undefined>(undefined);
   const [deleting, setDeleting] = useState<TTarsDatasetWebsite | null>(null);
+  const [leveling, setLeveling] = useState<TTarsDatasetWebsite | null>(null);
+  const [levelingSelected, setLevelingSelected] = useState(false);
 
   const visible = useMemo(
     () => websites.filter((site) => matchesName(websiteLabel(site), search)),
@@ -69,6 +74,7 @@ export default function WebsitesTab({
         onRefresh={onRefresh}
         isRefreshing={isRefreshing}
         selectedCount={selected.length}
+        onBatchLevel={() => setLevelingSelected(true)}
         onBatchDelete={() => {
           onBatchDelete(selected);
           setSelected([]);
@@ -85,9 +91,9 @@ export default function WebsitesTab({
         </p>
       ) : (
         <div className="border-border-light overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[64rem] border-collapse text-sm">
+          <table className="w-full min-w-[70rem] border-collapse text-sm">
             <thead className="bg-surface-secondary">
-              <tr className="text-text-secondary text-left">
+              <tr className="text-text-secondary text-left whitespace-nowrap">
                 <th className="w-10 px-3 py-2">
                   <Checkbox
                     checked={allSelected}
@@ -104,6 +110,7 @@ export default function WebsitesTab({
                   {localize('com_ui_tars_kb_ds_url')}
                 </th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_status')}</th>
+                <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_level')}</th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_tokens')}</th>
                 <th className="px-3 py-2 font-medium">
                   {localize('com_ui_tars_kb_ds_created_at')}
@@ -148,6 +155,9 @@ export default function WebsitesTab({
                   <td className="px-3 py-1.5">
                     <StatusBadge meta={enabledStatusMeta(site.status)} />
                   </td>
+                  <td className="px-3 py-1.5">
+                    <LevelChip levels={levels} levelId={site.data_security_level_id} />
+                  </td>
                   <td className="text-text-secondary px-3 py-1.5 tabular-nums">
                     {formatCount(site.tokens)}
                   </td>
@@ -178,6 +188,15 @@ export default function WebsitesTab({
                       <Button
                         variant="ghost"
                         size="icon-xs"
+                        onClick={() => setLeveling(site)}
+                        aria-label={localize('com_ui_tars_kb_level_set')}
+                        title={localize('com_ui_tars_kb_level_set')}
+                      >
+                        <ShieldCheck className="size-4" aria-hidden />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() => setDeleting(site)}
                         aria-label={localize('com_ui_delete')}
                         title={localize('com_ui_delete')}
@@ -201,6 +220,28 @@ export default function WebsitesTab({
           knowledgeBaseId={knowledgeBaseId}
           website={editing}
           onClose={() => setEditing(undefined)}
+        />
+      )}
+
+      {leveling != null && (
+        <LevelDialog
+          knowledgeBaseId={knowledgeBaseId}
+          levels={levels}
+          name={websiteLabel(leveling)}
+          targets={{ websiteIds: [leveling.id] }}
+          currentLevelId={leveling.data_security_level_id ?? null}
+          onClose={() => setLeveling(null)}
+        />
+      )}
+
+      {levelingSelected && (
+        <LevelDialog
+          knowledgeBaseId={knowledgeBaseId}
+          levels={levels}
+          name={localize('com_ui_tars_kb_level_selected', { 0: String(selected.length) })}
+          targets={{ websiteIds: selected }}
+          onSaved={() => setSelected([])}
+          onClose={() => setLevelingSelected(false)}
         />
       )}
 

@@ -1,5 +1,6 @@
 import { Button, Dropdown, Input, Spinner } from '@librechat/client';
-import { Plus, RotateCw, Search, Trash2, Wrench } from 'lucide-react';
+import { Plus, RotateCw, Search, ShieldCheck, Trash2, Wrench } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useLocalize } from '~/hooks';
 
 /**
@@ -12,6 +13,7 @@ export default function Toolbar({
   onRefresh,
   isRefreshing,
   selectedCount,
+  onBatchLevel,
   onBatchDelete,
   batchDeleteLabel,
   onRetryStuck,
@@ -29,6 +31,8 @@ export default function Toolbar({
   isRefreshing: boolean;
   /** Omit `onBatchDelete` on tabs pwc_tars cannot batch-delete. */
   selectedCount?: number;
+  /** Omit on tabs whose rows carry no data security level. */
+  onBatchLevel?: () => void;
   onBatchDelete?: () => void;
   /** Overrides 「刪除所選」 where the batch action unlinks rather than deletes. */
   batchDeleteLabel?: string;
@@ -41,7 +45,8 @@ export default function Toolbar({
   /** Documents only: filter by file source. */
   sourceFilter?: string;
   onSourceFilterChange?: (value: string) => void;
-  sourceOptions?: { value: string; label: string }[];
+  /** The icons double as the legend of the table's source column. */
+  sourceOptions?: { value: string; label: string; icon?: ReactNode }[];
 }) {
   const localize = useLocalize();
 
@@ -85,6 +90,16 @@ export default function Toolbar({
           <RotateCw className="size-4" aria-hidden />
         )}
       </Button>
+
+      {onBatchLevel != null && (selectedCount ?? 0) > 0 && (
+        <Button variant="outline" onClick={onBatchLevel}>
+          <ShieldCheck className="size-4" aria-hidden />
+          {localize('com_ui_tars_kb_level_set')}
+          <span className="bg-surface-tertiary rounded-full px-1.5 text-xs tabular-nums">
+            {selectedCount}
+          </span>
+        </Button>
+      )}
 
       {onBatchDelete != null && (selectedCount ?? 0) > 0 && (
         <Button variant="destructive" onClick={onBatchDelete} className="gap-1.5">

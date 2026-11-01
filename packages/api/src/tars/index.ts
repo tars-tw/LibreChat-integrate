@@ -19,6 +19,7 @@ export * from './knowledge';
 export * from './langflow';
 export * from './mcp';
 export * from './mirror';
+export * from './security';
 export * from './plugins';
 export * from './models';
 export * from './modelProfiles';

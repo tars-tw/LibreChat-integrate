@@ -108,6 +108,23 @@ describe('uploadTarsKnowledgeBaseDocuments', () => {
     expect(form.getAll('files')).toHaveLength(1);
   });
 
+  it('sends the level only when one is chosen', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(201, { message: 'ok' }));
+    const input = {
+      knowledgeBaseId: 'kb1',
+      files: [{ buffer: Buffer.from('hello'), filename: 'a.txt', mimetype: 'text/plain' }],
+    };
+
+    await uploadTarsKnowledgeBaseDocuments('u1', input, BASE_URL);
+    await uploadTarsKnowledgeBaseDocuments('u1', { ...input, dataSecurityLevelId: '2' }, BASE_URL);
+
+    const [unset, chosen] = fetchMock.mock.calls.map(([, init]) => init?.body as FormData);
+    expect(unset.has('data_security_level_id')).toBe(false);
+    expect(chosen.get('data_security_level_id')).toBe('2');
+  });
+
   it('throws on a non-2xx pwc_tars response', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(500, {}));
     await expect(

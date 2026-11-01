@@ -106,7 +106,7 @@ export default function DatabasesTab({
         <div className="border-border-light overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[52rem] border-collapse text-sm">
             <thead className="bg-surface-secondary">
-              <tr className="text-text-secondary text-left">
+              <tr className="text-text-secondary text-left whitespace-nowrap">
                 <th className="w-[28%] px-3 py-2 font-medium">
                   {localize('com_ui_tars_kb_ds_name')}
                 </th>

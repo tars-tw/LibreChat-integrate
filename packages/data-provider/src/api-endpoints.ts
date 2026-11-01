@@ -437,6 +437,10 @@ export const tarsKnowledgeBaseModelBindings = (id: string) =>
   `${BASE_URL}/api/tars/knowledge-bases/${encodeURIComponent(id)}/model-bindings`;
 const tarsKb = (id: string) => `${BASE_URL}/api/tars/knowledge-bases/${encodeURIComponent(id)}`;
 export const tarsKnowledgeBaseDatasets = (id: string) => `${tarsKb(id)}/datasets`;
+export const tarsKnowledgeBaseDatasetsLevel = (id: string) => `${tarsKb(id)}/datasets/level`;
+export const tarsKnowledgeBaseSecurity = (id: string) => `${tarsKb(id)}/data-security`;
+export const tarsKnowledgeBaseSecurityLevel = (id: string, levelId: string) =>
+  `${tarsKnowledgeBaseSecurity(id)}/${encodeURIComponent(levelId)}`;
 export const tarsSchedules = (knowledgeBaseId?: string) =>
   knowledgeBaseId != null && knowledgeBaseId !== ''
     ? `${BASE_URL}/api/tars/schedules?knowledgeBaseId=${encodeURIComponent(knowledgeBaseId)}`

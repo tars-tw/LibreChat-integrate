@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { Upload, X } from 'lucide-react';
 import {
   Button,
@@ -10,10 +10,11 @@ import {
   Switch,
   useToastContext,
 } from '@librechat/client';
-import type { TTarsDatasetLimits } from 'librechat-data-provider';
+import type { TTarsDatasetLimits, TTarsDataSecurityLevel } from 'librechat-data-provider';
 import { useUploadTarsDocumentsMutation } from '~/data-provider';
 import { chunkSettingsInvalid } from './helpers';
 import { relayedError } from '../helpers';
+import { LevelSelect } from './Level';
 import { useLocalize } from '~/hooks';
 
 const DEFAULT_CHUNK = 300;
@@ -34,19 +35,23 @@ interface PerFile {
  */
 export default function UploadDialog({
   knowledgeBaseId,
+  levels,
   limits,
   onClose,
 }: {
   knowledgeBaseId: string;
+  levels: TTarsDataSecurityLevel[];
   limits: TTarsDatasetLimits;
   onClose: () => void;
 }) {
   const localize = useLocalize();
   const { showToast } = useToastContext();
   const fileRef = useRef<HTMLInputElement>(null);
+  const levelLabelId = useId();
 
   const [files, setFiles] = useState<PerFile[]>([]);
   const [processImages, setProcessImages] = useState(true);
+  const [levelId, setLevelId] = useState<string | null>(null);
 
   const uploadMutation = useUploadTarsDocumentsMutation(knowledgeBaseId, {
     onSuccess: () => {
@@ -99,6 +104,9 @@ export default function UploadDialog({
     const data = new FormData();
     files.forEach((entry) => data.append('files', entry.file));
     data.append('processImages', String(processImages));
+    if (levelId != null) {
+      data.append('dataSecurityLevelId', levelId);
+    }
     /** pwc_tars keys the per-file overrides by filename. */
     data.append(
       'fileSettings',
@@ -150,6 +158,19 @@ export default function UploadDialog({
                 onCheckedChange={setProcessImages}
                 aria-label={localize('com_ui_tars_kb_process_images')}
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label id={levelLabelId}>{localize('com_ui_tars_kb_level_default')}</Label>
+              <LevelSelect
+                labelId={levelLabelId}
+                levels={levels}
+                value={levelId}
+                onChange={setLevelId}
+              />
+              <p className="text-text-secondary text-xs">
+                {localize('com_ui_tars_kb_level_upload_hint')}
+              </p>
             </div>
 
             {files.length > 0 && (

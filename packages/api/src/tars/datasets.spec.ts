@@ -210,6 +210,20 @@ describe('importTarsFileSystemDataset', () => {
     });
   });
 
+  it('sends the new group level only when one is chosen', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { message: 'ok' }));
+    const input = { knowledgeBaseId: 'kb-1', fileSystemId: 'fs-1', name: 'Reports' };
+
+    await importTarsFileSystemDataset('user-1', input, BASE_URL);
+    expect(bodyOf(fetchMock)).not.toHaveProperty('data_security_level_id');
+
+    fetchMock.mockClear();
+    await importTarsFileSystemDataset('user-1', { ...input, dataSecurityLevelId: '1' }, BASE_URL);
+    expect(bodyOf(fetchMock)).toHaveProperty('data_security_level_id', '1');
+  });
+
   it("keys pwc_tars' file_settings by each file's reported path", async () => {
     const fetchMock = jest
       .spyOn(global, 'fetch')

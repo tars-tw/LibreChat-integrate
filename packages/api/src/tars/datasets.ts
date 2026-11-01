@@ -30,8 +30,9 @@ export interface TarsDatasetWebsite {
   chunk_size: number | null;
   tags: string | null;
   website_metatype: string | null;
-  /** Injected by `prepare_data` from the knowledge-base relation. */
+  /** Both injected by `prepare_data` from the knowledge-base relation. */
   llm_model?: string | null;
+  data_security_level_id?: string | null;
   created_by: string | null;
   created_at: string | null;
   updated_by: string | null;
@@ -83,6 +84,7 @@ export interface TarsDatasetFileSystemLink {
   /** Chunking chosen at import, which syncs apply to files they find new. `null` predates the setting. */
   chunk_size: number | null;
   overlap_size: number | null;
+  data_security_level_id?: string | null;
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -563,6 +565,8 @@ export interface TarsFileSystemImportInput {
   tags?: string;
   /** Edit mode: re-point this existing association instead of creating a new one. */
   existingAssociationId?: string;
+  /** The new group's level; files it brings in inherit it. Ignored in edit mode. */
+  dataSecurityLevelId?: string;
 }
 
 /** Imports a document group (`POST /api/knowledge_detail/upload_file_server_files`). */
@@ -593,6 +597,7 @@ export async function importTarsFileSystemDataset(
       ...(input.existingAssociationId
         ? { existing_association_id: input.existingAssociationId }
         : {}),
+      ...(input.dataSecurityLevelId ? { data_security_level_id: input.dataSecurityLevelId } : {}),
     },
   });
 }

@@ -1,5 +1,5 @@
 import { Button } from '@librechat/client';
-import { Info, Layers, Pencil, RefreshCw, Trash2, Wrench } from 'lucide-react';
+import { Info, Layers, Pencil, RefreshCw, ShieldCheck, Trash2, Wrench } from 'lucide-react';
 import type { TTarsDocument } from 'librechat-data-provider';
 import { DOC_STATUS } from './helpers';
 import { useLocalize } from '~/hooks';
@@ -15,6 +15,7 @@ export default function DocumentRowActions({
   onDetails,
   onViewChunks,
   onRename,
+  onSetLevel,
   onReprocess,
   onRetryStuck,
   onDelete,
@@ -24,6 +25,7 @@ export default function DocumentRowActions({
   onDetails: () => void;
   onViewChunks: () => void;
   onRename: () => void;
+  onSetLevel: () => void;
   onReprocess: () => void;
   /** Admin-only, as in pwc_tars; omitted for anyone else, which hides the button. */
   onRetryStuck?: () => void;
@@ -62,6 +64,15 @@ export default function DocumentRowActions({
         title={localize('com_ui_rename')}
       >
         <Pencil className="size-4" aria-hidden />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        onClick={onSetLevel}
+        aria-label={localize('com_ui_tars_kb_level_set')}
+        title={localize('com_ui_tars_kb_level_set')}
+      >
+        <ShieldCheck className="size-4" aria-hidden />
       </Button>
       <Button
         variant="ghost"

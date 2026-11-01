@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Eye, Search } from 'lucide-react';
 import {
   Button,
@@ -12,7 +12,7 @@ import {
   Switch,
   useToastContext,
 } from '@librechat/client';
-import type { TTarsDatasetLimits } from 'librechat-data-provider';
+import type { TTarsDatasetLimits, TTarsDataSecurityLevel } from 'librechat-data-provider';
 import {
   useImportTarsFileSystemMutation,
   useTarsFileSystemFilesQuery,
@@ -21,6 +21,7 @@ import {
 import { FILE_SYSTEM_DEFAULT_CHUNK, chunkSettingsInvalid } from './helpers';
 import { discoverFolders } from '../../FileSystems/helpers';
 import { relayedError } from '../helpers';
+import { LevelSelect } from './Level';
 import { useLocalize } from '~/hooks';
 
 /**
@@ -62,21 +63,25 @@ type ChunkOverride = { chunkSize?: number; overlap?: number };
  */
 export default function FileSystemImportDialog({
   knowledgeBaseId,
+  levels,
   limits,
   onClose,
 }: {
   knowledgeBaseId: string;
+  levels: TTarsDataSecurityLevel[];
   limits: TTarsDatasetLimits;
   onClose: () => void;
 }) {
   const localize = useLocalize();
   const { showToast } = useToastContext();
+  const levelLabelId = useId();
 
   const sourcesQuery = useTarsFileSystemSourcesQuery(knowledgeBaseId);
   const [sourceId, setSourceId] = useState('');
   const [name, setName] = useState('');
   const [syncAll, setSyncAll] = useState(false);
   const [uploadOnly, setUploadOnly] = useState(false);
+  const [levelId, setLevelId] = useState<string | null>(null);
   const [chunkSize, setChunkSize] = useState<number>(FILE_SYSTEM_DEFAULT_CHUNK.chunkSize);
   const [overlap, setOverlap] = useState<number>(FILE_SYSTEM_DEFAULT_CHUNK.overlap);
   const [selected, setSelected] = useState<string[]>([]);
@@ -206,6 +211,7 @@ export default function FileSystemImportDialog({
         overlap,
         selectedFolder: boundFolder,
         files: filesToSend.map((path) => ({ path, ...settingsOf(path) })),
+        ...(levelId != null ? { dataSecurityLevelId: levelId } : {}),
       },
     });
   };
@@ -260,6 +266,19 @@ export default function FileSystemImportDialog({
               onChange={(event) => setName(event.target.value)}
             />
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label id={levelLabelId}>{localize('com_ui_tars_kb_level_default')}</Label>
+          <LevelSelect
+            labelId={levelLabelId}
+            levels={levels}
+            value={levelId}
+            onChange={setLevelId}
+          />
+          <p className="text-text-secondary text-xs">
+            {localize('com_ui_tars_kb_level_import_hint')}
+          </p>
         </div>
 
         <div className="space-y-1.5">

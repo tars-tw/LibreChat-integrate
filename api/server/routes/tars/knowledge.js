@@ -225,7 +225,8 @@ router.post('/knowledge-bases/:id/documents', upload.array('files'), async (req,
   if (files.length === 0) {
     return res.status(400).json({ error: 'At least one file is required' });
   }
-  const { chunkSize, overlap, processImages, fileSettings, tags } = req.body ?? {};
+  const { chunkSize, overlap, processImages, fileSettings, tags, dataSecurityLevelId } =
+    req.body ?? {};
   let parsedFileSettings;
   if (fileSettings) {
     try {
@@ -249,6 +250,7 @@ router.post('/knowledge-bases/:id/documents', upload.array('files'), async (req,
         processImages != null ? processImages === 'true' || processImages === true : undefined,
       fileSettings: parsedFileSettings,
       tags,
+      dataSecurityLevelId,
     });
     return res.status(201).json(result);
   } catch (error) {
