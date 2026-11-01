@@ -67,8 +67,17 @@ jest.mock('~/hooks', () => ({
     params?.[0] != null ? `${key} ${params[0]}` : key,
 }));
 
+const LEVELS = [{ id: '1', name: '高度機密', description: null, order: 1 }];
+
 const renderDialog = () =>
-  render(<FileSystemImportDialog knowledgeBaseId="kb-1" limits={LIMITS} onClose={jest.fn()} />);
+  render(
+    <FileSystemImportDialog
+      knowledgeBaseId="kb-1"
+      levels={LEVELS}
+      limits={LIMITS}
+      onClose={jest.fn()}
+    />,
+  );
 
 const browse = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(screen.getByLabelText(/com_ui_tars_kb_ds_group_name/), 'Reports');
@@ -196,6 +205,30 @@ describe('FileSystemImportDialog', () => {
     await user.click(importButton());
 
     expect(mockImport.mock.calls[0][0].data).toMatchObject({ syncAll: true, selectedFolder: '' });
+  });
+
+  it('leaves the level out unless one is chosen', async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.type(screen.getByLabelText(/com_ui_tars_kb_ds_group_name/), 'Reports');
+    await user.click(screen.getByRole('switch', { name: 'com_ui_tars_kb_ds_sync_all' }));
+    await user.click(importButton());
+
+    expect(mockImport.mock.calls[0][0].data).not.toHaveProperty('dataSecurityLevelId');
+  });
+
+  it('sends the level chosen for the new group', async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.type(screen.getByLabelText(/com_ui_tars_kb_ds_group_name/), 'Reports');
+    await user.click(screen.getByRole('switch', { name: 'com_ui_tars_kb_ds_sync_all' }));
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'com_ui_tars_kb_level_default' }),
+      '1',
+    );
+    await user.click(importButton());
+
+    expect(mockImport.mock.calls[0][0].data).toMatchObject({ dataSecurityLevelId: '1' });
   });
 
   it('refuses chunking pwc_tars would reject', async () => {

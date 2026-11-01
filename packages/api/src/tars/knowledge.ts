@@ -108,6 +108,7 @@ export interface TarsDocument {
   overlap_size?: number | null;
   file_source?: string | null;
   llm_model?: string | null;
+  data_security_level_id?: string | null;
   created_by?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -144,6 +145,8 @@ export interface TarsDocumentUploadInput {
   /** Optional per-file overrides keyed by filename. */
   fileSettings?: Record<string, TarsFileSetting>;
   tags?: string;
+  /** Left out keeps an existing file's level and leaves a new file unlabelled. */
+  dataSecurityLevelId?: string;
 }
 
 export interface TarsDocumentRenameInput {
@@ -481,6 +484,9 @@ export async function uploadTarsKnowledgeBaseDocuments(
   }
   if (input.fileSettings && Object.keys(input.fileSettings).length > 0) {
     form.append('file_settings', JSON.stringify(input.fileSettings));
+  }
+  if (input.dataSecurityLevelId) {
+    form.append('data_security_level_id', input.dataSecurityLevelId);
   }
   for (const file of input.files) {
     const blob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });

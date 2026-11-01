@@ -3,6 +3,7 @@ import { Pencil, RefreshCcw, RotateCcw, RotateCw, Search, Unlink } from 'lucide-
 import { Button, Input, OGDialog, OGDialogTemplate, useToastContext } from '@librechat/client';
 import type {
   TTarsDocument,
+  TTarsDataSecurityLevel,
   TTarsFileSystemSource,
   TTarsDatasetFileSystemLink,
 } from 'librechat-data-provider';
@@ -27,6 +28,7 @@ import GroupScheduleSection from './GroupScheduleSection';
 import { useLocalize, useTarsAdminAccess } from '~/hooks';
 import DocumentRowActions from './DocumentRowActions';
 import { formatDateTime } from '../../Users/helpers';
+import LevelDialog, { LevelChip } from './Level';
 import ConfirmDialog from './ConfirmDialog';
 import RenameDialog from './RenameDialog';
 import StatusBadge from './StatusBadge';
@@ -54,6 +56,7 @@ export default function GroupDocumentsDialog({
   link,
   source,
   documents,
+  levels,
   locale,
   isGroupBusy,
   onSync,
@@ -69,6 +72,7 @@ export default function GroupDocumentsDialog({
   /** The file server behind the group; `null` once this knowledge base may no longer use it. */
   source: TTarsFileSystemSource | null;
   documents: TTarsDocument[];
+  levels: TTarsDataSecurityLevel[];
   locale: string;
   isGroupBusy: boolean;
   onSync: () => void;
@@ -89,6 +93,7 @@ export default function GroupDocumentsDialog({
   const [deleting, setDeleting] = useState<TTarsDocument | null>(null);
   const [reprocessing, setReprocessing] = useState<TTarsDocument | null>(null);
   const [details, setDetails] = useState<TTarsDocument | null>(null);
+  const [leveling, setLeveling] = useState<TTarsDocument | null>(null);
 
   const groupDocuments = useMemo(
     () => documents.filter((doc) => doc.dataset_file_system_to_knowledge_base_id === link.id),
@@ -308,14 +313,17 @@ export default function GroupDocumentsDialog({
                 </p>
               ) : (
                 <div className="border-border-light overflow-x-auto rounded-lg border">
-                  <table className="w-full min-w-[48rem] border-collapse text-sm">
+                  <table className="w-full min-w-[54rem] border-collapse text-sm">
                     <thead className="bg-surface-secondary">
-                      <tr className="text-text-secondary text-left">
+                      <tr className="text-text-secondary text-left whitespace-nowrap">
                         <th className="w-[36%] px-3 py-2 font-medium">
                           {localize('com_ui_tars_kb_ds_name')}
                         </th>
                         <th className="px-3 py-2 font-medium">
                           {localize('com_ui_tars_kb_status')}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {localize('com_ui_tars_kb_level')}
                         </th>
                         <th className="px-3 py-2 font-medium">
                           {localize('com_ui_tars_kb_ds_words')}
@@ -345,6 +353,9 @@ export default function GroupDocumentsDialog({
                           <td className="px-3 py-1.5">
                             <StatusBadge meta={docStatusMeta(doc.status)} />
                           </td>
+                          <td className="px-3 py-1.5">
+                            <LevelChip levels={levels} levelId={doc.data_security_level_id} />
+                          </td>
                           <td className="text-text-secondary px-3 py-1.5 tabular-nums">
                             {formatCount(doc.word_count)}
                           </td>
@@ -361,6 +372,7 @@ export default function GroupDocumentsDialog({
                               onDetails={() => setDetails(doc)}
                               onViewChunks={() => onViewChunks(doc)}
                               onRename={() => setRenaming(doc)}
+                              onSetLevel={() => setLeveling(doc)}
                               onReprocess={() => setReprocessing(doc)}
                               onRetryStuck={
                                 isTarsAdmin ? () => retryStuckOneMutation.mutate(doc.id) : undefined
@@ -436,6 +448,17 @@ export default function GroupDocumentsDialog({
             })
           }
           onClose={() => setReprocessing(null)}
+        />
+      )}
+
+      {leveling != null && (
+        <LevelDialog
+          knowledgeBaseId={knowledgeBaseId}
+          levels={levels}
+          name={leveling.filename}
+          targets={{ documentIds: [leveling.id] }}
+          currentLevelId={leveling.data_security_level_id ?? null}
+          onClose={() => setLeveling(null)}
         />
       )}
 

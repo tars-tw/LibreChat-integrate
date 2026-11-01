@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Checkbox, useToastContext } from '@librechat/client';
-import type { TTarsDocument, TTarsDatasetLimits } from 'librechat-data-provider';
+import type {
+  TTarsDocument,
+  TTarsDatasetLimits,
+  TTarsDataSecurityLevel,
+} from 'librechat-data-provider';
 import {
   useDeleteTarsDocumentMutation,
   useReprocessTarsDocumentMutation,
@@ -13,6 +17,8 @@ import Pagination, { usePagination } from '../Pagination';
 import { useLocalize, useTarsAdminAccess } from '~/hooks';
 import DocumentRowActions from './DocumentRowActions';
 import { formatDateTime } from '../../Users/helpers';
+import SourceIcon, { sourceLabel } from './Source';
+import LevelDialog, { LevelChip } from './Level';
 import ConfirmDialog from './ConfirmDialog';
 import RenameDialog from './RenameDialog';
 import UploadDialog from './UploadDialog';
@@ -25,6 +31,7 @@ const ALL_SOURCES = '__all__';
 export default function DocumentsTab({
   knowledgeBaseId,
   documents,
+  levels,
   limits,
   locale,
   onRefresh,
@@ -34,6 +41,7 @@ export default function DocumentsTab({
 }: {
   knowledgeBaseId: string;
   documents: TTarsDocument[];
+  levels: TTarsDataSecurityLevel[];
   limits: TTarsDatasetLimits;
   locale: string;
   onRefresh: () => void;
@@ -53,6 +61,8 @@ export default function DocumentsTab({
   const [deleting, setDeleting] = useState<TTarsDocument | null>(null);
   const [reprocessing, setReprocessing] = useState<TTarsDocument | null>(null);
   const [details, setDetails] = useState<TTarsDocument | null>(null);
+  const [leveling, setLeveling] = useState<TTarsDocument | null>(null);
+  const [levelingSelected, setLevelingSelected] = useState(false);
 
   const visible = useMemo(
     () =>
@@ -131,7 +141,11 @@ export default function DocumentsTab({
         ),
       )
         .sort()
-        .map((source) => ({ value: source, label: source })),
+        .map((source) => ({
+          value: source,
+          label: sourceLabel(source, localize),
+          icon: <SourceIcon source={source} />,
+        })),
     ],
     [documents, localize],
   );
@@ -152,6 +166,7 @@ export default function DocumentsTab({
         onRefresh={onRefresh}
         isRefreshing={isRefreshing}
         selectedCount={selected.length}
+        onBatchLevel={() => setLevelingSelected(true)}
         onBatchDelete={() => {
           onBatchDelete(selected);
           setSelected([]);
@@ -170,9 +185,9 @@ export default function DocumentsTab({
         </p>
       ) : (
         <div className="border-border-light overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[56rem] border-collapse text-sm">
+          <table className="w-full min-w-[62rem] border-collapse text-sm">
             <thead className="bg-surface-secondary">
-              <tr className="text-text-secondary text-left">
+              <tr className="text-text-secondary text-left whitespace-nowrap">
                 <th className="w-10 px-3 py-2">
                   <Checkbox
                     checked={allSelected}
@@ -189,6 +204,7 @@ export default function DocumentsTab({
                   {localize('com_ui_tars_kb_ds_file_source')}
                 </th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_status')}</th>
+                <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_level')}</th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_ds_words')}</th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_tokens')}</th>
                 <th className="px-3 py-2 font-medium">
@@ -213,12 +229,13 @@ export default function DocumentsTab({
                     </span>
                   </td>
                   <td className="px-3 py-1.5">
-                    <span className="text-text-secondary">
-                      {doc.file_source ? doc.file_source.toUpperCase() : '—'}
-                    </span>
+                    <SourceIcon source={doc.file_source} />
                   </td>
                   <td className="px-3 py-1.5">
                     <StatusBadge meta={docStatusMeta(doc.status)} />
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <LevelChip levels={levels} levelId={doc.data_security_level_id} />
                   </td>
                   <td className="text-text-secondary px-3 py-1.5 tabular-nums">
                     {formatCount(doc.word_count)}
@@ -236,6 +253,7 @@ export default function DocumentsTab({
                       onDetails={() => setDetails(doc)}
                       onViewChunks={() => onViewChunks(doc)}
                       onRename={() => setRenaming(doc)}
+                      onSetLevel={() => setLeveling(doc)}
                       onReprocess={() => setReprocessing(doc)}
                       onRetryStuck={
                         isTarsAdmin ? () => retryStuckOneMutation.mutate(doc.id) : undefined
@@ -255,6 +273,7 @@ export default function DocumentsTab({
       {showUpload && (
         <UploadDialog
           knowledgeBaseId={knowledgeBaseId}
+          levels={levels}
           limits={limits}
           onClose={() => setShowUpload(false)}
         />
@@ -298,6 +317,28 @@ export default function DocumentsTab({
             })
           }
           onClose={() => setReprocessing(null)}
+        />
+      )}
+
+      {leveling != null && (
+        <LevelDialog
+          knowledgeBaseId={knowledgeBaseId}
+          levels={levels}
+          name={leveling.filename}
+          targets={{ documentIds: [leveling.id] }}
+          currentLevelId={leveling.data_security_level_id ?? null}
+          onClose={() => setLeveling(null)}
+        />
+      )}
+
+      {levelingSelected && (
+        <LevelDialog
+          knowledgeBaseId={knowledgeBaseId}
+          levels={levels}
+          name={localize('com_ui_tars_kb_level_selected', { 0: String(selected.length) })}
+          targets={{ documentIds: selected }}
+          onSaved={() => setSelected([])}
+          onClose={() => setLevelingSelected(false)}
         />
       )}
 

@@ -1651,6 +1651,27 @@ export const batchDeleteTarsDatasets = (
   return request.post(endpoints.tarsKnowledgeBaseDatasetsBatchDelete(id), data);
 };
 
+export const setTarsDatasetLevel = (
+  id: string,
+  data: t.TTarsDatasetLevelInput,
+): Promise<{ result: t.TTarsDatasetLevelResult }> => {
+  return request.post(endpoints.tarsKnowledgeBaseDatasetsLevel(id), data);
+};
+
+export const getTarsKnowledgeBaseSecurity = (
+  id: string,
+): Promise<t.TTarsDataSecurityAssignmentsResponse> => {
+  return request.get(endpoints.tarsKnowledgeBaseSecurity(id));
+};
+
+export const saveTarsKnowledgeBaseSecurity = (
+  id: string,
+  levelId: string,
+  data: t.TTarsDataSecurityAssignmentSavePayload,
+): Promise<{ result: t.TTarsDataSecurityAssignmentSaveResult }> => {
+  return request.put(endpoints.tarsKnowledgeBaseSecurityLevel(id, levelId), data);
+};
+
 export const getTarsKnowledgeBaseModelBindings = (
   id: string,
 ): Promise<t.TTarsKnowledgeBaseModelBindings> => {
