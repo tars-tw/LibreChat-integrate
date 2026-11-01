@@ -9,9 +9,11 @@ import {
   useToastContext,
 } from '@librechat/client';
 import type { TTarsDocument, TTarsDatasetWebsite } from 'librechat-data-provider';
+import type { ReactNode } from 'react';
 import type { ChunkSource } from './ChunkList';
 import {
   useTarsKnowledgeBaseDatasetsQuery,
+  useTarsKnowledgeBaseSecurityQuery,
   useBatchDeleteTarsDatasetsMutation,
 } from '~/data-provider';
 import FileSystemsTab from './FileSystemsTab';
@@ -19,12 +21,17 @@ import SchedulesTab from './SchedulesTab';
 import DatabasesTab from './DatabasesTab';
 import DocumentsTab from './DocumentsTab';
 import WebsitesTab from './WebsitesTab';
+import SecurityTab from './SecurityTab';
 import { useLocalize } from '~/hooks';
 import ChunkList from './ChunkList';
 import Header from './Header';
 
 /** `TabsContent` ships with `mt-2 p-6`; each panel owns its own spacing instead. */
-const TAB_PANEL = 'mt-4 p-0';
+const Panel = ({ value, children }: { value: string; children: ReactNode }) => (
+  <TabsContent value={value} className="mt-4 p-0">
+    {children}
+  </TabsContent>
+);
 
 /** One knowledge base's datasets, split by kind. */
 export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeBaseId: string }) {
@@ -33,6 +40,7 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
   const { showToast } = useToastContext();
 
   const datasetsQuery = useTarsKnowledgeBaseDatasetsQuery(knowledgeBaseId);
+  const securityQuery = useTarsKnowledgeBaseSecurityQuery(knowledgeBaseId);
   const [chunkSource, setChunkSource] = useState<ChunkSource | null>(null);
 
   const batchDeleteMutation = useBatchDeleteTarsDatasetsMutation(knowledgeBaseId, {
@@ -60,6 +68,7 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
   }
 
   const data = datasetsQuery.data;
+  const levels = securityQuery.data ?? [];
   const locale = i18n.language;
   const refresh = () => void datasetsQuery.refetch();
   const isRefreshing = datasetsQuery.isFetching;
@@ -103,12 +112,16 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
           <TabsTrigger value="schedules" variant="underline">
             {localize('com_ui_tars_nav_kb_schedule')}
           </TabsTrigger>
+          <TabsTrigger value="security" variant="underline">
+            {localize('com_ui_tars_kb_security_tab')}
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="documents" className={TAB_PANEL}>
+        <Panel value="documents">
           <DocumentsTab
             knowledgeBaseId={knowledgeBaseId}
             documents={data?.documents ?? []}
+            levels={levels}
             limits={
               data?.limits ?? { max_upload_counts: 5, max_chunk_size: 30000, max_overlap: 300 }
             }
@@ -120,12 +133,13 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
             }
             onBatchDelete={(documentIds) => batchDeleteMutation.mutate({ documentIds })}
           />
-        </TabsContent>
+        </Panel>
 
-        <TabsContent value="websites" className={TAB_PANEL}>
+        <Panel value="websites">
           <WebsitesTab
             knowledgeBaseId={knowledgeBaseId}
             websites={data?.websites ?? []}
+            levels={levels}
             locale={locale}
             onRefresh={refresh}
             isRefreshing={isRefreshing}
@@ -134,9 +148,9 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
               setChunkSource({ kind: 'website', knowledgeBaseId, website })
             }
           />
-        </TabsContent>
+        </Panel>
 
-        <TabsContent value="databases" className={TAB_PANEL}>
+        <Panel value="databases">
           <DatabasesTab
             knowledgeBaseId={knowledgeBaseId}
             databases={data?.databases ?? []}
@@ -145,13 +159,14 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
             onRefresh={refresh}
             isRefreshing={isRefreshing}
           />
-        </TabsContent>
+        </Panel>
 
-        <TabsContent value="file-systems" className={TAB_PANEL}>
+        <Panel value="file-systems">
           <FileSystemsTab
             knowledgeBaseId={knowledgeBaseId}
             links={data?.file_systems ?? []}
             documents={data?.documents ?? []}
+            levels={levels}
             limits={
               data?.limits ?? { max_upload_counts: 5, max_chunk_size: 30000, max_overlap: 300 }
             }
@@ -166,11 +181,20 @@ export default function KnowledgeDetailManager({ knowledgeBaseId }: { knowledgeB
               setChunkSource({ kind: 'document', document })
             }
           />
-        </TabsContent>
+        </Panel>
 
-        <TabsContent value="schedules" className={TAB_PANEL}>
+        <Panel value="schedules">
           <SchedulesTab knowledgeBaseId={knowledgeBaseId} locale={locale} />
-        </TabsContent>
+        </Panel>
+
+        <Panel value="security">
+          <SecurityTab
+            knowledgeBaseId={knowledgeBaseId}
+            levels={levels}
+            isLoading={securityQuery.isLoading}
+            isError={securityQuery.isError}
+          />
+        </Panel>
       </Tabs>
 
       {chunkSource != null && (

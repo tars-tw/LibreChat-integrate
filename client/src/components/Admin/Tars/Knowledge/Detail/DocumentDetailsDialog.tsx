@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { formatDateTime } from '../../Users/helpers';
 import { docStatusMeta } from './helpers';
 import StatusBadge from './StatusBadge';
+import { sourceLabel } from './Source';
 import { useLocalize } from '~/hooks';
 
 const bytesToMb = (bytes: number | null | undefined): string =>
@@ -54,7 +55,7 @@ export default function DocumentDetailsDialog({
                   document.file_source !== '' &&
                   row(
                     localize('com_ui_tars_kb_ds_file_source'),
-                    document.file_source.toUpperCase(),
+                    sourceLabel(document.file_source, localize),
                   )}
                 {row(localize('com_ui_tars_kb_ds_file_size'), bytesToMb(document.size))}
                 {row(

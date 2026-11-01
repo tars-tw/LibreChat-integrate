@@ -282,6 +282,56 @@ export type TTarsModelPermissionSaveResult = {
   group_count: number;
 };
 
+/** A data classification label; a lower `order` ranks higher and reads everything below it. */
+export type TTarsDataSecurityLevel = {
+  id: string;
+  name: string;
+  description: string | null;
+  order: number;
+};
+
+/**
+ * One label's assignees in a knowledge base, disabled ones included. Every label is
+ * always listed, so this also feeds the level dropdowns.
+ */
+export type TTarsDataSecurityAssignment = TTarsDataSecurityLevel & {
+  principals: TTarsPrincipalInfo[];
+};
+
+export type TTarsDataSecurityAssignmentsResponse = {
+  assignments: TTarsDataSecurityAssignment[];
+};
+
+/** Full overwrite of one label's assignees; other labels and knowledge bases are untouched. */
+export type TTarsDataSecurityAssignmentSavePayload = TTarsModelPermissionSavePayload;
+
+export type TTarsDataSecurityAssignmentSaveResult = {
+  knowledge_base_id: string;
+  data_security_level_id: string;
+  user_count: number;
+  group_count: number;
+};
+
+/**
+ * Sets the level of any mix of a knowledge base's datasets; `null` clears it. A
+ * document group's level overwrites every file in the group.
+ */
+export type TTarsDatasetLevelInput = {
+  dataSecurityLevelId: string | null;
+  documentIds?: string[];
+  websiteIds?: string[];
+  fileSystemAssociationIds?: string[];
+};
+
+export type TTarsDatasetLevelResult = {
+  knowledge_base_id: string;
+  data_security_level_id: string | null;
+  document_count: number;
+  website_count: number;
+  file_system_count: number;
+  inherited_document_count: number;
+};
+
 export type TTarsKnowledgeBaseInput = {
   name: string;
   description?: string;
@@ -317,6 +367,8 @@ export type TTarsDatasetWebsite = {
   tags: string | null;
   website_metatype: string | null;
   llm_model?: string | null;
+  /** `null` leaves the website open to everyone who can reach the knowledge base. */
+  data_security_level_id?: string | null;
   created_by: string | null;
   created_at: string | null;
   updated_by: string | null;
@@ -399,6 +451,8 @@ export type TTarsDatasetFileSystemLink = {
   /** Chunking chosen at import, which syncs apply to files they find new. `null` predates the setting. */
   chunk_size: number | null;
   overlap_size: number | null;
+  /** Files new to the group inherit it; files already there keep their own. */
+  data_security_level_id?: string | null;
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -595,6 +649,8 @@ export type TTarsFileSystemImportInput = {
   selectedFolder?: string;
   tags?: string;
   existingAssociationId?: string;
+  /** The new group's level; ignored in edit mode, where the group keeps its own. */
+  dataSecurityLevelId?: string;
 };
 
 export type TTarsDatasetBatchDelete = {
@@ -686,6 +742,8 @@ export type TTarsDocument = {
   overlap_size?: number | null;
   file_source?: string | null;
   llm_model?: string | null;
+  /** `null` leaves the document open to everyone who can reach the knowledge base. */
+  data_security_level_id?: string | null;
   created_by?: string | null;
   created_at?: string | null;
   updated_at?: string | null;

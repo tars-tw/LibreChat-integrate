@@ -237,7 +237,7 @@
   },
   "client/src/components/Admin/Tars/Knowledge/Detail/Manager.tsx": {
     "shadcn/no-restyle": {
-      "count": 5
+      "count": 1
     }
   },
   "client/src/components/Admin/Tars/Knowledge/Detail/ModelsDialog.tsx": {

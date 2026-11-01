@@ -89,7 +89,7 @@ export const recordedChunk = (link: TTarsDatasetFileSystemLink) => ({
   recorded: link.chunk_size != null,
 });
 
-type Localize = ReturnType<typeof useLocalize>;
+export type Localize = ReturnType<typeof useLocalize>;
 
 /**
  * The folder a binding reads from. A binding without one takes the file

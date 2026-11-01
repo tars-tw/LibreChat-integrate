@@ -20,6 +20,9 @@ const {
   reprocessTarsFileSystemDataset,
   unlinkTarsFileSystemDataset,
   batchDeleteTarsDatasets,
+  setTarsDatasetLevel,
+  fetchTarsKnowledgeBaseSecurity,
+  saveTarsKnowledgeBaseSecurity,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsMenuAccess } = require('~/server/middleware');
 const { relayTarsError } = require('./relay');
@@ -27,9 +30,13 @@ const { relayTarsError } = require('./relay');
 const router = express.Router();
 
 /** Shares `/knowledge-bases` with the knowledge router, so the gate names only this router's sub-resources. */
-const KNOWLEDGE_BASE_SOURCES = ['databases', 'datasets', 'file-systems', 'websites'].map(
-  (source) => `/knowledge-bases/:id/${source}`,
-);
+const KNOWLEDGE_BASE_SOURCES = [
+  'data-security',
+  'databases',
+  'datasets',
+  'file-systems',
+  'websites',
+].map((source) => `/knowledge-bases/:id/${source}`);
 
 /** The detail page behind 知識庫清單, so the same grant opens it. */
 router.use(KNOWLEDGE_BASE_SOURCES, requireJwtAuth, requireTarsMenuAccess('kb.list'));
@@ -261,6 +268,7 @@ router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
     selectedFolder,
     tags,
     existingAssociationId,
+    dataSecurityLevelId,
   } = req.body ?? {};
   if (!name) {
     return res.status(400).json({ error: 'name is required' });
@@ -280,6 +288,8 @@ router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
       tags,
       existingAssociationId:
         typeof existingAssociationId === 'string' ? existingAssociationId : undefined,
+      dataSecurityLevelId:
+        typeof dataSecurityLevelId === 'string' ? dataSecurityLevelId : undefined,
     });
     return res.status(201).json({ success: true });
   } catch (error) {
@@ -394,6 +404,56 @@ router.post('/knowledge-bases/:id/datasets/batch-delete', async (req, res) => {
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/datasets/batch-delete] Failed', error);
     return relayTarsError(res, error, 'Failed to delete pwc_tars datasets');
+  }
+});
+
+/**
+ * @route POST /api/tars/knowledge-bases/:id/datasets/level
+ * @desc Set or clear the data security level of datasets, one at a time or in bulk.
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
+ */
+router.post('/knowledge-bases/:id/datasets/level', async (req, res) => {
+  try {
+    const result = await setTarsDatasetLevel(req.user.tarsId, req.params.id, req.body ?? {});
+    return res.json({ result });
+  } catch (error) {
+    logger.error('[POST /api/tars/knowledge-bases/:id/datasets/level] Failed', error);
+    return relayTarsError(res, error, 'Failed to set pwc_tars dataset level');
+  }
+});
+
+/**
+ * @route GET /api/tars/knowledge-bases/:id/data-security
+ * @desc Every data security level of a knowledge base with its assignees.
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
+ */
+router.get('/knowledge-bases/:id/data-security', async (req, res) => {
+  try {
+    const assignments = await fetchTarsKnowledgeBaseSecurity(req.user.tarsId, req.params.id);
+    return res.json({ assignments });
+  } catch (error) {
+    logger.error('[GET /api/tars/knowledge-bases/:id/data-security] Failed', error);
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars data security');
+  }
+});
+
+/**
+ * @route PUT /api/tars/knowledge-bases/:id/data-security/:levelId
+ * @desc Overwrite one level's assignees; an empty list removes them all.
+ * @access 知識庫清單 (kb.list) or pwc_tars admin
+ */
+router.put('/knowledge-bases/:id/data-security/:levelId', async (req, res) => {
+  try {
+    const result = await saveTarsKnowledgeBaseSecurity(
+      req.user.tarsId,
+      req.params.id,
+      req.params.levelId,
+      req.body ?? {},
+    );
+    return res.json({ result });
+  } catch (error) {
+    logger.error('[PUT /api/tars/knowledge-bases/:id/data-security/:levelId] Failed', error);
+    return relayTarsError(res, error, 'Failed to save pwc_tars data security');
   }
 });
 

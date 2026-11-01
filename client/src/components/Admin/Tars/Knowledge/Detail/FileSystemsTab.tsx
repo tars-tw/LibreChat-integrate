@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Button, Checkbox, useToastContext } from '@librechat/client';
-import { Eye, RefreshCcw, RotateCcw, RotateCw, Unlink } from 'lucide-react';
+import { Eye, RefreshCcw, RotateCcw, RotateCw, ShieldCheck, Unlink } from 'lucide-react';
 import type {
   TTarsDatasetFileSystemLink,
   TTarsDatasetLimits,
+  TTarsDataSecurityLevel,
   TTarsDocument,
 } from 'librechat-data-provider';
 import type { EditValue } from './FileSystemEditDialog';
@@ -29,6 +30,7 @@ import FileSystemEditDialog from './FileSystemEditDialog';
 import GroupDocumentsDialog from './GroupDocumentsDialog';
 import Pagination, { usePagination } from '../Pagination';
 import { formatDateTime } from '../../Users/helpers';
+import LevelDialog, { LevelChip } from './Level';
 import ConfirmDialog from './ConfirmDialog';
 import { relayedError } from '../helpers';
 import StatusBadge from './StatusBadge';
@@ -47,6 +49,7 @@ export default function FileSystemsTab({
   knowledgeBaseId,
   links,
   documents,
+  levels,
   limits,
   locale,
   onRefresh,
@@ -58,6 +61,7 @@ export default function FileSystemsTab({
   knowledgeBaseId: string;
   links: TTarsDatasetFileSystemLink[];
   documents: TTarsDocument[];
+  levels: TTarsDataSecurityLevel[];
   limits: TTarsDatasetLimits;
   locale: string;
   onRefresh: () => void;
@@ -81,6 +85,8 @@ export default function FileSystemsTab({
   const [rebuilding, setRebuilding] = useState<TTarsDatasetFileSystemLink | null>(null);
   const [viewing, setViewing] = useState<TTarsDatasetFileSystemLink | null>(null);
   const [editing, setEditing] = useState<TTarsDatasetFileSystemLink | null>(null);
+  const [leveling, setLeveling] = useState<TTarsDatasetFileSystemLink | null>(null);
+  const [levelingSelected, setLevelingSelected] = useState(false);
 
   const visible = useMemo(
     () =>
@@ -227,6 +233,7 @@ export default function FileSystemsTab({
         onRefresh={onRefresh}
         isRefreshing={isRefreshing}
         selectedCount={selectedIds.length}
+        onBatchLevel={() => setLevelingSelected(true)}
         onBatchDelete={() => setConfirmingBatch(true)}
         batchDeleteLabel={localize('com_ui_tars_kb_ds_batch_unlink')}
         addLabel={localize('com_ui_tars_kb_ds_import_group')}
@@ -241,9 +248,9 @@ export default function FileSystemsTab({
         </p>
       ) : (
         <div className="border-border-light overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[72rem] border-collapse text-sm">
+          <table className="w-full min-w-[78rem] border-collapse text-sm">
             <thead className="bg-surface-secondary">
-              <tr className="text-text-secondary text-left">
+              <tr className="text-text-secondary text-left whitespace-nowrap">
                 <th className="w-10 px-3 py-2">
                   <Checkbox
                     checked={allSelected}
@@ -263,6 +270,7 @@ export default function FileSystemsTab({
                   {localize('com_ui_tars_kb_ds_bind_folder')}
                 </th>
                 <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_status')}</th>
+                <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_level')}</th>
                 <th className="w-[4%] px-3 py-2 font-medium whitespace-nowrap">
                   {localize('com_ui_tars_kb_ds_progress')}
                 </th>
@@ -317,6 +325,9 @@ export default function FileSystemsTab({
                     <td className="px-3 py-1.5">
                       <StatusBadge meta={enabledStatusMeta(link.status)} />
                     </td>
+                    <td className="px-3 py-1.5">
+                      <LevelChip levels={levels} levelId={link.data_security_level_id} />
+                    </td>
                     <td className="text-text-secondary px-3 py-1.5 whitespace-nowrap tabular-nums">
                       {counts.done} / {counts.total}
                     </td>
@@ -343,6 +354,15 @@ export default function FileSystemsTab({
                           title={localize('com_ui_tars_kb_ds_view')}
                         >
                           <Eye className="text-accent-primary size-4" aria-hidden />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => setLeveling(link)}
+                          aria-label={localize('com_ui_tars_kb_level_set')}
+                          title={localize('com_ui_tars_kb_level_set')}
+                        >
+                          <ShieldCheck className="size-4" aria-hidden />
                         </Button>
                         <Button
                           variant="ghost"
@@ -398,8 +418,33 @@ export default function FileSystemsTab({
       {showImport && (
         <FileSystemImportDialog
           knowledgeBaseId={knowledgeBaseId}
+          levels={levels}
           limits={limits}
           onClose={() => setShowImport(false)}
+        />
+      )}
+
+      {leveling != null && (
+        <LevelDialog
+          knowledgeBaseId={knowledgeBaseId}
+          levels={levels}
+          name={fileSystemLabel(leveling)}
+          targets={{ fileSystemAssociationIds: [leveling.id] }}
+          currentLevelId={leveling.data_security_level_id ?? null}
+          note={localize('com_ui_tars_kb_level_group_note')}
+          onClose={() => setLeveling(null)}
+        />
+      )}
+
+      {levelingSelected && (
+        <LevelDialog
+          knowledgeBaseId={knowledgeBaseId}
+          levels={levels}
+          name={localize('com_ui_tars_kb_level_selected', { 0: String(selectedIds.length) })}
+          targets={{ fileSystemAssociationIds: selectedIds }}
+          note={localize('com_ui_tars_kb_level_group_note')}
+          onSaved={() => setSelected([])}
+          onClose={() => setLevelingSelected(false)}
         />
       )}
 
@@ -517,6 +562,7 @@ export default function FileSystemsTab({
           link={viewing}
           source={sourcesById.get(viewing.dataset_file_system_id) ?? null}
           documents={documents}
+          levels={levels}
           locale={locale}
           isGroupBusy={isBusy}
           onSync={() => setSyncing(viewing)}

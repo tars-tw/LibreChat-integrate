@@ -22,6 +22,8 @@ import type {
   TTarsKnowledgeBasesResponse,
   TTarsKnowledgeBaseModelBindings,
   TTarsKnowledgeBaseDatasets,
+  TTarsDataSecurityAssignment,
+  TTarsDataSecurityAssignmentsResponse,
   TTarsDatabaseTables,
   TTarsDatasetDatabase,
   TTarsDatabasesResponse,
@@ -206,6 +208,27 @@ export const useTarsKnowledgeBaseDatasetsQuery = (
       refetchOnWindowFocus: false,
       refetchInterval: (data) =>
         (data?.documents ?? []).some((doc) => PROCESSING_STATUSES.has(doc.status)) ? 5000 : false,
+      ...config,
+    },
+  );
+};
+
+/** Every data security level of a knowledge base with its assignees; also the level dropdowns' options. */
+export const useTarsKnowledgeBaseSecurityQuery = (
+  knowledgeBaseId?: string | null,
+  config?: UseQueryOptions<
+    TTarsDataSecurityAssignmentsResponse,
+    unknown,
+    TTarsDataSecurityAssignment[]
+  >,
+): QueryObserverResult<TTarsDataSecurityAssignment[]> => {
+  return useQuery<TTarsDataSecurityAssignmentsResponse, unknown, TTarsDataSecurityAssignment[]>(
+    [QueryKeys.tarsKnowledgeBaseSecurity, knowledgeBaseId],
+    () => dataService.getTarsKnowledgeBaseSecurity(knowledgeBaseId ?? ''),
+    {
+      select: (data) => data.assignments ?? [],
+      enabled: knowledgeBaseId != null && knowledgeBaseId !== '',
+      refetchOnWindowFocus: false,
       ...config,
     },
   );

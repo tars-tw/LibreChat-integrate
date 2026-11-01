@@ -52,6 +52,7 @@ const renderTab = (onBatchUnlink = jest.fn()) => {
       knowledgeBaseId="kb-1"
       links={[link('fs-1', 'FTP_Demo'), link('fs-2', 'SMB_Demo'), link('fs-3', 'SFTP_Demo')]}
       documents={[]}
+      levels={[]}
       limits={LIMITS}
       locale="zh-Hant"
       onRefresh={jest.fn()}
