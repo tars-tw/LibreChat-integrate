@@ -101,6 +101,10 @@ function createLangfuseIcon(className: string): ReactNode {
   });
 }
 
+/** Tabs TARS does not offer. Their `TABS` and `registry` entries stay in place, so
+ *  upstream's edits to them keep replaying on a rebase; search honors this too. */
+const hiddenInTars = () => false;
+
 /** pwc_tars owns the account lifecycle and chat retention, so upstream's
  *  accessibility section and both danger zones are absent here and carry no
  *  `registry` entries — a section without entries would still surface them
@@ -149,7 +153,7 @@ export const TABS: TabMeta[] = [
         icon: createLangfuseIcon('h-3.5 w-3.5'),
       },
     ],
-    show: (ctx) => ctx.langfuseConnectionAccess || ctx.langfusePromptSyncAccess === true,
+    show: hiddenInTars,
   },
   {
     id: SettingsTabValues.DATA,
@@ -161,6 +165,7 @@ export const TABS: TabMeta[] = [
       { id: 'data', labelKey: 'com_ui_settings_section_data' },
       { id: 'apiKeys', labelKey: 'com_ui_settings_section_api_keys' },
     ],
+    show: hiddenInTars,
   },
   {
     id: SettingsTabValues.ACCOUNT,

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRecoilState } from 'recoil';
 import { useToastContext } from '@librechat/client';
 import { useSpeechToTextMutation } from '~/data-provider';
+import useLocalize from '~/hooks/useLocalize';
 import store from '~/store';
 
 export const getBestSupportedMimeType = (
@@ -40,6 +41,7 @@ const useSpeechToTextExternal = (
   onTranscriptionSettled: (takeId?: number) => void,
   autoSendText: number,
 ) => {
+  const localize = useLocalize();
   const { showToast } = useToastContext();
   const audioStream = useRef<MediaStream | null>(null);
   const animationFrameIdRef = useRef<number | null>(null);
@@ -148,7 +150,7 @@ const useSpeechToTextExternal = (
         },
         onError: () => {
           showToast({
-            message: 'An error occurred while processing the audio, maybe the audio was too short',
+            message: localize('com_ui_speech_audio_error'),
             status: 'error',
           });
           setIsRequestBeingMade(false);
@@ -156,7 +158,7 @@ const useSpeechToTextExternal = (
         },
       });
     } else {
-      showToast({ message: 'The audio was too short', status: 'warning' });
+      showToast({ message: localize('com_ui_speech_audio_too_short'), status: 'warning' });
       onTranscriptionSettled(recordingTakeIdRef.current);
     }
   };
@@ -207,7 +209,7 @@ const useSpeechToTextExternal = (
   const startRecording = async (takeId?: number) => {
     recordingTakeIdRef.current = takeId;
     if (isRequestBeingMade) {
-      showToast({ message: 'A request is already being made. Please wait.', status: 'warning' });
+      showToast({ message: localize('com_ui_speech_request_pending'), status: 'warning' });
       return;
     }
 
@@ -219,7 +221,7 @@ const useSpeechToTextExternal = (
        permission is granted, `isListening` stays false, and the tracks run
        until the composer unmounts. */
     if (typeof MediaRecorder === 'undefined') {
-      showToast({ message: 'MediaRecorder is not supported in this browser', status: 'error' });
+      showToast({ message: localize('com_ui_speech_recorder_unsupported'), status: 'error' });
       return;
     }
 
@@ -253,10 +255,13 @@ const useSpeechToTextExternal = (
            behind a UI that offers no way to stop it. */
         releaseAudioStream();
         cleanup();
-        showToast({ message: `Error starting recording: ${error}`, status: 'error' });
+        showToast({
+          message: localize('com_ui_speech_start_error', { 0: String(error) }),
+          status: 'error',
+        });
       }
     } else {
-      showToast({ message: 'Microphone permission not granted', status: 'error' });
+      showToast({ message: localize('com_ui_speech_mic_permission'), status: 'error' });
     }
   };
 
@@ -288,12 +293,12 @@ const useSpeechToTextExternal = (
 
       setIsListening(false);
     } else {
-      showToast({ message: 'MediaRecorder is not recording', status: 'error' });
+      showToast({ message: localize('com_ui_speech_recorder_idle'), status: 'error' });
     }
   };
   const externalStartRecording = (takeId?: number) => {
     if (isListening) {
-      showToast({ message: 'Already listening. Please stop recording first.', status: 'warning' });
+      showToast({ message: localize('com_ui_speech_already_listening'), status: 'warning' });
       return;
     }
 
@@ -303,7 +308,7 @@ const useSpeechToTextExternal = (
   const externalStopRecording = () => {
     if (!isListening) {
       showToast({
-        message: 'Not currently recording. Please start recording first.',
+        message: localize('com_ui_speech_not_recording'),
         status: 'warning',
       });
       return;

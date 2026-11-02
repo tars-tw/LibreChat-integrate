@@ -53,19 +53,14 @@ describe('Sidebar', () => {
     expect(screen.queryByText('About')).not.toBeInTheDocument();
   });
 
-  it('shows the Langfuse tab when Langfuse is available to the user', () => {
-    setup({ langfuseConnectionAccess: true });
-    expect(screen.getByText('Langfuse')).toBeInTheDocument();
-  });
-
-  it('shows the Langfuse tab with prompt access and no connection access', () => {
-    setup({ langfuseConnectionAccess: false, langfusePromptSyncAccess: true });
-    expect(screen.getByText('Langfuse')).toBeInTheDocument();
-  });
-
-  it('hides the Langfuse tab without Langfuse connection access', () => {
-    setup({ langfuseConnectionAccess: false });
+  it('does not offer the Langfuse tab, even with Langfuse access', () => {
+    setup({ langfuseConnectionAccess: true, langfusePromptSyncAccess: true });
     expect(screen.queryByText('Langfuse')).not.toBeInTheDocument();
+  });
+
+  it('does not offer the data controls tab', () => {
+    setup();
+    expect(screen.queryByText('Data & Privacy')).not.toBeInTheDocument();
   });
 
   it('forwards typing to onQueryChange', async () => {

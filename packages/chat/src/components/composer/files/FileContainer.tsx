@@ -1,10 +1,21 @@
-import { cn } from '@librechat/client';
+import { cn, useLocalize } from '@librechat/client';
 import type { TFile } from 'librechat-data-provider';
 import type { ReactNode } from 'react';
+import type { TranslationKeys } from '@librechat/client';
 import type { ExtendedFile } from '../../../core/files';
 import FilePreview from './FilePreview';
 import { getFileType } from './kinds';
 import RemoveFile from './RemoveFile';
+
+/** `getFileType` titles are English constants shared with non-React callers. */
+const fileTypeTitleKeys: Record<string, TranslationKeys> = {
+  Document: 'com_ui_file_type_document',
+  Spreadsheet: 'com_ui_file_type_spreadsheet',
+  Code: 'com_ui_code',
+  Audio: 'com_ui_export_audio',
+  Video: 'com_ui_export_video',
+  File: 'com_ui_file',
+};
 
 /** A second action offered in place of the subtitle, stated on the chip rather than revealed on hover. */
 export type SubtitleAction = {
@@ -64,7 +75,10 @@ const FileContainer = ({
   removeDisabled?: boolean;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
 }): React.JSX.Element => {
+  const localize = useLocalize();
   const fileType = getFileType(overrideType ?? file.type);
+  const titleKey = fileTypeTitleKeys[fileType.title];
+  const fileTypeTitle = titleKey ? localize(titleKey) : fileType.title;
   const visibleName = displayName ?? file.filename ?? '';
   const interactive = onClick != null;
   const surfaceClassName = cn(
@@ -112,8 +126,8 @@ const FileContainer = ({
             </button>
           ) : (
             (subtitle ?? (
-              <div className="text-text-secondary truncate" title={fileType.title}>
-                {fileType.title}
+              <div className="text-text-secondary truncate" title={fileTypeTitle}>
+                {fileTypeTitle}
               </div>
             ))
           )}
