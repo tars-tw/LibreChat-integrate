@@ -733,6 +733,7 @@ export type TConfig = {
   disableBuilder?: boolean;
   retrievalModels?: string[];
   capabilities?: string[];
+  hiddenTools?: TAgentsEndpoint['hiddenTools'];
   statefulCodeSessions?: {
     allowedEnvironments: StatefulCodeEnvironment[];
     environments?: TPublicCodeEnvironment[];

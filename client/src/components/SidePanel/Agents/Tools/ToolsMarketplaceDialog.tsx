@@ -24,14 +24,15 @@ import {
 import { useAgentFileEntries, useAgentItems, useUninstallToolCredentials } from './hooks';
 import MarketplaceSidebar, { MarketplaceFilterBar } from './MarketplaceSidebar';
 import { setSubagentsEnabled, removeHandoffs } from './items/orchestration';
+import { applyFilter, excludeHiddenItems } from './items/filtering';
 import { requiresFileManagerRemoval } from './items/capabilities';
 import AddMcpServerDialog from './ItemDialog/AddMcpServerDialog';
 import { computeToggleAction } from './items/mutations';
 import { useLocalize, useToolFavorites } from '~/hooks';
 import MarketplaceCatalog from './MarketplaceCatalog';
 import { toggleTarsSwitchTools } from './items/tars';
+import { useAgentPanelContext } from '~/Providers';
 import ItemDialog from './ItemDialog/ItemDialog';
-import { applyFilter } from './items/filtering';
 import { NEW_ACTION_ID } from './items/types';
 import { isEphemeralAgent } from '~/common';
 
@@ -56,6 +57,12 @@ export default function ToolsMarketplaceDialog({
 
   /** Skills are excluded here — they have their own picker (`SkillsDialog`). */
   const { catalog, selected: selectedItems } = useAgentItems({ agentId });
+  const { agentsConfig } = useAgentPanelContext();
+  const hiddenTools = agentsConfig?.hiddenTools;
+  const libraryItems = useMemo(
+    () => excludeHiddenItems(catalog, hiddenTools),
+    [catalog, hiddenTools],
+  );
 
   const { favoriteKeys, toggle: toggleFavorite } = useToolFavorites();
 
@@ -102,19 +109,23 @@ export default function ToolsMarketplaceDialog({
 
   const counts = useMemo(
     () => ({
-      builtin: catalog.filter((i) => i.kind === 'builtin').length,
-      tool: catalog.filter((i) => i.kind === 'tool').length,
-      mcp: catalog.filter((i) => i.kind === 'mcp').length,
+      builtin: libraryItems.filter((i) => i.kind === 'builtin').length,
+      tool: libraryItems.filter((i) => i.kind === 'tool').length,
+      mcp: libraryItems.filter((i) => i.kind === 'mcp').length,
       skill: 0,
-      action: catalog.filter((i) => i.kind === 'action').length,
+      action: libraryItems.filter((i) => i.kind === 'action').length,
     }),
-    [catalog],
+    [libraryItems],
   );
 
   const filtered = useMemo(
     () =>
-      applyFilter(catalog, { search, kind, category: 'all', view }, { favoritedIds: favoriteKeys }),
-    [catalog, search, kind, view, favoriteKeys],
+      applyFilter(
+        libraryItems,
+        { search, kind, category: 'all', view },
+        { favoritedIds: favoriteKeys },
+      ),
+    [libraryItems, search, kind, view, favoriteKeys],
   );
 
   const handleToggle = useCallback(
@@ -263,7 +274,7 @@ export default function ToolsMarketplaceDialog({
               onSelectView={setView}
               onSelectKind={setKind}
               counts={counts}
-              totalCount={catalog.length}
+              totalCount={libraryItems.length}
               onCreateNew={handleCreateNew}
             />
           )}
@@ -294,7 +305,7 @@ export default function ToolsMarketplaceDialog({
                 onSelectView={setView}
                 onSelectKind={setKind}
                 counts={counts}
-                totalCount={catalog.length}
+                totalCount={libraryItems.length}
                 onCreateNew={handleCreateNew}
               />
             )}

@@ -66,3 +66,22 @@ export function applyFilter(
       matchesView(item, filter.view, context),
   );
 }
+
+/**
+ * Drops `endpoints.agents.hiddenTools` from the marketplace. Only builtins and
+ * tools match, since other kinds' ids are free-form names. The selected list
+ * must keep working off the full catalog, so an agent that already carries a
+ * hidden item can still see and remove it.
+ */
+export function excludeHiddenItems(
+  items: AgentItem[],
+  hiddenTools?: readonly string[],
+): AgentItem[] {
+  if (!hiddenTools?.length) {
+    return items;
+  }
+  const hidden = new Set(hiddenTools);
+  return items.filter(
+    (item) => (item.kind !== 'builtin' && item.kind !== 'tool') || !hidden.has(item.id),
+  );
+}

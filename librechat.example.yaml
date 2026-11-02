@@ -879,6 +879,9 @@ endpoints:
   #   # (optional) Maximum explicit subagents per agent, for both the flat list and
   #   # graph definitions. Defaults to 10; hard cap 50.
   #   maxSubagents: 20
+  #   # (optional) Tool library items to hide from the agent builder, by pluginKey or builtin id.
+  #   # Display only: agents that already carry one keep it and can still run it.
+  #   hiddenTools: ["handoffs", "google"]
   #   # (optional) Shared files during an active agent run. Each delegating agent must
   #   # also opt in with subagents.shareFiles. Inputs are read-only; outputs stay
   #   # private until explicitly published. Published files remain downloadable.
