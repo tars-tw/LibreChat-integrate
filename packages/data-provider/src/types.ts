@@ -734,6 +734,7 @@ export type TConfig = {
   retrievalModels?: string[];
   capabilities?: string[];
   hiddenTools?: TAgentsEndpoint['hiddenTools'];
+  hideInstructionsSource?: TAgentsEndpoint['hideInstructionsSource'];
   statefulCodeSessions?: {
     allowedEnvironments: StatefulCodeEnvironment[];
     environments?: TPublicCodeEnvironment[];

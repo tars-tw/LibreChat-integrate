@@ -55,9 +55,12 @@ function SourceToggle({ disabled = false }: { disabled?: boolean }) {
 export default function Instructions({
   promptStatus = 'ready',
   onRetryLoad,
+  hideSourceToggle = false,
 }: {
   promptStatus?: InstructionsPromptStatus;
   onRetryLoad?: () => void;
+  /** A linked agent keeps the toggle even so: it is the only way back to inline. */
+  hideSourceToggle?: boolean;
 }) {
   const localize = useLocalize();
   const { control } = useFormContext<AgentForm>();
@@ -73,7 +76,7 @@ export default function Instructions({
         <Label variant="section" data-testid="instructions-heading">
           {localize('com_ui_instructions')}
         </Label>
-        <SourceToggle disabled={!isReady} />
+        {(!hideSourceToggle || isPromptMode) && <SourceToggle disabled={!isReady} />}
       </div>
 
       {/* The expanded agent query (the only source of `instructionsPrompt`) has not

@@ -169,6 +169,7 @@ export default function AgentConfig({
         <Instructions
           promptStatus={instructionsPromptStatus}
           onRetryLoad={onRetryInstructionsPrompt}
+          hideSourceToggle={agentsConfig?.hideInstructionsSource}
         />
       )}
 
