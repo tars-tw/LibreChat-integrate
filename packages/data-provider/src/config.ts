@@ -1836,6 +1836,9 @@ export const agentsEndpointSchema = baseEndpointSchema
       /** Tool library items to hide from the agent builder, by pluginKey or builtin id.
        *  Display only: agents that already carry one keep it and can still run it. */
       hiddenTools: z.array(z.string()).optional(),
+      /** Hides the agent builder's Inline/Prompt instructions toggle. Display only: an agent
+       *  already linked to a prompt keeps the link and the toggle, its only way back to inline. */
+      hideInstructionsSource: z.boolean().optional(),
       capabilities: z
         .array(z.nativeEnum(AgentCapabilities))
         .optional()

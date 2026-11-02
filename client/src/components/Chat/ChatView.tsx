@@ -176,11 +176,7 @@ function ChatViewPane({
                          conversation that always showed it. */
                       bandFooter={
                         !fullFooter && configuredFooter ? (
-                          isLandingPage ? (
-                            <Footer configuredOnly />
-                          ) : (
-                            <Footer showDisclaimer={false} />
-                          )
+                          <Footer configuredOnly={isLandingPage} showDisclaimer={isLandingPage} />
                         ) : null
                       }
                       footer={fullFooter ? <Footer showDisclaimer={false} /> : null}

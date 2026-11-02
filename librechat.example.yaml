@@ -836,7 +836,7 @@ endpoints:
   #   retrievalModels: ["gpt-4-turbo-preview"]
   #   # (optional) Assistant Capabilities available to all users. Omit the ones you wish to exclude. Defaults to list below.
   #   capabilities: ["code_interpreter", "retrieval", "actions", "tools", "image_vision"]
-  # agents:
+  agents:
   #   # Maximum provider response-body inactivity for Agent model calls. Defaults to 15 minutes;
   #   # each received chunk resets the timer. Set to 0 to disable the idle timeout.
   #   modelResponseBodyTimeoutMs: 900000
@@ -915,9 +915,25 @@ endpoints:
   #   # (optional) Maximum explicit subagents per agent, for both the flat list and
   #   # graph definitions. Defaults to 10; hard cap 50.
   #   maxSubagents: 20
-  #   # (optional) Tool library items to hide from the agent builder, by pluginKey or builtin id.
-  #   # Display only: agents that already carry one keep it and can still run it.
-  #   hiddenTools: ["handoffs", "google"]
+    # (optional) Tool library items to hide from the agent builder, by pluginKey or builtin id.
+    # Display only: agents that already carry one keep it and can still run it.
+    hiddenTools:
+      - handoffs
+      - traversaal_search
+      - google
+      - wolfram
+      - tavily_search_results_json
+      - calculator
+      - stable-diffusion
+      - azure-ai-search
+      - open_weather
+      - flux
+      - tars_plugin_python_exec
+      - tars_plugin_summarize_text
+      - tars_plugin_text_stats
+    # (optional) Hide the agent builder's Inline/Prompt instructions toggle, leaving inline
+    # only. Agents already linked to a prompt keep the toggle so they can switch back.
+    hideInstructionsSource: true
   #   # (optional) Shared files during an active agent run. Each delegating agent must
   #   # also opt in with subagents.shareFiles. Inputs are read-only; outputs stay
   #   # private until explicitly published. Published files remain downloadable.

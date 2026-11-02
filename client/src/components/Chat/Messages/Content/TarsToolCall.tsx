@@ -1,6 +1,9 @@
 import { useMemo, useState, useCallback } from 'react';
 import { Tools } from 'librechat-data-provider';
+import { parseJsonField } from '@librechat/chat';
 import { FileText, FileOutput } from 'lucide-react';
+import { TOOL_ROW_CLASSES } from '@librechat/chat/components';
+import { toolPanelSpacingClassName } from '@librechat/chat/react';
 import type { TAttachment, PartMetadata, TTarsToolStep } from 'librechat-data-provider';
 import type { ToolCallPhase } from '~/utils/toolCallPhase';
 import type { TranslationKeys } from '~/hooks';
@@ -8,11 +11,8 @@ import type { TarsToolCopy } from './tars';
 import { useLocalize, useProgress, useExpandCollapse, useLazyCollapseBody } from '~/hooks';
 import { getTarsToolCopy, getTarsToolDetail, getTarsToolProgress } from './tars';
 import { resolveToolCallPhase } from '~/utils/toolCallPhase';
-import { toolPanelSpacingClassName } from './disclosure';
-import parseJsonField from './Parts/parseJsonField';
 import ProgressText from './ProgressText';
 import MarkdownLite from './MarkdownLite';
-import { TOOL_ROW_CLASSES } from './rows';
 import { cn } from '~/utils';
 
 /**

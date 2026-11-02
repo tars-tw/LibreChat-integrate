@@ -920,6 +920,22 @@ describe('agentsEndpointSchema', () => {
     expect(agentsEndpointSchema.safeParse({ hiddenTools: 'google' }).success).toBe(false);
   });
 
+  it('leaves hideInstructionsSource unset by default and keeps a configured value', () => {
+    const omitted = agentsEndpointSchema.safeParse({});
+    expect(omitted.success).toBe(true);
+    if (omitted.success) {
+      expect(omitted.data.hideInstructionsSource).toBeUndefined();
+    }
+
+    const configured = agentsEndpointSchema.safeParse({ hideInstructionsSource: true });
+    expect(configured.success).toBe(true);
+    if (configured.success) {
+      expect(configured.data.hideInstructionsSource).toBe(true);
+    }
+
+    expect(agentsEndpointSchema.safeParse({ hideInstructionsSource: 'yes' }).success).toBe(false);
+  });
+
   it('defaults maxSubagents to MAX_SUBAGENTS and validates its bounds', () => {
     const omitted = agentsEndpointSchema.safeParse({});
     expect(omitted.success).toBe(true);

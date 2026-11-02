@@ -261,7 +261,7 @@ describe('buildSharedLinkStartupPayload', () => {
     );
 
     expect(payload).toEqual({
-      appTitle: 'LibreChat',
+      appTitle: 'TARS.ai',
       analyticsGtmId: 'GTM-XYZ',
       interface: { analyticsConsent: false },
     });

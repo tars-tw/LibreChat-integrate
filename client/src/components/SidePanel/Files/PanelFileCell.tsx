@@ -1,8 +1,6 @@
+import { FilePreview, ImagePreview, getFileType } from '@librechat/chat/components';
 import type { TFile } from 'librechat-data-provider';
 import type { Row } from '@tanstack/react-table';
-import ImagePreview from '~/components/Chat/Input/Files/ImagePreview';
-import FilePreview from '~/components/Chat/Input/Files/FilePreview';
-import { getFileType } from '~/utils';
 
 export default function PanelFileCell({ row }: { row: Row<TFile | undefined> }) {
   const file = row.original;

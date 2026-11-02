@@ -29,11 +29,13 @@ function InstructionsHarness({
   instructionsPrompt = null,
   promptStatus,
   onRetryLoad,
+  hideSourceToggle,
 }: {
   instructionsSource?: AgentForm['instructionsSource'];
   instructionsPrompt?: AgentForm['instructionsPrompt'];
   promptStatus?: InstructionsPromptStatus;
   onRetryLoad?: () => void;
+  hideSourceToggle?: boolean;
 }) {
   const methods = useForm<AgentForm>({
     defaultValues: { instructions: '', instructionsSource, instructionsPrompt },
@@ -41,7 +43,11 @@ function InstructionsHarness({
   return (
     <ToastProvider>
       <FormProvider {...methods}>
-        <Instructions promptStatus={promptStatus} onRetryLoad={onRetryLoad} />
+        <Instructions
+          promptStatus={promptStatus}
+          onRetryLoad={onRetryLoad}
+          hideSourceToggle={hideSourceToggle}
+        />
       </FormProvider>
     </ToastProvider>
   );
@@ -283,6 +289,38 @@ describe('Agent Instructions', () => {
       expect(textbox).toBeInTheDocument();
       const editorLabel = document.querySelector('label[for="instructions"]');
       expect(editorLabel).toHaveClass('sr-only');
+    });
+  });
+
+  describe('hideSourceToggle', () => {
+    const toggleName = { name: 'com_agents_instructions_source_toggle_aria' };
+
+    it('hides the toggle and keeps the inline editor for an unlinked agent', () => {
+      render(<InstructionsHarness hideSourceToggle />);
+
+      expect(screen.queryByRole('radiogroup', toggleName)).not.toBeInTheDocument();
+      expect(screen.getByTestId('instructions-inline-panel')).not.toHaveClass('hidden');
+    });
+
+    it('keeps the toggle for a linked agent until it is switched back to Inline', () => {
+      render(
+        <InstructionsHarness
+          hideSourceToggle
+          instructionsSource="prompt"
+          instructionsPrompt={{
+            source: 'native',
+            groupId: 'group1',
+            selection: { type: 'production' },
+          }}
+        />,
+      );
+
+      expect(screen.getByRole('radiogroup', toggleName)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('radio', { name: 'com_agents_instructions_source_inline' }));
+
+      expect(screen.queryByRole('radiogroup', toggleName)).not.toBeInTheDocument();
+      expect(screen.getByTestId('instructions-inline-panel')).not.toHaveClass('hidden');
     });
   });
 });

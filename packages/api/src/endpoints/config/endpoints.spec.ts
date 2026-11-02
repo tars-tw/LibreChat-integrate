@@ -202,6 +202,25 @@ describe('createEndpointsConfigService', () => {
       expect(result?.[EModelEndpoint.agents]?.hiddenTools).toEqual(['handoffs', 'google']);
     });
 
+    it('exposes hideInstructionsSource to the agent builder', async () => {
+      const deps = createMockDeps({
+        loadDefaultEndpointsConfig: jest.fn().mockResolvedValue({
+          [EModelEndpoint.agents]: { userProvide: false, order: 0 },
+        }),
+        getAppConfig: jest.fn().mockResolvedValue(
+          appConfig({
+            endpoints: {
+              [EModelEndpoint.agents]: { hideInstructionsSource: true },
+            },
+          }),
+        ),
+      });
+      const { getEndpointsConfig } = createEndpointsConfigService(deps);
+      const result = await getEndpointsConfig(fakeReq());
+
+      expect(result?.[EModelEndpoint.agents]?.hideInstructionsSource).toBe(true);
+    });
+
     it.each([true, false])(
       'exposes file sharing policy to the agent builder when enabled=%s',
       async (enabled) => {

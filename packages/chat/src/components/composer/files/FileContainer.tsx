@@ -1,7 +1,7 @@
 import { cn, useLocalize } from '@librechat/client';
+import type { TranslationKeys } from '@librechat/client';
 import type { TFile } from 'librechat-data-provider';
 import type { ReactNode } from 'react';
-import type { TranslationKeys } from '@librechat/client';
 import type { ExtendedFile } from '../../../core/files';
 import FilePreview from './FilePreview';
 import { getFileType } from './kinds';

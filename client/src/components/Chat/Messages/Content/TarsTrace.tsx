@@ -1,5 +1,7 @@
 import { useId, useMemo, useState } from 'react';
 import { Tools } from 'librechat-data-provider';
+import { ROW_GLYPH_SLOT } from '@librechat/chat/components';
+import { toolPanelSpacingClassName } from '@librechat/chat/react';
 import { Button, disclosureChevronVariants } from '@librechat/client';
 import {
   Info,
@@ -22,9 +24,7 @@ import type {
   TTarsTraceArtifact,
 } from 'librechat-data-provider';
 import { useLocalize, useExpandCollapse, useLazyCollapseBody } from '~/hooks';
-import { toolPanelSpacingClassName } from './disclosure';
 import { TOOL_ICONS, TOOL_LABEL_KEYS } from './tars';
-import { ROW_GLYPH_SLOT } from './rows';
 import ToolCall from './ToolCall';
 import { cn } from '~/utils';
 

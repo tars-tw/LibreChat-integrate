@@ -1,3 +1,4 @@
+import { parseJsonField } from '@librechat/chat';
 import { Tools, tarsBuiltinToolOf } from 'librechat-data-provider';
 import {
   Link,
@@ -18,7 +19,6 @@ import type { TAttachment, TTarsBuiltinTool } from 'librechat-data-provider';
 import type { LucideIcon } from 'lucide-react';
 import type { TOptions } from 'i18next';
 import type { TranslationKeys } from '~/hooks';
-import parseJsonField from './Parts/parseJsonField';
 
 /** pwc_tars agent tools by their pwc_tars name; the audit trace names them the same way. */
 export const TOOL_LABEL_KEYS: Record<string, TranslationKeys> = {

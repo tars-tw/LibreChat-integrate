@@ -772,11 +772,6 @@
       "count": 3
     }
   },
-  "client/src/components/Chat/Input/QuoteButton.tsx": {
-    "shadcn/no-inline-styles": {
-      "count": 1
-    }
-  },
   "client/src/components/Chat/Input/TarsPrompts/Button.tsx": {
     "design/disabled-recipe": {
       "count": 1
