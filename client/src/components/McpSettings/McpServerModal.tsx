@@ -40,6 +40,7 @@ import { errorMessage } from '~/components/Admin/Tars/Models/helpers';
 import McpOpenapiFixedValues from './McpOpenapiFixedValues';
 import McpCustomApiTools from './McpCustomApiTools';
 import McpStaticHeaders from './McpStaticHeaders';
+import McpParsedTools from './McpParsedTools';
 import { useLocalize } from '~/hooks';
 
 type AuthType = 'none' | 'bearer' | 'api_key' | 'basic' | 'login';
@@ -194,6 +195,8 @@ export default function McpServerModal({
   const [parsed, setParsed] = useState<TTarsMcpParsedSpec | null>(null);
   const [openapiTools, setOpenapiTools] = useState<TTarsMcpParsedTool[]>([]);
   const [formTab, setFormTab] = useState<FormTab>('basic');
+  /** Hosts the auth list, which the form's own scroll area would otherwise cut off. */
+  const [dialogElement, setDialogElement] = useState<HTMLDivElement | null>(null);
 
   const syncMutation = useSyncTarsMcpServerMutation();
   const parseMutation = useParseTarsMcpOpenapiMutation();
@@ -426,12 +429,15 @@ export default function McpServerModal({
   const isExternal = form.type === 'external';
   const authFields = (
     <div className="border-border-light space-y-3 rounded-lg border p-3">
-      <div className="flex items-center justify-between">
-        <Label>{localize('com_ui_tars_mcp_auth')}</Label>
+      <div className="flex items-center justify-between gap-4">
+        <Label className="w-auto shrink-0">{localize('com_ui_tars_mcp_auth')}</Label>
         <Dropdown
           value={form.auth.type}
           onChange={(value) => setAuth('type', value as AuthType)}
           ariaLabel={localize('com_ui_tars_mcp_auth')}
+          variant="field"
+          className="w-80 max-w-full"
+          portalElement={dialogElement}
           options={[
             { value: 'none', label: localize('com_ui_tars_mcp_auth_none') },
             { value: 'bearer', label: localize('com_ui_tars_mcp_auth_bearer') },
@@ -679,23 +685,7 @@ export default function McpServerModal({
               />
             </div>
           </div>
-          {parsed != null && (
-            <div className="bg-surface-secondary rounded-lg p-3 text-sm">
-              <p className="text-text-primary mb-2 font-medium">
-                {localize('com_ui_tars_mcp_parse_result', {
-                  count: parsed.tool_count ?? parsed.tools?.length ?? 0,
-                })}
-              </p>
-              <ul className="max-h-40 space-y-1 overflow-y-auto">
-                {(parsed.tools ?? []).map((tool) => (
-                  <li key={tool.name} className="text-text-secondary truncate text-xs">
-                    <span className="text-text-primary font-mono">{tool.name}</span>
-                    {tool.description ? ` — ${tool.description}` : ''}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {parsed != null && <McpParsedTools spec={parsed} />}
         </div>
       )}
 
@@ -796,12 +786,13 @@ export default function McpServerModal({
   return (
     <OGDialog open={open} onOpenChange={onOpenChange}>
       <OGDialogTemplate
+        ref={setDialogElement}
         title={
           isEdit ? localize('com_ui_tars_mcp_edit_server') : localize('com_ui_tars_mcp_add_server')
         }
         showCloseButton={true}
-        className="w-11/12 md:max-w-3xl"
-        mainClassName="px-0 pb-2 pt-6"
+        className="w-11/12 md:max-w-5xl"
+        mainClassName="min-w-0 px-0 pb-2 pt-6"
         main={
           <div className="max-h-[65vh] overflow-y-auto pr-1">
             <Tabs value={formTab} onValueChange={(value) => setFormTab(value as FormTab)}>
