@@ -432,7 +432,7 @@ export default function DialogImage({
                     </h4>
                     <div className="bg-surface-tertiary rounded-md p-3">
                       <p className="text-text-primary text-sm leading-relaxed">
-                        {args?.prompt || 'No prompt available'}
+                        {args?.prompt || localize('com_ui_image_no_prompt')}
                       </p>
                     </div>
                   </div>
@@ -448,7 +448,7 @@ export default function DialogImage({
                           {localize('com_ui_size')}:
                         </span>
                         <span className="text-text-primary text-sm font-medium">
-                          {args?.size || 'Unknown'}
+                          {args?.size || localize('com_ui_unknown')}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -458,7 +458,7 @@ export default function DialogImage({
                         <span
                           className={`rounded px-2 py-1 text-xs font-medium capitalize ${getQualityStyles(args?.quality || '')}`}
                         >
-                          {args?.quality || 'Standard'}
+                          {args?.quality || localize('com_ui_standard')}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -466,7 +466,7 @@ export default function DialogImage({
                           {localize('com_ui_file_size')}:
                         </span>
                         <span className="text-text-primary text-sm font-medium">
-                          {imageSize || 'Loading...'}
+                          {imageSize || localize('com_ui_loading')}
                         </span>
                       </div>
                     </div>

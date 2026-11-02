@@ -270,9 +270,9 @@ export default function Search() {
 
   useEffect(() => {
     if (isError && searchQuery) {
-      showToast({ message: 'An error occurred during search', status: 'error' });
+      showToast({ message: localize('com_ui_search_error'), status: 'error' });
     }
-  }, [isError, searchQuery, showToast]);
+  }, [isError, searchQuery, showToast, localize]);
 
   const resultsCount = messages.length;
   const resultsAnnouncement = useMemo(() => {

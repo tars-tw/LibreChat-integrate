@@ -3,8 +3,24 @@ import { useRecoilState, useRecoilValue } from 'recoil';
 import { useLocalize } from '~/hooks';
 import store from '~/store';
 
+/** The browser already names every language, so the list needs no locale keys; a tag it
+ *  cannot name keeps its English label. `short` keeps region names like 香港 plain. */
+function localizeLabels(options: { value: string; label: string }[], locale: string) {
+  try {
+    const names = new Intl.DisplayNames([locale], {
+      type: 'language',
+      style: 'short',
+      fallback: 'none',
+    });
+    return options.map((option) => ({ ...option, label: names.of(option.value) ?? option.label }));
+  } catch {
+    return options;
+  }
+}
+
 export default function LanguageSTTDropdown() {
   const localize = useLocalize();
+  const lang = useRecoilValue(store.lang);
   const [languageSTT, setLanguageSTT] = useRecoilState<string>(store.languageSTT);
   const speechToText = useRecoilValue(store.speechToText);
 
@@ -103,7 +119,7 @@ export default function LanguageSTTDropdown() {
       <Dropdown
         value={languageSTT}
         onChange={handleSelect}
-        options={languageOptions}
+        options={localizeLabels(languageOptions, lang)}
         testId="LanguageSTTDropdown"
         sizeClasses="z-50"
         className="z-50"
