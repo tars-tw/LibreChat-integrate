@@ -91,6 +91,12 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
 
   const needsCredentials = server.requires_user_credentials && !server.has_credentials;
 
+  const enableAfterFirstCredentials = () => {
+    if (needsCredentials && !server.user_enabled) {
+      toggleServer(true);
+    }
+  };
+
   return (
     <div className="border-border-light rounded-lg border">
       <div className="flex items-center gap-3 p-3">
@@ -125,10 +131,10 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
           </button>
         )}
         <Switch
-          checked={server.user_enabled}
+          checked={server.user_enabled && !needsCredentials}
           onCheckedChange={toggleServer}
           aria-label={`${server.name} ${localize('com_ui_active')}`}
-          disabled={updateMutation.isLoading}
+          disabled={needsCredentials || updateMutation.isLoading}
         />
       </div>
 
@@ -140,7 +146,7 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
 
       {showCredentials && server.requires_user_credentials && (
         <div className="px-3 pb-3">
-          <McpCredentialsForm server={server} />
+          <McpCredentialsForm server={server} onSaved={enableAfterFirstCredentials} />
         </div>
       )}
 
