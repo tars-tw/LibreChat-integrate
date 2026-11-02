@@ -904,6 +904,22 @@ describe('agentsEndpointSchema', () => {
     expect(parse([{ ...environment, default: true }, { ...environment }]).success).toBe(false);
   });
 
+  it('leaves hiddenTools unset by default and keeps a configured list', () => {
+    const omitted = agentsEndpointSchema.safeParse({});
+    expect(omitted.success).toBe(true);
+    if (omitted.success) {
+      expect(omitted.data.hiddenTools).toBeUndefined();
+    }
+
+    const configured = agentsEndpointSchema.safeParse({ hiddenTools: ['handoffs', 'google'] });
+    expect(configured.success).toBe(true);
+    if (configured.success) {
+      expect(configured.data.hiddenTools).toEqual(['handoffs', 'google']);
+    }
+
+    expect(agentsEndpointSchema.safeParse({ hiddenTools: 'google' }).success).toBe(false);
+  });
+
   it('defaults maxSubagents to MAX_SUBAGENTS and validates its bounds', () => {
     const omitted = agentsEndpointSchema.safeParse({});
     expect(omitted.success).toBe(true);

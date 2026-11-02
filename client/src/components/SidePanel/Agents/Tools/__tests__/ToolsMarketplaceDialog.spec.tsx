@@ -11,6 +11,7 @@ let mockMcpServersMap = new Map<string, object>();
 let mockIsDesktop = true;
 let mockSubagents = { enabled: false, allowSelf: false, agent_ids: ['reviewer'] };
 let mockEdges: Array<{ from: string; to: string; edgeType?: 'handoff' | 'direct' }> = [];
+let mockHiddenTools: string[] | undefined;
 
 jest.mock('react-hook-form', () => ({
   useFormContext: () => ({
@@ -38,7 +39,10 @@ jest.mock('react-hook-form', () => ({
 
 jest.mock('~/Providers', () => ({
   useAgentPanelContext: () => ({
-    agentsConfig: { capabilities: ['execute_code', 'tools', 'subagents'] },
+    agentsConfig: {
+      capabilities: ['execute_code', 'tools', 'subagents'],
+      hiddenTools: mockHiddenTools,
+    },
     regularTools: [{ pluginKey: 'dalle', name: 'DALL-E', description: 'Images' }],
     mcpServersMap: mockMcpServersMap,
     actions: [],
@@ -181,12 +185,24 @@ describe('ToolsMarketplaceDialog', () => {
     mockIsDesktop = true;
     mockSubagents = { enabled: false, allowSelf: false, agent_ids: ['reviewer'] };
     mockEdges = [];
+    mockHiddenTools = undefined;
     mockFileEntries = { contextFiles: [], knowledgeFiles: [], codeFiles: [] };
   });
 
   test('renders cards from catalog when open', () => {
     render(<ToolsMarketplaceDialog open onOpenChange={jest.fn()} agentId="a1" />);
     expect(screen.getByText('DALL-E')).toBeInTheDocument();
+  });
+
+  test('leaves hidden tools out of the list and the counts', () => {
+    mockHiddenTools = ['dalle', 'handoffs'];
+
+    render(<ToolsMarketplaceDialog open onOpenChange={jest.fn()} agentId="a1" />);
+
+    expect(screen.queryByText('DALL-E')).not.toBeInTheDocument();
+    expect(screen.queryByText('com_ui_agent_handoffs')).not.toBeInTheDocument();
+    expect(screen.getByText('com_ui_run_code')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /com_ui_all_proper/ })).toHaveTextContent('2');
   });
 
   test('does not render anything when closed', () => {

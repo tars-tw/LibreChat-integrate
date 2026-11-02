@@ -1833,6 +1833,9 @@ export const agentsEndpointSchema = baseEndpointSchema
         })
         .optional(),
       allowedProviders: z.array(z.union([z.string(), eModelEndpointSchema])).optional(),
+      /** Tool library items to hide from the agent builder, by pluginKey or builtin id.
+       *  Display only: agents that already carry one keep it and can still run it. */
+      hiddenTools: z.array(z.string()).optional(),
       capabilities: z
         .array(z.nativeEnum(AgentCapabilities))
         .optional()

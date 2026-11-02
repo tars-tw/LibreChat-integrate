@@ -88,6 +88,7 @@ export function createEndpointsConfigService(deps: EndpointsConfigDeps): {
         disableBuilder,
         capabilities,
         allowedProviders,
+        hiddenTools,
         statefulCodeSessions,
         maxSubagents,
         fileSharing,
@@ -138,6 +139,7 @@ export function createEndpointsConfigService(deps: EndpointsConfigDeps): {
       mergedConfig[EModelEndpoint.agents] = {
         ...mergedConfig[EModelEndpoint.agents],
         allowedProviders,
+        hiddenTools,
         disableBuilder,
         capabilities,
         statefulCodeSessions: clientStatefulCodeSessions,

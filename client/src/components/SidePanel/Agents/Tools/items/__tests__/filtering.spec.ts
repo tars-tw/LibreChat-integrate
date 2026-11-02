@@ -1,6 +1,6 @@
 import type { AgentItem } from '../types';
+import { applyFilter, excludeHiddenItems, matchesView } from '../filtering';
 import { makePlugin, makeSkill } from 'test/itemFactories';
-import { applyFilter, matchesView } from '../filtering';
 
 const items: AgentItem[] = [
   {
@@ -129,6 +129,22 @@ describe('applyFilter', () => {
   test('view filter intersects with kind and search', () => {
     const result = applyFilter(items, { view: 'mine', kind: 'skill', search: 'reviewer' });
     expect(result.map((i) => i.id)).toEqual(['s1']);
+  });
+});
+
+describe('excludeHiddenItems', () => {
+  test('returns the items untouched without a hidden list', () => {
+    expect(excludeHiddenItems(items)).toBe(items);
+    expect(excludeHiddenItems(items, [])).toBe(items);
+  });
+
+  test('drops hidden builtins and tools by id', () => {
+    const result = excludeHiddenItems(items, ['execute_code', 'dalle']);
+    expect(result.map((i) => i.id)).toEqual(['s1', 's2']);
+  });
+
+  test('never matches another kind that shares a hidden id', () => {
+    expect(excludeHiddenItems(items, ['s1'])).toEqual(items);
   });
 });
 

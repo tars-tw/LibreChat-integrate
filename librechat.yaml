@@ -43,6 +43,22 @@ endpoints:
       - file_agent
       - skills
       - context
+    # Tool library items hidden from the agent builder, by pluginKey or builtin id. Display
+    # only: agents that already carry one keep it. Remove a line and restart to offer it again.
+    hiddenTools:
+      - handoffs
+      - traversaal_search
+      - google
+      - wolfram
+      - tavily_search_results_json
+      - calculator
+      - stable-diffusion
+      - azure-ai-search
+      - open_weather
+      - flux
+      - tars_plugin_python_exec
+      - tars_plugin_summarize_text
+      - tars_plugin_text_stats
     # Append "Current date: YYYY-MM-DD (Weekday)" (user's timezone) to every agent turn, as
     # pwc_tars's own chat does, so relative ranges ("the last month") reach tools as real
     # dates instead of the model's training-era guess. Skipped for agents whose instructions
