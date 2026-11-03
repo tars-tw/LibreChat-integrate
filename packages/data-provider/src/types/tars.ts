@@ -1211,12 +1211,22 @@ export type TTarsMcpShareGap = {
   tool_names: string[];
 };
 
-/** A share target refused because it is not assigned tools the agent uses. */
+/** The 專用腦 a share target cannot use. */
+export type TTarsDomainShareGap = {
+  id: string;
+  /** `null` when the brain no longer exists in pwc_tars. */
+  name: string | null;
+  /** A disabled brain is refused for everyone, administrators included. */
+  is_active: boolean;
+};
+
+/** A share target refused because it lacks MCP tools or the 專用腦 the agent uses. */
 export type TTarsMcpShareBlock = {
   principal_type: 'user' | 'group';
   idOnTheSource: string;
   name: string;
   servers: TTarsMcpShareGap[];
+  domain?: TTarsDomainShareGap;
 };
 
 /**

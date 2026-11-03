@@ -1,7 +1,13 @@
 import { logger } from '@librechat/data-schemas';
-import { isAgentsEndpoint, isEphemeralAgentId } from 'librechat-data-provider';
+import {
+  isAgentsEndpoint,
+  isEphemeralAgentId,
+  TARS_AGENT_DOMAIN_FORBIDDEN,
+  TARS_AGENT_DOMAIN_CHECK_UNAVAILABLE,
+} from 'librechat-data-provider';
+import type { TTarsDomainShareGap } from 'librechat-data-provider';
 import type { NextFunction, Response } from 'express';
-import { fetchTarsDomainById } from '~/tars/domains';
+import { fetchTarsDomainShareCheck, toTarsDomainShareGap } from '~/tars/domains';
 import { isTarsConfigured } from '~/tars/client';
 
 /** The slice of a chat request the binding reads and rewrites. */
@@ -14,27 +20,50 @@ export interface TarsAgentDomainRequest {
   user?: { tarsId?: string };
 }
 
+/** Whether a user may use a brain, and the brain as pwc_tars knows it. */
+export interface TarsDomainAccess {
+  allowed: boolean;
+  domain: TTarsDomainShareGap;
+}
+
 export interface TarsAgentDomainDeps {
   /** The 專用腦 a saved agent is bound to; empty when it follows the chat. */
   getAgentDomainId: (agentId: string) => Promise<string | null | undefined>;
-  /** Whether the user may use the brain. Defaults to pwc_tars's role-scoped domain listing. */
-  canUseDomain?: (tarsUserId: string, domainId: string) => Promise<boolean>;
+  /**
+   * Whether the user may use the brain. Defaults to pwc_tars's share check for the user
+   * alone, so a chat is judged on exactly what sharing the agent was judged on.
+   */
+  checkDomain?: (tarsUserId: string, domainId: string) => Promise<TarsDomainAccess>;
 }
 
-const canUseTarsDomain = async (tarsUserId: string, domainId: string): Promise<boolean> =>
-  (await fetchTarsDomainById(tarsUserId, domainId)) != null;
+const checkTarsDomain = async (tarsUserId: string, domainId: string): Promise<TarsDomainAccess> => {
+  const { domain, missing } = await fetchTarsDomainShareCheck(domainId, [
+    { principal_type: 'user', principal_id: tarsUserId },
+  ]);
+  return { allowed: missing.length === 0, domain: toTarsDomainShareGap(domain) };
+};
+
+const refuse = (res: Response, domain?: TTarsDomainShareGap): void => {
+  res.status(403).json({
+    error: 'Forbidden',
+    code: TARS_AGENT_DOMAIN_FORBIDDEN,
+    message: 'This agent is bound to a specialized brain your account cannot use.',
+    ...(domain ? { domain } : {}),
+  });
+};
 
 /**
  * Runs a saved agent's turn against the brain the agent is bound to rather
  * than the chat's. Every TARS consumer downstream (knowledge-base and database
  * scope, plugin allowlist, conversation mirror) reads `req.body.domain_id`, so
  * rewriting it here is the one seam that keeps them in agreement. The brain
- * must be one the acting user may use: an agent can be shared with someone
- * outside its brain's role grants, and that user is refused rather than
- * silently answered out of another brain.
+ * must be one the acting user may use: a share is checked when it is made, but
+ * the user's roles, groups or the brain itself can change afterwards, so that
+ * user is refused with the brain named rather than silently answered out of
+ * another brain.
  */
 export function createBindTarsAgentDomain(deps: TarsAgentDomainDeps) {
-  const canUseDomain = deps.canUseDomain ?? canUseTarsDomain;
+  const checkDomain = deps.checkDomain ?? checkTarsDomain;
 
   return async (req: TarsAgentDomainRequest, res: Response, next: NextFunction): Promise<void> => {
     const body = req.body;
@@ -61,14 +90,25 @@ export function createBindTarsAgentDomain(deps: TarsAgentDomainDeps) {
     }
 
     const tarsUserId = req.user?.tarsId;
-    const allowed = tarsUserId
-      ? await canUseDomain(tarsUserId, domainId).catch(() => false)
-      : false;
-    if (!allowed) {
-      res.status(403).json({
-        error: 'Forbidden',
-        message: 'This agent is bound to a specialized brain your account cannot use.',
+    if (!tarsUserId) {
+      refuse(res);
+      return;
+    }
+
+    let access: TarsDomainAccess;
+    try {
+      access = await checkDomain(tarsUserId, domainId);
+    } catch (error) {
+      logger.error('[tars-agent-domain] Could not check access to the agent brain', error);
+      res.status(503).json({
+        error: 'Service Unavailable',
+        code: TARS_AGENT_DOMAIN_CHECK_UNAVAILABLE,
+        message: 'Could not verify access to the specialized brain this agent is bound to.',
       });
+      return;
+    }
+    if (!access.allowed) {
+      refuse(res, access.domain);
       return;
     }
 

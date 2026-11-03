@@ -1,7 +1,13 @@
-import { ErrorTypes, ViolationTypes } from 'librechat-data-provider';
+import {
+  ErrorTypes,
+  ViolationTypes,
+  TARS_AGENT_DOMAIN_FORBIDDEN,
+  TARS_AGENT_DOMAIN_CHECK_UNAVAILABLE,
+} from 'librechat-data-provider';
 import type { ComponentType } from 'react';
 import type { ErrorRendererProps } from './parts';
 import type { TranslationKeys } from '~/hooks';
+import TarsDomainError from './TarsDomainError';
 import { ProviderErrorCodes } from './parts';
 import ProviderError from './ProviderError';
 import UserKeyError from './UserKeyError';
@@ -46,6 +52,7 @@ export const errorCopy: Record<string, TranslationKeys> = {
   [ViolationTypes.VERIFY_EMAIL_LIMIT]: 'com_error_verify_email_limit',
   [ViolationTypes.NON_BROWSER]: 'com_error_non_browser',
   [ViolationTypes.GENERAL]: 'com_error_request_blocked',
+  [TARS_AGENT_DOMAIN_CHECK_UNAVAILABLE]: 'com_error_tars_agent_domain_check_unavailable',
 };
 
 /** Codes whose copy depends on payload fields, deployment capabilities or the user's rights. */
@@ -77,4 +84,5 @@ export const errorRenderers: Record<string, ComponentType<ErrorRendererProps>> =
   [ViolationTypes.FILE_UPLOAD_LIMIT]: LimitError,
   [ViolationTypes.TTS_LIMIT]: LimitError,
   [ViolationTypes.STT_LIMIT]: LimitError,
+  [TARS_AGENT_DOMAIN_FORBIDDEN]: TarsDomainError,
 };

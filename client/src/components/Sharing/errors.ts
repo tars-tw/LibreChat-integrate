@@ -5,6 +5,7 @@ import {
 } from 'librechat-data-provider';
 import type { TTarsMcpShareBlock } from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks';
+import { shareGapLabel } from './gaps';
 
 const PERMISSION_ERROR_KEYS: Record<string, TranslationKeys> = {
   RESOURCE_PERMISSIONS_BUSY: 'com_ui_permissions_busy',
@@ -34,17 +35,19 @@ export function mcpShareBlocks(error: unknown): TTarsMcpShareBlock[] {
 /**
  * Why saving an agent was refused for the people it is already shared with, or `null` when
  * the failure was something else. Those people are not on screen as they are in the share
- * dialog, so the toast has to name them.
+ * dialog, so the toast has to name them and what each lacks.
  */
 export function agentSaveShareError(
   error: unknown,
-  localize: (key: TranslationKeys, values?: Record<string, string>) => string,
+  localize: (key: TranslationKeys, values?: Record<string, string | number>) => string,
 ): string | null {
   const data = errorData(error);
   switch (data?.code) {
     case TARS_MCP_SHARE_BLOCKED:
       return localize('com_ui_tars_mcp_save_blocked', {
-        names: (data.blocked ?? []).map((block) => block.name).join(', '),
+        details: (data.blocked ?? [])
+          .map((block) => `${block.name}: ${shareGapLabel(block, localize)}`)
+          .join('; '),
       });
     case TARS_MCP_PUBLIC_SHARE_BLOCKED:
       return localize('com_ui_tars_mcp_save_public_blocked');

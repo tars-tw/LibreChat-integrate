@@ -16,6 +16,13 @@ export const TARS_MCP_SHARE_BLOCKED = 'TARS_MCP_SHARE_BLOCKED';
 export const TARS_MCP_PUBLIC_SHARE_BLOCKED = 'TARS_MCP_PUBLIC_SHARE_BLOCKED';
 /** pwc_tars could not answer, so the share stays refused. */
 export const TARS_MCP_SHARE_CHECK_UNAVAILABLE = 'TARS_MCP_SHARE_CHECK_UNAVAILABLE';
+/**
+ * A chat with an agent bound to a 專用腦 the user cannot use: no role grant, or the brain is
+ * disabled or deleted. `domain` names the brain when pwc_tars knows it.
+ */
+export const TARS_AGENT_DOMAIN_FORBIDDEN = 'TARS_AGENT_DOMAIN_FORBIDDEN';
+/** pwc_tars could not confirm the user may use the agent's 專用腦, so the chat is refused. */
+export const TARS_AGENT_DOMAIN_CHECK_UNAVAILABLE = 'TARS_AGENT_DOMAIN_CHECK_UNAVAILABLE';
 
 /**
  * Shared pwc_tars data-source facts. Both the form in the browser and the

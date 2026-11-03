@@ -9,18 +9,28 @@ import {
   TARS_MCP_PUBLIC_SHARE_BLOCKED,
   TARS_MCP_SHARE_CHECK_UNAVAILABLE,
 } from 'librechat-data-provider';
-import type { TPrincipal, TTarsMcpShareGap, TTarsMcpShareBlock } from 'librechat-data-provider';
+import type {
+  TPrincipal,
+  TTarsMcpShareGap,
+  TTarsMcpShareBlock,
+  TTarsDomainShareGap,
+} from 'librechat-data-provider';
 import type { NextFunction, Request, Response } from 'express';
+import type { TarsSharePrincipal } from '~/tars/domains';
 import type { TarsAvailableToolRow } from './client';
 import { buildScopedToolName, PROXIED_SERVER_TYPES, tarsMcpFetch } from './client';
+import { fetchTarsDomainShareCheck, toTarsDomainShareGap } from '~/tars/domains';
+import { isTarsConfigured } from '~/tars/client';
 import { isTarsMcpEnabled } from './config';
 import { gatewayNameFor } from './names';
 
 /**
- * Sharing an agent never gave anyone its pwc_tars MCP tools: the gateway lists and
- * runs them per user, so a share target without the assignment gets an agent whose
- * tools simply fail. These checks stop that at the point of sharing, or of adding a
- * tool to an agent that is already shared. pwc_tars remains the runtime enforcement.
+ * Sharing an agent never gave anyone its pwc_tars MCP tools or its 專用腦: the gateway
+ * lists and runs the tools per user, and a chat with a brain-bound agent is refused to
+ * anyone outside the brain's role grants. So a share target lacking either gets an
+ * agent that does not work. These checks stop that at the point of sharing, or of
+ * adding a tool to an agent that is already shared. pwc_tars and the chat route remain
+ * the runtime enforcement.
  */
 
 type SharePrincipal = Pick<TPrincipal, 'type' | 'id' | 'idOnTheSource' | 'name'>;
@@ -38,10 +48,18 @@ interface ShareCheckServer {
   mcp_tool_ids: string[];
 }
 
-interface ShareCheckMissing {
-  principal_type: TTarsMcpShareBlock['principal_type'];
-  principal_id: string;
+interface ShareCheckMissing extends TarsSharePrincipal {
   servers: TTarsMcpShareGap[];
+}
+
+interface ShareTarget extends TarsSharePrincipal {
+  name: string;
+}
+
+/** What a share target must have: the gateway tools and the 專用腦 the agent binds. */
+interface ShareRequirements {
+  tools: string[];
+  domainId?: string | null;
 }
 
 export interface TarsMcpShareRefusal {
@@ -58,7 +76,7 @@ const PUBLIC_REFUSED: TarsMcpShareRefusal = {
   status: 409,
   body: {
     code: TARS_MCP_PUBLIC_SHARE_BLOCKED,
-    error: 'An agent with MCP tools cannot be shared with everyone',
+    error: 'An agent with MCP tools or a specialized brain cannot be shared with everyone',
   },
 };
 
@@ -130,37 +148,86 @@ const sourceId = (principal: SharePrincipal): string =>
 const isCheckable = (principal: SharePrincipal): boolean =>
   principal.type === PrincipalType.USER || principal.type === PrincipalType.GROUP;
 
-async function refusalFor(
+const principalKey = ({ principal_type, principal_id }: TarsSharePrincipal): string =>
+  `${principal_type}:${principal_id}`;
+
+/** Checkable principals as pwc_tars identifies them, each once. */
+function toTargets(principals: SharePrincipal[]): ShareTarget[] {
+  const targets = new Map<string, ShareTarget>();
+  for (const principal of principals) {
+    const target: ShareTarget = {
+      principal_type: principal.type === PrincipalType.USER ? 'user' : 'group',
+      principal_id: sourceId(principal),
+      name: principal.name ?? '',
+    };
+    targets.set(principalKey(target), target);
+  }
+  return [...targets.values()];
+}
+
+/** The gateway servers each target lacks, keyed by `principalKey`. */
+async function missingServers(
   tools: string[],
+  principals: TarsSharePrincipal[],
+): Promise<Map<string, TTarsMcpShareGap[]>> {
+  const servers = requiredServers(tools, await loadGatewayServers());
+  if (servers.length === 0) {
+    return new Map();
+  }
+  const result = await tarsMcpFetch<{ missing: ShareCheckMissing[] }>('/api/mcp/share-check', {
+    method: 'POST',
+    body: { principals, servers },
+  });
+  return new Map((result?.missing ?? []).map((miss) => [principalKey(miss), miss.servers]));
+}
+
+/** The brain each target cannot use, keyed by `principalKey`. */
+async function missingDomain(
+  domainId: string,
+  principals: TarsSharePrincipal[],
+): Promise<Map<string, TTarsDomainShareGap>> {
+  const { domain, missing } = await fetchTarsDomainShareCheck(domainId, principals);
+  const gap = toTarsDomainShareGap(domain);
+  return new Map(missing.map((miss) => [principalKey(miss), gap]));
+}
+
+async function refusalFor(
+  { tools, domainId }: ShareRequirements,
   principals: SharePrincipal[],
 ): Promise<TarsMcpShareRefusal | null> {
-  if (!tools.some(isTarsMcpToolKey) || principals.length === 0) {
+  const bindsTools = isTarsMcpEnabled() && tools.some(isTarsMcpToolKey);
+  if ((!bindsTools && !domainId) || principals.length === 0) {
     return null;
   }
   if (!principals.every(isCheckable)) {
     return PUBLIC_REFUSED;
   }
-  const servers = requiredServers(tools, await loadGatewayServers());
-  if (servers.length === 0) {
-    return null;
-  }
-  const names = new Map(principals.map((principal) => [sourceId(principal), principal.name ?? '']));
-  const result = await tarsMcpFetch<{ missing: ShareCheckMissing[] }>('/api/mcp/share-check', {
-    method: 'POST',
-    body: {
-      principals: principals.map((principal) => ({
-        principal_type: principal.type,
-        principal_id: sourceId(principal),
-      })),
-      servers,
-    },
-  });
-  const blocked = (result?.missing ?? []).map(({ principal_type, principal_id, servers }) => ({
+  const targets = toTargets(principals);
+  const asked = targets.map(({ principal_type, principal_id }) => ({
     principal_type,
-    idOnTheSource: principal_id,
-    name: names.get(principal_id) ?? '',
-    servers,
+    principal_id,
   }));
+  const [serverGaps, domainGaps] = await Promise.all([
+    bindsTools ? missingServers(tools, asked) : new Map<string, TTarsMcpShareGap[]>(),
+    domainId ? missingDomain(domainId, asked) : new Map<string, TTarsDomainShareGap>(),
+  ]);
+  const blocked = targets.flatMap((target): TTarsMcpShareBlock[] => {
+    const key = principalKey(target);
+    const servers = serverGaps.get(key) ?? [];
+    const domain = domainGaps.get(key);
+    if (servers.length === 0 && domain == null) {
+      return [];
+    }
+    return [
+      {
+        principal_type: target.principal_type,
+        idOnTheSource: target.principal_id,
+        name: target.name,
+        servers,
+        ...(domain ? { domain } : {}),
+      },
+    ];
+  });
   if (blocked.length === 0) {
     return null;
   }
@@ -168,20 +235,20 @@ async function refusalFor(
     status: 409,
     body: {
       code: TARS_MCP_SHARE_BLOCKED,
-      error: 'Some share targets are not assigned the MCP tools this agent uses',
+      error: 'Some share targets lack the MCP tools or the specialized brain this agent uses',
       blocked,
     },
   };
 }
 
 async function refusalOrUnavailable(
-  load: () => Promise<{ tools: string[]; principals: SharePrincipal[] }>,
+  load: () => Promise<{ requirements: ShareRequirements; principals: SharePrincipal[] }>,
 ): Promise<TarsMcpShareRefusal | null> {
   try {
-    const { tools, principals } = await load();
-    return await refusalFor(tools, principals);
+    const { requirements, principals } = await load();
+    return await refusalFor(requirements, principals);
   } catch (error) {
-    logger.error('[tars-mcp] Failed to check the MCP assignments of an agent share', error);
+    logger.error('[tars-mcp] Failed to check the permissions of an agent share', error);
     return CHECK_UNAVAILABLE;
   }
 }
@@ -208,6 +275,7 @@ interface SharedAgent {
   _id: { toString(): string };
   author?: { toString(): string } | null;
   tools?: string[];
+  tars_domain_id?: string | null;
 }
 
 export interface TarsAgentShareDeps {
@@ -217,16 +285,23 @@ export interface TarsAgentShareDeps {
   findGroupsByIds: (ids: string[]) => Promise<Array<ShareGroup | null>>;
 }
 
+/** What a save or version restore would leave the agent bound to; omitted = unchanged. */
+export interface AgentBindings {
+  tools?: string[];
+  tars_domain_id?: string | null;
+}
+
 export interface TarsAgentShare {
   /** Route guard for `PUT /api/permissions/:resourceType/:resourceId`. */
   guard: (req: Request, res: Response, next: NextFunction) => Promise<void>;
   /**
-   * The refusal for saving `nextTools`, judged only on the tools it adds, so an edit that
-   * leaves them alone is never stuck on an assignment revoked after the agent was shared.
+   * The refusal for saving `next`, judged only on what it newly binds (added tools, a
+   * brain bound or switched), so an edit that leaves them alone is never stuck on an
+   * assignment or role grant revoked after the agent was shared.
    */
-  refuseAddedTools: (
+  refuseNewBindings: (
     agent: SharedAgent,
-    nextTools?: string[],
+    next: AgentBindings,
   ) => Promise<TarsMcpShareRefusal | null>;
 }
 
@@ -279,7 +354,7 @@ export function createTarsAgentShare(deps: TarsAgentShareDeps): TarsAgentShare {
 
   const guard: TarsAgentShare['guard'] = async (req, res, next) => {
     const { resourceType, resourceId } = req.params;
-    if (!SHARED_RESOURCES.includes(resourceType) || !isTarsMcpEnabled()) {
+    if (!SHARED_RESOURCES.includes(resourceType) || !isTarsConfigured()) {
       next();
       return;
     }
@@ -295,10 +370,13 @@ export function createTarsAgentShare(deps: TarsAgentShareDeps): TarsAgentShare {
       next();
       return;
     }
-    const refusal = await refusalOrUnavailable(async () => ({
-      tools: (await deps.getAgent({ _id: resourceId }))?.tools ?? [],
-      principals,
-    }));
+    const refusal = await refusalOrUnavailable(async () => {
+      const agent = await deps.getAgent({ _id: resourceId });
+      return {
+        requirements: { tools: agent?.tools ?? [], domainId: agent?.tars_domain_id },
+        principals,
+      };
+    });
     if (refusal) {
       res.status(refusal.status).json(refusal.body);
       return;
@@ -306,17 +384,22 @@ export function createTarsAgentShare(deps: TarsAgentShareDeps): TarsAgentShare {
     next();
   };
 
-  const refuseAddedTools: TarsAgentShare['refuseAddedTools'] = async (agent, nextTools) => {
+  const refuseNewBindings: TarsAgentShare['refuseNewBindings'] = async (agent, next) => {
     const existing = new Set(agent.tools ?? []);
-    const added = (nextTools ?? []).filter((tool) => !existing.has(tool));
-    if (!isTarsMcpEnabled() || !added.some(isTarsMcpToolKey)) {
+    const tools = (next.tools ?? []).filter((tool) => !existing.has(tool));
+    const domainId =
+      next.tars_domain_id && next.tars_domain_id !== agent.tars_domain_id
+        ? next.tars_domain_id
+        : null;
+    const addsTools = isTarsMcpEnabled() && tools.some(isTarsMcpToolKey);
+    if (!isTarsConfigured() || (!addsTools && !domainId)) {
       return null;
     }
     return refusalOrUnavailable(async () => ({
-      tools: added,
+      requirements: { tools, domainId },
       principals: await listSharedPrincipals(agent),
     }));
   };
 
-  return { guard, refuseAddedTools };
+  return { guard, refuseNewBindings };
 }
