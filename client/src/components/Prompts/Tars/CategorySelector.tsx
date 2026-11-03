@@ -215,7 +215,7 @@ export default function CategorySelector({
                 <Pencil className="icon-sm" aria-hidden="true" />
               </Ariakit.MenuItem>
               <Ariakit.MenuItem
-                className={cn(ITEM_CLASSES, 'text-text-secondary shrink-0 p-2')}
+                className={cn(ITEM_CLASSES, 'text-text-destructive shrink-0 p-2')}
                 aria-label={localize('com_ui_tars_prompt_category_delete_aria', { 0: category })}
                 onClick={() => openDelete(category)}
               >

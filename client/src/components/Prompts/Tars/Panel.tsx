@@ -29,7 +29,7 @@ const SCOPE_META: Record<
   personal: {
     icon: User,
     labelKey: 'com_ui_tars_prompts_personal',
-    colorClass: 'text-text-secondary',
+    colorClass: 'text-pwc-orange-600',
   },
 };
 
