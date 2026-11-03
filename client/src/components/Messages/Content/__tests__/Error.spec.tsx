@@ -6,6 +6,8 @@ import {
   ContentTypes,
   ViolationTypes,
   EModelEndpoint,
+  TARS_AGENT_DOMAIN_FORBIDDEN,
+  TARS_AGENT_DOMAIN_CHECK_UNAVAILABLE,
 } from 'librechat-data-provider';
 import type { Agent, TConversation, TMessage } from 'librechat-data-provider';
 import type { ReactElement } from 'react';
@@ -194,6 +196,54 @@ describe('Error — every client-facing error type', () => {
       expectReadable();
     },
   );
+});
+
+describe('Error — TARS agent bound to a 專用腦', () => {
+  const forbidden = (domain?: Record<string, unknown>) => ({
+    error: 'Forbidden',
+    code: TARS_AGENT_DOMAIN_FORBIDDEN,
+    message: 'This agent is bound to a specialized brain your account cannot use.',
+    ...(domain ? { domain } : {}),
+  });
+
+  it.each([
+    [
+      'without access',
+      { id: '224', name: 'HR', is_active: true },
+      'com_error_tars_agent_domain_no_access',
+    ],
+    [
+      'while disabled',
+      { id: '224', name: 'HR', is_active: false },
+      'com_error_tars_agent_domain_disabled',
+    ],
+  ])('names the brain the reader cannot use %s', (_label, domain, key) => {
+    renderError(forbidden(domain), providerMessage);
+
+    expect(screen.getByText(localized(key, 'HR'))).toBeInTheDocument();
+    expectReadable();
+  });
+
+  it.each([
+    [
+      'a deleted brain',
+      { id: '224', name: null, is_active: false },
+      'com_error_tars_agent_domain_deleted',
+    ],
+    ['an unnamed brain', undefined, 'com_error_tars_agent_domain_forbidden'],
+  ])('explains %s without a name', (_label, domain, key) => {
+    renderError(forbidden(domain), providerMessage);
+
+    expect(screen.getByText(catalog[key])).toBeInTheDocument();
+  });
+
+  it('asks the reader to retry when pwc_tars could not confirm access', () => {
+    renderError({ code: TARS_AGENT_DOMAIN_CHECK_UNAVAILABLE, message: 'x' }, providerMessage);
+
+    expect(
+      screen.getByText(catalog.com_error_tars_agent_domain_check_unavailable),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('Error — reader-facing provider and fallback copy', () => {

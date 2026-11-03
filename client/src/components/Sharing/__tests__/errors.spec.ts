@@ -38,17 +38,31 @@ describe('mcpShareBlocks', () => {
 });
 
 describe('agentSaveShareError', () => {
-  const localize = (key: string, values?: Record<string, string>) =>
-    values ? `${key}:${values.names}` : key;
+  const localize = (key: string, values?: Record<string, string | number>) =>
+    values ? `${key}(${Object.values(values).join('|')})` : key;
 
-  it('names everyone holding the save back', () => {
+  it('names everyone holding the save back, and what each lacks', () => {
     const error = {
       response: {
-        data: { code: TARS_MCP_SHARE_BLOCKED, blocked: [{ name: 'Amy' }, { name: 'UAT' }] },
+        data: {
+          code: TARS_MCP_SHARE_BLOCKED,
+          blocked: [
+            { name: 'Amy', servers: [], domain: { id: '224', name: 'HR', is_active: true } },
+            {
+              name: 'UAT',
+              servers: [
+                { mcp_server_id: 's1', server_name: 'Maps', no_access: true, tool_names: [] },
+              ],
+            },
+          ],
+        },
       },
     };
 
-    expect(agentSaveShareError(error, localize)).toBe('com_ui_tars_mcp_save_blocked:Amy, UAT');
+    expect(agentSaveShareError(error, localize)).toBe(
+      'com_ui_tars_mcp_save_blocked(Amy: com_ui_tars_mcp_share_gap_domain(HR); ' +
+        'UAT: com_ui_tars_mcp_share_gap_server(Maps))',
+    );
   });
 
   it.each([

@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
+import type { TTarsDomainShareGap } from 'librechat-data-provider';
 import McpShareBlocks from '../McpShareBlocks';
 
 jest.mock('~/hooks', () => ({
@@ -15,12 +16,19 @@ const gap = (no_access: boolean, tool_names: string[]) => ({
   tool_names,
 });
 
-const renderBlocks = (servers: ReturnType<typeof gap>[]) =>
+const renderBlocks = (servers: ReturnType<typeof gap>[], domain?: TTarsDomainShareGap) =>
   render(
     <McpShareBlocks
-      blocks={[{ principal_type: 'group', idOnTheSource: 'g1', name: 'UAT', servers }]}
+      blocks={[{ principal_type: 'group', idOnTheSource: 'g1', name: 'UAT', servers, domain }]}
     />,
   );
+
+const brain = (overrides: Partial<TTarsDomainShareGap> = {}): TTarsDomainShareGap => ({
+  id: '224',
+  name: 'HR',
+  is_active: true,
+  ...overrides,
+});
 
 describe('McpShareBlocks', () => {
   it('names a server that was never assigned, without listing its tools', () => {
@@ -45,6 +53,35 @@ describe('McpShareBlocks', () => {
 
     expect(screen.getByRole('listitem')).toHaveTextContent(
       'com_ui_tars_mcp_share_gap_tools(Maps|com_ui_tars_mcp_share_gap_more(a, b, c|5))',
+    );
+  });
+
+  it('names a brain the target cannot use', () => {
+    renderBlocks([], brain());
+
+    expect(screen.getByRole('listitem')).toHaveTextContent(
+      'UAT: com_ui_tars_mcp_share_gap_domain(HR)',
+    );
+  });
+
+  it('tells a disabled or deleted brain apart from missing access', () => {
+    const { unmount } = renderBlocks([], brain({ is_active: false }));
+    expect(screen.getByRole('listitem')).toHaveTextContent(
+      'com_ui_tars_mcp_share_gap_domain_disabled(HR)',
+    );
+    unmount();
+
+    renderBlocks([], brain({ name: null, is_active: false }));
+    expect(screen.getByRole('listitem')).toHaveTextContent(
+      'com_ui_tars_mcp_share_gap_domain_deleted',
+    );
+  });
+
+  it('lists the brain ahead of the MCP gaps', () => {
+    renderBlocks([gap(true, [])], brain());
+
+    expect(screen.getByRole('listitem')).toHaveTextContent(
+      'UAT: com_ui_tars_mcp_share_gap_domain(HR), com_ui_tars_mcp_share_gap_server(Maps)',
     );
   });
 });

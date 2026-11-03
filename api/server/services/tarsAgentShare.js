@@ -1,7 +1,7 @@
 const { createTarsAgentShare } = require('@librechat/api');
 const db = require('~/models');
 
-/** Refuses sharing an agent with anyone not assigned its pwc_tars MCP tools. */
+/** Refuses sharing an agent with anyone lacking its pwc_tars MCP tools or 專用腦. */
 module.exports = createTarsAgentShare({
   getAgent: db.getAgent,
   findEntriesByResource: db.findEntriesByResource,

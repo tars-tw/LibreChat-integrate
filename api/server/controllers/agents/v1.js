@@ -1382,7 +1382,10 @@ const updateAgentHandler = async (req, res) => {
       }
     }
 
-    const shareRefusal = await tarsAgentShare.refuseAddedTools(existingAgent, updateData.tools);
+    const shareRefusal = await tarsAgentShare.refuseNewBindings(existingAgent, {
+      tools: updateData.tools,
+      tars_domain_id: updateData.tars_domain_id,
+    });
     if (shareRefusal) {
       return res.status(shareRefusal.status).json(shareRefusal.body);
     }
@@ -2160,7 +2163,10 @@ const revertAgentVersionHandler = async (req, res) => {
       return;
     }
 
-    const shareRefusal = await tarsAgentShare.refuseAddedTools(existingAgent, revertVersion.tools);
+    const shareRefusal = await tarsAgentShare.refuseNewBindings(existingAgent, {
+      tools: revertVersion.tools,
+      tars_domain_id: revertVersion.tars_domain_id,
+    });
     if (shareRefusal) {
       return res.status(shareRefusal.status).json(shareRefusal.body);
     }
