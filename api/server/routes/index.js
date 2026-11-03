@@ -47,6 +47,7 @@ const insights = require('./insights');
 const tars = require('./tars');
 const tarsAssets = require('./tars/assets');
 const tarsFiles = require('./tars/files');
+const tarsSources = require('./tars/sources');
 
 module.exports = {
   pullRequests,
@@ -56,6 +57,7 @@ module.exports = {
   tars,
   tarsAssets,
   tarsFiles,
+  tarsSources,
   auth,
   adminAuth,
   adminConfig,

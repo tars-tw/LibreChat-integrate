@@ -13,6 +13,7 @@ import {
   resolveStatefulCodeEnvironment,
   isAssistantsEndpoint,
   isTarsBuiltinToolName,
+  hasTarsKnowledgeSearch,
 } from 'librechat-data-provider';
 import type { Agent, AgentUpdateParams } from 'librechat-data-provider';
 import type { FieldNamesMarkedBoolean } from 'react-hook-form';
@@ -134,6 +135,21 @@ function resolveTarsDomainBinding(
 }
 
 /**
+ * The 參考資料下載 switch to persist. The builder hides it once the knowledge search
+ * is removed, so a hidden `true` is saved as off rather than left to reopen the links
+ * when the tool comes back; an untouched switch stays unset.
+ */
+function resolveTarsSourceDownload(
+  enabled: boolean | undefined,
+  tools: AgentForm['tools'],
+): boolean | undefined {
+  if (enabled === undefined) {
+    return undefined;
+  }
+  return enabled && hasTarsKnowledgeSearch(tools);
+}
+
+/**
  * Normalizes the payload sent to the agent update/create endpoints.
  * Handles avatar reset requests for persistent agents independently of avatar uploads.
  * @param {AgentForm} data - Form data from the agent configuration form.
@@ -186,6 +202,7 @@ export function composeAgentUpdatePayload(
     skills_scope,
     memory_scope,
     tars_domain_id,
+    tars_source_download,
     avatar_action: avatarActionState,
   } = data;
 
@@ -282,6 +299,7 @@ export function composeAgentUpdatePayload(
        *  runtime partitioning keys off memory_scope alone. */
       memory_scope: data.memory === true ? memory_scope : MemoryScope.user,
       tars_domain_id: resolveTarsDomainBinding(tars_domain_id, data.tools, agent_id),
+      tars_source_download: resolveTarsSourceDownload(tars_source_download, data.tools),
       ...(shouldResetAvatar ? { avatar: null } : {}),
     },
     provider,

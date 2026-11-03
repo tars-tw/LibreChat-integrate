@@ -990,6 +990,8 @@ const getAgentHandler = async (req, res, expandProperties = false) => {
         version: agent.version,
         // The 專用腦 every turn runs against; the chat lists that brain's prompts
         tars_domain_id: agent.tars_domain_id,
+        // Whether the chat links this agent's 資料來源 files (參考資料下載)
+        tars_source_download: agent.tars_source_download,
         // Safe metadata
         createdAt: agent.createdAt,
         updatedAt: agent.updatedAt,

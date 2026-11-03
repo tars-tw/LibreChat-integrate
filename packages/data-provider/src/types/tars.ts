@@ -2507,6 +2507,11 @@ export type TTarsToolSource = {
   chunks: number;
   /** The start of the first chunk, so the user can see what was read. */
   excerpt?: string;
+  /**
+   * Signed relay link to the stored original, present only when the agent's
+   * 參考資料下載 switch was on for the search. The relay re-checks the switch.
+   */
+  url?: string;
 };
 
 /**

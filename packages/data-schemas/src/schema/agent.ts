@@ -189,6 +189,11 @@ const agentSchema: Schema<IAgent> = new Schema<IAgent>(
       type: String,
       default: undefined,
     },
+    /** Whether knowledge-search source files are offered for download; unset is off. */
+    tars_source_download: {
+      type: Boolean,
+      default: undefined,
+    },
     tenantId: {
       type: String,
       index: true,

@@ -1594,7 +1594,7 @@ describe('Agent Controllers - Mass Assignment Protection', () => {
       expect(response.conversation_starters).toEqual(starters);
     });
 
-    test('should include the 專用腦 binding in the basic VIEW response', async () => {
+    test('should include the 專用腦 binding and 參考資料下載 in the basic VIEW response', async () => {
       const agent = await Agent.create({
         id: `agent_${uuidv4()}`,
         name: 'Bound Agent',
@@ -1602,6 +1602,7 @@ describe('Agent Controllers - Mass Assignment Protection', () => {
         model: 'gpt-4',
         author: mockReq.user.id,
         tars_domain_id: '154',
+        tars_source_download: true,
       });
 
       mockReq.params = { id: agent.id };
@@ -1611,6 +1612,7 @@ describe('Agent Controllers - Mass Assignment Protection', () => {
       expect(mockRes.status).toHaveBeenCalledWith(200);
       const response = mockRes.json.mock.calls[0][0];
       expect(response.tars_domain_id).toBe('154');
+      expect(response.tars_source_download).toBe(true);
     });
   });
 
@@ -2043,6 +2045,19 @@ describe('Agent Controllers - Mass Assignment Protection', () => {
       mockReq.body = { tars_domain_id: null };
       await updateAgentHandler(mockReq, mockRes);
       expect((await Agent.findOne({ id: existingAgentId })).tars_domain_id).toBeUndefined();
+    });
+
+    test('stores the 參考資料下載 switch both ways', async () => {
+      mockReq.user.id = existingAgentAuthorId.toString();
+      mockReq.params.id = existingAgentId;
+
+      mockReq.body = { tars_source_download: true };
+      await updateAgentHandler(mockReq, mockRes);
+      expect((await Agent.findOne({ id: existingAgentId })).tars_source_download).toBe(true);
+
+      mockReq.body = { tars_source_download: false };
+      await updateAgentHandler(mockReq, mockRes);
+      expect((await Agent.findOne({ id: existingAgentId })).tars_source_download).toBe(false);
     });
 
     test('allows unrelated edits to an existing scope after policy is tightened', async () => {

@@ -461,6 +461,8 @@ export const defaultAgentFormValues = {
   memory_scope: undefined as MemoryScope | undefined,
   /** pwc_tars 專用腦 the agent's TARS tools are scoped to; unset follows the chat. */
   tars_domain_id: undefined as string | undefined,
+  /** Knowledge-search source files are downloadable from the answer; unset is off. */
+  tars_source_download: undefined as boolean | undefined,
 };
 
 export const ImageVisionTool: FunctionTool = {
