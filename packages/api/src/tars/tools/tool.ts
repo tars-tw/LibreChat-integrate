@@ -4,6 +4,7 @@ import {
   TARS_BUILTIN_TOOLS,
   tarsBuiltinToolOf,
   isTarsBuiltinToolName,
+  isTarsSourceDownloadEnabled,
 } from 'librechat-data-provider';
 import type {
   AgentCapabilities,
@@ -33,6 +34,7 @@ import { TarsRequestError, isTarsConfigured } from '~/tars/client';
 import { toTarsDataFileRefsContext } from '~/tars/files/sign';
 import { resolveTarsDatabaseId } from '~/tars/agent/client';
 import { listTarsSqlDatabases } from '~/tars/sql/client';
+import { resolveTarsSourceLinks } from '~/tars/sources';
 import { recordTarsToolAuditTrace } from './auditTrace';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
 import { recordTarsCallUsage } from './usage';
@@ -152,6 +154,10 @@ export interface TarsBuiltinToolOptions {
   domainId?: string | number | null;
   /** The turn's tools; charts and files reach the database only when it is switched on. */
   agentTools?: readonly string[];
+  /** The saved agent the turn runs; the download links of cited files name it. */
+  agentId?: string;
+  /** The agent's 參考資料下載 switch (`tars_source_download`). */
+  sourceDownload?: boolean;
   /** The thread's spreadsheets (csv / xlsx / xls LibreChat uploads). */
   dataFiles?: TarsDataFile[] | null;
   /** Model the chat turn runs on; a tool that calls a model itself inherits it. */
@@ -268,11 +274,29 @@ async function bindCall(
 }
 
 /**
+ * Asks for the cited names verbatim: the chat turns the names after 資料來源
+ * into download links by matching them, so the model never handles the links.
+ */
+function sourceNamesNote(links: ReadonlyMap<string, string>): string | undefined {
+  if (links.size === 0) {
+    return undefined;
+  }
+  const names = [...links.keys()].map((name) => `- ${name}`).join('\n');
+  return (
+    '以下來源檔案可供使用者下載。回覆最後請以「資料來源：」列出引用的檔案，' +
+    `檔名照下列寫法一字不差（副檔名可省略），系統會自動加上下載連結：\n${names}`
+  );
+}
+
+/**
  * What the model reads. pwc_tars usually embeds the links to what it
  * generated; one it left out is appended so the model can still pass it on,
  * and every link is routed through LibreChat's relay.
  */
-function toModelText(result: TarsBuiltinToolResult): string {
+function toModelText(
+  result: TarsBuiltinToolResult,
+  sourceLinks: ReadonlyMap<string, string>,
+): string {
   const parts: string[] = [];
   const content = result.content.trim();
   const finalText = result.final_text.trim();
@@ -289,21 +313,30 @@ function toModelText(result: TarsBuiltinToolResult): string {
     }
     parts.push(item.type === 'chart' ? `![chart](${item.url})` : `[下載檔案](${item.url})`);
   }
+  const note = result.is_error ? undefined : sourceNamesNote(sourceLinks);
+  if (note) {
+    parts.push(note);
+  }
   const body = parts.join('\n\n') || '(the tool returned no output)';
   return rewriteTarsAssetLinks(result.is_error ? `The tool reported an error: ${body}` : body);
 }
 
-function toSources(result: TarsBuiltinToolResult): TTarsToolSource[] {
+function toSources(
+  result: TarsBuiltinToolResult,
+  sourceLinks: ReadonlyMap<string, string>,
+): TTarsToolSource[] {
   const sources: TTarsToolSource[] = [];
   for (const source of result.sources) {
     if (!source.filename || source.type === 'web') {
       continue;
     }
     const content = source.content ?? '';
+    const url = sourceLinks.get(source.filename);
     sources.push({
       filename: source.filename,
       chunks: content ? content.split(CHUNK_SEPARATOR).length : 0,
       ...(content ? { excerpt: content.slice(0, SOURCE_EXCERPT_CHARS) } : {}),
+      ...(url ? { url } : {}),
     });
   }
   return sources;
@@ -318,8 +351,9 @@ function toStep(
   builtin: TTarsBuiltinTool,
   result: TarsBuiltinToolResult,
   text: string,
+  sourceLinks: ReadonlyMap<string, string>,
 ): TTarsToolStep {
-  const sources = toSources(result);
+  const sources = toSources(result, sourceLinks);
   const links = result.generated_urls
     .filter((item) => item.url)
     .map((item) => ({ type: item.type ?? 'file', url: rewriteTarsAssetLinks(item.url ?? '') }));
@@ -338,6 +372,36 @@ function toStep(
     step.truncated = text.length > OUTPUT_DISPLAY_CHARS;
   }
   return step;
+}
+
+/**
+ * Download links for the files a knowledge search cited, by file name. Only
+ * for a saved agent whose 參考資料下載 switch is on; empty otherwise, which
+ * leaves the answer exactly as it was without the switch.
+ */
+function sourceLinksFor(
+  builtin: TTarsBuiltinTool,
+  result: TarsBuiltinToolResult,
+  context: TarsBuiltinToolContext,
+  options: TarsBuiltinToolOptions,
+): Promise<Map<string, string>> {
+  const enabled =
+    builtin === TARS_BUILTIN_TOOLS.tars_knowledge_search &&
+    !result.is_error &&
+    isTarsSourceDownloadEnabled({
+      tools: options.agentTools,
+      tars_source_download: options.sourceDownload,
+    });
+  if (!enabled || !options.agentId || !context.knowledge_base_ids) {
+    return Promise.resolve(new Map());
+  }
+  return resolveTarsSourceLinks({
+    agentId: options.agentId,
+    knowledgeBaseIds: context.knowledge_base_ids.split(','),
+    filenames: result.sources
+      .filter((source) => source.type !== 'web')
+      .map((source) => source.filename ?? ''),
+  });
 }
 
 function toErrorMessage(error: unknown): string {
@@ -400,8 +464,12 @@ export async function createTarsBuiltinTool(
           recordTarsToolAuditTrace(options.auditTraceOwner, toolCallId, result.audit_trace ?? []);
         }
         recordTarsCallUsage(options.auditTraceOwner, config, result.tokens);
-        const text = toModelText(result);
-        return langflowToolResult(text, { trace: [], step: toStep(builtin, result, text) });
+        const sourceLinks = await sourceLinksFor(builtin, result, context, options);
+        const text = toModelText(result, sourceLinks);
+        return langflowToolResult(text, {
+          trace: [],
+          step: toStep(builtin, result, text, sourceLinks),
+        });
       } catch (error) {
         const message = toErrorMessage(error);
         return langflowToolResult(tarsBuiltinToolFailureText(options.toolName, message), {

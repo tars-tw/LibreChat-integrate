@@ -16,11 +16,26 @@ import { cn } from '~/utils';
 
 const SCOPE_ORDER: TTarsPromptScope[] = ['domain', 'knowledge_base', 'personal'];
 
-const SCOPE_META: Record<TTarsPromptScope, { icon: typeof Cloud; labelKey: TranslationKeys }> = {
-  domain: { icon: Cloud, labelKey: 'com_ui_tars_prompts_domain' },
-  knowledge_base: { icon: BookText, labelKey: 'com_ui_tars_prompts_kb' },
-  personal: { icon: User, labelKey: 'com_ui_tars_prompts_personal' },
+/** Colors match the prompts side panel's group headers. */
+const SCOPE_META: Record<
+  TTarsPromptScope,
+  { icon: typeof Cloud; labelKey: TranslationKeys; colorClass: string }
+> = {
+  domain: { icon: Cloud, labelKey: 'com_ui_tars_prompts_domain', colorClass: 'text-blue-500' },
+  knowledge_base: {
+    icon: BookText,
+    labelKey: 'com_ui_tars_prompts_kb',
+    colorClass: 'text-purple-400',
+  },
+  personal: {
+    icon: User,
+    labelKey: 'com_ui_tars_prompts_personal',
+    colorClass: 'text-pwc-orange-600',
+  },
 };
+
+/** Quick-create ("+") is hidden in TARS; prompts are created from the prompts side panel. */
+const SHOW_QUICK_CREATE = false;
 
 const fillVariables = (content: string, values: Record<string, string>): string =>
   Object.entries(values).reduce(
@@ -158,19 +173,23 @@ function ListView({
     return (
       <div className="max-h-72 overflow-y-auto">
         {grouped.map((group) => {
-          const { icon: Icon, labelKey } = SCOPE_META[group.scope];
+          const { icon: Icon, labelKey, colorClass } = SCOPE_META[group.scope];
           return (
-            <div key={group.scope} className="mb-1">
-              <div className="text-text-secondary flex items-center gap-1.5 px-2 py-1 text-xs font-medium">
-                <Icon size={13} aria-hidden={true} />
-                {localize(labelKey)}
+            <div
+              key={group.scope}
+              className="border-border-light mb-1 border-t pt-1 first:border-t-0 first:pt-0"
+            >
+              <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-semibold">
+                <Icon className={cn('size-3.5 shrink-0', colorClass)} aria-hidden={true} />
+                <span className={colorClass}>{localize(labelKey)}</span>
+                <span className="text-text-tertiary">({group.items.length})</span>
               </div>
               {group.items.map((prompt) => (
                 <button
                   key={prompt.id}
                   type="button"
                   onClick={() => onSelect(prompt)}
-                  className="hover:bg-surface-hover flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left"
+                  className="hover:bg-surface-hover flex w-full flex-col items-start gap-0.5 rounded-lg py-1.5 pr-2 pl-7 text-left"
                 >
                   <span className="text-text-primary text-sm">{prompt.name}</span>
                   {prompt.category && (
@@ -194,16 +213,18 @@ function ListView({
           placeholder={localize('com_ui_tars_prompts_search')}
           className="bg-surface-secondary text-text-primary w-full rounded-lg px-3 py-1.5 text-sm focus:outline-none"
         />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          aria-label={localize('com_ui_tars_prompts_new')}
-          onClick={onCreate}
-          className="shrink-0"
-        >
-          <Plus size={16} aria-hidden={true} />
-        </Button>
+        {SHOW_QUICK_CREATE && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label={localize('com_ui_tars_prompts_new')}
+            onClick={onCreate}
+            className="shrink-0"
+          >
+            <Plus size={16} aria-hidden={true} />
+          </Button>
+        )}
       </div>
       {renderBody()}
     </>

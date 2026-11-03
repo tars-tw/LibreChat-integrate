@@ -519,6 +519,8 @@ const loadTools = async ({
         tarsUserId: options.req?.user?.tarsId,
         domainId: options.req?.body?.domain_id,
         agentTools: agent?.tools,
+        agentId: agent?.id,
+        sourceDownload: agent?.tars_source_download,
         dataFiles: getTarsTurnFiles(options.req)?.dataFiles,
         model: agent?.model,
         librechatUserId: user,

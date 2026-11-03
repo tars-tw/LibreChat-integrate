@@ -31,6 +31,7 @@ import { useLocalize, useHasAccess } from '~/hooks';
 import { useAgentPanelContext } from '~/Providers';
 import ItemDialog from './ItemDialog/ItemDialog';
 import { mcpAllToken } from './items/selectors';
+import SourceDownload from './SourceDownload';
 import { isEphemeralAgent } from '~/common';
 import SkillsSection from './SkillsSection';
 import SkillsDialog from './SkillsDialog';
@@ -284,6 +285,7 @@ export default function ToolsSection({ agentId }: Props) {
           onRemove={handleQuickRemove}
         />
       )}
+      <SourceDownload />
       {open && <ToolsMarketplaceDialog open={open} onOpenChange={setOpen} agentId={agentId} />}
       {skillsOpen && (
         <SkillsDialog open={skillsOpen} onOpenChange={setSkillsOpen} agentId={agentId} />

@@ -620,12 +620,15 @@ export default function McpServerModal({
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Label>{localize('com_ui_tars_mcp_type')}</Label>
+          <Label className="w-auto shrink-0">{localize('com_ui_tars_mcp_type')}</Label>
           <Dropdown
             value={form.type}
             onChange={(value) => set('type', value as ServerForm['type'])}
             disabled={isEdit}
             ariaLabel={localize('com_ui_tars_mcp_type')}
+            variant="field"
+            className="w-48 max-w-full"
+            portalElement={dialogElement}
             options={[
               { value: 'openapi', label: localize('com_ui_tars_mcp_type_openapi') },
               { value: 'custom_api', label: localize('com_ui_tars_mcp_type_custom') },

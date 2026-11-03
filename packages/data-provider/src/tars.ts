@@ -177,6 +177,19 @@ export const TARS_SWITCH_TOOLS: Readonly<Record<TTarsToolSwitch, readonly TTarsB
 
 export const TARS_TOOL_SWITCHES = Object.keys(TARS_SWITCH_TOOLS) as TTarsToolSwitch[];
 
+/** Whether the agent carries the knowledge search, the one tool whose sources can be downloaded. */
+export const hasTarsKnowledgeSearch = (tools: readonly string[] | undefined | null): boolean =>
+  TARS_SWITCH_TOOLS.rag_agent.some((name) => tools?.includes(name) === true);
+
+/**
+ * Whether an agent offers the files its knowledge search cites for download
+ * (Agent Builder「參考資料下載」). The switch only counts while the knowledge
+ * search is still equipped, so removing the tool closes the links as well.
+ */
+export const isTarsSourceDownloadEnabled = (
+  agent: { tools?: readonly string[]; tars_source_download?: boolean } | undefined | null,
+): boolean => agent?.tars_source_download === true && hasTarsKnowledgeSearch(agent.tools);
+
 /**
  * pwc_tars plugin tools (`tars_tool_sdk`). An admin switches each plugin on per
  * brain inside `sys_domain.domain_functions` under `plugin:<name>`, next to the

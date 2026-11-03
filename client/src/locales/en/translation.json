@@ -3974,6 +3974,8 @@
   "com_ui_tars_sched_unit_month": "months",
   "com_ui_tars_sched_unit_week": "weeks",
   "com_ui_tars_sched_updated": "Schedule updated",
+  "com_ui_tars_source_download": "Source Download",
+  "com_ui_tars_source_download_info": "When on, the file names listed after 資料來源 in a knowledge search answer link to the original files for download. Turning it off also closes the links in past answers.",
   "com_ui_tars_sql_agent": "Database Query",
   "com_ui_tars_sys_config": "System Parameters",
   "com_ui_tars_sys_config_active": "Active",

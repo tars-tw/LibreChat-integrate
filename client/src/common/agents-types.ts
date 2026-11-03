@@ -56,6 +56,8 @@ export type AgentForm = {
   memory_scope?: MemoryScope;
   /** pwc_tars 專用腦 the agent's TARS tools are scoped to; unset follows the chat. */
   tars_domain_id?: string;
+  /** Knowledge-search source files are downloadable from the answer; unset is off. */
+  tars_source_download?: boolean;
   /** Sharing scope for stateful Code API workspaces. */
   stateful_code_environment?: StatefulCodeEnvironment;
   /** Operator-configured managed or attached execution environment. */

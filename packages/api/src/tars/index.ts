@@ -31,6 +31,7 @@ export * from './schedules';
 export * from './scope';
 export * from './settings';
 export * from './sql';
+export * from './sources';
 export * from './sso';
 export * from './sysconfig';
 export * from './syslogs';

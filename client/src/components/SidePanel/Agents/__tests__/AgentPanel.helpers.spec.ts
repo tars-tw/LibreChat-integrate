@@ -281,6 +281,24 @@ describe('composeAgentUpdatePayload', () => {
     expect(compose().payload.tars_domain_id).toBeUndefined();
   });
 
+  it('saves 參考資料下載 as on only while the knowledge search is selected', () => {
+    const form = createForm();
+    const compose = () =>
+      composeAgentUpdatePayload(form, 'agent_123', undefined, { instructionsPromptChanged: false });
+    expect(compose().payload.tars_source_download).toBeUndefined();
+
+    form.tars_source_download = true;
+    form.tools = ['tars_knowledge_search'];
+    expect(compose().payload.tars_source_download).toBe(true);
+
+    form.tools = ['tars_sql_query'];
+    expect(compose().payload.tars_source_download).toBe(false);
+
+    form.tars_source_download = false;
+    form.tools = ['tars_knowledge_search'];
+    expect(compose().payload.tars_source_download).toBe(false);
+  });
+
   it('omits an empty Git identity when creating an agent', () => {
     const form = createForm();
     form.git_identity = { name: '', email: '' };

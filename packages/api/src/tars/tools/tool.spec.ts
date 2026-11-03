@@ -11,6 +11,7 @@ import { Tools, AgentCapabilities } from 'librechat-data-provider';
 import type { TarsDataFile } from '~/tars/files/sign';
 import { invalidateTarsPluginManifestsCache } from '~/tars/plugins/client';
 import { invalidateTarsScopedKnowledgeBasesCache } from '~/tars/scope';
+import { invalidateTarsSourceDocumentsCache } from '~/tars/sources';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { tarsToolStreamResponse } from './mocks';
 import { getTarsToolAuditTrace } from './auditTrace';
@@ -109,6 +110,20 @@ const listing = {
 
 const sourceContent = ['IT200 06:35 11:00 台北 成田', 'IT202 14:15 18:35'].join('\n\n---\n\n');
 
+/** What `get_files_by_id` lists for each knowledge base the brain binds. */
+const kbDocuments: Record<string, object[]> = {
+  'kb-general': [
+    {
+      id: 'doc-tiger',
+      filename: 'TigerairTaiwan.pdf',
+      knowledge_base_ids: 'kb-general',
+      file_path: 'apps/static/uploads/kb-general/manual/TigerairTaiwan.pdf',
+      status: 2,
+    },
+  ],
+  'kb-docs': [],
+};
+
 type ToolRun = { status: number; body: unknown; progress?: string[] };
 
 const ok = (data: Record<string, unknown>): ToolRun => ({
@@ -138,6 +153,10 @@ const mockBackend = (
     }
     if (url.includes('/api/domain_settings/get_domain_by_user')) {
       return buildResponse(200, domains);
+    }
+    if (url.includes('/api/knowledge_detail/get_files_by_id')) {
+      const kbId = new URL(url).searchParams.get('knowledge_base_id') ?? '';
+      return buildResponse(200, { documents: kbDocuments[kbId] ?? [] });
     }
     if (url.includes('/api/model/get_model_list')) {
       return buildResponse(200, [{ model_name: 'gemini-3.6-flash' }]);
@@ -178,6 +197,7 @@ beforeEach(() => {
   invalidateTarsSysConfigCache();
   invalidateTarsModelProfilesCache();
   invalidateTarsPluginManifestsCache();
+  invalidateTarsSourceDocumentsCache();
 });
 
 afterEach(() => {
@@ -265,6 +285,54 @@ describe('createTarsBuiltinTool', () => {
     expect(bodyOf(fetchMock)).toEqual({
       inputs: { query: '台北 成田 班機' },
       context: { question: '台北到成田的班機？', knowledge_base_ids: 'kb-general,kb-docs' },
+    });
+  });
+
+  describe('參考資料下載', () => {
+    const citing = ok({
+      content: '[1] source: TigerairTaiwan.pdf ...',
+      summary: '2 chunks',
+      sources: [
+        { filename: 'TigerairTaiwan.pdf', content: sourceContent, type: 'knowledge' },
+        { filename: 'https://www.tigerairtw.com/zh-tw', content: 'page', type: 'knowledge' },
+      ],
+    });
+    const searchAs = (options: { sourceDownload?: boolean; agentId?: string }) =>
+      createTarsBuiltinTool({
+        toolName: 'tars_knowledge_search',
+        tarsUserId: USER_ID,
+        domainId: 100,
+        agentTools: ['tars_knowledge_search'],
+        ...options,
+      });
+
+    it('links each cited stored file and asks the model for the names verbatim', async () => {
+      mockBackend(citing);
+      const builtin = await searchAs({ agentId: 'agent_hr', sourceDownload: true });
+
+      const message = await invoke(builtin, 'tars_knowledge_search', { query: '班機' });
+      const sources = message.artifact?.[Tools.tars_trace]?.step?.sources;
+      expect(sources?.[0].url).toMatch(
+        /^\/api\/tars\/kb-files\/agent_hr\/kb-general\/doc-tiger\?sig=[\w-]{22}$/,
+      );
+      expect(sources?.[1].url).toBeUndefined();
+      expect(message.content).toContain('資料來源');
+      expect(message.content).toContain('- TigerairTaiwan.pdf');
+      expect(message.content).not.toContain('/api/tars/kb-files');
+    });
+
+    it('leaves the search untouched while the switch is off or the chat has no saved agent', async () => {
+      const fetchMock = mockBackend(citing);
+      for (const options of [{ agentId: 'agent_hr' }, { sourceDownload: true }]) {
+        const builtin = await searchAs(options);
+        const message = await invoke(builtin, 'tars_knowledge_search', { query: '班機' });
+        expect(message.content).toBe('[1] source: TigerairTaiwan.pdf ...');
+        expect(message.artifact?.[Tools.tars_trace]?.step?.sources?.[0].url).toBeUndefined();
+      }
+      const listed = fetchMock.mock.calls.some(([url]) =>
+        String(url).includes('/api/knowledge_detail/get_files_by_id'),
+      );
+      expect(listed).toBe(false);
     });
   });
 

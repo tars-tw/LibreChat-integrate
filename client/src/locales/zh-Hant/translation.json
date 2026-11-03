@@ -2877,6 +2877,8 @@
   "com_ui_tars_sched_unit_month": "月",
   "com_ui_tars_sched_unit_week": "週",
   "com_ui_tars_sched_updated": "排程已更新",
+  "com_ui_tars_source_download": "參考資料下載",
+  "com_ui_tars_source_download_info": "開啟後，知識庫檢索回覆中「資料來源」列出的檔名可點擊下載原始檔案。關閉後，過去回覆裡的檔案也無法下載。",
   "com_ui_tars_sql_agent": "資料庫查詢",
   "com_ui_tars_sys_config": "系統參數設定",
   "com_ui_tars_sys_config_active": "啟用",

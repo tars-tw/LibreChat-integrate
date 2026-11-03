@@ -306,7 +306,9 @@ interface:
     create: true
     share: false
     public: false
-  bookmarks: true
+  # Bookmarks are off in TARS: hides the chat header's 新增書籤 icon, the mobile ⋯ menu
+  # entry and the sidebar chat filter's bookmark section.
+  bookmarks: false
   multiConvo: true
   # Allow the artifacts pane to be moved into its own browser window
   # (desktop only; the mobile sheet is unaffected). Default: true.

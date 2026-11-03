@@ -447,6 +447,7 @@ type AgentBaseShape = {
   skills_scope: z.ZodOptional<z.ZodEnum<typeof SkillsScope>>;
   memory_scope: z.ZodOptional<z.ZodEnum<typeof MemoryScope>>;
   tars_domain_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+  tars_source_download: z.ZodOptional<z.ZodBoolean>;
   /** @deprecated Use edges instead */
   agent_ids: z.ZodOptional<z.ZodArray<z.ZodString>>;
   edges: z.ZodOptional<z.ZodArray<typeof graphEdgeSchema>>;
@@ -483,6 +484,7 @@ export const agentBaseSchema: z.ZodObject<AgentBaseShape> = z.object({
   skills_scope: z.nativeEnum(SkillsScope).optional(),
   memory_scope: z.nativeEnum(MemoryScope).optional(),
   tars_domain_id: z.string().max(64).nullable().optional(),
+  tars_source_download: z.boolean().optional(),
   /** @deprecated Use edges instead */
   agent_ids: z.array(z.string()).optional(),
   edges: z.array(graphEdgeSchema).optional(),

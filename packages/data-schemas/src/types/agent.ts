@@ -69,5 +69,7 @@ export interface IAgent extends Omit<Document, 'model'> {
   memory_scope?: MemoryScope;
   /** pwc_tars 專用腦 the agent's TARS tools are scoped to; unset follows the chat. */
   tars_domain_id?: string | null;
+  /** Whether knowledge-search source files are offered for download; unset is off. */
+  tars_source_download?: boolean;
   tenantId?: string;
 }

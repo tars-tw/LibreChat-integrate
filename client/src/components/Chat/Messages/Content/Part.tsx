@@ -59,6 +59,7 @@ import RetrievalCall from './RetrievalCall';
 import TarsToolCall from './TarsToolCall';
 import ToolApproval from './ToolApproval';
 import AgentHandoff from './AgentHandoff';
+import SourcedText from './SourcedText';
 import CodeAnalyze from './CodeAnalyze';
 import Container from './Container';
 import WebSearch from './WebSearch';
@@ -711,7 +712,7 @@ const renderers: PartRenderers = {
       }
       return (
         <Container>
-          <Text text={text} isCreatedByUser={isCreatedByUser} showCursor={showCursor} />
+          <SourcedText text={text} isCreatedByUser={isCreatedByUser} showCursor={showCursor} />
         </Container>
       );
     },

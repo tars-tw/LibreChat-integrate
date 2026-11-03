@@ -75,6 +75,13 @@ export function useSelectedTarsDomain() {
   };
 }
 
+/** A saved agent picked from My Agents on a TARS install. Header actions offered only on the
+ *  general brain's model chat (multi-convo, temporary chat) step aside while one is active. */
+export function useTarsAgentSelected(): boolean {
+  const { domains, selectedAgentId } = useSelectedTarsDomain();
+  return domains.length > 0 && selectedAgentId != null;
+}
+
 /**
  * Shared state for the pwc_tars specialized brain (專用腦) bound to the active
  * conversation. A conversation maps to exactly one brain (mirrors pwc_tars), so

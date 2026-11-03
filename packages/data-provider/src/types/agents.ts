@@ -1192,6 +1192,12 @@ export type Agent = {
    * `null` / absent follows the chat.
    */
   tars_domain_id?: string | null;
+  /**
+   * Whether the files a knowledge search cites can be downloaded from the
+   * answer's 資料來源 line. Read when the link is shown and again when it is
+   * opened, so switching it off also closes the links in past answers.
+   */
+  tars_source_download?: boolean;
 };
 
 export type TAgentsMap = Record<string, Agent | undefined>;
@@ -1234,6 +1240,7 @@ export type AgentCreateParams = {
   | 'subagents'
   | 'memory_scope'
   | 'tars_domain_id'
+  | 'tars_source_download'
 >;
 
 export type AgentUpdateParams = {
@@ -1275,6 +1282,7 @@ export type AgentUpdateParams = {
   | 'subagents'
   | 'memory_scope'
   | 'tars_domain_id'
+  | 'tars_source_download'
 >;
 
 /**
