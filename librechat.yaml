@@ -11,9 +11,14 @@ interface:
   marketplace:
     use: false
   langflow: false
-  # Hide the chat header's 預設設定 (presets) and 新增多重對話 (multi-convo) buttons.
+  # Hide the chat header's 預設設定 (presets) button.
   presets: false
-  multiConvo: false
+  # Show the chat header's 新增多重對話 (multi-convo) button. Keep it explicit: roles already
+  # stored with it off stay off when the key is omitted.
+  multiConvo: true
+  # Turn off bookmarks for every role: the chat header's 新增書籤 icon, the mobile ⋯ menu
+  # entry and the sidebar chat filter's bookmark section all disappear.
+  bookmarks: false
   # Hide the agent builder's 遠端存取 (globe) button for every role.
   remoteAgents:
     share: false
