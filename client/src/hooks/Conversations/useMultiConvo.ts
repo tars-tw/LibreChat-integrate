@@ -4,7 +4,7 @@ import { isAssistantsEndpoint } from 'librechat-data-provider';
 
 import type { TConversation } from 'librechat-data-provider';
 
-import { useSelectedTarsDomain } from '~/components/Chat/Menus/Tars/domain';
+import { useTarsAgentSelected } from '~/components/Chat/Menus/Tars/domain';
 import { useGetConversation } from '~/hooks';
 import { mainTextareaId } from '~/common';
 import store from '~/store';
@@ -21,8 +21,7 @@ export default function useMultiConvo(): UseMultiConvoResult {
   const getConversation = useGetConversation(0);
   const endpoint = useRecoilValue(store.conversationEndpointByIndex(0));
   const setAddedConvo = useSetRecoilState(store.conversationByIndex(1));
-  const { domains, selectedAgentId } = useSelectedTarsDomain();
-  const isTarsAgent = domains.length > 0 && selectedAgentId != null;
+  const isTarsAgent = useTarsAgentSelected();
 
   const addConversation = useCallback(() => {
     const conversation = getConversation();

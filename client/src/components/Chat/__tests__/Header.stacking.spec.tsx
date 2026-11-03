@@ -68,6 +68,7 @@ jest.mock('../ExportAndShareMenu', () => () => null);
 jest.mock('../SubagentThreadLink', () => () => null);
 jest.mock('../Menus/BookmarkMenu', () => () => null);
 jest.mock('../AddMultiConvo', () => () => null);
+jest.mock('~/hooks/Tars/useTarsAgentTemporaryChat', () => () => false);
 
 describe('Header stacking', () => {
   const backgroundTasks = jest.requireMock('../BackgroundTasks').BackgroundTasksButton as jest.Mock;

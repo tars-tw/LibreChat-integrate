@@ -28,6 +28,7 @@ export default function HeaderMenu({
   className,
   readOnly = false,
   pullRequestConversationId,
+  temporaryToggleHidden = false,
 }: {
   startupConfig?: TStartupConfig;
   /** A read-only subagent thread offers share and export but no edits to the chat. */
@@ -36,6 +37,8 @@ export default function HeaderMenu({
   trace?: TraceControl;
   /** The saved conversation whose pull request this menu offers; none for a new chat or a child thread. */
   pullRequestConversationId?: string;
+  /** Owned by the header: TARS hides the temporary-chat toggle while a saved agent is picked. */
+  temporaryToggleHidden?: boolean;
   className?: string;
 }) {
   const localize = useLocalize();
@@ -69,7 +72,9 @@ export default function HeaderMenu({
   const showBookmarks = hasAccessToBookmarks === true && bookmarks.show;
   const showCompare = hasAccessToMultiConvo === true && multiConvo.show;
   const showTemporary =
-    (hasAccessToTemporaryChat === true || temporary.isEnforced) && temporary.show;
+    (hasAccessToTemporaryChat === true || temporary.isEnforced) &&
+    temporary.show &&
+    !temporaryToggleHidden;
 
   const items: t.MenuItemProps[] = [];
 

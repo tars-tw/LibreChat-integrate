@@ -9,6 +9,7 @@ import {
   Permissions,
   isForcedTemporaryRetention,
 } from 'librechat-data-provider';
+import useTarsAgentTemporaryChat from '~/hooks/Tars/useTarsAgentTemporaryChat';
 import { OpenSidebar, PresetsMenu, NewChat, HeaderMenu } from './Menus';
 import { TemporaryChat, TemporaryChatIndicator } from './TemporaryChat';
 import useDrawerViewport from '~/hooks/Nav/useDrawerViewport';
@@ -80,6 +81,7 @@ function Header({
    *  written into the role's stored permissions; the control is read-only either way. */
   const showTemporaryChat =
     hasAccessToTemporaryChat === true || isForcedTemporaryRetention(interfaceConfig.retentionMode);
+  const temporaryToggleHidden = useTarsAgentTemporaryChat();
 
   /** Child threads are view-only records of their parent's run and have no trace of their own. */
   const trace = useTraceControl({
@@ -146,6 +148,7 @@ function Header({
           trace={trace}
           readOnly={readOnly}
           pullRequestConversationId={showPullRequest ? routeConversationId : undefined}
+          temporaryToggleHidden={temporaryToggleHidden}
           className={isSmallScreen ? undefined : 'hidden'}
         />
         <div className={cn('items-center gap-2', isSmallScreen ? 'hidden' : 'flex')}>
@@ -154,7 +157,7 @@ function Header({
             isSharedButtonEnabled={startupConfig?.sharedLinksEnabled ?? false}
             readOnly={readOnly}
           />
-          {showTemporaryChat && <TemporaryChat />}
+          {showTemporaryChat && !temporaryToggleHidden && <TemporaryChat />}
         </div>
       </div>
     </div>
