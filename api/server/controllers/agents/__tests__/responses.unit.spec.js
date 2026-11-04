@@ -955,6 +955,32 @@ describe('createResponse controller', () => {
     },
   );
 
+  it('names the provider for caller tools and signs replayed calls for Vertex AI', async () => {
+    const api = require('@librechat/api');
+    const { formatAgentMessages } = require('@librechat/agents');
+    const messages = [{ role: 'assistant' }];
+    const model = 'gemini-3.5-flash(enterprise)';
+    formatAgentMessages.mockReturnValueOnce({ messages, indexTokenCountMap: {} });
+    api.initializeAgent.mockResolvedValueOnce({
+      id: 'agent-123',
+      provider: 'vertexai',
+      model,
+      model_parameters: {},
+      toolRegistry: {},
+      edges: [],
+      agentContextAttachments: [],
+    });
+    api.signVertexToolCalls = jest.fn();
+
+    await createResponse(req, res);
+
+    expect(api.createClientToolHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: 'vertexai' }),
+    );
+    expect(api.signVertexToolCalls).toHaveBeenCalledWith(messages, 'vertexai', model);
+    delete api.signVertexToolCalls;
+  });
+
   it('invokes the graph with the resolved recursion limit rather than the SDK default', async () => {
     const api = require('@librechat/api');
     const processStream = jest.fn().mockResolvedValue(undefined);

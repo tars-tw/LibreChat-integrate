@@ -383,6 +383,42 @@ describe('getGoogleConfig', () => {
       });
     });
 
+    it('uses the caller default location while GOOGLE_LOC is unset, with its endpoint', () => {
+      const credentials = {
+        [AuthKeys.GOOGLE_SERVICE_KEY]: {
+          project_id: 'test-project',
+          client_email: 'a@b.c',
+          private_key: 'pk',
+        },
+      };
+
+      const unset = getGoogleConfig(credentials, {
+        forceVertex: true,
+        defaultLocation: 'global',
+        modelOptions: { model: 'gemini-3.5-flash' },
+      });
+      expect(unset.llmConfig).toMatchObject({
+        location: 'global',
+        endpoint: 'aiplatform.googleapis.com',
+      });
+
+      const regional = getGoogleConfig(credentials, {
+        forceVertex: true,
+        defaultLocation: 'europe-west4',
+        modelOptions: { model: 'gemini-3.5-flash' },
+      });
+      expect(regional.llmConfig).toMatchObject({ location: 'europe-west4' });
+      expect(regional.llmConfig).not.toHaveProperty('endpoint');
+
+      process.env.GOOGLE_LOC = 'asia-east1';
+      const pinned = getGoogleConfig(credentials, {
+        forceVertex: true,
+        defaultLocation: 'global',
+        modelOptions: { model: 'gemini-3.5-flash' },
+      });
+      expect(pinned.llmConfig).toMatchObject({ location: 'asia-east1' });
+    });
+
     it('should use GOOGLE_LOC env variable for Vertex AI location', () => {
       process.env.GOOGLE_LOC = 'europe-west1';
 

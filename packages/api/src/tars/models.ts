@@ -125,11 +125,26 @@ interface TarsModelListEntry {
   model_name?: string | null;
 }
 
+/** One row of pwc_tars `GET /api/model/get_model_profiles`. */
+interface TarsModelProfileEntry {
+  name?: string | null;
+  endpoint?: string | null;
+}
+
 const PROFILE_CACHE_TTL_MS = 60_000;
 
 let cachedProfileNames: string[] | null = null;
 let profileCachedAt = 0;
 let profileInflight: Promise<string[] | null> | null = null;
+
+/** Every named row, so a row without an endpoint stays distinct from no row at all. */
+let cachedProfileEndpoints: Map<string, string | null | undefined> | null = null;
+let endpointsCachedAt = 0;
+/** When the read behind `cachedProfileEndpoints` started, to tell it from a newer name list. */
+let endpointsReadAt = 0;
+let endpointsInflight: Promise<void> | null = null;
+/** Bumped on every drop, so a read already in flight cannot store a pre-drop answer. */
+let endpointsGeneration = 0;
 
 /** pwc_tars user id → the model_profile names that user may pick, and when they were read. */
 const userProfileCache = new Map<string, { names: string[]; at: number }>();
@@ -155,6 +170,11 @@ export function invalidateTarsModelProfilesCache(): void {
   cachedProfileNames = null;
   profileCachedAt = 0;
   profileInflight = null;
+  cachedProfileEndpoints = null;
+  endpointsCachedAt = 0;
+  endpointsReadAt = 0;
+  endpointsInflight = null;
+  endpointsGeneration += 1;
   invalidateTarsUserModelsCache();
 }
 
@@ -206,6 +226,75 @@ export async function getTarsModelProfileNames(): Promise<string[] | null> {
     await profileInflight;
   }
   return cachedProfileNames;
+}
+
+async function refreshProfileEndpoints(): Promise<void> {
+  const startedAt = Date.now();
+  const generation = endpointsGeneration;
+  try {
+    const data = await tarsFetch<{ model_profiles?: TarsModelProfileEntry[] }>(
+      '/api/model/get_model_profiles',
+      { timeoutMs: FETCH_TIMEOUT_MS },
+    );
+    if (generation !== endpointsGeneration) {
+      return;
+    }
+    const endpoints = new Map<string, string | null | undefined>();
+    for (const { name, endpoint } of data?.model_profiles ?? []) {
+      const profileName = name?.trim();
+      if (profileName) {
+        endpoints.set(profileName, endpoint);
+      }
+    }
+    cachedProfileEndpoints = endpoints;
+    endpointsReadAt = startedAt;
+  } catch (error) {
+    logger.warn('[TarsModelProfiles] Failed to refresh model_profile endpoints', error);
+  } finally {
+    if (generation === endpointsGeneration) {
+      /** With no list to serve the caller refuses, so the next read asks again rather than wait out the TTL. */
+      endpointsCachedAt = cachedProfileEndpoints ? Date.now() : 0;
+      endpointsInflight = null;
+    }
+  }
+}
+
+async function readProfileEndpoints(): Promise<void> {
+  const generation = endpointsGeneration;
+  endpointsInflight = endpointsInflight ?? refreshProfileEndpoints();
+  await endpointsInflight;
+  if (generation !== endpointsGeneration) {
+    await readProfileEndpoints();
+  }
+}
+
+/**
+ * One model_profile's `endpoint`, where pwc_tars keeps what a model's name cannot say (a Vertex
+ * model's location), from a per-process TTL cache with a shared in-flight fetch. Undefined when
+ * the row has none, TARS is unconfigured, or the name list does not hold the profile either; null
+ * when pwc_tars is unreachable with nothing cached. The two lists age apart and pwc_tars filters
+ * both by health, so a listed profile with no row is unknown rather than absent, since a Vertex
+ * caller takes undefined to mean `global`: it re-reads an older list, then answers null.
+ */
+export async function getTarsModelProfileEndpoint(
+  name: string,
+): Promise<string | null | undefined> {
+  if (!isTarsConfigured()) {
+    return undefined;
+  }
+  if (Date.now() - endpointsCachedAt >= PROFILE_CACHE_TTL_MS) {
+    await readProfileEndpoints();
+  }
+  if (!cachedProfileEndpoints) {
+    return null;
+  }
+  if (cachedProfileEndpoints.has(name) || !cachedProfileNames?.includes(name)) {
+    return cachedProfileEndpoints.get(name) || undefined;
+  }
+  if (endpointsReadAt < profileCachedAt) {
+    await readProfileEndpoints();
+  }
+  return cachedProfileEndpoints?.has(name) ? cachedProfileEndpoints.get(name) || undefined : null;
 }
 
 async function fetchUserProfileNames(tarsId: string): Promise<string[]> {

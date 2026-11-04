@@ -7,8 +7,20 @@ import type {
   GoogleCredentials,
   ProviderInitializeParams,
 } from '~/types';
+import {
+  isTarsVertexModel,
+  assertTarsVertexModel,
+  getTarsProviderApiKey,
+  resolveTarsProviderKey,
+  getTarsVertexServiceKey,
+  tarsVertexModelMetadata,
+  isExpiredKeyCoveredByTars,
+  getTarsVertexClientOptions,
+  assertTarsVertexServiceAccount,
+} from '~/tars';
 import { isEnabled, mergeHeaders, resolveHeaders, loadServiceKey, isNoUserKeyError } from '~/utils';
-import { getTarsProviderApiKey, resolveTarsProviderKey, isExpiredKeyCoveredByTars } from '~/tars';
+import { nameVertexToolResponses } from '~/agents/vertex';
+import { getGoogleModels } from '~/endpoints/models';
 import { resolveEndpointRuntime } from '~/types';
 import { getGoogleConfig } from './llm';
 
@@ -25,9 +37,17 @@ export async function initializeGoogle(
 ): Promise<InitializeResultBase> {
   const { endpoint, model_parameters, db } = params;
   const { appConfig, user, requestBody } = resolveEndpointRuntime(params);
-  const { GOOGLE_REVERSE_PROXY, GOOGLE_AUTH_HEADER, PROXY } = process.env;
-  const isVertexEndpoint = endpoint === Providers.VERTEXAI;
-  /** sys_config-managed key overrides env; the Vertex path never consults pwc_tars. */
+  const {
+    GOOGLE_REVERSE_PROXY,
+    GOOGLE_AUTH_HEADER,
+    GOOGLE_LOC: configuredLocation,
+    PROXY,
+  } = process.env;
+  const modelName = typeof model_parameters?.model === 'string' ? model_parameters.model : '';
+  /** A pwc_tars `(enterprise)` Gemini runs on Vertex AI under pwc_tars's own credential. */
+  const isTarsVertex = isTarsVertexModel(modelName);
+  const isVertexEndpoint = endpoint === Providers.VERTEXAI || isTarsVertex;
+  /** sys_config-managed key overrides env; the Vertex path takes no API key from pwc_tars. */
   const GOOGLE_KEY = isVertexEndpoint
     ? process.env.GOOGLE_KEY
     : await resolveTarsProviderKey(process.env.GOOGLE_KEY, EModelEndpoint.google);
@@ -64,13 +84,23 @@ export async function initializeGoogle(
   const useUserKey = useUserProvidedGoogleKey && userKey != null;
   const effectiveGoogleKey = tarsFallbackKey ?? GOOGLE_KEY;
 
-  let serviceKey: Record<string, unknown> = {};
+  /**
+   * Independent reads, so a slow pwc_tars costs one timeout. The location read further down stays
+   * after them: it tells a missing row from an unknown one by the name list this leaves cached.
+   */
+  const [tarsVertexKey] = isTarsVertex
+    ? await Promise.all([
+        getTarsVertexServiceKey(),
+        assertTarsVertexModel(modelName, getGoogleModels()),
+      ])
+    : [undefined];
+  let serviceKey: Record<string, unknown> = tarsVertexKey ?? {};
 
   /** Check if GOOGLE_KEY is provided at all (including 'user_provided') */
   const isGoogleKeyProvided =
     !isVertexEndpoint && ((effectiveGoogleKey && effectiveGoogleKey.trim() !== '') || useUserKey);
 
-  if ((isVertexEndpoint || !isGoogleKeyProvided) && loadServiceKey) {
+  if (!tarsVertexKey && (isVertexEndpoint || !isGoogleKeyProvided) && loadServiceKey) {
     /** Only attempt to load service key if GOOGLE_KEY is not provided */
     try {
       const serviceKeyPath =
@@ -83,6 +113,14 @@ export async function initializeGoogle(
       // Service key loading failed, but that's okay if not required
       serviceKey = {};
     }
+  }
+
+  if (isVertexEndpoint) {
+    nameVertexToolResponses();
+  }
+
+  if (isTarsVertex) {
+    assertTarsVertexServiceAccount(modelName, serviceKey);
   }
 
   const credentials: GoogleCredentials = useUserKey
@@ -142,6 +180,8 @@ export async function initializeGoogle(
         process.env.GCLOUD_PROJECT ??
         process.env.GOOGLE_PROJECT_ID)
       : undefined,
+    ...(isTarsVertex &&
+      (await getTarsVertexClientOptions(modelName, model_parameters, configuredLocation))),
     ...clientOptions,
   };
 
@@ -149,6 +189,13 @@ export async function initializeGoogle(
 
   if (clientOptions.streamRate != null) {
     result.llmConfig._lc_stream_delay = clientOptions.streamRate;
+  }
+
+  if (isTarsVertex) {
+    result.llmConfig.metadata = {
+      ...result.llmConfig.metadata,
+      ...tarsVertexModelMetadata(modelName),
+    };
   }
 
   return result;

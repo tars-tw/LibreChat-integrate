@@ -622,6 +622,26 @@ describe('reserveRatio', () => {
 // ---------------------------------------------------------------------------
 // Suite 2: maxSummaryTokens passthrough
 // ---------------------------------------------------------------------------
+describe('a pwc_tars (enterprise) summarization model', () => {
+  const summarizationModel = async (provider: string, model: string) => {
+    const agents = await callAndCapture({
+      agents: [makeAgent({ provider, endpoint: 'google', model: 'gemini-3.5-flash' })],
+      summarizationConfig: { provider: 'google', model },
+    });
+    return (agents[0].summarizationConfig as Record<string, unknown>).model;
+  };
+
+  it('reaches a Vertex agent as the bare model id', async () => {
+    await expect(summarizationModel('vertexai', 'gemini-3.1-pro(enterprise)')).resolves.toBe(
+      'gemini-3.1-pro',
+    );
+  });
+
+  it('leaves the model of any other provider as configured', async () => {
+    await expect(summarizationModel('google', 'gemini-3.1-pro')).resolves.toBe('gemini-3.1-pro');
+  });
+});
+
 describe('maxSummaryTokens passthrough', () => {
   it('forwards global maxSummaryTokens value', async () => {
     const agents = await callAndCapture({

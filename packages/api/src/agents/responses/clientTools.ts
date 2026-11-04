@@ -50,6 +50,7 @@ import type {
   ToolExecuteBatchRequest,
 } from '@librechat/agents';
 import type { FunctionTool, Tool } from './types';
+import { reduceVertexToolSchemas } from '~/agents/vertex';
 
 /** JSON Schema stand-in for a tool that declares no parameters. */
 const EMPTY_PARAMETERS = { type: 'object', properties: {} } as const;
@@ -443,14 +444,19 @@ export function createClientToolHandoff({
   agentDefinitions,
   serverDefinitions,
   responseId,
+  provider,
 }: {
   tools?: Tool[] | null;
   agentDefinitions?: LCTool[];
   /** Every agent's definitions, primary and subagents alike; defaults to the primary's. */
   serverDefinitions?: LCTool[];
   responseId: string;
+  /** The primary agent's provider. Only the caller's tools are reduced: the agent's already were. */
+  provider?: string;
 }): ClientToolHandoff {
-  const declared = buildClientToolDefinitions(tools);
+  const client = { provider, toolDefinitions: buildClientToolDefinitions(tools) };
+  reduceVertexToolSchemas(client);
+  const declared = client.toolDefinitions;
   if (declared.length === 0) {
     return {
       toolDefinitions: agentDefinitions ?? [],

@@ -13,9 +13,11 @@ import type { EndpointsConfigDeps } from './endpoints';
 import type { ServerRequest } from '~/types';
 
 const mockGetTarsProviderApiKey = jest.fn();
+const mockGetTarsVertexServiceKey = jest.fn();
 jest.mock('~/tars', () => ({
   ...jest.requireActual('~/tars'),
   getTarsProviderApiKey: (...args: unknown[]) => mockGetTarsProviderApiKey(...args),
+  getTarsVertexServiceKey: () => mockGetTarsVertexServiceKey(),
 }));
 
 import { createEndpointsConfigService } from './endpoints';
@@ -752,6 +754,28 @@ describe('getEndpointsConfig – dynamic userProvide via sys_config', () => {
     expect(result?.[EModelEndpoint.anthropic]).toEqual(
       expect.objectContaining({ userProvide: true }),
     );
+  });
+
+  it('treats a Vertex AI service account as covering the google endpoint only', async () => {
+    const deps = createMockDeps({
+      loadDefaultEndpointsConfig: jest.fn().mockResolvedValue({
+        [EModelEndpoint.google]: { userProvide: true, order: 0 },
+        [EModelEndpoint.anthropic]: { userProvide: true, order: 1 },
+      }),
+    });
+    mockGetTarsProviderApiKey.mockResolvedValue(undefined);
+    mockGetTarsVertexServiceKey.mockResolvedValue({ project_id: 'acme-gemini' });
+
+    const { getEndpointsConfig } = createEndpointsConfigService(deps);
+    const result = await getEndpointsConfig(fakeReq());
+
+    expect(result?.[EModelEndpoint.google]).toEqual(
+      expect.objectContaining({ userProvide: false }),
+    );
+    expect(result?.[EModelEndpoint.anthropic]).toEqual(
+      expect.objectContaining({ userProvide: true }),
+    );
+    expect(mockGetTarsVertexServiceKey).toHaveBeenCalledTimes(1);
   });
 
   it('leaves non-sentinel endpoints untouched and skips the sys_config lookup', async () => {

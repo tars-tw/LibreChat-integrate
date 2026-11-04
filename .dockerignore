@@ -13,5 +13,8 @@ librechat*
 Dockerfile*
 docs
 
+# Local Google service account (Vertex AI fallback key); credentials never go into the image
+api/data
+
 # Ignore all hidden files
 .*

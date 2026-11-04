@@ -12,10 +12,10 @@ import type { AppConfig } from '@librechat/data-schemas';
 import type { ServerRequest, TCustomEndpointsConfig } from '~/types';
 import type { GetAppConfigOptions } from '~/app/service';
 import { loadCustomEndpointsConfig as defaultLoadCustomEndpoints } from '~/endpoints/custom';
+import { getTarsProviderApiKey, getTarsVertexServiceKey } from '~/tars';
 import { isCodeEnvironmentSelectionEnabled } from '~/code/protocol';
 import { getAppConfigOptionsFromUser } from '~/app/service';
 import { getResponsesApiRouting } from './responses';
-import { getTarsProviderApiKey } from '~/tars';
 
 type PartialEndpointEntry = Partial<TConfig> & Record<string, unknown>;
 type DefaultEndpointsResult = Record<string, PartialEndpointEntry | false | null>;
@@ -200,7 +200,8 @@ export function createEndpointsConfigService(deps: EndpointsConfigDeps): {
 
     /**
      * With a `user_provided` env sentinel, an active pwc_tars sys_config key
-     * means users need not supply their own — report `userProvide: false` so
+     * (for Google, also the Vertex AI service account its `(enterprise)` models
+     * run on) means users need not supply their own — report `userProvide: false` so
      * the client does not lock the chat input. The sysconfig TTL cache bounds
      * the per-request cost to at most one fetch per TTL window.
      */
@@ -214,7 +215,10 @@ export function createEndpointsConfigService(deps: EndpointsConfigDeps): {
       if (!entry || entry.userProvide !== true) {
         continue;
       }
-      if (await getTarsProviderApiKey(provider)) {
+      const covered =
+        (await getTarsProviderApiKey(provider)) ||
+        (provider === EModelEndpoint.google && (await getTarsVertexServiceKey()));
+      if (covered) {
         mergedConfig[provider] = { ...entry, userProvide: false };
       }
     }

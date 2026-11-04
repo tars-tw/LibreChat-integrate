@@ -1470,4 +1470,127 @@ describe('createAgentChatCompletion - client-side tools', () => {
     expect(getResponseMock(res, 'status')).toHaveBeenCalledWith(400);
     expect(createRun).not.toHaveBeenCalled();
   });
+
+  it('replays tool calls with a thought signature on Gemini 3 on Vertex AI only', async () => {
+    const replay = {
+      messages: [
+        { role: 'user', content: 'Generate it' },
+        {
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            { id: 'c1', type: 'function', function: { name: 'a', arguments: '{}' } },
+            { id: 'c2', type: 'function', function: { name: 'b', arguments: '{}' } },
+          ],
+        },
+        { role: 'tool', tool_call_id: 'c1', name: 'a', content: 'r1' },
+        { role: 'tool', tool_call_id: 'c2', name: 'b', content: 'r2' },
+      ],
+    };
+    const replayedSignatures = async (provider: string, model: string) => {
+      createRun.mockClear();
+      (deps.initializeAgent as jest.Mock).mockImplementation(async () => ({
+        id: 'agent_test',
+        provider,
+        model,
+        tools: [],
+        attachments: [],
+        toolContextMap: {},
+        maxContextTokens: 1000,
+        model_parameters: {},
+      }));
+      await createAgentChatCompletion(requestWith(replay), createMockRes(), deps);
+      const { messages } = createRun.mock.calls[0][0] as { messages: BaseMessage[] };
+      return messages[1].additional_kwargs.signatures;
+    };
+
+    await expect(replayedSignatures('vertexai', 'gemini-3.5-flash')).resolves.toEqual([
+      'skip_thought_signature_validator',
+      'skip_thought_signature_validator',
+    ]);
+    await expect(replayedSignatures('vertexai', 'gemini-2.5-pro')).resolves.toBeUndefined();
+    await expect(replayedSignatures('google', 'gemini-3.5-flash')).resolves.toBeUndefined();
+    await expect(replayedSignatures('openAI', 'gpt-5.4-mini')).resolves.toBeUndefined();
+  });
+
+  it('leaves caller schemas as sent on the Gemini API', async () => {
+    (deps.initializeAgent as jest.Mock).mockImplementation(async () => ({
+      id: 'agent_test',
+      provider: 'google',
+      model: 'gemini-3.5-flash',
+      tools: [],
+      attachments: [],
+      toolContextMap: {},
+      maxContextTokens: 1000,
+      model_parameters: {},
+    }));
+    const parameters = {
+      type: 'object',
+      properties: { value: { anyOf: [{}, { type: 'null' }] } },
+    };
+
+    await createAgentChatCompletion(
+      requestWith({ tools: [{ type: 'function', function: { name: 'tool', parameters } }] }),
+      createMockRes(),
+      deps,
+    );
+
+    const runAgent = (createRun.mock.calls[0][0] as { agents: Array<Record<string, unknown>> })
+      .agents[0];
+    expect(runAgent.toolDefinitions).toEqual([{ name: 'tool', parameters }]);
+  });
+
+  it("reduces caller schemas to Gemini's subset on Vertex AI, which rejects untyped values", async () => {
+    (deps.initializeAgent as jest.Mock).mockImplementation(async () => ({
+      id: 'agent_test',
+      provider: 'vertexai',
+      model: 'gemini-3.5-flash',
+      tools: [],
+      attachments: [],
+      toolContextMap: {},
+      maxContextTokens: 1000,
+      model_parameters: {},
+    }));
+    const generateFile = {
+      type: 'function',
+      function: {
+        name: 'generate_file',
+        parameters: {
+          type: 'object',
+          properties: {
+            value: { anyOf: [{}, { type: 'null' }], default: null },
+            format: {
+              anyOf: [{ type: 'string' }, { type: 'integer' }],
+              additionalProperties: false,
+            },
+          },
+        },
+      },
+    };
+    const res = createMockRes();
+
+    await createAgentChatCompletion(requestWith({ tools: [generateFile] }), res, deps);
+
+    const runAgent = (createRun.mock.calls[0][0] as { agents: Array<Record<string, unknown>> })
+      .agents[0];
+    expect(runAgent.toolDefinitions).toEqual([
+      {
+        name: 'generate_file',
+        parameters: {
+          type: 'object',
+          properties: {
+            value: {
+              default: null,
+              nullable: true,
+              anyOf: [
+                { anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }] },
+                { type: 'null' },
+              ],
+            },
+            format: { type: 'string' },
+          },
+        },
+      },
+    ]);
+  });
 });

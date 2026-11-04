@@ -1136,6 +1136,7 @@ const executeResponse = async (envelope, { req, res }) => {
         agentDefinitions: primaryConfig.toolDefinitions,
         serverDefinitions: modelBoundAgents.flatMap((runAgent) => runAgent.toolDefinitions ?? []),
         responseId,
+        provider: primaryConfig.provider,
       });
       if (clientTools.error != null) {
         return sendResponsesErrorResponse(res, 400, clientTools.error, 'invalid_request');
@@ -1156,6 +1157,13 @@ const executeResponse = async (envelope, { req, res }) => {
         toolSet,
       );
       const formattedMessages = formatted.messages;
+      /** TARS: a replayed tool call on Gemini 3+ on Vertex AI needs a signature the caller cannot
+       *  send. Keep it one standalone statement; `?.` because upstream specs mock `@librechat/api`. */
+      require('@librechat/api').signVertexToolCalls?.(
+        formattedMessages,
+        primaryConfig.provider,
+        primaryConfig.model,
+      );
       const initialSummary = formatted.summary;
       let indexTokenCountMap = formatted.indexTokenCountMap;
 

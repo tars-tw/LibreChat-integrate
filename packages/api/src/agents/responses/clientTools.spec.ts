@@ -1,3 +1,4 @@
+import { Providers } from '@librechat/agents';
 import type {
   LCTool,
   StandardGraph,
@@ -226,6 +227,42 @@ describe('createClientToolHandoff', () => {
     });
 
     expect(handoff.toolDefinitions.map((d) => d.name)).toEqual(['run_query', 'open_service_page']);
+  });
+
+  describe('on Vertex AI, which rejects untyped parameters', () => {
+    const untyped = { type: 'object', properties: { value: {} } };
+    const handoffOn = (provider: string) =>
+      createClientToolHandoff({
+        tools: [fnTool('fill', { parameters: untyped })],
+        agentDefinitions: [serverTool],
+        responseId: 'resp_1',
+        provider,
+      });
+
+    it('reduces the caller’s tools and reports them as the caller sent them', () => {
+      const { toolDefinitions, appliedTools } = handoffOn(Providers.VERTEXAI);
+
+      expect(toolDefinitions[1].parameters).toEqual({
+        type: 'object',
+        properties: {
+          value: {
+            anyOf: [
+              { anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }] },
+              { type: 'null' },
+            ],
+          },
+        },
+      });
+      expect(appliedTools[0]).toMatchObject({ parameters: untyped });
+    });
+
+    it('leaves the agent’s own tools alone, since a second pass would narrow them', () => {
+      expect(handoffOn(Providers.VERTEXAI).toolDefinitions[0]).toBe(serverTool);
+    });
+
+    it('sends other providers the schema as declared', () => {
+      expect(handoffOn(Providers.GOOGLE).toolDefinitions[1].parameters).toEqual(untyped);
+    });
   });
 
   it('reports the applied tools as the caller sent them, without the notice', () => {

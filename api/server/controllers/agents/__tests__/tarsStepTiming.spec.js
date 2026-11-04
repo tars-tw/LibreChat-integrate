@@ -9,7 +9,7 @@
  * Only the services callbacks.js loads at require time are mocked, as there.
  */
 const { ContentTypes } = require('librechat-data-provider');
-const { GraphEvents } = require('@librechat/agents');
+const { GraphEvents, GraphNodeKeys } = require('@librechat/agents');
 
 jest.mock('@librechat/data-schemas', () => ({
   ...jest.requireActual('@librechat/data-schemas'),
@@ -26,7 +26,7 @@ jest.mock('~/server/services/Files/Code/preflight', () => ({
 jest.mock('~/server/services/Tools/credentials', () => ({ loadAuthValues: jest.fn() }));
 jest.mock('~/server/services/Files/process', () => ({ saveBase64Image: jest.fn() }));
 
-const { getDefaultHandlers } = require('../callbacks');
+const { getDefaultHandlers, contextualizeModelUsage } = require('../callbacks');
 
 const closeStep = (handlers, id, created_at, closed_at, type = 'message_creation') =>
   handlers[GraphEvents.ON_RUN_STEP_CLOSED].handle(GraphEvents.ON_RUN_STEP_CLOSED, {
@@ -106,6 +106,63 @@ describe('TARS finish reason seam in the model-end handler', () => {
 
     expect(collectedUsage).toHaveLength(1);
     expect(tarsFinishReasonOf(collectedUsage[0])).toBe('length');
+  });
+
+  it('bills a pwc_tars Vertex call under its profile name, not the bare Vertex id', async () => {
+    const collectedUsage = [];
+    const handlers = getDefaultHandlers({
+      res: { write: jest.fn() },
+      aggregateContent: jest.fn(),
+      contentParts: [],
+      stepMap: new Map(),
+      toolEndCallback: jest.fn(),
+      collectedUsage,
+    });
+
+    await handlers[GraphEvents.CHAT_MODEL_END].handle(
+      GraphEvents.CHAT_MODEL_END,
+      { output: { usage_metadata: { input_tokens: 10, output_tokens: 5, total_tokens: 15 } } },
+      {
+        run_id: 'run-1',
+        thread_id: 'convo-1',
+        user_id: 'user-1',
+        ls_model_name: 'gemini-3.8-flash',
+        tars_model: 'gemini-3.8-flash (enterprise)',
+      },
+      { getAgentContext: () => ({}) },
+    );
+
+    expect(collectedUsage).toHaveLength(1);
+    expect(collectedUsage[0].model).toBe('gemini-3.8-flash (enterprise)');
+  });
+});
+
+/** The tagging `/v1/chat/completions` and the Responses API share with the chat handler. */
+describe('TARS Vertex billing seam in contextualizeModelUsage', () => {
+  const metadata = { tars_model: 'gemini-3.8-flash (enterprise)' };
+
+  it('names a Vertex call after its pwc_tars profile', () => {
+    const usage = contextualizeModelUsage(
+      { input_tokens: 10, output_tokens: 5 },
+      { ...metadata, ls_model_name: 'gemini-3.8-flash' },
+      { provider: 'vertexai' },
+    );
+
+    expect(usage).toMatchObject({ model: 'gemini-3.8-flash (enterprise)', provider: 'vertexai' });
+  });
+
+  it('keeps the name of a summarization call that inherited the metadata on another model', () => {
+    const usage = contextualizeModelUsage(
+      { input_tokens: 10, output_tokens: 5 },
+      {
+        ...metadata,
+        ls_model_name: 'gemini-3.5-flash-lite',
+        langgraph_node: `${GraphNodeKeys.SUMMARIZE}agent`,
+      },
+      { provider: 'vertexai' },
+    );
+
+    expect(usage).toMatchObject({ model: 'gemini-3.5-flash-lite', usage_type: 'summarization' });
   });
 });
 

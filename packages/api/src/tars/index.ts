@@ -40,6 +40,7 @@ export * from './tools';
 export * from './token';
 export * from './trace';
 export * from './usage';
+export * from './vertex';
 export * from './web';
 export * from './websites';
 export * from './workflow';

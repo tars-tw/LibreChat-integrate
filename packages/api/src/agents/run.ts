@@ -138,6 +138,7 @@ import { buildHITLRunWiring } from '~/agents/hitl/runtime';
 import { buildLangfuseConfig } from '~/langfuse/config';
 import { applyTestRunHook } from '~/agents/testHook';
 import { isTarsLocalEndpoint } from '~/tars/models';
+import { toTarsVertexModelId } from '~/tars/vertex';
 import { frameDynamicInstructions } from './tail';
 import { isUserProvided } from '~/utils/common';
 import { createSafeUser } from '~/utils/env';
@@ -1380,7 +1381,12 @@ function shapeSummarizationConfig(
     isNonEmptyString(rawProvider) &&
     normalizeEndpointName(rawProvider) === normalizeEndpointName(agentEndpoint);
 
-  const model = config?.model ?? fallbackModel;
+  const configuredModel = config?.model ?? fallbackModel;
+  /** `initializeGoogle` strips the agent's own model; this one reaches the Vertex URL as written. */
+  const model =
+    fallbackProvider === Providers.VERTEXAI && configuredModel
+      ? toTarsVertexModelId(configuredModel)
+      : configuredModel;
   const targetsAzure =
     rawProvider === EModelEndpoint.azureOpenAI ||
     (agentEndpoint === EModelEndpoint.azureOpenAI && config?.provider == null);

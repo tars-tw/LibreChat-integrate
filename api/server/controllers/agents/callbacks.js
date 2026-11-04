@@ -1652,6 +1652,13 @@ function contextualizeModelUsage(usage, metadata, agentContext = {}) {
   if (context.agentId) {
     taggedUsage.agentId = context.agentId;
   }
+  /** TARS: a pwc_tars Vertex model bills under its profile name, not the bare Vertex id, on every
+   *  usage path (chat, `/v1/chat/completions`, Responses API). Keep it one standalone statement
+   *  before the return; `?.` because upstream specs mock `@librechat/api`. */
+  Object.assign(
+    taggedUsage,
+    require('@librechat/api').withTarsVertexUsageModel?.(taggedUsage, metadata),
+  );
   return markSummarizationUsage(taggedUsage, metadata);
 }
 

@@ -154,6 +154,7 @@ import { applyBackgroundToolCalls } from './background';
 import { admitCurrentFileBudget } from './files/budget';
 import { applyTurnDelivery } from './files/delivery';
 import { generateArtifactsPrompt } from '~/prompts';
+import { reduceVertexToolSchemas } from './vertex';
 import { getAgentInferencePolicy } from './input';
 import { getProviderConfig } from '~/endpoints';
 import { primeResources } from './resources';
@@ -2990,6 +2991,8 @@ export async function initializeAgent(
 
   /** TARS: the thread's generated links, out of summarization's reach. */
   addTarsGeneratedFilesContext(initializedAgent, tarsFiles?.generatedFilesContext);
+  /** TARS: every tool source has registered by here, and the provider is settled. */
+  reduceVertexToolSchemas(initializedAgent);
   prepareQueuedCodeFileContext(initializedAgent, [initializedAgent], user?.id);
   const queuedFileContext = initializedAgent.dynamicToolContextMap?.queued_code_files;
   if (typeof queuedFileContext === 'string') {
