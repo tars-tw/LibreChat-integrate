@@ -2463,11 +2463,18 @@
             ]
           },
           "tars_domain_id": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "maxLength": 64
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tars_source_download": {
+            "type": "boolean"
           },
           "agent_ids": {
             "type": "array",
@@ -2932,11 +2939,18 @@
             ]
           },
           "tars_domain_id": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "maxLength": 64
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tars_source_download": {
+            "type": "boolean"
           },
           "agent_ids": {
             "type": "array",
@@ -3439,11 +3453,18 @@
             ]
           },
           "tars_domain_id": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "maxLength": 64
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tars_source_download": {
+            "type": "boolean"
           },
           "agent_ids": {
             "type": "array",
