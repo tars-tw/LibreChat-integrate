@@ -1,5 +1,6 @@
 jest.mock('@librechat/api', () => ({
   ...jest.requireActual('@librechat/api'),
+  withTarsVertexModels: jest.fn(jest.requireActual('@librechat/api').withTarsVertexModels),
   getAnthropicModels: jest.fn(),
   getAppConfigOptionsFromUser: jest.fn(),
   getBedrockModels: jest.fn(),
@@ -20,6 +21,7 @@ const {
   getBedrockModels,
   getGoogleModels,
   getOpenAIModels,
+  withTarsVertexModels,
 } = require('@librechat/api');
 const loadDefaultModels = require('./loadDefaultModels');
 
@@ -47,6 +49,12 @@ describe('loadDefaultModels', () => {
     );
     expect(models[Providers.VERTEXAI]).toBeUndefined();
     expect(getGoogleModels).toHaveBeenCalledTimes(1);
+  });
+
+  it('adds the Vertex models to the Google list', async () => {
+    await loadDefaultModels(request);
+
+    expect(withTarsVertexModels).toHaveBeenCalledWith(['gemini-3.7-flash']);
   });
 
   it('keeps the configured Google catalog empty when its model source fails', async () => {

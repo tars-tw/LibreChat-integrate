@@ -86,6 +86,7 @@ import {
 import { contentFilterBlockResponse, isContentFilterError } from '~/middleware/contentFilter';
 import { contentFilterUninspectableResponse } from '~/protection/files';
 import { resolveToolRoleGrants } from '../../tools/rolePermissions';
+import { getVertexToolCallSignature, reduceVertexToolSchemas } from '~/agents/vertex';
 import { createToolExecuteHandler } from '~/agents/handlers';
 import { createMCPRuntimeRequestBody } from '~/mcp/request';
 import { getUserFacingProviderError } from '../errors';
@@ -519,9 +520,13 @@ class ClientToolCallStop extends Error {}
  * coerces anything, so plain `{ role, content }` objects abort the run with
  * `message.getType is not a function`. Building them here also carries
  * `tool_calls` / `tool_call_id` across in LangChain's shape, which a bare
- * role-tagged object would have lost.
+ * role-tagged object would have lost. `toolCallSignature` is what those tool calls
+ * replay with when the model requires one (see `getVertexToolCallSignature`).
  */
-export function convertMessages(messages: ChatMessage[]): BaseMessage[] {
+export function convertMessages(
+  messages: ChatMessage[],
+  toolCallSignature?: string,
+): BaseMessage[] {
   return messages.map((msg) => {
     const content = normalizeContent(msg.content);
     const name = msg.name ? { name: msg.name } : {};
@@ -534,6 +539,10 @@ export function convertMessages(messages: ChatMessage[]): BaseMessage[] {
         content,
         ...name,
         ...(msg.tool_calls && { tool_calls: msg.tool_calls.map(toLangChainToolCall) }),
+        ...(toolCallSignature &&
+          msg.tool_calls?.length && {
+            additional_kwargs: { signatures: msg.tool_calls.map(() => toolCallSignature) },
+          }),
       });
     }
     if (msg.role === 'tool') {
@@ -999,6 +1008,7 @@ export async function createAgentChatCompletion(
         return;
       }
       initializedAgent.toolDefinitions = clientToolDefinitions;
+      reduceVertexToolSchemas(initializedAgent);
     }
 
     // Determine if streaming is enabled (check both request and agent config)
@@ -1196,7 +1206,10 @@ export async function createAgentChatCompletion(
     }
 
     // Convert messages to internal format
-    const messages = convertMessages(request.messages);
+    const messages = convertMessages(
+      request.messages,
+      getVertexToolCallSignature(initializedAgent.provider, initializedAgent.model),
+    );
 
     // Create and run the agent
     if (deps.createRun) {

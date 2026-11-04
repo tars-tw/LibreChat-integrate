@@ -7,6 +7,9 @@ const mockDetachedUsageRecorder = jest.fn();
 const mockCreateDetachedSubagentUsageRecorder = jest.fn(() => mockDetachedUsageRecorder);
 const mockGetAgentCheckpointer = jest.fn();
 const mockHasDurableAgentInterruptCheckpoint = jest.fn().mockResolvedValue(true);
+const mockGetProviderConfig = jest.fn((...args) =>
+  jest.requireActual('@librechat/api').getProviderConfig(...args),
+);
 const mockBuildAgentScopedContext = jest.fn((...args) =>
   jest.requireActual('@librechat/api').buildAgentScopedContext(...args),
 );
@@ -277,6 +280,7 @@ jest.mock('@librechat/agents', () => ({
 jest.mock('@librechat/api', () => ({
   ...jest.requireActual('@librechat/api'),
   buildAgentScopedContext: (...args) => mockBuildAgentScopedContext(...args),
+  getProviderConfig: (...args) => mockGetProviderConfig(...args),
   checkAccess: jest.fn(),
   createRun: (...args) => mockCreateRun(...args),
   countFormattedMessageTokens: jest.fn(() => 42),
@@ -4581,6 +4585,40 @@ describe('AgentClient - titleConvo', () => {
           signal: abortController.signal,
         }),
       });
+    });
+
+    it('records a pwc_tars Vertex title under its profile, and answers under it too', async () => {
+      const profile = 'gemini-3.5-flash(enterprise)';
+      const metadata = { tars_model: profile };
+      mockGetProviderConfig.mockReturnValueOnce({
+        getOptions: jest.fn().mockResolvedValue({
+          provider: 'vertexai',
+          llmConfig: { model: 'gemini-3.5-flash', metadata },
+        }),
+        overrideProvider: 'vertexai',
+        customEndpointConfig: {},
+      });
+      const vertexClient = new AgentClient({
+        ...mockOptions,
+        agent: {
+          ...mockAgent,
+          model: profile,
+          model_parameters: { model: 'gemini-3.5-flash', metadata },
+        },
+      });
+      vertexClient.run = mockRun;
+      vertexClient.responseMessageId = 'response-123';
+      vertexClient.conversationId = 'convo-123';
+      vertexClient.contentParts = [{ type: 'text', text: 'Test content' }];
+      vertexClient.recordCollectedUsage = jest.fn().mockResolvedValue();
+
+      expect(vertexClient.getResponseModel()).toBe(profile);
+
+      await vertexClient.titleConvo({ text: 'Hi', abortController: new AbortController() });
+
+      expect(vertexClient.recordCollectedUsage).toHaveBeenCalledWith(
+        expect.objectContaining({ context: 'title', model: profile }),
+      );
     });
 
     it('should record collected usage after title generation', async () => {

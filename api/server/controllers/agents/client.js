@@ -214,6 +214,7 @@ const {
   getChatProjectContextKey,
   isTemporaryTurn,
   hasEntityEmbeddings,
+  withTarsVertexUsageModel,
 } = require('@librechat/api');
 const {
   Run,
@@ -763,7 +764,7 @@ class AgentClient extends BaseClient {
       }));
     }
     /** @type {string} */
-    this.model = this.options.agent.model_parameters.model;
+    this.model = withTarsVertexUsageModel(this.options.agent.model_parameters).model;
     /** The key for the usage object's input tokens
      * @type {string} */
     this.inputTokensKey = 'input_tokens';
@@ -6335,7 +6336,7 @@ class AgentClient extends BaseClient {
       await this.recordCollectedUsage({
         collectedUsage,
         context: 'title',
-        model: clientOptions.model,
+        model: withTarsVertexUsageModel(clientOptions).model,
         balance: balanceConfig,
         transactions: transactionsConfig,
         messageId: this.responseMessageId,

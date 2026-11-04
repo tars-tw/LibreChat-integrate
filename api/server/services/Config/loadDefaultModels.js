@@ -8,6 +8,7 @@ const {
   getOpenAIModels,
   getGoogleModels,
   configuredModelList,
+  withTarsVertexModels,
 } = require('@librechat/api');
 const { getAppConfig } = require('./app');
 
@@ -67,7 +68,7 @@ async function loadDefaultModels(req) {
           logger.error('Error fetching Azure OpenAI Assistants API models:', error);
           return [];
         }),
-        Promise.resolve(getGoogleModels()).catch((error) => {
+        withTarsVertexModels(getGoogleModels()).catch((error) => {
           logger.error('Error getting Google models:', error);
           return [];
         }),

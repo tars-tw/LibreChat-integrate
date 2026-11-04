@@ -198,6 +198,23 @@ describe('createTarsChatMirror', () => {
     expect(JSON.stringify(message)).not.toContain('sk-secret');
   });
 
+  it('records a saved agent on a Vertex model under its profile, not the bare id it sends', async () => {
+    const tars = mockTars();
+    const profile = 'gemini-3.5-flash(enterprise)';
+
+    await createTarsChatMirror(makeDeps())(makeReq(), {
+      conversationId: nextConvo(),
+      query: 'q',
+      turn: answer('a'),
+      agent: {
+        model: profile,
+        model_parameters: { model: 'gemini-3.5-flash', metadata: { tars_model: profile } },
+      },
+    });
+
+    expect(tars.message()?.model_name).toBe(profile);
+  });
+
   it('records a failed turn with its error and no estimated tokens', async () => {
     const tars = mockTars();
 

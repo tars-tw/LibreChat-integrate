@@ -578,7 +578,10 @@ export function getGoogleConfig(
       },
       true,
     );
-    const location = process.env.GOOGLE_LOC || getDefaultVertexLocation(llmConfig.model ?? '');
+    const location =
+      process.env.GOOGLE_LOC ||
+      options.defaultLocation ||
+      getDefaultVertexLocation(llmConfig.model ?? '');
     (llmConfig as VertexAIClientOptions).location = location;
   } else if (apiKey && provider === Providers.GOOGLE) {
     llmConfig.apiKey = apiKey;

@@ -14,6 +14,7 @@ import {
 } from './mirror';
 import { sumTarsUsage, resolveTarsUsage, buildTarsMirrorTrace } from './trace';
 import { getTarsToolAuditTrace } from './tools/auditTrace';
+import { withTarsVertexUsageModel } from './vertex';
 import { takeTarsFailedToolCalls } from './failure';
 import { getTarsToolUsage } from './tools/usage';
 import { getTarsTurnFiles } from './files/turn';
@@ -155,7 +156,9 @@ export function createTarsChatMirror(deps: TarsChatMirrorDeps) {
       const modelParameters = isRecord(agent?.model_parameters) ? agent.model_parameters : null;
       const model =
         textOf(input.model) ||
-        textOf(modelParameters?.model) ||
+        textOf(
+          modelParameters && withTarsVertexUsageModel(modelParameters as { model?: string }).model,
+        ) ||
         textOf(agent?.model) ||
         textOf(req.body?.model) ||
         null;

@@ -31,4 +31,6 @@ export interface GoogleConfigOptions {
   forceVertex?: boolean;
   /** GCP project id for Vertex AI ADC/service-account authentication */
   projectId?: string;
+  /** Vertex AI location to use while `GOOGLE_LOC` is unset */
+  defaultLocation?: string;
 }
