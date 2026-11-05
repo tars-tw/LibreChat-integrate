@@ -11,6 +11,13 @@ import { assertSafeZipSize } from './zipSafety';
  */
 const PPTX_MAX_ENTRY_SIZE = 50 * megabyte;
 
+/**
+ * Cap on slide XML inflated across one deck. The text path reads a deck of any size
+ * without the `assertSafeZipSize` pre-flight, so the per-entry cap alone would still
+ * allow `PPTX_MAX_SLIDES` entries of 50 MB each.
+ */
+const PPTX_MAX_TOTAL_SLIDE_SIZE = 100 * megabyte;
+
 /** Cap on the number of slides we'll render — pathological decks bail early. */
 const PPTX_MAX_SLIDES = 500;
 
@@ -934,27 +941,31 @@ interface PptxSlide {
 }
 
 /**
- * Stream `ppt/slides/slide*.xml` out of a PPTX buffer using yauzl. Mirrors
+ * Stream `ppt/slides/slide*.xml` out of a PPTX using yauzl. Mirrors
  * the anti-zip-bomb pattern used by `extractOdtContentXml` in `crud.ts` —
  * counts real decompressed bytes mid-inflate so a falsified central-directory
  * `uncompressedSize` cannot bypass the cap. Returns slides in slide-number
  * order; ignores everything else in the archive.
  *
- * Uses `yauzl.fromBuffer` (no disk I/O) — the safety pre-flight in
- * `assertSafeZipSize` already proved the buffer is well-formed enough
- * to walk, and fromBuffer keeps the hot path memory-only.
+ * A buffer uses `yauzl.fromBuffer` (no disk I/O) — the safety pre-flight in
+ * `assertSafeZipSize` already proved it is well-formed enough to walk. A path
+ * reads only the slide entries from disk, so the deck's media never reaches
+ * memory however large it is.
  */
-function extractPptxSlideXml(buffer: Buffer): Promise<Array<{ number: number; xml: string }>> {
+function extractPptxSlideXml(
+  source: Buffer | string,
+): Promise<Array<{ number: number; xml: string }>> {
   return new Promise((resolve, reject) => {
-    yauzl.fromBuffer(buffer, { lazyEntries: true }, (err, zipfile) => {
+    const onOpen = (err: Error | null, zipfile?: yauzl.ZipFile) => {
       if (err) {
         return reject(err);
       }
       if (!zipfile) {
-        return reject(new Error('Failed to open PPTX buffer'));
+        return reject(new Error('Failed to open PPTX'));
       }
 
       let settled = false;
+      let deckBytes = 0;
       const slides: Array<{ number: number; xml: string }> = [];
       const finish = (error: Error | null) => {
         if (settled) {
@@ -1001,10 +1012,19 @@ function extractPptxSlideXml(buffer: Buffer): Promise<Array<{ number: number; xm
 
           readStream.on('data', (chunk: Buffer) => {
             totalBytes += chunk.byteLength;
+            deckBytes += chunk.byteLength;
             if (totalBytes > PPTX_MAX_ENTRY_SIZE) {
               readStream.destroy(
                 new Error(
                   `PPTX slide${slideNumber}.xml exceeds the ${PPTX_MAX_ENTRY_SIZE / megabyte}MB decompressed limit`,
+                ),
+              );
+              return;
+            }
+            if (deckBytes > PPTX_MAX_TOTAL_SLIDE_SIZE) {
+              readStream.destroy(
+                new Error(
+                  `PPTX slides exceed the ${PPTX_MAX_TOTAL_SLIDE_SIZE / megabyte}MB decompressed limit`,
                 ),
               );
               return;
@@ -1022,8 +1042,25 @@ function extractPptxSlideXml(buffer: Buffer): Promise<Array<{ number: number; xm
 
       zipfile.on('end', () => finish(null));
       zipfile.on('error', (zipErr: Error) => finish(zipErr));
-    });
+    };
+
+    if (typeof source === 'string') {
+      yauzl.open(source, { lazyEntries: true }, onOpen);
+      return;
+    }
+    yauzl.fromBuffer(source, { lazyEntries: true }, onOpen);
   });
+}
+
+/** The deck's slide text for the model, one block per slide; slides with no text are left out. */
+export async function pptxToText(filePath: string): Promise<string> {
+  const rawSlides = await extractPptxSlideXml(filePath);
+  return rawSlides
+    .flatMap(({ number, xml }) => {
+      const { title, body } = extractSlideText(xml);
+      return title ? [`Slide ${number}:\n${[title, ...body].join('\n')}`] : [];
+    })
+    .join('\n\n');
 }
 
 /**

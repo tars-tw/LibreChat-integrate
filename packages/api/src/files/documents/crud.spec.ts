@@ -1,7 +1,17 @@
+import os from 'os';
 import path from 'path';
 import * as fs from 'fs';
 import JSZip from 'jszip';
 import { parseDocument } from './crud';
+
+const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+const POTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.template';
+const ODP_MIME = 'application/vnd.oasis.opendocument.presentation';
+
+const slideXml = (paragraphs: string[]): string =>
+  `<p:sld xmlns:a="a" xmlns:p="p"><p:txBody>${paragraphs
+    .map((text) => `<a:p><a:r><a:t>${text}</a:t></a:r></a:p>`)
+    .join('')}</p:txBody></p:sld>`;
 
 describe('Document Parser', () => {
   test('parseDocument() parses text from docx', async () => {
@@ -212,6 +222,176 @@ describe('Document Parser', () => {
     } as Express.Multer.File;
 
     await expect(parseDocument({ file })).resolves.toBeDefined();
+  });
+
+  describe('presentations', () => {
+    let tempDir: string;
+
+    beforeAll(async () => {
+      tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'parse-pptx-'));
+    });
+
+    afterAll(async () => {
+      await fs.promises.rm(tempDir, { recursive: true, force: true });
+    });
+
+    const writeDeck = async (name: string, slides: Record<string, string>): Promise<string> => {
+      const zip = new JSZip();
+      for (const [entry, xml] of Object.entries(slides)) {
+        zip.file(entry, xml);
+      }
+      zip.file('ppt/media/image1.png', Buffer.alloc(16));
+      const deckPath = path.join(tempDir, name);
+      await fs.promises.writeFile(
+        deckPath,
+        await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }),
+      );
+      return deckPath;
+    };
+
+    const deckFile = (
+      deckPath: string,
+      overrides: Partial<Express.Multer.File> = {},
+    ): Express.Multer.File =>
+      ({
+        originalname: path.basename(deckPath),
+        path: deckPath,
+        mimetype: PPTX_MIME,
+        ...overrides,
+      }) as Express.Multer.File;
+
+    test('parseDocument() reads slide text in slide-number order, skipping slides without text', async () => {
+      const deckPath = await writeDeck('order.pptx', {
+        'ppt/slides/slide10.xml': slideXml(['Last']),
+        'ppt/slides/slide2.xml': slideXml(['系統一 &amp; 系統二', 'x &lt; y']),
+        'ppt/slides/slide1.xml': slideXml(['First', 'Bullet']),
+        'ppt/slides/slide3.xml': slideXml([]),
+      });
+
+      const document = await parseDocument({ file: deckFile(deckPath) });
+
+      expect(document.filepath).toBe('document_parser');
+      expect(document.text).toBe(
+        'Slide 1:\nFirst\nBullet\n\nSlide 2:\n系統一 & 系統二\nx < y\n\nSlide 10:\nLast',
+      );
+    });
+
+    test('parseDocument() reads a PowerPoint template', async () => {
+      const deckPath = await writeDeck('brand.potx', {
+        'ppt/slides/slide1.xml': slideXml(['Template']),
+      });
+
+      const document = await parseDocument({
+        file: deckFile(deckPath, { mimetype: POTX_MIME }),
+      });
+
+      expect(document.text).toBe('Slide 1:\nTemplate');
+    });
+
+    test('parseDocument() throws for a deck with no slide text', async () => {
+      const deckPath = await writeDeck('images-only.pptx', {
+        'ppt/slides/slide1.xml': slideXml([]),
+      });
+
+      await expect(parseDocument({ file: deckFile(deckPath) })).rejects.toThrow(
+        'No text found in document',
+      );
+    });
+
+    test('parseDocument() does not apply the document size limit, since media is never read', async () => {
+      const deckPath = await writeDeck('media-heavy.pptx', {
+        'ppt/slides/slide1.xml': slideXml(['Still readable']),
+      });
+
+      const document = await parseDocument({
+        file: deckFile(deckPath, { size: 60 * 1024 * 1024 }),
+      });
+
+      expect(document.text).toBe('Slide 1:\nStill readable');
+    });
+
+    test('parseDocument() refuses slide XML past the deck-wide decompressed cap', async () => {
+      const padding = 'x'.repeat(40 * 1024 * 1024);
+      const deckPath = await writeDeck('bomb.pptx', {
+        'ppt/slides/slide1.xml': padding,
+        'ppt/slides/slide2.xml': padding,
+        'ppt/slides/slide3.xml': padding,
+      });
+
+      await expect(parseDocument({ file: deckFile(deckPath) })).rejects.toThrow(
+        /exceed the 100MB decompressed limit/,
+      );
+    });
+
+    test('parseDocument() reads an OpenDocument presentation slide by slide', async () => {
+      const file = {
+        originalname: 'sample.odp',
+        path: path.join(__dirname, 'sample.odp'),
+        mimetype: ODP_MIME,
+      } as Express.Multer.File;
+
+      const document = await parseDocument({ file });
+
+      expect(document.filepath).toBe('document_parser');
+      expect(document.text).toMatch(/^Slide 1:\nLibreChat conversion fixture/);
+    });
+
+    test('parseDocument() leaves speaker notes and alt text out of an ODP, and skips empty slides', async () => {
+      const zip = new JSZip();
+      zip.file(
+        'content.xml',
+        `<office:document-content><office:body><office:presentation>
+<draw:page draw:name="a"><draw:frame><svg:title>Alt text</svg:title><text:p>First</text:p></draw:frame>
+<presentation:notes><draw:page-thumbnail/><text:p>Speaker note</text:p></presentation:notes></draw:page>
+<draw:page draw:name="b"/>
+<draw:page draw:name="c"></draw:page>
+<draw:page draw:name="d"><text:p>A &amp; B</text:p></draw:page>
+</office:presentation></office:body></office:document-content>`,
+      );
+      const deckPath = path.join(tempDir, 'notes.odp');
+      await fs.promises.writeFile(deckPath, await zip.generateAsync({ type: 'nodebuffer' }));
+
+      const document = await parseDocument({
+        file: deckFile(deckPath, { mimetype: ODP_MIME, size: 60 * 1024 * 1024 }),
+      });
+
+      expect(document.text).toBe('Slide 1:\nFirst\n\nSlide 3:\nA & B');
+    });
+
+    test('parseDocument() rejects a file that is not a zip archive', async () => {
+      await expect(
+        parseDocument({ file: deckFile(path.join(__dirname, 'sample.xls')) }),
+      ).rejects.toThrow();
+    });
+  });
+
+  test('parseDocument() parses text from a Word 97-2003 document', async () => {
+    const file = {
+      originalname: 'sample.doc',
+      path: path.join(__dirname, 'sample.doc'),
+      mimetype: 'application/msword',
+    } as Express.Multer.File;
+
+    const document = await parseDocument({ file });
+
+    expect(document).toEqual({
+      bytes: 66,
+      filename: 'sample.doc',
+      filepath: 'document_parser',
+      images: [],
+      text: '第一段:舊版 Word 文件範例。\nSecond paragraph with ASCII.',
+    });
+  });
+
+  test('parseDocument() keeps the size limit for a Word 97-2003 document', async () => {
+    const file = {
+      originalname: 'oversized.doc',
+      path: path.join(__dirname, 'sample.doc'),
+      mimetype: 'application/msword',
+      size: 16 * 1024 * 1024,
+    } as Express.Multer.File;
+
+    await expect(parseDocument({ file })).rejects.toThrow(/exceeds the 15MB document parser limit/);
   });
 
   test('parseDocument() parses empty xlsx with only sheet name', async () => {

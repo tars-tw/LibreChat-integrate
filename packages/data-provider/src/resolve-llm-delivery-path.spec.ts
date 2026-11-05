@@ -180,13 +180,9 @@ describe('resolveDefaultLLMDeliveryPath', () => {
       'application/x-tar',
       'application/epub+zip',
       'application/vnd.apache.parquet',
-      /* No built-in parser handles presentations or drawings, so without OCR they would
-       * reach the same raw-bytes fallback. */
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'application/vnd.oasis.opendocument.presentation',
+      /* No built-in parser handles ODF drawings, so without OCR they would reach the same
+       * raw-bytes fallback. */
       'application/vnd.oasis.opendocument.graphics',
-      /* Legacy DOC is absent from documentParserMimeTypes, so it has no parser either. */
-      'application/msword',
     ]) {
       expect(resolveDefaultLLMDeliveryPath(mimeType, undefined, undefined, 'openAI')).toBe('none');
     }
@@ -200,10 +196,29 @@ describe('resolveDefaultLLMDeliveryPath', () => {
       'application/vnd.oasis.opendocument.text',
       'application/vnd.oasis.opendocument.spreadsheet',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/vnd.openxmlformats-officedocument.presentationml.template',
+      'application/vnd.oasis.opendocument.presentation',
+      'application/msword',
       'application/vnd.ms-excel',
       'message/rfc822',
     ]) {
       expect(resolveDefaultLLMDeliveryPath(mimeType, undefined, undefined, 'openAI')).toBe('text');
+    }
+  });
+
+  it('routes a presentation to text on every endpoint, never leaving it unread', () => {
+    /* Off the text path a deck is stored but reaches no reader, so the model answers as if
+     * nothing had been attached. No provider's document path takes pptx either. */
+    for (const endpoint of ['google', 'openAI', 'anthropic', 'agents', 'Custom Provider']) {
+      expect(
+        resolveDefaultLLMDeliveryPath(
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          undefined,
+          undefined,
+          endpoint,
+        ),
+      ).toBe('text');
     }
   });
 
@@ -717,9 +732,7 @@ describe('isNativelyReadableText', () => {
 describe('canToolResourceConsume', () => {
   it('accepts a presentation for file search, which RAG handles', () => {
     /* The chooser offers file search for pptx from the retrieval set, so refusing it
-     * here rejects the destination the user was just given. The extraction set omits
-     * presentations because the document parser cannot read them, which is a different
-     * question from what the vector service can index. */
+     * here rejects the destination the user was just given. */
     expect(
       canToolResourceConsume(
         'file_search',
