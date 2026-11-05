@@ -171,7 +171,7 @@ export function toTarsPrincipalSearchResult(account: TarsAccount): TPrincipalSea
   return {
     id: null,
     type: PrincipalType.USER,
-    name: account.display_name || account.username,
+    name: account.display_name?.trim() || account.username,
     email: account.email ?? undefined,
     username: account.username,
     avatar: account.avatar ?? undefined,

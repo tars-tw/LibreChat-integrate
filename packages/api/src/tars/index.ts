@@ -23,6 +23,7 @@ export * from './security';
 export * from './plugins';
 export * from './models';
 export * from './modelProfiles';
+export * from './names';
 export * from './prompts';
 export * from './rag';
 export * from './reports';

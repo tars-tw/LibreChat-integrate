@@ -124,6 +124,15 @@ describe('searchTarsPrincipals', () => {
     ]);
   });
 
+  it.each(['', '   ', null])('names a person with display name %j by username', async (name) => {
+    const users = [{ ...account('u1', 'alice'), display_name: name }];
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { users }));
+
+    const [result] = await searchTarsPrincipals('alice', 10, BASE_URL);
+
+    expect(result.name).toBe('alice');
+  });
+
   it('excludes inactive accounts', async () => {
     const inactive = { ...account('u3', 'carol'), status: 'disabled' };
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { users: [inactive] }));

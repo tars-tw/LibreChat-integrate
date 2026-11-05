@@ -64,7 +64,8 @@ const normalizeTarsUser = (
   id: user.id,
   username: user.username,
   email: user.email,
-  name: user.display_name ?? user.username,
+  /** pwc_tars does not trim `display_name`, so a blank one can arrive as `''` or whitespace. */
+  name: user.display_name?.trim() || user.username,
   avatar: user.avatar ?? undefined,
   status: user.status ?? 'active',
   licenseStatus,

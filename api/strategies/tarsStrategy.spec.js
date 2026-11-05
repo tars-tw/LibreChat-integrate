@@ -163,6 +163,23 @@ describe('tarsStrategy', () => {
     );
   });
 
+  it('replaces an empty stored name with the name pwc_tars reports', async () => {
+    authenticateTars.mockResolvedValue({ ...guestTarsUser, name: 'jdoe' });
+    findUser.mockResolvedValue({
+      _id: 'existing-id',
+      provider: 'tars',
+      tarsId: 'tars-uuid-1',
+      name: '',
+    });
+
+    await callVerify('jdoe', 'secret');
+
+    expect(updateUser).toHaveBeenCalledWith(
+      'existing-id',
+      expect.objectContaining({ name: 'jdoe' }),
+    );
+  });
+
   it('rejects when an existing user belongs to a different provider', async () => {
     authenticateTars.mockResolvedValue(adminTarsUser);
     findUser.mockResolvedValue({ _id: 'x', provider: 'local', tarsId: 'tars-uuid-1' });

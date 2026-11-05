@@ -24,6 +24,7 @@ import {
   usesResetDay,
   allowedDomainSet,
   isActiveQuota,
+  personName,
 } from './helpers';
 import { useCreateTarsTokenQuotaMutation, useUpdateTarsTokenQuotaMutation } from '~/data-provider';
 import LimitInput, { toLimitField, fromLimitField, isValidLimitField } from './LimitInput';
@@ -135,7 +136,7 @@ export default function QuotaModal({
                 <p className="text-text-secondary text-xs">
                   {localize('com_ui_tars_quota_col_user')}
                 </p>
-                <p className="text-text-primary text-sm">{quota.display_name ?? quota.username}</p>
+                <p className="text-text-primary text-sm">{personName(quota)}</p>
                 <p className="text-text-secondary text-xs">{quota.email ?? '—'}</p>
               </div>
             )}
