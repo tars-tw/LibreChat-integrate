@@ -236,24 +236,26 @@ describe('documentParserMimeTypes', () => {
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.openxmlformats-officedocument.presentationml.template',
     'application/vnd.ms-excel',
     'application/msexcel',
     'application/x-msexcel',
     'application/x-ms-excel',
     'application/vnd.oasis.opendocument.spreadsheet',
     'application/vnd.oasis.opendocument.text',
+    'application/vnd.oasis.opendocument.presentation',
+    'application/msword',
   ])('matches natively parseable type: %s', (mimeType) => {
     expect(check(mimeType)).toBe(true);
   });
 
-  it.each([
-    'application/vnd.oasis.opendocument.presentation',
-    'application/vnd.oasis.opendocument.graphics',
-    'text/plain',
-    'image/png',
-  ])('does not match OCR-only or unsupported type: %s', (mimeType) => {
-    expect(check(mimeType)).toBe(false);
-  });
+  it.each(['application/vnd.oasis.opendocument.graphics', 'text/plain', 'image/png'])(
+    'does not match OCR-only or unsupported type: %s',
+    (mimeType) => {
+      expect(check(mimeType)).toBe(false);
+    },
+  );
 });
 
 describe('isAnthropicDocumentType', () => {

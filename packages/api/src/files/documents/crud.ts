@@ -1,14 +1,22 @@
 import * as fs from 'fs';
 import yauzl from 'yauzl';
-import { megabyte, excelMimeTypes, FileSources } from 'librechat-data-provider';
+import {
+  megabyte,
+  FileSources,
+  excelMimeTypes,
+  presentationMimeTypes,
+} from 'librechat-data-provider';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import type { MistralOCRUploadResult } from '~/types';
 import { assertSafeZipSize } from './zipSafety';
+import { wordBinaryToText } from './doc';
+import { pptxToText } from './html';
 
 type FileParseFn = (file: Express.Multer.File) => Promise<string>;
 
 const DOCUMENT_PARSER_MAX_FILE_SIZE = 15 * megabyte;
-const ODT_MAX_DECOMPRESSED_SIZE = 50 * megabyte;
+const ODF_MAX_DECOMPRESSED_SIZE = 50 * megabyte;
+const ODP_MIME_TYPE = 'application/vnd.oasis.opendocument.presentation';
 
 /**
  * Parses an uploaded document and extracts its text content and metadata.
@@ -26,8 +34,9 @@ export async function parseDocument({
     throw new Error(`Unsupported file type in document parser: ${file.mimetype}`);
   }
 
+  /* A deck's size is its media, which its parser never reads; its own caps bound the slide XML. */
   const fileSize = file.size ?? (file.path != null ? (await fs.promises.stat(file.path)).size : 0);
-  if (fileSize > DOCUMENT_PARSER_MAX_FILE_SIZE) {
+  if (!presentationMimeTypes.test(file.mimetype) && fileSize > DOCUMENT_PARSER_MAX_FILE_SIZE) {
     const limitMB = DOCUMENT_PARSER_MAX_FILE_SIZE / megabyte;
     const sizeMB = Math.ceil(fileSize / megabyte);
     throw new Error(
@@ -66,6 +75,15 @@ function getParserForMimeType(mimetype: string): FileParseFn | undefined {
   }
   if (mimetype === 'application/vnd.oasis.opendocument.text') {
     return odtToText;
+  }
+  if (mimetype === 'application/msword') {
+    return async (file) => wordBinaryToText(await fs.promises.readFile(file.path));
+  }
+  if (mimetype === ODP_MIME_TYPE) {
+    return odpToText;
+  }
+  if (presentationMimeTypes.test(mimetype)) {
+    return (file) => pptxToText(file.path);
   }
   return undefined;
 }
@@ -137,12 +155,39 @@ async function excelSheetToText(file: Express.Multer.File): Promise<string> {
  * text boxes, and annotations are stripped without replacement.
  */
 async function odtToText(file: Express.Multer.File): Promise<string> {
-  const xml = await extractOdtContentXml(file.path);
+  const xml = await extractOdfContentXml(file.path);
   const bodyMatch = xml.match(/<office:body[^>]*>([\s\S]*?)<\/office:body>/);
   if (!bodyMatch) {
     return '';
   }
-  return bodyMatch[1]
+  return odfMarkupToText(bodyMatch[1]);
+}
+
+/**
+ * Parses OpenDocument Presentation (.odp), one block per `<draw:page>` in deck order, matching
+ * the `.pptx` output: speaker notes and shape alt text are left out, as are slides without text.
+ */
+async function odpToText(file: Express.Multer.File): Promise<string> {
+  const xml = await extractOdfContentXml(file.path);
+  const pages = xml.matchAll(/<draw:page(?:\s[^>]*[^/])?>([\s\S]*?)<\/draw:page>/g);
+  const slides: string[] = [];
+  let number = 0;
+  for (const [, page] of pages) {
+    number += 1;
+    const text = odfMarkupToText(
+      page
+        .replace(/<presentation:notes\b[\s\S]*?<\/presentation:notes>/g, '')
+        .replace(/<svg:(title|desc)\b[^>]*>[\s\S]*?<\/svg:\1>/g, ''),
+    );
+    if (text) {
+      slides.push(`Slide ${number}:\n${text}`);
+    }
+  }
+  return slides.join('\n\n');
+}
+
+function odfMarkupToText(markup: string): string {
+  return markup
     .replace(/<\/text:p>/g, '\n')
     .replace(/<\/text:h>/g, '\n')
     .replace(/<text:line-break\/>/g, '\n')
@@ -162,7 +207,7 @@ async function odtToText(file: Express.Multer.File): Promise<string> {
 }
 
 /**
- * Streams content.xml out of an ODT ZIP archive using yauzl, counting real
+ * Streams content.xml out of an OpenDocument ZIP archive using yauzl, counting real
  * decompressed bytes and aborting mid-inflate if the cap is exceeded.
  * Unlike JSZip metadata checks, this cannot be bypassed by falsifying
  * the ZIP central directory's uncompressedSize fields.
@@ -170,14 +215,14 @@ async function odtToText(file: Express.Multer.File): Promise<string> {
  * The zipfile is closed on all exit paths (success, size cap, missing entry,
  * error) to prevent file descriptor leaks.
  */
-function extractOdtContentXml(filePath: string): Promise<string> {
+function extractOdfContentXml(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     yauzl.open(filePath, { lazyEntries: true }, (err, zipfile) => {
       if (err) {
         return reject(err);
       }
       if (!zipfile) {
-        return reject(new Error('Failed to open ODT file'));
+        return reject(new Error('Failed to open OpenDocument file'));
       }
 
       let settled = false;
@@ -216,10 +261,10 @@ function extractOdtContentXml(filePath: string): Promise<string> {
 
           readStream.on('data', (chunk: Buffer) => {
             totalBytes += chunk.byteLength;
-            if (totalBytes > ODT_MAX_DECOMPRESSED_SIZE) {
+            if (totalBytes > ODF_MAX_DECOMPRESSED_SIZE) {
               readStream.destroy(
                 new Error(
-                  `ODT content.xml exceeds the ${ODT_MAX_DECOMPRESSED_SIZE / megabyte}MB decompressed limit`,
+                  `OpenDocument content.xml exceeds the ${ODF_MAX_DECOMPRESSED_SIZE / megabyte}MB decompressed limit`,
                 ),
               );
               return;
@@ -234,7 +279,7 @@ function extractOdtContentXml(filePath: string): Promise<string> {
 
       zipfile.on('end', () => {
         if (!found) {
-          finish(new Error('ODT file is missing content.xml'));
+          finish(new Error('OpenDocument file is missing content.xml'));
         }
       });
 

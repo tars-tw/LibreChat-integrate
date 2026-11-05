@@ -321,6 +321,9 @@ export const isAnthropicDocumentType = (mimeType?: string): boolean =>
 export const excelMimeTypes =
   /^application\/(vnd\.ms-excel|msexcel|x-msexcel|x-ms-excel|x-excel|x-dos_ms_excel|xls|x-xls|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet)$/;
 
+export const presentationMimeTypes =
+  /^application\/vnd\.(openxmlformats-officedocument\.presentationml\.(presentation|template)|oasis\.opendocument\.presentation)$/;
+
 export const textMimeTypes =
   /^(text\/(x-c|x-csharp|tab-separated-values|x-c\+\+|x-h|x-java|html|markdown|x-php|x-python|x-script\.python|x-ruby|x-tex|plain|css|vtt|javascript|csv|xml|calendar))$/;
 
@@ -345,10 +348,12 @@ export const defaultOCRMimeTypes = [
   /^application\/vnd\.oasis\.opendocument\.(text|spreadsheet|presentation|graphics)$/,
 ];
 
-/** MIME types handled by the built-in document parser (pdf, docx, excel variants, ods/odt) */
+/** MIME types handled by the built-in document parser (pdf, doc/docx, pptx/potx/odp, excel variants, ods/odt) */
 export const documentParserMimeTypes = [
   excelMimeTypes,
+  presentationMimeTypes,
   /^application\/pdf$/,
+  /^application\/msword$/,
   /^application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document$/,
   /^application\/vnd\.oasis\.opendocument\.spreadsheet$/,
   /^application\/vnd\.oasis\.opendocument\.text$/,

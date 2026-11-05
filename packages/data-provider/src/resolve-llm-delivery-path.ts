@@ -5,6 +5,7 @@ import type { TEndpoint } from './config';
 import {
   retrievalMimeTypes,
   isExplicitMimeConfig,
+  presentationMimeTypes,
   isBedrockDocumentType,
   codeInterpreterMimeTypes,
   fileConfig as baseFileConfig,
@@ -102,9 +103,11 @@ const TEXT_RECOVERABLE_MIME_TYPES: RegExp[] = [
   /^audio\//,
   /^application\/(json|javascript|xml|sql|yaml|x-yaml|csv|typescript|x-sh|vnd\.coffeescript)$/,
   /^application\/pdf$/,
-  /* Only the formats the built-in document parser handles. Presentations and graphics
-   * are absent from documentParserMimeTypes, so on a deployment without OCR they would
-   * fall through to the permissive text matcher and be decoded as ZIP bytes. */
+  /* Only the formats the built-in document parser handles. ODF graphics are absent from
+   * documentParserMimeTypes, so on a deployment without OCR they would fall through to the
+   * permissive text matcher and be decoded as ZIP bytes. */
+  presentationMimeTypes,
+  /^application\/msword$/,
   /^application\/vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet)$/,
   /^application\/vnd\.oasis\.opendocument\.(text|spreadsheet)$/,
   /^application\/(vnd\.ms-excel|x-msexcel|msexcel|x-ms-excel|x-excel|x-dos_ms_excel|xls|x-xls)$/,
@@ -336,9 +339,8 @@ export function resolveUploadLLMDeliveryPath({
  */
 export function canToolResourceConsume(toolResource: string, mimeType: string): boolean {
   if (toolResource === EToolResources.file_search) {
-    /* The union of both readers rather than either alone: the extraction set describes
-     * the document parser and omits presentations, which RAG does handle and the chooser
-     * already offers, while the retrieval set omits csv and the spreadsheet formats. */
+    /* The union of both readers rather than either alone: the retrieval set omits csv and
+     * the spreadsheet formats, which the extraction set covers. */
     return (
       !mimeType.startsWith('image') &&
       !mimeType.startsWith('audio') &&

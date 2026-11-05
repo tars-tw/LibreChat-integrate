@@ -687,6 +687,10 @@ describe('processAgentFileUpload', () => {
       ['XLSX', XLSX_MIME],
       ['XLS', XLS_MIME],
       ['ODS', ODS_MIME],
+      ['PPTX', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+      ['POTX', 'application/vnd.openxmlformats-officedocument.presentationml.template'],
+      ['ODP', ODP_MIME],
+      ['DOC', 'application/msword'],
       ['Excel variant (msexcel)', 'application/msexcel'],
       ['Excel variant (x-msexcel)', 'application/x-msexcel'],
     ])('uses document_parser automatically for %s when no OCR is configured', async (_, mime) => {
@@ -1499,10 +1503,11 @@ describe('processAgentFileUpload', () => {
     it('defers an inferred file-search destination until tool execution', async () => {
       const { uploadVectors } = require('~/server/services/Files/VectorDB/crud');
       setupStoredFileUpload();
-      const req = makeReq({
-        mimetype: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        ocrConfig: null,
+      mergeFileConfig.mockReturnValue({
+        ...makeFileConfig(),
+        defaultLLMDeliveryPath: { overrides: { [PDF_MIME]: 'none' } },
       });
+      const req = makeReq({ mimetype: PDF_MIME, ocrConfig: null });
       req.body.endpoint = EModelEndpoint.agents;
 
       await processAgentFileUpload({
