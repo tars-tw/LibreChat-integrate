@@ -101,6 +101,23 @@ describe('authenticateTars', () => {
     });
   });
 
+  it.each([
+    ['an empty string', ''],
+    ['whitespace', '   '],
+    ['null', null],
+    ['missing', undefined],
+  ])('falls back to username when display_name is %s', async (_label, display_name) => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(200, {
+        user: { id: 'u1', username: 'jdoe', email: 'jdoe@example.com', display_name },
+      }),
+    );
+
+    const user = await authenticateTars('jdoe', 'secret', false, BASE_URL);
+
+    expect(user?.name).toBe('jdoe');
+  });
+
   it('surfaces a deactivated license status (policy enforced by the strategy)', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(
       buildResponse(200, {

@@ -18,6 +18,7 @@ import {
   isActiveQuota,
   quotaUsageShare,
   providerBadgeClass,
+  personName,
   SELECT_CLASS,
 } from './helpers';
 import {
@@ -182,7 +183,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                 <tr key={quota.id} className="border-border-light hover:bg-surface-hover border-t">
                   <td className="px-3 py-2">
                     <span className="text-text-primary block truncate">
-                      {quota.display_name ?? quota.username ?? '—'}
+                      {personName(quota, '—')}
                     </span>
                     <span className="text-text-secondary block truncate text-xs">
                       {quota.email ?? quota.username ?? '—'}
@@ -304,7 +305,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
             main={
               <p className="text-text-secondary text-sm">
                 {localize('com_ui_tars_quota_delete_confirm', {
-                  0: `${deleting.display_name ?? deleting.username ?? '—'} · ${deleting.provider ?? 'system'}`,
+                  0: `${personName(deleting, '—')} · ${deleting.provider ?? 'system'}`,
                 })}
               </p>
             }

@@ -3,6 +3,7 @@ import type { TTarsTokenUserUsage } from 'librechat-data-provider';
 import { useTarsTokenReportUserQuery } from '~/data-provider';
 import EmbeddingUsage from './EmbeddingUsage';
 import { formatTokens } from './helpers';
+import { personName } from '../helpers';
 import { useLocalize } from '~/hooks';
 import Trend from './Trend';
 import Stat from './Stat';
@@ -35,7 +36,7 @@ export default function UserDialog({
   return (
     <OGDialog open={true} onOpenChange={(open) => !open && onClose()}>
       <OGDialogTemplate
-        title={`${user.display_name ?? user.username ?? ''}`}
+        title={personName(user)}
         showCloseButton={true}
         className="w-11/12 md:max-w-4xl"
         main={
