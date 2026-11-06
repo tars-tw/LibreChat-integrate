@@ -32,6 +32,14 @@ interface:
   #   create: true
 
 endpoints:
+  # Conversation titles for every endpoint (overrides any per-endpoint titlePrompt).
+  # Upstream's default completion prompt asks for "title case", which pushes models
+  # to English; this is pwc_tars's own title prompt, so both products name a conversation the
+  # same way. `{convo}` is required: it is replaced by the conversation.
+  all:
+    titlePrompt: |-
+      請用10個字以內的繁體中文為以下問題生成一個簡短的對話標題，只回覆標題文字：
+      {convo}
   agents:
     # Capabilities available to Agents. `tools` is what lets an Agent call MCP tools
     # (e.g. the Langflow flows exposed below).
