@@ -139,6 +139,38 @@ function hasValidSignature(
   return given.length === wanted.length && timingSafeEqual(given, wanted);
 }
 
+const SIGNED_ASSET_LINK = new RegExp(
+  `${TARS_ASSET_ROUTE}/(${[...ASSET_DIRECTORIES.keys()].join('|')})/([^\\s()<>"'?#]+)` +
+    `\\?${SIGNATURE_PARAM}=([A-Za-z0-9_-]{${SIGNATURE_LENGTH}})`,
+  'g',
+);
+
+/** A relayed file named by a validly signed link. */
+export interface SignedTarsAsset {
+  /** The file name, decoded. */
+  name: string;
+  /** The link with its path encoded one way, so one file always reads as one link. */
+  link: string;
+}
+
+/**
+ * The relayed files that validly signed links in `text` name. Only
+ * {@link rewriteTarsAssetLinks} mints these signatures, so a match proves the
+ * link came from a TARS tool result rather than from the model's own writing.
+ */
+export function signedTarsAssets(text: string): SignedTarsAsset[] {
+  const assets: SignedTarsAsset[] = [];
+  for (const [, dir, path, signature] of text.matchAll(SIGNED_ASSET_LINK)) {
+    const segments = decodeSegments(path);
+    const asset = segments && resolveAsset(dir, segments);
+    if (asset && segments && hasValidSignature(dir, segments, signature)) {
+      const link = `${TARS_ASSET_ROUTE}/${asset.path}?${SIGNATURE_PARAM}=${signature}`;
+      assets.push({ name: asset.filename, link });
+    }
+  }
+  return assets;
+}
+
 /**
  * Points pwc_tars's generated-file links at LibreChat's signed relay. pwc_tars
  * builds them from its sys_config `HOST`, which only works for a browser that

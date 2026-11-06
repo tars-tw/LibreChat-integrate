@@ -215,6 +215,7 @@ const {
   isTemporaryTurn,
   hasEntityEmbeddings,
   withTarsVertexUsageModel,
+  repairTarsGeneratedLinks,
 } = require('@librechat/api');
 const {
   Run,
@@ -3691,7 +3692,10 @@ class AgentClient extends BaseClient {
       abortController: opts.abortController,
     });
 
-    const completion = filterMalformedContentParts(this.contentParts);
+    const completion = repairTarsGeneratedLinks(
+      filterMalformedContentParts(this.contentParts),
+      collectReachableAgents([this.options.agent, ...(this.agentConfigs?.values() ?? [])]),
+    );
     if (this.isCompactionTurn()) {
       markCompactionOutcome(completion, {
         aborted: this.abortController?.signal?.aborted === true,
