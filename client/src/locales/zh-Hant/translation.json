@@ -4504,6 +4504,7 @@
   "com_ui_tools_mcp_select_all": "全部選取",
   "com_ui_tools_mcp_status_unconfigured": "需要設定",
   "com_ui_tools_mcp_tools_section": "此伺服器中的工具",
+  "com_ui_tools_missing_api_key": "尚未提供 {{provider}} API Key",
   "com_ui_tools_native": "原生",
   "com_ui_tools_native_short": "內建於 LibreChat",
   "com_ui_tools_needs_setup": "需要設定",

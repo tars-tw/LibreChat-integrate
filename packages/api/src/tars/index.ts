@@ -12,6 +12,7 @@ export * from './failure';
 export * from './files';
 export * from './groups';
 export * from './groupSync';
+export * from './keys';
 export * from './databases';
 export * from './datasets';
 export * from './filesystems';
