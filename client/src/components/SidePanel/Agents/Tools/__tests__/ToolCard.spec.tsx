@@ -201,6 +201,24 @@ describe('ToolCard', () => {
       expect(onToggle).not.toHaveBeenCalled();
     });
 
+    test('a builtin missing its 系統參數 key is dimmed the same way', () => {
+      const webSearch: AgentItem = {
+        kind: 'builtin',
+        id: 'web_search',
+        name: 'com_ui_web_search',
+        description: 'com_agents_search_info',
+        iconKey: 'web_search',
+        missingKeyProvider: 'Tavily',
+      };
+      const onToggle = jest.fn();
+      render(<ToolCard item={webSearch} selected={false} onToggle={onToggle} />);
+
+      expect(screen.getByText('com_ui_tools_missing_api_key[provider=Tavily]')).toHaveClass(
+        'text-status-error',
+      );
+      expect(screen.getByRole('button', { name: /com_ui_web_search/ })).toBeDisabled();
+    });
+
     test('stays removable while already on the agent', () => {
       const onToggle = jest.fn();
       render(<ToolCard item={imageTool} selected onToggle={onToggle} />);

@@ -373,4 +373,32 @@ describe('useToolToggle', () => {
       );
     });
   });
+
+  describe('an admin-managed key is missing', () => {
+    it('keeps the tool off without opening the key dialog', () => {
+      const { useVerifyAgentToolAuth } = jest.requireMock('~/data-provider');
+      useVerifyAgentToolAuth.mockReturnValueOnce({
+        data: { authenticated: false, missingKeyProvider: 'Tavily' },
+      });
+      const setIsDialogOpen = jest.fn();
+      const { result } = renderHook(
+        () =>
+          useToolToggle({
+            conversationId: 'convo-missing-key',
+            toolKey: Tools.web_search,
+            localStorageKey: LocalStorageKeys.LAST_WEB_SEARCH_TOGGLE_,
+            setIsDialogOpen,
+            authConfig: { toolId: Tools.web_search },
+          }),
+        { wrapper: Wrapper },
+      );
+
+      act(() => {
+        result.current.handleChange({ value: true });
+      });
+
+      expect(setIsDialogOpen).not.toHaveBeenCalled();
+      expect(result.current.isToolEnabled).toBe(false);
+    });
+  });
 });

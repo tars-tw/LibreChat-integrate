@@ -70,6 +70,7 @@ interface ToggleFixture {
   isPinned: boolean;
   debouncedChange: jest.Mock;
   setIsPinned: jest.Mock;
+  authData?: { missingKeyProvider?: string };
 }
 
 interface ContextFixture {
@@ -312,6 +313,18 @@ describe('usePaletteEntries', () => {
       const listed = entries().result.current;
       act(() => listed.find((item) => item.key === 'builtin:web_search')?.onSelect());
       expect(context.webSearch.debouncedChange).toHaveBeenCalledWith({ value: false });
+    });
+
+    it('dims web search and ignores a pick while its admin-managed key is missing', () => {
+      const webSearch = { ...toggle(true, true), authData: { missingKeyProvider: 'Tavily' } };
+      mockContext = { ...fullContext(), webSearch };
+      const row = entries().result.current.find((item) => item.key === 'builtin:web_search');
+      expect(row?.unavailableReason).toBe('com_ui_tools_missing_api_key');
+      expect(row?.active).toBe(false);
+      expect(row?.pinned).toBe(false);
+      expect(row?.modes).toBeUndefined();
+      act(() => row?.onSelect());
+      expect(webSearch.debouncedChange).not.toHaveBeenCalled();
     });
 
     it('returns a mode pill to the default when it is already the stored mode', () => {

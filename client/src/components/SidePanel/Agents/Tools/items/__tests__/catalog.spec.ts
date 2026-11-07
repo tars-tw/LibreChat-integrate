@@ -103,6 +103,22 @@ describe('buildCatalog', () => {
     expect(systemDefined?.kind === 'builtin' && systemDefined.userProvidedAuth).toBe(false);
   });
 
+  test('carries the missing web search key provider onto the web_search builtin only', () => {
+    const items = buildCatalog({
+      ...emptyInputs,
+      agentsConfig: {
+        capabilities: [AgentCapabilities.web_search, AgentCapabilities.execute_code],
+      },
+      permissions: { ...emptyInputs.permissions, webSearch: true, runCode: true },
+      webSearchMissingKeyProvider: 'Tavily',
+    });
+    const byId = (id: string) => items.find((i) => i.kind === 'builtin' && i.id === id);
+    const webSearch = byId(AgentCapabilities.web_search);
+    const code = byId(AgentCapabilities.execute_code);
+    expect(webSearch?.kind === 'builtin' && webSearch.missingKeyProvider).toBe('Tavily');
+    expect(code?.kind === 'builtin' && code.missingKeyProvider).toBeUndefined();
+  });
+
   test('surfaces ask_user_question as a BUILTIN (not a plugin) when the server lists it', () => {
     const askPlugin = makePlugin({ pluginKey: 'ask_user_question', name: 'Ask User' });
     const items = buildCatalog({ ...askInputs, regularTools: [askPlugin] });

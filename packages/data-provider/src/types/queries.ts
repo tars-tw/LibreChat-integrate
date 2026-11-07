@@ -251,6 +251,8 @@ export type VerifyToolAuthResponse = {
   searchProvider?: SearchProviders;
   scraperProvider?: ScraperProviders;
   rerankerType?: RerankerTypes;
+  /** TARS: the provider whose 系統參數設定 key the tool needs and does not have yet. */
+  missingKeyProvider?: string;
 };
 
 export type GetToolCallParams = { conversationId: string };

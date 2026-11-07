@@ -57,6 +57,8 @@ export interface BuiltinItem extends ItemBase {
    * the card/row shows an info icon instead of a settings cog.
    */
   userProvidedAuth?: boolean;
+  /** TARS: the provider whose 系統參數設定 key `web_search` needs and does not have yet. */
+  missingKeyProvider?: string;
 }
 
 export interface ToolItem extends ItemBase {

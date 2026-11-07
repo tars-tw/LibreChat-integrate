@@ -1,9 +1,16 @@
 import type { TPlugin } from 'librechat-data-provider';
 import type { AgentItem } from './types';
 
-/** TARS: the provider whose 模型金鑰管理 key a tool lacks; such a tool cannot be added. */
+/** TARS: the provider whose admin-managed key an item lacks; such an item cannot be added. */
 export function getMissingKeyProvider(item: AgentItem): string | undefined {
-  return item.kind === 'tool' ? item.plugin.missingKeyProvider : undefined;
+  switch (item.kind) {
+    case 'tool':
+      return item.plugin.missingKeyProvider;
+    case 'builtin':
+      return item.missingKeyProvider;
+    default:
+      return undefined;
+  }
 }
 
 /** A tool requires auth when it declares credential fields and isn't authenticated yet. */

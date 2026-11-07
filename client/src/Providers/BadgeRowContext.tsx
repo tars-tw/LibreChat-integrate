@@ -284,6 +284,15 @@ export default function BadgeRowProvider({
     },
   });
 
+  /** TARS: while the admin's key is missing, web search cannot run, so it leaves the bar. */
+  const webSearchMissingKey = webSearch.authData?.missingKeyProvider != null;
+  const { isPinned: webSearchPinned, setIsPinned: setWebSearchPinned } = webSearch;
+  useEffect(() => {
+    if (webSearchMissingKey && webSearchPinned) {
+      setWebSearchPinned(false);
+    }
+  }, [webSearchMissingKey, webSearchPinned, setWebSearchPinned]);
+
   /** FileSearch hook */
   /** pwc_tars SQL agent (資料庫查詢) — a plain capability toggle like web search. */
   const sqlAgent = useToolToggle({
