@@ -4,6 +4,7 @@ import { Info, Settings, X } from 'lucide-react';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import type { AgentItem } from './items/types';
 import { hasConfigurableSettings } from './items/configurable';
+import { getMissingKeyProvider } from './items/auth';
 import { getIconForItem } from './items/icons';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
@@ -56,15 +57,23 @@ function ToolRowImpl({ item, onInfo, onRemove }: Props) {
   const displayName = item.kind === 'builtin' ? localize(item.name as TranslationKeys) : item.name;
   const configurable = hasConfigurableSettings(item);
   const DetailIcon = configurable ? Settings : Info;
+  const missingKeyProvider = getMissingKeyProvider(item);
 
   return (
     <div className="group hover:bg-surface-secondary relative flex w-full items-center gap-2 rounded-lg px-2 py-1.5">
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <RowIcon item={item} />
-        <span className="text-text-primary flex min-w-0 items-center gap-1 truncate text-sm">
-          <span className="truncate font-medium">{displayName}</span>
-          {suffix && <span className="text-text-secondary">{suffix}</span>}
-        </span>
+        <div className="flex min-w-0 flex-col">
+          <span className="text-text-primary flex min-w-0 items-center gap-1 truncate text-sm">
+            <span className="truncate font-medium">{displayName}</span>
+            {suffix && <span className="text-text-secondary">{suffix}</span>}
+          </span>
+          {missingKeyProvider != null && (
+            <span className="text-status-error truncate text-xs">
+              {localize('com_ui_tools_missing_api_key', { provider: missingKeyProvider })}
+            </span>
+          )}
+        </div>
       </div>
       {item.status === 'needs_setup' && (
         <span role="status" className="flex shrink-0 items-center">

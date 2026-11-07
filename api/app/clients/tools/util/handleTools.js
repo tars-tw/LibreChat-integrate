@@ -34,6 +34,7 @@ const {
   createTarsBuiltinTool,
   createTarsDataTool,
   createTarsTableTaskTool,
+  loadTarsToolAuthValues,
   getTarsTurnFiles,
   attachWorkflowFiles,
   ASK_USER_QUESTION_TOOL_NAME,
@@ -188,8 +189,9 @@ const loadTools = async ({
         getDispatcher: getProxyDispatcher,
       }),
     image_gen_oai: async (_toolContextMap, dynamicToolContextMap) => {
-      const authFields = getAuthFields('image_gen_oai');
-      const authValues = await loadAuthValues({ userId: user, authFields });
+      const authValues =
+        (await loadTarsToolAuthValues('image_gen_oai')) ??
+        (await loadAuthValues({ userId: user, authFields: getAuthFields('image_gen_oai') }));
       const imageFiles = options.tool_resources?.[EToolResources.image_edit]?.files ?? [];
       const toolContext = buildImageToolContext({
         imageFiles,

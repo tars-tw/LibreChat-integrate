@@ -5,6 +5,7 @@ import type { TranslationKeys } from '~/hooks/useLocalize';
 import type { AgentItem, ItemStatus } from './items/types';
 import { hasConfigurableSettings } from './items/configurable';
 import { useLocalize, useAuthContext } from '~/hooks';
+import { getMissingKeyProvider } from './items/auth';
 import { getIconForItem } from './items/icons';
 import { cn } from '~/utils';
 
@@ -82,6 +83,27 @@ function ItemIconView({ item, size }: ItemIconProps) {
   );
 }
 
+interface CardDescriptionProps {
+  description: string;
+  fallback: string;
+  missingKeyProvider?: string;
+}
+
+function CardDescription({ description, fallback, missingKeyProvider }: CardDescriptionProps) {
+  const localize = useLocalize();
+  if (missingKeyProvider != null) {
+    return (
+      <p className="text-status-error line-clamp-3 text-xs leading-snug">
+        {localize('com_ui_tools_missing_api_key', { provider: missingKeyProvider })}
+      </p>
+    );
+  }
+  if (description) {
+    return <p className="text-text-secondary line-clamp-3 text-xs leading-snug">{description}</p>;
+  }
+  return <p className="text-text-tertiary line-clamp-3 text-xs leading-snug italic">{fallback}</p>;
+}
+
 function ToolCardImpl({
   item,
   selected,
@@ -107,6 +129,9 @@ function ToolCardImpl({
     !canConfigure &&
     onConfigure !== undefined;
   const DetailIcon = canConfigure ? Settings : Info;
+  const missingKeyProvider = getMissingKeyProvider(item);
+  /** A tool without its key cannot be added; one already on the agent can still be removed. */
+  const unavailable = missingKeyProvider != null && !selected;
 
   return (
     /* touch:h-36 with touch:pb-9 on the content: where a coarse pointer exists the
@@ -116,21 +141,25 @@ function ToolCardImpl({
     <div
       className={cn(
         'group touch:h-36 relative flex h-32 w-full flex-col overflow-hidden rounded-2xl border',
-        selected
-          ? 'border-status-success bg-status-success/10 shadow-xs'
-          : 'border-border-light hover:border-border-medium hover:bg-surface-tertiary bg-transparent hover:shadow-xs',
+        selected && 'border-status-success bg-status-success/10 shadow-xs',
+        !selected && unavailable && 'border-border-light bg-transparent',
+        !selected &&
+          !unavailable &&
+          'border-border-light hover:border-border-medium hover:bg-surface-tertiary bg-transparent hover:shadow-xs',
       )}
     >
       <button
         type="button"
         onClick={() => onToggle(item)}
+        disabled={unavailable}
         aria-pressed={selected}
         className={cn(
-          'touch:pb-9 flex h-full w-full cursor-pointer flex-col gap-2 rounded-2xl p-4 text-start',
+          'touch:pb-9 flex h-full w-full flex-col gap-2 rounded-2xl p-4 text-start',
           'focus-visible:ring-ring-primary focus:outline-hidden focus-visible:ring-2',
+          unavailable ? 'cursor-not-allowed' : 'cursor-pointer',
         )}
       >
-        <div className="flex w-full items-start gap-3">
+        <div className={cn('flex w-full items-start gap-3', unavailable && 'opacity-50')}>
           <ItemIconView item={item} size="md" />
           <div className="min-w-0 flex-1">
             <div className="flex items-start gap-1.5">
@@ -169,13 +198,11 @@ function ToolCardImpl({
             )}
           </div>
         </div>
-        {description ? (
-          <p className="text-text-secondary line-clamp-3 text-xs leading-snug">{description}</p>
-        ) : (
-          <p className="text-text-tertiary line-clamp-3 text-xs leading-snug italic">
-            {isNative ? localize('com_ui_tools_native_short') : kindLabel}
-          </p>
-        )}
+        <CardDescription
+          description={description}
+          fallback={isNative ? localize('com_ui_tools_native_short') : kindLabel}
+          missingKeyProvider={missingKeyProvider}
+        />
         {(item.kind === 'action' && item.endpointCount > 0) || isPublicSkill || isSharedSkill ? (
           <div className="mt-auto flex w-full flex-wrap items-center gap-1.5">
             {item.kind === 'action' && item.endpointCount > 0 && (

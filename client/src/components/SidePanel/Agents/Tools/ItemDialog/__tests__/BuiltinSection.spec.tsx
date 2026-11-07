@@ -25,8 +25,10 @@ jest.mock('~/hooks', () => ({
   }),
   useAgentCapabilities: () => ({ backgroundToolsEnabled: false }),
 }));
+let mockWebSearchAuth: { authenticated: boolean; missingKeyProvider?: string } | undefined;
+
 jest.mock('~/data-provider', () => ({
-  useVerifyAgentToolAuth: () => ({ data: undefined }),
+  useVerifyAgentToolAuth: () => ({ data: mockWebSearchAuth }),
   useCodeEnvironmentStatusQueries: () => [],
   useTarsDomainsQuery: () => ({ data: mockTarsDomains }),
 }));
@@ -215,5 +217,23 @@ describe('BuiltinSection TARS brain binding', () => {
 
     expect(dialog).toContainElement(screen.getByRole('option', { name: '法規比對' }));
     dialog.remove();
+  });
+});
+
+describe('BuiltinSection web search', () => {
+  afterEach(() => {
+    mockWebSearchAuth = undefined;
+  });
+
+  test('names the missing admin-managed key instead of offering a key form', () => {
+    mockWebSearchAuth = { authenticated: false, missingKeyProvider: 'Tavily' };
+    renderSection('web_search');
+    expect(screen.getByText(/com_ui_tools_missing_api_key/)).toHaveClass('text-status-error');
+  });
+
+  test('shows no notice once the key is set', () => {
+    mockWebSearchAuth = { authenticated: true };
+    renderSection('web_search');
+    expect(screen.queryByText(/com_ui_tools_missing_api_key/)).not.toBeInTheDocument();
   });
 });

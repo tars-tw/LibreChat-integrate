@@ -99,6 +99,9 @@ export interface PaletteEntry {
   ownedByUser?: boolean;
   /** Connection state of an MCP server, drawn on the row and its card. */
   status?: ItemStatus;
+  /** TARS: why the tool cannot be used (an admin-managed key is missing); shown in red
+   *  under the dimmed label, and selecting the row does nothing. */
+  unavailableReason?: string;
 }
 
 /** Accumulates skill pages so client-side search covers the full catalog. */
@@ -327,6 +330,7 @@ export default function usePaletteEntries({
       onSelect: () => void,
       onUnpin: () => void,
       modes?: PaletteMode[],
+      unavailableReason?: string,
     ) => {
       entries.push({
         key: `builtin:${itemId}`,
@@ -340,6 +344,7 @@ export default function usePaletteEntries({
         onSelect,
         onUnpin,
         modes,
+        unavailableReason,
       });
     };
 
@@ -352,15 +357,19 @@ export default function usePaletteEntries({
       const searchConfigurable =
         authTypes.length === 0 ||
         !authTypes.every(([, authType]) => authType === AuthType.SYSTEM_DEFINED);
+      const missingKeyProvider = webSearch.authData?.missingKeyProvider;
+      const searchUnavailable = missingKeyProvider != null;
       pushTool(
         'web_search',
         localize('com_ui_web_search'),
         <Globe className="icon-md" aria-hidden="true" />,
-        webSearch.toggleState === true,
-        webSearch.isPinned === true,
-        () => webSearch.debouncedChange({ value: !webSearch.toggleState }),
+        !searchUnavailable && webSearch.toggleState === true,
+        !searchUnavailable && webSearch.isPinned === true,
+        searchUnavailable
+          ? () => undefined
+          : () => webSearch.debouncedChange({ value: !webSearch.toggleState }),
         () => webSearch.setIsPinned(false),
-        searchConfigurable && searchApiKeyForm != null
+        !searchUnavailable && searchConfigurable && searchApiKeyForm != null
           ? [
               {
                 id: 'configure',
@@ -370,6 +379,9 @@ export default function usePaletteEntries({
                 onSelect: () => searchApiKeyForm.setIsDialogOpen(true),
               },
             ]
+          : undefined,
+        searchUnavailable
+          ? localize('com_ui_tools_missing_api_key', { provider: missingKeyProvider })
           : undefined,
       );
     }

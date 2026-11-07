@@ -52,6 +52,8 @@ export function useToolToggle({
       externalIsAuthenticated ?? (authConfig ? (authQuery?.data?.authenticated ?? false) : false),
     [externalIsAuthenticated, authConfig, authQuery.data?.authenticated],
   );
+  /** TARS: an admin-managed key is missing, which no user can supply, so the key dialog stays shut. */
+  const missingKeyProvider = authQuery.data?.missingKeyProvider;
 
   const toolKey = useMemo(() => _toolKey, [_toolKey]);
   const storageKey = useMemo(() => `${localStorageKey}${key}`, [localStorageKey, key]);
@@ -127,7 +129,9 @@ export function useToolToggle({
   const handleChange = useCallback(
     ({ e, value }: { e?: React.ChangeEvent<HTMLInputElement>; value: ToolValue }) => {
       if (isAuthenticated !== undefined && !isAuthenticated && setIsDialogOpen) {
-        setIsDialogOpen(true);
+        if (missingKeyProvider == null) {
+          setIsDialogOpen(true);
+        }
         e?.preventDefault?.();
         setEphemeralAgent((prev) => ({
           ...(prev || {}),
@@ -155,6 +159,7 @@ export function useToolToggle({
     [
       setIsDialogOpen,
       isAuthenticated,
+      missingKeyProvider,
       setEphemeralAgent,
       toolKey,
       storageContextKey,

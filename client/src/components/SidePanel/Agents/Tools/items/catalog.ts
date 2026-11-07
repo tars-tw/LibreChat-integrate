@@ -72,6 +72,8 @@ export interface BuildCatalogInputs {
    * user key exists; SYSTEM_DEFINED deployments have nothing to configure.
    */
   webSearchUserProvided?: boolean;
+  /** TARS: the provider whose 系統參數設定 key `web_search` lacks; the card cannot be added. */
+  webSearchMissingKeyProvider?: string;
 }
 
 interface BuiltinDef {
@@ -198,6 +200,8 @@ export function buildCatalog(inputs: BuildCatalogInputs): AgentItem[] {
       status: inputs.builtinAuthMap?.get(def.id) === true ? 'needs_setup' : undefined,
       userProvidedAuth:
         def.id === AgentCapabilities.web_search ? inputs.webSearchUserProvided === true : undefined,
+      missingKeyProvider:
+        def.id === AgentCapabilities.web_search ? inputs.webSearchMissingKeyProvider : undefined,
     });
   }
 

@@ -65,6 +65,15 @@ export function useWebSearchUserProvided(): boolean {
 }
 
 /**
+ * TARS: the provider whose 系統參數設定 key `web_search` lacks, so no user is asked
+ * for it. Shares the `useBuiltinAuthMap` React Query key, so it adds no request.
+ */
+export function useWebSearchMissingKeyProvider(): string | undefined {
+  const { data } = useVerifyAgentToolAuth({ toolId: Tools.web_search }, { retry: 1 });
+  return data?.missingKeyProvider;
+}
+
+/**
  * Resolves whether the Memory capability should be offered in the builder.
  * Mirrors the legacy `AgentConfig` gate: the admin must enable the `memory`
  * capability, the user must hold the memory permission, and the user must not
@@ -195,6 +204,7 @@ export function useAgentItems({
   const tarsEnabled = startupConfig?.tarsAuth === true;
   const showMemory = useShowMemory();
   const webSearchUserProvided = useWebSearchUserProvided();
+  const webSearchMissingKeyProvider = useWebSearchMissingKeyProvider();
   const builtinAuthMap = useBuiltinAuthMap();
 
   const subagents = useWatch({ control, name: 'subagents' });
@@ -237,6 +247,7 @@ export function useAgentItems({
         tarsEnabled,
         showMemory,
         webSearchUserProvided,
+        webSearchMissingKeyProvider,
         builtinAuthMap,
       }),
     [
@@ -257,6 +268,7 @@ export function useAgentItems({
       skillsPermission,
       showMemory,
       webSearchUserProvided,
+      webSearchMissingKeyProvider,
       builtinAuthMap,
     ],
   );

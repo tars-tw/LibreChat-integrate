@@ -396,6 +396,23 @@ describe('Palette', () => {
       ]);
     });
 
+    it('dims an unavailable tool and shows why in red in place of its description', () => {
+      renderPalette({
+        entries: [
+          entry({
+            key: 'web_search',
+            label: 'Web Search',
+            description: 'Search the web',
+            unavailableReason: 'No Tavily API key provided',
+          }),
+        ],
+      });
+      const reason = screen.getByText('No Tavily API key provided');
+      expect(reason).toHaveClass('text-status-error');
+      expect(screen.queryByText('Search the web')).not.toBeInTheDocument();
+      expect(screen.getByText('Web Search')).toHaveClass('opacity-50');
+    });
+
     it('narrows the dialog to servers the user made', async () => {
       const servers = many('mcp', 7).map((server, i) => ({ ...server, ownedByUser: i < 2 }));
       renderPalette({ entries: servers });

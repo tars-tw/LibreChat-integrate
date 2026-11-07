@@ -210,7 +210,15 @@ function TarsDomainConfig({ value, onChange }: TarsDomainConfigProps) {
 }
 
 function WebSearchConfig() {
+  const localize = useLocalize();
   const { data } = useVerifyAgentToolAuth({ toolId: Tools.web_search }, { retry: 1 });
+  if (data?.missingKeyProvider != null) {
+    return (
+      <p className="text-status-error text-sm">
+        {localize('com_ui_tools_missing_api_key', { provider: data.missingKeyProvider })}
+      </p>
+    );
+  }
   return (
     <SearchAction
       authTypes={data?.authTypes}

@@ -1012,6 +1012,7 @@ function Palette({
       const { label, icon } = row.entry;
       const description = isEntry ? row.entry.description : undefined;
       const status = isEntry ? row.entry.status : undefined;
+      const unavailableReason = isEntry ? row.entry.unavailableReason : undefined;
       const checked = isEntry ? row.entry.active : false;
       const favorited = isEntry && row.isFavorite;
       const canFavorite = isEntry && row.entry.favoritable !== false;
@@ -1055,12 +1056,19 @@ function Palette({
               variant="row-content"
               tabIndex={-1}
               aria-pressed={isEntry ? checked : undefined}
+              aria-disabled={unavailableReason != null ? true : undefined}
               aria-label={
                 favorited ? `${label}, ${localize('com_ui_tools_view_favorites')}` : undefined
               }
-              className="h-full min-w-0 flex-1"
+              className={cn(
+                'h-full min-w-0 flex-1',
+                unavailableReason != null && 'cursor-not-allowed',
+              )}
             >
-              <span className="relative flex shrink-0" aria-hidden="true">
+              <span
+                className={cn('relative flex shrink-0', unavailableReason != null && 'opacity-50')}
+                aria-hidden="true"
+              >
                 {icon}
                 {status != null && (
                   /* Sits on the icon's corner like the MCP menu's server items;
@@ -1075,10 +1083,21 @@ function Palette({
                 )}
               </span>
               <span className="flex min-w-0 flex-1 flex-col justify-center">
-                <span className={cn('truncate', checked && 'font-medium')}>{label}</span>
+                <span
+                  className={cn(
+                    'truncate',
+                    checked && 'font-medium',
+                    unavailableReason != null && 'opacity-50',
+                  )}
+                >
+                  {label}
+                </span>
                 {/* The dot is color only, so the status is still said aloud. */}
                 {status != null && <span className="sr-only">{status.label}</span>}
-                {description != null && description !== '' && (
+                {unavailableReason != null && (
+                  <span className="text-status-error truncate text-xs">{unavailableReason}</span>
+                )}
+                {unavailableReason == null && description != null && description !== '' && (
                   <span className="text-text-secondary truncate text-xs">{description}</span>
                 )}
               </span>

@@ -94,4 +94,61 @@ describe('loadTarsWebSearchAuth', () => {
     });
     expect(result.authenticated).toBe(false);
   });
+
+  it('reports an unset KEY_TAVILY as system-defined and names Tavily, so no one is asked for it', async () => {
+    mockSysConfig(null);
+    const result = await loadTarsWebSearchAuth({
+      userId: 'user-1',
+      webSearchConfig: tavilyOnly,
+      loadAuthValues,
+    });
+    expect(result.authenticated).toBe(false);
+    expect(result.missingKeyProvider).toBe('Tavily');
+    expect(result.authTypes).toEqual([
+      ['providers', AuthType.SYSTEM_DEFINED],
+      ['scrapers', AuthType.SYSTEM_DEFINED],
+      ['rerankers', AuthType.SYSTEM_DEFINED],
+    ]);
+  });
+
+  it('names no missing key once KEY_TAVILY is set', async () => {
+    mockSysConfig('tvly-123');
+    const result = await loadTarsWebSearchAuth({
+      userId: 'user-1',
+      webSearchConfig: tavilyOnly,
+      loadAuthValues,
+    });
+    expect(result.missingKeyProvider).toBeUndefined();
+  });
+
+  it('leaves a category on a user-provided key asking the user', async () => {
+    mockSysConfig(null);
+    const result = await loadTarsWebSearchAuth({
+      userId: 'user-1',
+      webSearchConfig: {
+        ...tavilyOnly,
+        scraperProvider: ScraperProviders.FIRECRAWL,
+        firecrawlApiKey: '${FIRECRAWL_API_KEY}',
+      },
+      loadAuthValues,
+    });
+    expect(result.missingKeyProvider).toBe('Tavily');
+    expect(result.authTypes).toEqual([
+      ['providers', AuthType.SYSTEM_DEFINED],
+      ['scrapers', AuthType.USER_PROVIDED],
+      ['rerankers', AuthType.SYSTEM_DEFINED],
+    ]);
+  });
+
+  it('keeps the upstream result when no key references sys_config', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch');
+    const result = await loadTarsWebSearchAuth({
+      userId: 'user-1',
+      webSearchConfig: { ...tavilyOnly, tavilyApiKey: '${TAVILY_API_KEY}' },
+      loadAuthValues,
+    });
+    expect(result.missingKeyProvider).toBeUndefined();
+    expect(result.authTypes.some(([, type]) => type === AuthType.USER_PROVIDED)).toBe(true);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });

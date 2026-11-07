@@ -173,4 +173,59 @@ describe('ToolCard', () => {
       expect(screen.queryByRole('button', { name: 'com_ui_favorite' })).not.toBeInTheDocument();
     });
   });
+
+  describe('a tool missing its 模型金鑰管理 key', () => {
+    const imageTool: AgentItem = {
+      kind: 'tool',
+      id: 'image_gen_oai',
+      name: 'OpenAI Image Tools',
+      description: 'Image Generation and Editing',
+      iconKey: 'tool',
+      plugin: {
+        name: 'OpenAI Image Tools',
+        pluginKey: 'image_gen_oai',
+        missingKeyProvider: 'OpenAI',
+      },
+    };
+    const missingKeyText = 'com_ui_tools_missing_api_key[provider=OpenAI]';
+
+    test('replaces the description with the missing-key notice and cannot be added', () => {
+      const onToggle = jest.fn();
+      render(<ToolCard item={imageTool} selected={false} onToggle={onToggle} />);
+
+      expect(screen.getByText(missingKeyText)).toHaveClass('text-status-error');
+      expect(screen.queryByText('Image Generation and Editing')).not.toBeInTheDocument();
+      const card = screen.getByRole('button', { name: /OpenAI Image Tools/ });
+      expect(card).toBeDisabled();
+      fireEvent.click(card);
+      expect(onToggle).not.toHaveBeenCalled();
+    });
+
+    test('a builtin missing its 系統參數 key is dimmed the same way', () => {
+      const webSearch: AgentItem = {
+        kind: 'builtin',
+        id: 'web_search',
+        name: 'com_ui_web_search',
+        description: 'com_agents_search_info',
+        iconKey: 'web_search',
+        missingKeyProvider: 'Tavily',
+      };
+      const onToggle = jest.fn();
+      render(<ToolCard item={webSearch} selected={false} onToggle={onToggle} />);
+
+      expect(screen.getByText('com_ui_tools_missing_api_key[provider=Tavily]')).toHaveClass(
+        'text-status-error',
+      );
+      expect(screen.getByRole('button', { name: /com_ui_web_search/ })).toBeDisabled();
+    });
+
+    test('stays removable while already on the agent', () => {
+      const onToggle = jest.fn();
+      render(<ToolCard item={imageTool} selected onToggle={onToggle} />);
+
+      expect(screen.getByText(missingKeyText)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /OpenAI Image Tools/ }));
+      expect(onToggle).toHaveBeenCalledWith(imageTool);
+    });
+  });
 });

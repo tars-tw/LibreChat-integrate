@@ -61,6 +61,7 @@ const verifyWebSearchAuth = async (req, res) => {
       searchProvider: result.authResult.searchProvider,
       scraperProvider: result.authResult.scraperProvider,
       rerankerType: result.authResult.rerankerType,
+      missingKeyProvider: result.missingKeyProvider,
     });
   } catch (error) {
     console.error('Error in verifyWebSearchAuth:', error);

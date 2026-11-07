@@ -913,6 +913,8 @@ export const tPluginSchema = z.object({
   /** Raw upstream tool name when the model-facing key stripped a redundant
    *  server-name prefix — proves upstream identity for legacy id migration. */
   serverToolName: z.string().optional(),
+  /** TARS: the provider whose 模型金鑰管理 key this tool needs and does not have yet. */
+  missingKeyProvider: z.string().optional(),
 });
 
 export type TPlugin = z.infer<typeof tPluginSchema>;

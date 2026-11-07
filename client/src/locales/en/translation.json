@@ -5170,6 +5170,7 @@
   "com_ui_tools_mcp_select_all": "Select all",
   "com_ui_tools_mcp_status_unconfigured": "Needs configuration",
   "com_ui_tools_mcp_tools_section": "Tools in this server",
+  "com_ui_tools_missing_api_key": "No {{provider}} API key provided",
   "com_ui_tools_native": "Native",
   "com_ui_tools_native_short": "Built into LibreChat",
   "com_ui_tools_needs_setup": "Needs setup",

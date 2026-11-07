@@ -36,7 +36,9 @@ jest.mock('@librechat/client', () => ({
    language or namespace changes. Left as-is, every `useLocalize` consumer here
    would look unstable for a reason that does not exist outside the tests. */
 const mockTranslate = (key: string) => key;
-const mockToolAuth = { authenticated: false };
+const mockToolAuth: { authenticated: boolean; missingKeyProvider?: string } = {
+  authenticated: false,
+};
 let mockCachedFiles: object[] = [];
 jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
@@ -326,5 +328,24 @@ describe('BadgeRowProvider', () => {
 
     const { getValue } = renderProvider();
     expect(getValue()).toEqual(expect.objectContaining({ conversationId: 'convo-badge-row' }));
+  });
+
+  it('unpins web search while its admin-managed key is missing, and only then', () => {
+    const pinKey = `${LocalStorageKeys.LAST_WEB_SEARCH_TOGGLE_}pinned`;
+    localStorage.setItem(pinKey, 'true');
+    const kept = renderProvider();
+    expect(kept.getValue()?.webSearch.isPinned).toBe(true);
+    kept.unmount();
+
+    mockToolAuth.missingKeyProvider = 'Tavily';
+    try {
+      const unpinned = renderProvider();
+      expect(unpinned.getValue()?.webSearch.isPinned).toBe(false);
+      expect(localStorage.getItem(pinKey)).toBe('false');
+      unpinned.unmount();
+    } finally {
+      delete mockToolAuth.missingKeyProvider;
+      localStorage.clear();
+    }
   });
 });
