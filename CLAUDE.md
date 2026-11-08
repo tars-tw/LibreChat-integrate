@@ -235,7 +235,7 @@ right before `...clientOptions` in `initializeGoogle` and `assertTarsVertexModel
 (including `attachWorkflowFiles` after `loadMCPTools`, which hands the turn's attachments
 to Langflow flows — `langflow/files.spec.ts` covers the wrapper, not the call site),
 `mirrorChatToTars` in `agents/request.js`,
-`withTarsMcpConfig` in `api/server/services/Config/app.js`, `stampTarsStepTiming`
+`withTarsMcpConfig` in `api/server/services/Config/app.js` (and `withWorkflowMcpConfig` wrapped around it, which splits the YAML `workflow` entry into one `workflow_<project>` MCP server per Langflow project; `langflow/config.spec.ts`), `stampTarsStepTiming`
 in the `ON_RUN_STEP_CLOSED` handler of `agents/callbacks.js` and in the
 `on_run_step_closed` replay of `RedisJobStore.ts` (one standalone line after
 upstream's tool-call branch in each; keep it as its own statement when resolving,

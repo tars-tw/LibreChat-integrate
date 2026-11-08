@@ -395,6 +395,24 @@ export const isTarsLocalEndpointName = (endpoint: string | null | undefined): bo
  */
 export const TARS_WORKFLOW_MCP_SERVER_NAME = 'workflow';
 
+const WORKFLOW_PROJECT_SERVER = new RegExp(`^${TARS_WORKFLOW_MCP_SERVER_NAME}_[0-9a-f]{8}$`);
+
+/**
+ * The `mcpServers` key of one Langflow project (`workflow_<first 8 hex of its id>`): each project
+ * is its own MCP server, so an agent picks up a project's flows as a unit. Keyed by id rather than
+ * name so a renamed project keeps its tools, and short so `<tool>_mcp_<server>` stays inside the
+ * 64-character function-name limit (Langflow caps a tool name at 30).
+ */
+export const workflowMcpServerName = (projectId: string): string =>
+  `${TARS_WORKFLOW_MCP_SERVER_NAME}_${projectId
+    .toLowerCase()
+    .replace(/[^0-9a-f]/g, '')
+    .slice(0, 8)}`;
+
+/** Whether an `mcpServers` key publishes Langflow flows: a project's, or the deprecated aggregate. */
+export const isWorkflowMcpServerName = (name: string | null | undefined): boolean =>
+  name === TARS_WORKFLOW_MCP_SERVER_NAME || (name != null && WORKFLOW_PROJECT_SERVER.test(name));
+
 /**
  * The reserved Workflow tool argument that carries the turn's attachments as signed references
  * (`[{id, filename, path}]`, `path` relative to LibreChat's origin). LibreChat adds it after the

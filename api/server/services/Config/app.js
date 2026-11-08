@@ -17,6 +17,10 @@ const {
   hostPortFromUrl,
   withTarsMcpConfig,
   tarsMcpInjectionFailed,
+  withWorkflowMcpConfig,
+  workflowMcpInjectionFailed,
+  fetchWorkflowProjects,
+  resolveLangflowOrigin,
 } = require('@librechat/api');
 const { setCachedTools } = require('./getCachedTools');
 const { loadAndFormatTools } = require('~/server/services/start/tools');
@@ -68,19 +72,26 @@ function withLangflowAllowedAddress(appConfig) {
 const TARS_MCP_RETRY_MS = 60_000;
 let tarsMcpRetryTimer = null;
 
+/** Every Langflow project to register as a Workflow MCP server; null while Langflow is unset. */
+function fetchLangflowProjects() {
+  const origin = resolveLangflowOrigin();
+  const apiKey = process.env.LANGFLOW_API_KEY;
+  return origin && apiKey ? fetchWorkflowProjects(origin, apiKey) : Promise.resolve(null);
+}
+
 /**
- * When the pwc_tars MCP server list could not be fetched at base-config load
- * (pwc_tars down at boot), schedule a one-shot config-cache invalidation so the
- * gateway entries appear without a restart once pwc_tars recovers. The module
+ * When the pwc_tars MCP server list or the Langflow project list could not be fetched at
+ * base-config load (pwc_tars or Langflow down at boot), schedule a one-shot config-cache
+ * invalidation so their entries appear without a restart once it recovers. The module
  * guard keeps repeated failing loads from stacking timers.
  */
 function scheduleTarsMcpRetry() {
-  if (!tarsMcpInjectionFailed() || tarsMcpRetryTimer) {
+  if ((!tarsMcpInjectionFailed() && !workflowMcpInjectionFailed()) || tarsMcpRetryTimer) {
     return;
   }
   tarsMcpRetryTimer = setTimeout(() => {
     tarsMcpRetryTimer = null;
-    logger.info('[tars-mcp] Retrying config load after failed pwc_tars server-list fetch');
+    logger.info('[tars-mcp] Retrying config load after a failed pwc_tars / Langflow list fetch');
     invalidateConfigCaches().catch((error) =>
       logger.error('[tars-mcp] Config invalidation retry failed:', error),
     );
@@ -97,10 +108,13 @@ const loadBaseConfig = async (mode) => {
     adminIncluded: config.includedTools,
     directory: paths.structuredTools,
   });
-  const appConfig = await withTarsMcpConfig(
-    withLangflowAllowedAddress(
-      await AppService({ config, paths, systemTools, expandCustomEndpoint }),
+  const appConfig = await withWorkflowMcpConfig(
+    await withTarsMcpConfig(
+      withLangflowAllowedAddress(
+        await AppService({ config, paths, systemTools, expandCustomEndpoint }),
+      ),
     ),
+    { fetchProjects: fetchLangflowProjects },
   );
   scheduleTarsMcpRetry();
   return appConfig;

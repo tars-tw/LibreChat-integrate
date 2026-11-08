@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import type { WorkflowProject } from '~/langflow/config';
 import type { WorkflowFlow } from '~/langflow/sync';
 
 /** Bounds one server-to-server call; Langflow refuses service tokens living over 2 minutes. */
@@ -92,6 +93,10 @@ interface LangflowFlowRow {
   owner: 'system' | 'personal';
   tars_model: string | null;
   action_name: string;
+  project_id?: string;
+  project_name?: string;
+  project_description?: string;
+  project_tool_name?: string;
 }
 
 /**
@@ -136,6 +141,50 @@ export async function fetchWorkflowFlows(
     owner: row.owner,
     tarsModel: row.tars_model,
     actionName: row.action_name,
+    projectId: row.project_id,
+    projectName: row.project_name,
+    projectDescription: row.project_description,
+    projectToolName: row.project_tool_name,
+  }));
+}
+
+interface LangflowProjectRow {
+  project_id: string;
+  name: string;
+  description: string;
+  owner: 'system' | 'personal';
+  tars_id: string | null;
+}
+
+/**
+ * `GET {langflow}/api/v1/tars/projects`: every Langflow project holding a published flow, the
+ * shared account's and each pwc_tars user's own, for registering one MCP server per project.
+ * Throws when Langflow is unreachable or refuses the key; a Langflow that predates the route
+ * answers 404, which the error carries as its status.
+ */
+export async function fetchWorkflowProjects(
+  origin: string,
+  apiKey: string,
+): Promise<WorkflowProject[]> {
+  let response: Response;
+  try {
+    response = await fetch(`${origin}/api/v1/tars/projects`, {
+      headers: { 'x-api-key': apiKey },
+      signal: AbortSignal.timeout(SERVICE_TIMEOUT_MS),
+    });
+  } catch (error) {
+    throw new WorkflowServiceError(`Langflow is unreachable: ${(error as Error).message}`);
+  }
+  if (!response.ok) {
+    throw new WorkflowServiceError('Langflow refused the projects call', response.status);
+  }
+  const rows = (await response.json()) as LangflowProjectRow[];
+  return rows.map((row) => ({
+    projectId: row.project_id,
+    name: row.name,
+    description: row.description,
+    owner: row.owner,
+    tarsId: row.tars_id,
   }));
 }
 
