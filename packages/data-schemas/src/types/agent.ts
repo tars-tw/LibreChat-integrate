@@ -8,6 +8,7 @@ import type {
   AgentSubagentsConfig,
   AgentGitIdentity,
   AgentInstructionsPrompt,
+  TTarsAgentKnowledgeBases,
 } from 'librechat-data-provider';
 
 export interface ISupportContact {
@@ -67,8 +68,8 @@ export interface IAgent extends Omit<Document, 'model'> {
   subagents?: AgentSubagentsConfig;
   /** Memory partition: 'agent' isolates memories per (user, agent); default shared pool */
   memory_scope?: MemoryScope;
-  /** pwc_tars 專用腦 the agent's TARS tools are scoped to; unset follows the chat. */
-  tars_domain_id?: string | null;
+  /** The knowledge bases each TARS switch reaches; see `TTarsAgentKnowledgeBases`. */
+  tars_knowledge_bases?: TTarsAgentKnowledgeBases | null;
   /** Whether knowledge-search source files are offered for download; unset is off. */
   tars_source_download?: boolean;
   tenantId?: string;

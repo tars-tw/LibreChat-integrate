@@ -2,7 +2,7 @@ import { memo, useRef, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { NotebookPen } from 'lucide-react';
 import { TooltipAnchor } from '@librechat/client';
-import useTarsPromptsDomain from '~/hooks/Tars/useTarsPromptsDomain';
+import { useIsTarsLinkedUser } from '~/hooks/Tars/useTarsChatPrompts';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 import Panel from './Panel';
@@ -12,10 +12,10 @@ const MAX_PANEL_WIDTH = 384;
 
 /**
  * "我的提示" entry point in the chat composer. Opens a panel listing the
- * three-tier pwc_tars prompts for the chat's specialized brain (a selected
- * agent's bound brain, else the conversation's) and lets the user insert or
- * quickly create one. Renders nothing for non-tars users (no accessible brains). The panel is portaled to `document.body` so the
- * composer's `overflow-hidden` doesn't clip it.
+ * pwc_tars prompts for the chat (personal, plus those of the knowledge bases the
+ * selected agent's 知識庫檢索 picked) and lets the user insert or quickly create
+ * one. Renders nothing for accounts not linked to pwc_tars. The panel is portaled
+ * to `document.body` so the composer's `overflow-hidden` doesn't clip it.
  */
 function PromptsButton({
   insertPrompt,
@@ -29,7 +29,7 @@ function PromptsButton({
   const [coords, setCoords] = useState<{ left: number; bottom: number } | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const effectiveDomain = useTarsPromptsDomain();
+  const isTarsUser = useIsTarsLinkedUser();
 
   const reposition = useCallback(() => {
     const rect = anchorRef.current?.getBoundingClientRect();
@@ -68,7 +68,7 @@ function PromptsButton({
     [insertPrompt],
   );
 
-  if (!effectiveDomain) {
+  if (!isTarsUser) {
     return null;
   }
 
@@ -99,7 +99,7 @@ function PromptsButton({
             style={{ left: coords.left, bottom: coords.bottom }}
             onClick={(e) => e.stopPropagation()}
           >
-            <Panel domain={effectiveDomain} onInsert={handleInsert} />
+            <Panel onInsert={handleInsert} />
           </div>,
           document.body,
         )}

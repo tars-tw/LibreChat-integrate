@@ -1,5 +1,5 @@
 import { mergeTarsPluginFunctions } from 'librechat-data-provider';
-import type { TTarsDomainShareGap, TTarsPluginFunctionState } from 'librechat-data-provider';
+import type { TTarsPluginFunctionState } from 'librechat-data-provider';
 import type { TarsKnowledgeBase } from './knowledge';
 import { fetchTarsPluginTools } from './plugins/client';
 import { recordTarsCsvExport } from './syslogs';
@@ -69,36 +69,6 @@ export async function fetchTarsDomainById(
 export interface TarsSharePrincipal {
   principal_type: 'user' | 'group';
   principal_id: string;
-}
-
-export interface TarsDomainShareCheck {
-  domain: { id: number; name: string | null; is_active: boolean };
-  missing: TarsSharePrincipal[];
-}
-
-/** The brain a share check answered about, as the client reads it. */
-export const toTarsDomainShareGap = ({
-  id,
-  name,
-  is_active,
-}: TarsDomainShareCheck['domain']): TTarsDomainShareGap => ({ id: String(id), name, is_active });
-
-/**
- * The share targets that cannot use a specialized brain
- * (`POST /domain_settings/share_check`): users on their own role plus their
- * enabled groups' roles, groups on their own roles only, administrators on
- * every enabled brain. A disabled or deleted brain refuses everyone.
- */
-export async function fetchTarsDomainShareCheck(
-  domainId: string,
-  principals: TarsSharePrincipal[],
-  baseUrl?: string,
-): Promise<TarsDomainShareCheck> {
-  return tarsFetch<TarsDomainShareCheck>('/api/domain_settings/share_check', {
-    method: 'POST',
-    body: { domain_id: domainId, principals },
-    baseUrl,
-  });
 }
 
 /** A pwc_tars role, used to populate the domain editor's role multi-select. */

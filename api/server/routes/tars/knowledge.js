@@ -1,5 +1,5 @@
 const express = require('express');
-const { logger } = require('@librechat/data-schemas');
+const { logger, runAsSystem } = require('@librechat/data-schemas');
 const {
   fetchTarsModelOptions,
   createTarsKnowledgeBase,
@@ -21,8 +21,13 @@ const {
   deleteTarsChunk,
   isTarsAdminRole,
   forbiddenTarsKnowledgeBaseFields,
+  fetchTarsKnowledgeBaseChatAssignees,
+  saveTarsKnowledgeBaseChatAssignees,
+  requireTarsKnowledgeBase,
+  fetchTarsChatKnowledgeBases,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin, requireTarsMenuAccess } = require('~/server/middleware');
+const { removeTarsKnowledgeBaseFromAgents } = require('~/models');
 const { relayTarsError } = require('./relay');
 const { createTarsUpload } = require('./upload');
 
@@ -56,6 +61,40 @@ const parseIdList = (value) => {
  * documents stay with admins, which is where pwc_tars's page draws the line.
  */
 router.use(['/knowledge-bases', '/documents'], requireJwtAuth, requireTarsMenuAccess('kb.list'));
+
+/**
+ * A route naming a knowledge base, or a document or chunk in one, serves only that
+ * knowledge base's managers (or an admin), whatever ids the client sends. One layer per
+ * path: Express 5 runs only the first matching path of an array, which would skip the
+ * deeper ids.
+ */
+for (const path of [
+  '/knowledge-bases/:id',
+  '/knowledge-bases/:id/documents/:docId',
+  '/documents/:docId',
+  '/documents/:docId/chunks/:chunkId',
+]) {
+  router.use(path, requireTarsKnowledgeBase);
+}
+
+/**
+ * @route GET /api/tars/chat-knowledge-bases
+ * @desc The knowledge bases the user may use in chat (`km_permission`), for the agent
+ *       builder's pickers. Open to every pwc_tars user, unlike 知識庫清單 below.
+ * @access Private
+ */
+router.get('/chat-knowledge-bases', requireJwtAuth, async (req, res) => {
+  if (!req.user?.tarsId) {
+    return res.json({ knowledgeBases: [] });
+  }
+  try {
+    const knowledgeBases = await fetchTarsChatKnowledgeBases(req.user.tarsId);
+    return res.json({ knowledgeBases });
+  } catch (error) {
+    logger.error('[GET /api/tars/chat-knowledge-bases] Failed', error);
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars chat knowledge bases');
+  }
+});
 
 /**
  * @route GET /api/tars/knowledge-bases
@@ -459,6 +498,40 @@ router.put('/knowledge-bases/:id', async (req, res) => {
 });
 
 /**
+ * @route GET /api/tars/knowledge-bases/:id/chat-permissions
+ * @desc Who may use the knowledge base in chat (`km_permission`), disabled ones included.
+ * @access Admin or the knowledge base's managers (checked by pwc_tars)
+ */
+router.get('/knowledge-bases/:id/chat-permissions', async (req, res) => {
+  try {
+    const principals = await fetchTarsKnowledgeBaseChatAssignees(req.user.tarsId, req.params.id);
+    return res.json({ principals });
+  } catch (error) {
+    logger.error('[GET /api/tars/knowledge-bases/:id/chat-permissions] Failed', error);
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars knowledge base chat permissions');
+  }
+});
+
+/**
+ * @route PUT /api/tars/knowledge-bases/:id/chat-permissions
+ * @desc Overwrite the chat list; an empty list leaves the knowledge base unusable in chat.
+ * @access Admin or the knowledge base's managers (checked by pwc_tars)
+ */
+router.put('/knowledge-bases/:id/chat-permissions', async (req, res) => {
+  try {
+    const result = await saveTarsKnowledgeBaseChatAssignees(
+      req.user.tarsId,
+      req.params.id,
+      req.body ?? {},
+    );
+    return res.json({ result });
+  } catch (error) {
+    logger.error('[PUT /api/tars/knowledge-bases/:id/chat-permissions] Failed', error);
+    return relayTarsError(res, error, 'Failed to save pwc_tars knowledge base chat permissions');
+  }
+});
+
+/**
  * @route DELETE /api/tars/knowledge-bases/:id
  * @desc Delete a knowledge base (pwc_tars cascades Milvus / chunks / documents).
  * @access Admin (pwc_tars)
@@ -466,11 +539,18 @@ router.put('/knowledge-bases/:id', async (req, res) => {
 router.delete('/knowledge-bases/:id', requireTarsAdmin, async (req, res) => {
   try {
     await deleteTarsKnowledgeBase(req.user.tarsId, req.params.id);
-    return res.json({ success: true });
   } catch (error) {
     logger.error('[DELETE /api/tars/knowledge-bases/:id] Failed', error);
     return relayTarsError(res, error, 'Failed to delete pwc_tars knowledge base');
   }
+
+  /** The knowledge base is gone either way; a failed cleanup only leaves a dead pick in the builder. */
+  try {
+    await runAsSystem(() => removeTarsKnowledgeBaseFromAgents(String(req.params.id)));
+  } catch (error) {
+    logger.error('[DELETE /api/tars/knowledge-bases/:id] Failed to clear agent picks', error);
+  }
+  return res.json({ success: true });
 });
 
 module.exports = router;

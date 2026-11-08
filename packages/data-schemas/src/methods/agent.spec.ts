@@ -67,7 +67,7 @@ let revertAgentVersion: AgentMethods['revertAgentVersion'];
 let addAgentResourceFile: AgentMethods['addAgentResourceFile'];
 let removeAgentResourceFiles: AgentMethods['removeAgentResourceFiles'];
 let removeAgentResourceFilesFromAllAgents: AgentMethods['removeAgentResourceFilesFromAllAgents'];
-let unbindAgentsFromTarsDomain: AgentMethods['unbindAgentsFromTarsDomain'];
+let removeTarsKnowledgeBaseFromAgents: AgentMethods['removeTarsKnowledgeBaseFromAgents'];
 let getSharedResourceFileIds: AgentMethods['getSharedResourceFileIds'];
 let getListAgentsByAccess: AgentMethods['getListAgentsByAccess'];
 let getAgentManagementListByAccess: AgentMethods['getAgentManagementListByAccess'];
@@ -122,7 +122,7 @@ beforeAll(async () => {
   addAgentResourceFile = methods.addAgentResourceFile;
   removeAgentResourceFiles = methods.removeAgentResourceFiles;
   removeAgentResourceFilesFromAllAgents = methods.removeAgentResourceFilesFromAllAgents;
-  unbindAgentsFromTarsDomain = methods.unbindAgentsFromTarsDomain;
+  removeTarsKnowledgeBaseFromAgents = methods.removeTarsKnowledgeBaseFromAgents;
   getSharedResourceFileIds = methods.getSharedResourceFileIds;
   getListAgentsByAccess = methods.getListAgentsByAccess;
   getAgentManagementListByAccess = methods.getAgentManagementListByAccess;
@@ -4872,30 +4872,52 @@ describe('Agent Methods', () => {
       });
     });
 
-    describe('unbindAgentsFromTarsDomain', () => {
+    describe('removeTarsKnowledgeBaseFromAgents', () => {
       beforeEach(async () => {
         await Agent.deleteMany({});
       });
 
-      test('clears the binding only on agents bound to the deleted brain', async () => {
-        const bound = await createBasicAgent({ tars_domain_id: '225' });
-        const otherBrain = await createBasicAgent({ tars_domain_id: '2250' });
-        const unbound = await createBasicAgent();
+      test('takes a deleted knowledge base off every switch of every agent', async () => {
+        const picked = await createBasicAgent({
+          tars_knowledge_bases: {
+            rag_agent: ['kb1', 'kb2'],
+            sql_agent: ['kb1'],
+            chart_agent: ['kb3'],
+          },
+        });
+        const other = await createBasicAgent({ tars_knowledge_bases: { file_agent: ['kb2'] } });
+        const unpicked = await createBasicAgent();
 
-        const result = await unbindAgentsFromTarsDomain('225');
+        const result = await removeTarsKnowledgeBaseFromAgents('kb1');
 
         expect(result).toEqual({ matchedCount: 1, modifiedCount: 1 });
-        expect((await getAgent({ id: bound.id }))?.tars_domain_id).toBeUndefined();
-        expect((await getAgent({ id: otherBrain.id }))?.tars_domain_id).toBe('2250');
-        expect((await getAgent({ id: unbound.id }))?.tars_domain_id).toBeUndefined();
+        const after = (await getAgent({ id: picked.id }))?.tars_knowledge_bases;
+        expect(after?.rag_agent).toEqual(['kb2']);
+        expect(after?.sql_agent).toEqual([]);
+        expect(after?.chart_agent).toEqual(['kb3']);
+        expect((await getAgent({ id: other.id }))?.tars_knowledge_bases?.file_agent).toEqual([
+          'kb2',
+        ]);
+        expect((await getAgent({ id: unpicked.id }))?.tars_knowledge_bases).toBeUndefined();
       });
 
-      test('is a no-op without a brain id', async () => {
-        await createBasicAgent({ tars_domain_id: '225' });
-        await expect(unbindAgentsFromTarsDomain('')).resolves.toEqual({
+      test('is a no-op without a knowledge base id', async () => {
+        await createBasicAgent({ tars_knowledge_bases: { rag_agent: ['kb1'] } });
+        await expect(removeTarsKnowledgeBaseFromAgents('')).resolves.toEqual({
           matchedCount: 0,
           modifiedCount: 0,
         });
+      });
+
+      test('stores no picks until the builder sets some, and no 專用腦 at all', async () => {
+        const agent = await createBasicAgent({
+          name: 'Old',
+          tars_domain_id: '225',
+        } as Partial<IAgent>);
+        const stored = await getAgent({ id: agent.id });
+
+        expect(stored?.tars_knowledge_bases).toBeUndefined();
+        expect(stored).not.toHaveProperty('tars_domain_id');
       });
     });
 

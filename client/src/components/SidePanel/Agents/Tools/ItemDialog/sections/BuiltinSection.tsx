@@ -1,23 +1,16 @@
-import { useMemo, useContext } from 'react';
+import { Radio, Checkbox } from '@librechat/client';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { Radio, Checkbox, Dropdown } from '@librechat/client';
-import {
-  Tools,
-  MemoryScope,
-  ArtifactModes,
-  AgentCapabilities,
-  TARS_GENERAL_DOMAIN_ID,
-} from 'librechat-data-provider';
+import { Tools, MemoryScope, ArtifactModes, AgentCapabilities } from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import type { AgentForm, ExtendedFile } from '~/common';
 import type { BuiltinId } from '../../items/types';
-import { useVerifyAgentToolAuth, useTarsDomainsQuery } from '~/data-provider';
-import { AgentPickerPortalContext } from '../../../Advanced/AgentList';
 import OrchestrationHub from '../../../Advanced/OrchestrationHub';
+import { useVerifyAgentToolAuth } from '~/data-provider';
 import CodeBackground from '../../../Code/Background';
 import { isTarsSwitchId } from '../../items/tars';
 import CodeSettings from '../../../Code/Settings';
 import SearchAction from '../../../Search/Action';
+import TarsKnowledgeConfig from './TarsKnowledge';
 import FileContext from '../../../FileContext';
 import FileSearch from '../../../FileSearch';
 import CodeFiles from '../../../Code/Files';
@@ -144,71 +137,6 @@ function MemoryConfig({ value, onChange }: MemoryConfigProps) {
   );
 }
 
-/** Dropdown value standing for "no binding": the agent follows the chat's brain. */
-const FOLLOW_CHAT_DOMAIN = '__chat__';
-
-interface TarsDomainConfigProps {
-  value: string | undefined;
-  onChange: (next: string | undefined) => void;
-}
-
-function TarsDomainConfig({ value, onChange }: TarsDomainConfigProps) {
-  const localize = useLocalize();
-  const { data: domains = [] } = useTarsDomainsQuery();
-  /** Rendered inside the dialog: the modal's scroll lock swallows wheel and touch
-   *  scrolling on a body-portaled list, so a long brain list could not be scrolled. */
-  const portalElement = useContext(AgentPickerPortalContext) ?? undefined;
-
-  /** Only enabled brains are offered, minus the general brain, which is what an unbound
-   *  agent already follows. The bound brain stays listed even when it is not offered
-   *  (disabled ones marked as such) or the editor cannot see it (an agent shared by
-   *  someone else, listed by id), so opening the dialog never silently drops it. */
-  const options = useMemo(() => {
-    const listed: Array<{ value: string; label: string }> = [];
-    let bound = value ? { value, label: value } : null;
-    for (const domain of domains) {
-      const id = String(domain.id);
-      const offered = domain.status && domain.id !== TARS_GENERAL_DOMAIN_ID;
-      if (offered) {
-        listed.push({ value: id, label: domain.name });
-      }
-      if (id === value) {
-        const label = domain.status
-          ? domain.name
-          : localize('com_agents_tars_domain_disabled', { 0: domain.name });
-        bound = offered ? null : { value: id, label };
-      }
-    }
-    return [
-      { value: FOLLOW_CHAT_DOMAIN, label: localize('com_agents_tars_domain_follow_chat') },
-      ...listed,
-      ...(bound ? [bound] : []),
-    ];
-  }, [domains, value, localize]);
-
-  return (
-    <div className="flex flex-col gap-3">
-      <span id="tars-domain-label" className="text-text-primary text-sm font-medium">
-        {localize('com_agents_tars_domain')}
-      </span>
-      <Dropdown
-        value={value ?? FOLLOW_CHAT_DOMAIN}
-        onChange={(next) => onChange(next === FOLLOW_CHAT_DOMAIN ? undefined : next)}
-        options={options}
-        searchable={options.length > 8}
-        portalElement={portalElement}
-        variant="field"
-        aria-labelledby="tars-domain-label"
-        sizeClasses="w-full"
-        className="w-full"
-      />
-      <p className="text-text-secondary text-sm leading-relaxed">
-        {localize('com_agents_tars_domain_info')}
-      </p>
-    </div>
-  );
-}
-
 function WebSearchConfig() {
   const localize = useLocalize();
   const { data } = useVerifyAgentToolAuth({ toolId: Tools.web_search }, { retry: 1 });
@@ -243,7 +171,6 @@ export default function BuiltinSection({
 
   const artifactsValue = (useWatch({ control, name: AgentCapabilities.artifacts }) ?? '') as string;
   const memoryScope = (useWatch({ control, name: 'memory_scope' }) ?? MemoryScope.user) as string;
-  const tarsDomainId = useWatch({ control, name: 'tars_domain_id' });
 
   let body: React.ReactNode = null;
 
@@ -278,12 +205,7 @@ export default function BuiltinSection({
       />
     );
   } else if (isTarsSwitchId(builtinId)) {
-    body = (
-      <TarsDomainConfig
-        value={tarsDomainId}
-        onChange={(next) => setValue('tars_domain_id', next, { shouldDirty: true })}
-      />
-    );
+    body = <TarsKnowledgeConfig toolSwitch={builtinId} />;
   }
 
   const localizedDescription =

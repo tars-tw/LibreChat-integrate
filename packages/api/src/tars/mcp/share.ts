@@ -8,29 +8,31 @@ import {
   TARS_MCP_SHARE_BLOCKED,
   TARS_MCP_PUBLIC_SHARE_BLOCKED,
   TARS_MCP_SHARE_CHECK_UNAVAILABLE,
+  tarsRequiredKnowledgeBaseIds,
 } from 'librechat-data-provider';
 import type {
   TPrincipal,
   TTarsMcpShareGap,
   TTarsMcpShareBlock,
-  TTarsDomainShareGap,
+  TTarsAgentKnowledgeBases,
+  TTarsKnowledgeBaseShareGap,
 } from 'librechat-data-provider';
 import type { NextFunction, Request, Response } from 'express';
 import type { TarsSharePrincipal } from '~/tars/domains';
 import type { TarsAvailableToolRow } from './client';
 import { buildScopedToolName, PROXIED_SERVER_TYPES, tarsMcpFetch } from './client';
-import { fetchTarsDomainShareCheck, toTarsDomainShareGap } from '~/tars/domains';
+import { fetchTarsKnowledgeBaseShareCheck } from '~/tars/access';
 import { gatewayNameFor, tarsMcpDirectEntries } from './names';
 import { isTarsConfigured } from '~/tars/client';
 import { isTarsMcpEnabled } from './config';
 
 /**
- * Sharing an agent never gave anyone its pwc_tars MCP tools or its 專用腦: the gateway
- * lists and runs the tools per user, and a chat with a brain-bound agent is refused to
- * anyone outside the brain's role grants. So a share target lacking either gets an
- * agent that does not work. These checks stop that at the point of sharing, or of
- * adding a tool to an agent that is already shared. pwc_tars and the chat route remain
- * the runtime enforcement.
+ * Sharing an agent never gave anyone its pwc_tars MCP tools or the knowledge bases its
+ * TARS tools picked: the gateway lists and runs the tools per user, and a turn reaches a
+ * picked knowledge base only where the acting user is on its chat list (`km_permission`).
+ * So a share target lacking either gets an agent that does not work. These checks stop
+ * that at the point of sharing, or of adding a tool or a pick to an agent that is already
+ * shared. pwc_tars and the per-turn scope remain the runtime enforcement.
  */
 
 type SharePrincipal = Pick<TPrincipal, 'type' | 'id' | 'idOnTheSource' | 'name'>;
@@ -58,10 +60,10 @@ interface ShareTarget extends TarsSharePrincipal {
   name: string;
 }
 
-/** What a share target must have: the gateway tools and the 專用腦 the agent binds. */
+/** What a share target must have: the gateway tools and the knowledge bases the agent uses. */
 interface ShareRequirements {
   tools: string[];
-  domainId?: string | null;
+  knowledgeBaseIds: string[];
 }
 
 export interface TarsMcpShareRefusal {
@@ -78,7 +80,7 @@ const PUBLIC_REFUSED: TarsMcpShareRefusal = {
   status: 409,
   body: {
     code: TARS_MCP_PUBLIC_SHARE_BLOCKED,
-    error: 'An agent with MCP tools or a specialized brain cannot be shared with everyone',
+    error: 'An agent with MCP tools or knowledge bases cannot be shared with everyone',
   },
 };
 
@@ -186,22 +188,22 @@ async function missingServers(
   return new Map((result?.missing ?? []).map((miss) => [principalKey(miss), miss.servers]));
 }
 
-/** The brain each target cannot use, keyed by `principalKey`. */
-async function missingDomain(
-  domainId: string,
+/** The knowledge bases each target may not use in chat, keyed by `principalKey`. */
+async function missingKnowledgeBases(
+  knowledgeBaseIds: string[],
   principals: TarsSharePrincipal[],
-): Promise<Map<string, TTarsDomainShareGap>> {
-  const { domain, missing } = await fetchTarsDomainShareCheck(domainId, principals);
-  const gap = toTarsDomainShareGap(domain);
-  return new Map(missing.map((miss) => [principalKey(miss), gap]));
+): Promise<Map<string, TTarsKnowledgeBaseShareGap[]>> {
+  const { missing } = await fetchTarsKnowledgeBaseShareCheck(knowledgeBaseIds, principals);
+  return new Map(missing.map((miss) => [principalKey(miss), miss.knowledge_bases]));
 }
 
 async function refusalFor(
-  { tools, domainId }: ShareRequirements,
+  { tools, knowledgeBaseIds }: ShareRequirements,
   principals: SharePrincipal[],
 ): Promise<TarsMcpShareRefusal | null> {
   const bindsTools = isTarsMcpEnabled() && tools.some(isTarsMcpToolKey);
-  if ((!bindsTools && !domainId) || principals.length === 0) {
+  const usesKnowledge = knowledgeBaseIds.length > 0;
+  if ((!bindsTools && !usesKnowledge) || principals.length === 0) {
     return null;
   }
   if (!principals.every(isCheckable)) {
@@ -212,15 +214,17 @@ async function refusalFor(
     principal_type,
     principal_id,
   }));
-  const [serverGaps, domainGaps] = await Promise.all([
+  const [serverGaps, knowledgeGaps] = await Promise.all([
     bindsTools ? missingServers(tools, asked) : new Map<string, TTarsMcpShareGap[]>(),
-    domainId ? missingDomain(domainId, asked) : new Map<string, TTarsDomainShareGap>(),
+    usesKnowledge
+      ? missingKnowledgeBases(knowledgeBaseIds, asked)
+      : new Map<string, TTarsKnowledgeBaseShareGap[]>(),
   ]);
   const blocked = targets.flatMap((target): TTarsMcpShareBlock[] => {
     const key = principalKey(target);
     const servers = serverGaps.get(key) ?? [];
-    const domain = domainGaps.get(key);
-    if (servers.length === 0 && domain == null) {
+    const knowledgeBases = knowledgeGaps.get(key) ?? [];
+    if (servers.length === 0 && knowledgeBases.length === 0) {
       return [];
     }
     return [
@@ -229,7 +233,7 @@ async function refusalFor(
         idOnTheSource: target.principal_id,
         name: target.name,
         servers,
-        ...(domain ? { domain } : {}),
+        ...(knowledgeBases.length > 0 ? { knowledge_bases: knowledgeBases } : {}),
       },
     ];
   });
@@ -240,7 +244,7 @@ async function refusalFor(
     status: 409,
     body: {
       code: TARS_MCP_SHARE_BLOCKED,
-      error: 'Some share targets lack the MCP tools or the specialized brain this agent uses',
+      error: 'Some share targets lack the MCP tools or knowledge bases this agent uses',
       blocked,
     },
   };
@@ -280,7 +284,7 @@ interface SharedAgent {
   _id: { toString(): string };
   author?: { toString(): string } | null;
   tools?: string[];
-  tars_domain_id?: string | null;
+  tars_knowledge_bases?: TTarsAgentKnowledgeBases | null;
 }
 
 export interface TarsAgentShareDeps {
@@ -293,16 +297,17 @@ export interface TarsAgentShareDeps {
 /** What a save or version restore would leave the agent bound to; omitted = unchanged. */
 export interface AgentBindings {
   tools?: string[];
-  tars_domain_id?: string | null;
+  tars_knowledge_bases?: TTarsAgentKnowledgeBases | null;
 }
 
 export interface TarsAgentShare {
   /** Route guard for `PUT /api/permissions/:resourceType/:resourceId`. */
   guard: (req: Request, res: Response, next: NextFunction) => Promise<void>;
   /**
-   * The refusal for saving `next`, judged only on what it newly binds (added tools, a
-   * brain bound or switched), so an edit that leaves them alone is never stuck on an
-   * assignment or role grant revoked after the agent was shared.
+   * The refusal for saving `next`, judged only on what it newly binds (added tools,
+   * knowledge bases newly picked or newly reached by a switch turned on), so an edit
+   * that leaves them alone is never stuck on an assignment or chat grant revoked after
+   * the agent was shared.
    */
   refuseNewBindings: (
     agent: SharedAgent,
@@ -377,8 +382,12 @@ export function createTarsAgentShare(deps: TarsAgentShareDeps): TarsAgentShare {
     }
     const refusal = await refusalOrUnavailable(async () => {
       const agent = await deps.getAgent({ _id: resourceId });
+      const tools = agent?.tools ?? [];
       return {
-        requirements: { tools: agent?.tools ?? [], domainId: agent?.tars_domain_id },
+        requirements: {
+          tools,
+          knowledgeBaseIds: tarsRequiredKnowledgeBaseIds(tools, agent?.tars_knowledge_bases),
+        },
         principals,
       };
     });
@@ -392,16 +401,19 @@ export function createTarsAgentShare(deps: TarsAgentShareDeps): TarsAgentShare {
   const refuseNewBindings: TarsAgentShare['refuseNewBindings'] = async (agent, next) => {
     const existing = new Set(agent.tools ?? []);
     const tools = (next.tools ?? []).filter((tool) => !existing.has(tool));
-    const domainId =
-      next.tars_domain_id && next.tars_domain_id !== agent.tars_domain_id
-        ? next.tars_domain_id
-        : null;
+    const reached = new Set(tarsRequiredKnowledgeBaseIds(agent.tools, agent.tars_knowledge_bases));
+    const knowledgeBaseIds = tarsRequiredKnowledgeBaseIds(
+      next.tools ?? agent.tools,
+      next.tars_knowledge_bases === undefined
+        ? agent.tars_knowledge_bases
+        : next.tars_knowledge_bases,
+    ).filter((id) => !reached.has(id));
     const addsTools = isTarsMcpEnabled() && tools.some(isTarsMcpToolKey);
-    if (!isTarsConfigured() || (!addsTools && !domainId)) {
+    if (!isTarsConfigured() || (!addsTools && knowledgeBaseIds.length === 0)) {
       return null;
     }
     return refusalOrUnavailable(async () => ({
-      requirements: { tools, domainId },
+      requirements: { tools, knowledgeBaseIds },
       principals: await listSharedPrincipals(agent),
     }));
   };

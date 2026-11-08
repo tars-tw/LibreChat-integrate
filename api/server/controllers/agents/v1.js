@@ -988,8 +988,8 @@ const getAgentHandler = async (req, res, expandProperties = false) => {
         model_parameters: getSafeModelParameters(agent.model_parameters),
         isPublic: agent.isPublic,
         version: agent.version,
-        // The 專用腦 every turn runs against; the chat lists that brain's prompts
-        tars_domain_id: agent.tars_domain_id,
+        // The knowledge bases each TARS tool reaches; the chat lists their prompts
+        tars_knowledge_bases: agent.tars_knowledge_bases,
         // Whether the chat links this agent's 資料來源 files (參考資料下載)
         tars_source_download: agent.tars_source_download,
         // Safe metadata
@@ -1082,7 +1082,8 @@ const updateAgentHandler = async (req, res) => {
       git_identity: gitIdentityField,
       // Preserve explicit `null` (link removal); `removeNullishValues` would drop it.
       instructionsPrompt: instructionsPromptField,
-      tars_domain_id: tarsDomainIdField,
+      // Preserve explicit `null` (clears every TARS pick).
+      tars_knowledge_bases: tarsKnowledgeBasesField,
       _id,
       ...rest
     } = validatedData;
@@ -1096,8 +1097,8 @@ const updateAgentHandler = async (req, res) => {
     if (instructionsPromptField !== undefined) {
       updateData.instructionsPrompt = instructionsPromptField;
     }
-    if (tarsDomainIdField !== undefined) {
-      updateData.tars_domain_id = tarsDomainIdField;
+    if (tarsKnowledgeBasesField !== undefined) {
+      updateData.tars_knowledge_bases = tarsKnowledgeBasesField;
     }
     let existingAgent;
 
@@ -1384,7 +1385,7 @@ const updateAgentHandler = async (req, res) => {
 
     const shareRefusal = await tarsAgentShare.refuseNewBindings(existingAgent, {
       tools: updateData.tools,
-      tars_domain_id: updateData.tars_domain_id,
+      tars_knowledge_bases: updateData.tars_knowledge_bases,
     });
     if (shareRefusal) {
       return res.status(shareRefusal.status).json(shareRefusal.body);
@@ -1399,9 +1400,9 @@ const updateAgentHandler = async (req, res) => {
       updateData.$unset = { ...updateData.$unset, git_identity: 1 };
     }
     updateData = applyInstructionsPromptUnset(updateData);
-    if (updateData.tars_domain_id === null) {
-      delete updateData.tars_domain_id;
-      updateData.$unset = { ...updateData.$unset, tars_domain_id: 1 };
+    if (updateData.tars_knowledge_bases === null) {
+      delete updateData.tars_knowledge_bases;
+      updateData.$unset = { ...updateData.$unset, tars_knowledge_bases: 1 };
     }
 
     let updatedAgent =
@@ -2165,7 +2166,7 @@ const revertAgentVersionHandler = async (req, res) => {
 
     const shareRefusal = await tarsAgentShare.refuseNewBindings(existingAgent, {
       tools: revertVersion.tools,
-      tars_domain_id: revertVersion.tars_domain_id,
+      tars_knowledge_bases: revertVersion.tars_knowledge_bases,
     });
     if (shareRefusal) {
       return res.status(shareRefusal.status).json(shareRefusal.body);

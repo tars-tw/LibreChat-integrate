@@ -9,6 +9,7 @@ const {
   renameTarsPromptCategory,
   fetchTarsDomainKnowledgeBases,
   fetchTarsKnowledgeBasePrompts,
+  fetchTarsChatPrompts,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
 const { relayTarsError } = require('./relay');
@@ -35,6 +36,26 @@ router.get('/prompts', async (req, res) => {
     return res.json({ prompts, knowledgeBases });
   } catch (error) {
     logger.error('[GET /api/tars/prompts] Failed to fetch pwc_tars prompts', error);
+    return relayTarsError(res, error, 'Failed to fetch pwc_tars prompts');
+  }
+});
+
+/**
+ * @route GET /api/tars/prompts/chat
+ * @desc The chat's "我的提示": personal prompts plus those of the knowledge bases the
+ *       agent's 知識庫檢索 picked (`knowledge_base_ids`, comma separated) that the user
+ *       may use in chat. No 專用腦 tier.
+ * @access Private
+ */
+router.get('/prompts/chat', async (req, res) => {
+  const ids = String(req.query.knowledge_base_ids ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+  try {
+    return res.json(await fetchTarsChatPrompts(req.user.tarsId, ids));
+  } catch (error) {
+    logger.error('[GET /api/tars/prompts/chat] Failed to fetch pwc_tars prompts', error);
     return relayTarsError(res, error, 'Failed to fetch pwc_tars prompts');
   }
 });

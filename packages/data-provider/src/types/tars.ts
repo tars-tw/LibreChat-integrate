@@ -55,9 +55,15 @@ export type TTarsKnowledgeBase = {
   total_chunk_count?: number;
   total_token_count?: number;
   has_sql_database?: boolean;
-  /** Ids allowed to use the KB. Empty means "everyone", matching pwc_tars. */
+  /**
+   * The management list: who sees the KB in 知識庫清單 and manages its files. With both
+   * empty only admins do. Using it in chat is a separate list (`km_permission`).
+   */
   allowed_user_ids?: string[];
   allowed_user_group_ids?: string[];
+  /** Size of the chat list (`km_permission`), disabled principals included. */
+  chat_user_count?: number;
+  chat_user_group_count?: number;
 };
 
 /** A person the knowledge-base access picker offers. */
@@ -278,6 +284,32 @@ export type TTarsModelPermissionSavePayload = {
 
 export type TTarsModelPermissionSaveResult = {
   model_profile_id: string;
+  user_count: number;
+  group_count: number;
+};
+
+/** A knowledge base the user may use in chat, as the agent builder's pickers offer it. */
+export type TTarsChatKnowledgeBase = {
+  id: string;
+  name: string;
+  description?: string | null;
+  /** Only these are offered to 資料庫查詢 / 產生圖表 / 產生檔案. */
+  has_sql_database?: boolean;
+};
+
+export type TTarsChatKnowledgeBasesResponse = { knowledgeBases: TTarsChatKnowledgeBase[] };
+
+/**
+ * Who may use one knowledge base in chat (`km_permission`), disabled principals included.
+ * An empty list means nobody yet, admins included.
+ */
+export type TTarsKnowledgeBaseChatAssigneesResponse = TTarsModelAssigneesResponse;
+
+/** Full overwrite of one knowledge base's chat list; other knowledge bases are untouched. */
+export type TTarsKnowledgeBaseChatSavePayload = TTarsModelPermissionSavePayload;
+
+export type TTarsKnowledgeBaseChatSaveResult = {
+  knowledge_base_id: string;
   user_count: number;
   group_count: number;
 };
@@ -1237,22 +1269,20 @@ export type TTarsMcpShareGap = {
   tool_names: string[];
 };
 
-/** The 專用腦 a share target cannot use. */
-export type TTarsDomainShareGap = {
+/** A knowledge base the agent picked that a share target may not use in chat (`km_permission`). */
+export type TTarsKnowledgeBaseShareGap = {
   id: string;
-  /** `null` when the brain no longer exists in pwc_tars. */
-  name: string | null;
-  /** A disabled brain is refused for everyone, administrators included. */
-  is_active: boolean;
+  /** The id itself when the knowledge base no longer exists in pwc_tars. */
+  name: string;
 };
 
-/** A share target refused because it lacks MCP tools or the 專用腦 the agent uses. */
+/** A share target refused because it lacks MCP tools or knowledge bases the agent uses. */
 export type TTarsMcpShareBlock = {
   principal_type: 'user' | 'group';
   idOnTheSource: string;
   name: string;
   servers: TTarsMcpShareGap[];
-  domain?: TTarsDomainShareGap;
+  knowledge_bases?: TTarsKnowledgeBaseShareGap[];
 };
 
 /**

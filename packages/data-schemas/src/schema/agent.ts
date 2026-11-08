@@ -2,6 +2,17 @@ import { Schema } from 'mongoose';
 import { SkillsScope } from 'librechat-data-provider';
 import type { IAgent } from '~/types';
 
+/** One list per TARS switch; each stays unset until the builder picks for it. */
+const tarsKnowledgeBasesSchema = new Schema(
+  {
+    rag_agent: { type: [String], default: undefined },
+    sql_agent: { type: [String], default: undefined },
+    chart_agent: { type: [String], default: undefined },
+    file_agent: { type: [String], default: undefined },
+  },
+  { _id: false },
+);
+
 const agentSchema: Schema<IAgent> = new Schema<IAgent>(
   {
     id: {
@@ -184,9 +195,13 @@ const agentSchema: Schema<IAgent> = new Schema<IAgent>(
       enum: ['user', 'agent'],
       default: undefined,
     },
-    /** pwc_tars 專用腦 the agent's TARS tools are scoped to; unset follows the chat. */
-    tars_domain_id: {
-      type: String,
+    /**
+     * The knowledge bases each TARS switch reaches (知識庫檢索 / 資料庫查詢 / 產生圖表 /
+     * 產生檔案). An agent binds no 專用腦; a turn reaches a pick only where the acting
+     * user is on its chat list.
+     */
+    tars_knowledge_bases: {
+      type: tarsKnowledgeBasesSchema,
       default: undefined,
     },
     /** Whether knowledge-search source files are offered for download; unset is off. */

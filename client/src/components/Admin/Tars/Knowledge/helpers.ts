@@ -87,13 +87,19 @@ export const groupPickerOptions = (groups: TTarsKnowledgeBaseGroup[]): PickerOpt
     .sort(byLabel);
 
 /**
- * pwc_tars grants a base only to the users and groups it lists, so an empty
- * pair is not "open to everyone" — only admins, who bypass the lists, reach it.
+ * A knowledge base keeps two lists: `manage` (who sees and manages it in 知識庫清單;
+ * empty = admins only) and `chat` (who may use it in chat; empty = nobody, admins
+ * included).
  */
-export const accessSummaryKey = (kb: TTarsKnowledgeBase): TranslationKeys =>
-  (kb.allowed_user_ids?.length ?? 0) + (kb.allowed_user_group_ids?.length ?? 0) === 0
-    ? 'com_ui_tars_kb_access_unset'
-    : 'com_ui_tars_kb_access_restricted';
+export type AccessKind = 'manage' | 'chat';
+
+export const accessCounts = (
+  kb: TTarsKnowledgeBase,
+  kind: AccessKind,
+): { users: number; groups: number } =>
+  kind === 'manage'
+    ? { users: kb.allowed_user_ids?.length ?? 0, groups: kb.allowed_user_group_ids?.length ?? 0 }
+    : { users: kb.chat_user_count ?? 0, groups: kb.chat_user_group_count ?? 0 };
 
 /** The reason pwc_tars gave for refusing a call, relayed by the `/api/tars` routes. */
 export const relayedError = (error: unknown): string | undefined =>

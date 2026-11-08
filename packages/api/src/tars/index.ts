@@ -1,3 +1,5 @@
+export * from './access';
+export * from './managed';
 export * from './assets';
 export * from './about';
 export * from './agent';

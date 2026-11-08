@@ -777,3 +777,40 @@ describe('agent tool-option safety limits', () => {
     }
   });
 });
+
+describe('agent TARS knowledge-base picks', () => {
+  it('keeps the picks per switch on create and update', () => {
+    const picks = {
+      rag_agent: ['kb1', 'kb2'],
+      sql_agent: ['kb3'],
+      chart_agent: [],
+      file_agent: ['kb3'],
+    };
+
+    expect(agentUpdateSchema.parse({ tars_knowledge_bases: picks }).tars_knowledge_bases).toEqual(
+      picks,
+    );
+    expect(
+      agentCreateSchema.parse({
+        provider: 'openAI',
+        model: 'gpt-5.4-mini',
+        tars_knowledge_bases: picks,
+      }).tars_knowledge_bases,
+    ).toEqual(picks);
+    expect(agentUpdateSchema.parse({ tars_knowledge_bases: null }).tars_knowledge_bases).toBeNull();
+  });
+
+  it('allows one database for 資料庫查詢 and refuses unknown switches', () => {
+    expect(() =>
+      agentUpdateSchema.parse({ tars_knowledge_bases: { sql_agent: ['kb1', 'kb2'] } }),
+    ).toThrow();
+    expect(() =>
+      agentUpdateSchema.parse({ tars_knowledge_bases: { table_task: ['kb1'] } }),
+    ).toThrow();
+    expect(() => agentUpdateSchema.parse({ tars_knowledge_bases: { rag_agent: [''] } })).toThrow();
+  });
+
+  it('drops a 專用腦 binding, which an agent no longer has', () => {
+    expect(agentUpdateSchema.parse({ tars_domain_id: '225' })).not.toHaveProperty('tars_domain_id');
+  });
+});
