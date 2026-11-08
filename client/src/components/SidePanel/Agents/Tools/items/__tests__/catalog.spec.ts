@@ -1,6 +1,7 @@
 import { AgentCapabilities } from 'librechat-data-provider';
 import type { BuildCatalogInputs } from '../catalog';
 import { makePlugin, makeSkill, makeAction } from 'test/itemFactories';
+import { applyFilter } from '../filtering';
 import { buildCatalog } from '../catalog';
 
 const emptyInputs: BuildCatalogInputs = {
@@ -168,6 +169,29 @@ describe('buildCatalog', () => {
       expect(mcp.toolCount).toBe(3);
       expect(mcp.id).toBe('everything');
     }
+  });
+
+  test("names an MCP item by its server's title, its key when it has none", () => {
+    const map = new Map();
+    map.set('workflow_9093417d', {
+      serverName: 'workflow_9093417d',
+      isConfigured: true,
+      tools: [],
+      metadata: makePlugin({
+        name: 'Starter Project',
+        pluginKey: 'workflow_9093417d',
+        description: 'Manage your own flows.',
+      }),
+    });
+    map.set('untitled', { serverName: 'untitled', isConfigured: true, tools: [] });
+    const items = buildCatalog({ ...emptyInputs, mcpServersMap: map });
+    expect(items.filter((i) => i.kind === 'mcp').map((i) => [i.id, i.name])).toEqual([
+      ['workflow_9093417d', 'Starter Project'],
+      ['untitled', 'untitled'],
+    ]);
+    expect(applyFilter(items, { search: 'starter' }).map((i) => i.id)).toEqual([
+      'workflow_9093417d',
+    ]);
   });
 
   test('excludes consume-only MCP servers from the catalog', () => {
