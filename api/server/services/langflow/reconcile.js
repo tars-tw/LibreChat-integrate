@@ -3,9 +3,14 @@ const {
   fetchWorkflowFlows,
   resolveLangflowOrigin,
   createWorkflowAgentSync,
+  claimWorkflowConfigRefresh,
   renameLegacyWorkflowServer,
 } = require('@librechat/api');
-const { getMCPServerTools, invalidateCachedTools } = require('~/server/services/Config');
+const {
+  getMCPServerTools,
+  invalidateCachedTools,
+  invalidateConfigCaches,
+} = require('~/server/services/Config');
 const { grantPermission } = require('~/server/services/PermissionService');
 const { getModelsConfig } = require('~/server/controllers/ModelController');
 const db = require('~/models');
@@ -34,6 +39,8 @@ const syncWorkflowAgents = createWorkflowAgentSync({
   defaultOrchestration: { provider: PROVIDER, model: MODEL },
   getCachedTools: (userId, serverName) => getMCPServerTools(userId, serverName),
   invalidateCachedTools: (userId, serverName) => invalidateCachedTools({ userId, serverName }),
+  refreshServers: (serverNames, tarsId) =>
+    claimWorkflowConfigRefresh(serverNames, tarsId) ? invalidateConfigCaches() : undefined,
 });
 
 /**

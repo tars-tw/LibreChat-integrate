@@ -7,6 +7,7 @@ import {
   PROXIED_SERVER_TYPES,
   invalidateTarsMcpToolsCache,
 } from './client';
+import { filterVisibleWorkflowMcpConfigs } from '~/langflow/config';
 import { isTarsMcpEnabled } from './config';
 import { gatewayNameFor } from './names';
 
@@ -207,13 +208,15 @@ async function visibleGatewayNames(tarsUserId?: string | null): Promise<Set<stri
  * may see: assigned to them or an active group (`sys_mcp_permission`) and opted
  * in. The config itself is shared by every user, so a listing that skips this
  * hands the whole pwc_tars catalog to anyone. Fails closed: an unlinked account
- * or an unreachable pwc_tars lists no gateway entry. Other servers pass through,
- * and a config without gateway entries costs no pwc_tars call.
+ * or an unreachable pwc_tars lists no gateway entry. Other users' personal
+ * Workflow project servers (`workflow_*`) are dropped too. Other servers pass
+ * through, and a config without gateway entries costs no pwc_tars call.
  */
 export async function filterVisibleTarsMcpConfigs<T>(
-  configs: Record<string, T>,
+  allConfigs: Record<string, T>,
   tarsUserId?: string | null,
 ): Promise<Record<string, T>> {
+  const configs = filterVisibleWorkflowMcpConfigs(allConfigs, tarsUserId);
   if (!isTarsMcpEnabled() || !Object.keys(configs).some(isGatewayEntry)) {
     return configs;
   }

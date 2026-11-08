@@ -1,8 +1,8 @@
 import { logger } from '@librechat/data-schemas';
 import {
   tarsConfigSchema,
+  isWorkflowMcpServerName,
   TARS_WORKFLOW_FILES_ARGUMENT,
-  TARS_WORKFLOW_MCP_SERVER_NAME,
 } from 'librechat-data-provider';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
 import type { TTarsWorkflowFilesConfig } from 'librechat-data-provider';
@@ -63,7 +63,7 @@ export function withWorkflowFiles(
 
 const isWorkflowTool = (tool: WorkflowToolCandidate): boolean =>
   tool.mcp === true &&
-  tool.mcpRawServerName === TARS_WORKFLOW_MCP_SERVER_NAME &&
+  isWorkflowMcpServerName(tool.mcpRawServerName) &&
   typeof tool.func === 'function';
 
 /**

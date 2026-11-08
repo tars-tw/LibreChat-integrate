@@ -6,6 +6,15 @@ const tarsNode = (type: string, template: Record<string, { value?: string }>) =>
 });
 
 describe('findFlowAgentModel', () => {
+  it('reads the model an extension-bundle TARS node names', () => {
+    const flow = (type: string): LangflowFlowDefinition => ({
+      data: { nodes: [tarsNode(type, { model_name: { value: 'gemini-3.6-flash' } })] },
+    });
+    expect(findFlowAgentModel(flow('ext:tars:TarsAgentComponent@extra'))).toBe('gemini-3.6-flash');
+    expect(findFlowAgentModel(flow('ext:tars:TarsToolComponent@extra'))).toBe('gemini-3.6-flash');
+    expect(findFlowAgentModel(flow('ext:openai:OpenAIModelComponent@official'))).toBeUndefined();
+  });
+
   it('reads the model a TarsTool node names in ctx__model_name', () => {
     const flow: LangflowFlowDefinition = {
       data: {

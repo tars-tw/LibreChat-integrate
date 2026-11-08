@@ -97,6 +97,15 @@ describe('attachWorkflowFiles', () => {
     ).toBe(true);
   });
 
+  it("sends them to a project's own Workflow server too", async () => {
+    const { tool, received } = flowTool('workflow_1a2b3c4d');
+    attachWorkflowFiles([tool], { getTurnFiles: () => SPECS, userId: 'user-1' });
+
+    await tool.invoke({ input_value: 'go' });
+
+    expect(received[0][TARS_WORKFLOW_FILES_ARGUMENT]).toHaveLength(2);
+  });
+
   it('reads the turn files when the flow is called, not when the tool loads', async () => {
     const { tool, received } = flowTool();
     const turn: { files?: TarsTurnFiles } = {};

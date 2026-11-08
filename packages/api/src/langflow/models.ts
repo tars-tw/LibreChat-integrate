@@ -4,6 +4,19 @@ import { logger } from '@librechat/data-schemas';
 const TARS_NODE_TYPES = new Set(['TarsTool', 'TarsAgent']);
 
 /**
+ * Whether a node is a TARS node, built in (`TarsAgent`) or from an extension bundle, whose type is
+ * `ext:<bundle>:<class name>@<slot>` (`ext:tars:TarsAgentComponent@extra`). Mirrors Langflow's
+ * `flow_tars_model`.
+ */
+function isTarsNode(type: string): boolean {
+  if (!type.startsWith('ext:')) {
+    return TARS_NODE_TYPES.has(type);
+  }
+  const className = type.slice(type.lastIndexOf(':') + 1).split('@')[0];
+  return TARS_NODE_TYPES.has(className.replace(/Component$/, ''));
+}
+
+/**
  * Template fields that can hold a TARS node's model, most specific first. `TarsTool` builds
  * `ctx__model_name` from the tool manifest and falls back to its own advanced `model_name`;
  * `TarsAgent` only has the latter. Mirrors the precedence the components apply at run time.
@@ -55,7 +68,7 @@ function templateModel(template?: Record<string, LangflowTemplateField>): string
 export function findFlowAgentModel(flow: LangflowFlowDefinition | null): string | undefined {
   for (const node of flow?.data?.nodes ?? []) {
     const type = node?.data?.type;
-    if (type == null || !TARS_NODE_TYPES.has(type)) {
+    if (type == null || !isTarsNode(type)) {
       continue;
     }
     const model = templateModel(node.data?.node?.template);
