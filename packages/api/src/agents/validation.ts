@@ -432,6 +432,31 @@ const agentInstructionsPromptFieldSchema: z.ZodOptional<
   z.ZodNullable<typeof agentInstructionsPromptSchema>
 > = agentInstructionsPromptSchema.nullable().optional();
 
+/** pwc_tars ids are short; the cap keeps a crafted list from bloating the agent document. */
+const tarsKnowledgeBaseIdsSchema: z.ZodArray<z.ZodString> = z
+  .array(z.string().min(1).max(64))
+  .max(200);
+
+type TarsKnowledgeBasesShape = {
+  rag_agent: z.ZodOptional<z.ZodArray<z.ZodString>>;
+  sql_agent: z.ZodOptional<z.ZodArray<z.ZodString>>;
+  chart_agent: z.ZodOptional<z.ZodArray<z.ZodString>>;
+  file_agent: z.ZodOptional<z.ZodArray<z.ZodString>>;
+};
+
+/**
+ * The knowledge bases each TARS switch reaches (`agent.tars_knowledge_bases`). 資料庫查詢
+ * runs against one database, so its list holds at most one. Unknown switches are refused.
+ */
+const tarsKnowledgeBasesSchema: z.ZodObject<TarsKnowledgeBasesShape, z.core.$strict> = z
+  .object({
+    rag_agent: tarsKnowledgeBaseIdsSchema.optional(),
+    sql_agent: z.array(z.string().min(1).max(64)).max(1).optional(),
+    chart_agent: tarsKnowledgeBaseIdsSchema.optional(),
+    file_agent: tarsKnowledgeBaseIdsSchema.optional(),
+  })
+  .strict();
+
 /** Fields shared by the agent create and update schemas. */
 type AgentBaseShape = {
   name: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -446,7 +471,7 @@ type AgentBaseShape = {
   skill_authoring_enabled: z.ZodOptional<z.ZodBoolean>;
   skills_scope: z.ZodOptional<z.ZodEnum<typeof SkillsScope>>;
   memory_scope: z.ZodOptional<z.ZodEnum<typeof MemoryScope>>;
-  tars_domain_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+  tars_knowledge_bases: z.ZodOptional<z.ZodNullable<typeof tarsKnowledgeBasesSchema>>;
   tars_source_download: z.ZodOptional<z.ZodBoolean>;
   /** @deprecated Use edges instead */
   agent_ids: z.ZodOptional<z.ZodArray<z.ZodString>>;
@@ -483,7 +508,7 @@ export const agentBaseSchema: z.ZodObject<AgentBaseShape> = z.object({
   skill_authoring_enabled: z.boolean().optional(),
   skills_scope: z.nativeEnum(SkillsScope).optional(),
   memory_scope: z.nativeEnum(MemoryScope).optional(),
-  tars_domain_id: z.string().max(64).nullable().optional(),
+  tars_knowledge_bases: tarsKnowledgeBasesSchema.nullable().optional(),
   tars_source_download: z.boolean().optional(),
   /** @deprecated Use edges instead */
   agent_ids: z.array(z.string()).optional(),

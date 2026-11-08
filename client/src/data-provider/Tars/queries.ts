@@ -25,6 +25,9 @@ import type {
   TTarsKnowledgeBaseDatasets,
   TTarsDataSecurityAssignment,
   TTarsDataSecurityAssignmentsResponse,
+  TTarsKnowledgeBaseChatAssigneesResponse,
+  TTarsChatKnowledgeBase,
+  TTarsChatKnowledgeBasesResponse,
   TTarsDatabaseTables,
   TTarsDatasetDatabase,
   TTarsDatabasesResponse,
@@ -235,6 +238,40 @@ export const useTarsKnowledgeBaseSecurityQuery = (
   );
 };
 
+/** The knowledge bases the user may use in chat, for the agent builder's pickers. */
+export const useTarsChatKnowledgeBasesQuery = (
+  config?: UseQueryOptions<TTarsChatKnowledgeBasesResponse, unknown, TTarsChatKnowledgeBase[]>,
+): QueryObserverResult<TTarsChatKnowledgeBase[]> =>
+  useQuery<TTarsChatKnowledgeBasesResponse, unknown, TTarsChatKnowledgeBase[]>(
+    [QueryKeys.tarsChatKnowledgeBases],
+    () => dataService.getTarsChatKnowledgeBases(),
+    {
+      select: (data) => data.knowledgeBases ?? [],
+      refetchOnWindowFocus: false,
+      ...config,
+    },
+  );
+
+/**
+ * Who may use one knowledge base in chat (`km_permission`), disabled principals included.
+ * Readable by an admin or one of the knowledge base's managers.
+ */
+export const useTarsKnowledgeBaseChatAssigneesQuery = (
+  knowledgeBaseId?: string | null,
+  config?: UseQueryOptions<TTarsKnowledgeBaseChatAssigneesResponse, unknown, TTarsPrincipalInfo[]>,
+): QueryObserverResult<TTarsPrincipalInfo[]> => {
+  return useQuery<TTarsKnowledgeBaseChatAssigneesResponse, unknown, TTarsPrincipalInfo[]>(
+    [QueryKeys.tarsKnowledgeBaseChatPermissions, knowledgeBaseId],
+    () => dataService.getTarsKnowledgeBaseChatPermissions(knowledgeBaseId ?? ''),
+    {
+      select: (data) => data.principals ?? [],
+      enabled: knowledgeBaseId != null && knowledgeBaseId !== '',
+      refetchOnWindowFocus: false,
+      ...config,
+    },
+  );
+};
+
 /**
  * Recurring dataset refreshes. Omitting the knowledge base asks for every one
  * the caller may see, which is what the standalone schedule page wants.
@@ -387,6 +424,27 @@ export const useTarsPromptsQuery = (
     () => dataService.getTarsPrompts(domainId ?? undefined),
     {
       enabled: !!domainId,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      ...config,
+    },
+  );
+};
+
+/**
+ * The chat's "我的提示" (composer panel, `/` commands, side panel): personal prompts plus
+ * those of the knowledge bases the agent's 知識庫檢索 picked, limited server-side to the
+ * ones the user may use in chat. Keyed under `tarsPrompts`, so every prompt edit refreshes it.
+ */
+export const useTarsChatPromptsQuery = (
+  knowledgeBaseIds: readonly string[],
+  config?: UseQueryOptions<TTarsPromptsResponse>,
+): QueryObserverResult<TTarsPromptsResponse> => {
+  const ids = [...knowledgeBaseIds].sort();
+  return useQuery<TTarsPromptsResponse>(
+    [QueryKeys.tarsPrompts, 'chat', ids.join(',')],
+    () => dataService.getTarsChatPrompts(ids),
+    {
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
       ...config,

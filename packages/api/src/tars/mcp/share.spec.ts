@@ -51,8 +51,6 @@ const rawResponse = (body: unknown): Response =>
 
 const jsonResponse = (data: unknown): Response => rawResponse({ success: true, data });
 
-const HR_BRAIN = { id: 224, name: 'HR AI助手', is_active: true };
-
 /** Serves pwc_tars and records every MCP `share-check` body. */
 const mockTars = (missing: unknown[] = []) => {
   const checks: Array<{ principals: unknown[]; servers: unknown[] }> = [];
@@ -71,12 +69,11 @@ const mockTars = (missing: unknown[] = []) => {
 };
 
 /** Serves both pwc_tars checks and records each body by endpoint. */
-const mockTarsWithDomain = ({
+const mockTarsWithKnowledge = ({
   mcpMissing = [] as unknown[],
-  domainMissing = [] as unknown[],
-  domain = HR_BRAIN,
+  knowledgeMissing = [] as unknown[],
 } = {}) => {
-  const checks = { mcp: [] as unknown[], domain: [] as unknown[] };
+  const checks = { mcp: [] as unknown[], knowledge: [] as unknown[] };
   jest.spyOn(global, 'fetch').mockImplementation(async (input, init) => {
     const url = new URL(String(input));
     if (url.pathname === '/api/mcp/available-tools') {
@@ -86,14 +83,16 @@ const mockTarsWithDomain = ({
       checks.mcp.push(JSON.parse(String(init?.body)));
       return jsonResponse({ missing: mcpMissing });
     }
-    if (url.pathname === '/api/domain_settings/share_check') {
-      checks.domain.push(JSON.parse(String(init?.body)));
-      return rawResponse({ domain, missing: domainMissing });
+    if (url.pathname === '/api/km_permission/share_check') {
+      checks.knowledge.push(JSON.parse(String(init?.body)));
+      return jsonResponse({ knowledge_bases: [], missing: knowledgeMissing });
     }
     throw new Error(`Unexpected fetch: ${url}`);
   });
   return checks;
 };
+
+const ERP_GAP = { id: 'kb3', name: 'ERP' };
 
 const createDeps = (overrides: Partial<TarsAgentShareDeps> = {}): TarsAgentShareDeps => ({
   getAgent: jest.fn().mockResolvedValue({ _id: 'a1', tools: [LIST_REPOS] }),
@@ -281,26 +280,32 @@ describe('createTarsAgentShare', () => {
       expect(fetch).not.toHaveBeenCalled();
     });
 
-    describe('with a bound brain', () => {
-      const brainAgent = (tools: string[] = []) =>
+    describe('with knowledge bases picked', () => {
+      /** 知識庫檢索 and 資料庫查詢 are on; 產生圖表 is off, so its pick asks nothing. */
+      const pickingAgent = (tools: string[] = ['tars_knowledge_search', 'tars_sql_query']) =>
         createDeps({
-          getAgent: jest.fn().mockResolvedValue({ _id: 'a1', tools, tars_domain_id: '224' }),
+          getAgent: jest.fn().mockResolvedValue({
+            _id: 'a1',
+            tools,
+            tars_knowledge_bases: {
+              rag_agent: ['kb1', 'kb2'],
+              sql_agent: ['kb3'],
+              chart_agent: ['kb9'],
+            },
+          }),
         });
-      const BRAIN_GAP = { id: '224', name: 'HR AI助手', is_active: true };
 
-      it('asks pwc_tars about the bound brain, and lets everyone with it through', async () => {
-        const checks = mockTarsWithDomain();
+      it('asks pwc_tars about the picks of the switches that are on, and lets everyone through', async () => {
+        const checks = mockTarsWithKnowledge();
 
-        const { next } = await runGuard(brainAgent(['tars_knowledge_search']), {
-          updated: [AMY, GROUP, AMY],
-        });
+        const { next } = await runGuard(pickingAgent(), { updated: [AMY, GROUP, AMY] });
 
         expect(next).toHaveBeenCalledTimes(1);
         expect(checks).toEqual({
           mcp: [],
-          domain: [
+          knowledge: [
             {
-              domain_id: '224',
+              knowledge_base_ids: ['kb1', 'kb2', 'kb3'],
               principals: [
                 { principal_type: 'user', principal_id: 'amy' },
                 { principal_type: 'group', principal_id: 'g1' },
@@ -310,10 +315,14 @@ describe('createTarsAgentShare', () => {
         });
       });
 
-      it('refuses whoever cannot use the brain', async () => {
-        mockTarsWithDomain({ domainMissing: [{ principal_type: 'group', principal_id: 'g1' }] });
+      it('refuses whoever may not use a picked knowledge base in chat', async () => {
+        mockTarsWithKnowledge({
+          knowledgeMissing: [
+            { principal_type: 'group', principal_id: 'g1', knowledge_bases: [ERP_GAP] },
+          ],
+        });
 
-        const { res, next } = await runGuard(brainAgent(), { updated: [AMY, GROUP] });
+        const { res, next } = await runGuard(pickingAgent(), { updated: [AMY, GROUP] });
 
         expect(next).not.toHaveBeenCalled();
         expect(res.status).toHaveBeenCalledWith(409);
@@ -326,15 +335,15 @@ describe('createTarsAgentShare', () => {
                 idOnTheSource: 'g1',
                 name: 'UAT',
                 servers: [],
-                domain: BRAIN_GAP,
+                knowledge_bases: [ERP_GAP],
               },
             ],
           }),
         );
       });
 
-      it('lists the brain and the MCP gaps of each person together', async () => {
-        const checks = mockTarsWithDomain({
+      it('lists the knowledge-base and MCP gaps of each person together', async () => {
+        const checks = mockTarsWithKnowledge({
           mcpMissing: [
             {
               principal_type: 'user',
@@ -342,14 +351,14 @@ describe('createTarsAgentShare', () => {
               servers: [{ ...GAP, tool_names: ['list_repos'] }],
             },
           ],
-          domainMissing: [
-            { principal_type: 'user', principal_id: 'amy' },
-            { principal_type: 'group', principal_id: 'g1' },
+          knowledgeMissing: [
+            { principal_type: 'user', principal_id: 'amy', knowledge_bases: [ERP_GAP] },
           ],
-          domain: { id: 233, name: '法規比對', is_active: false },
         });
 
-        const { res } = await runGuard(brainAgent([LIST_REPOS]), { updated: [AMY, GROUP] });
+        const { res } = await runGuard(pickingAgent([LIST_REPOS, 'tars_sql_query']), {
+          updated: [AMY, GROUP],
+        });
 
         expect(checks.mcp).toHaveLength(1);
         expect(res.json).toHaveBeenCalledWith(
@@ -360,41 +369,43 @@ describe('createTarsAgentShare', () => {
                 idOnTheSource: 'amy',
                 name: 'Amy',
                 servers: [{ ...GAP, tool_names: ['list_repos'] }],
-                domain: { id: '233', name: '法規比對', is_active: false },
-              },
-              {
-                principal_type: 'group',
-                idOnTheSource: 'g1',
-                name: 'UAT',
-                servers: [],
-                domain: { id: '233', name: '法規比對', is_active: false },
+                knowledge_bases: [ERP_GAP],
               },
             ],
           }),
         );
       });
 
-      it('refuses sharing a brain-bound agent with everyone', async () => {
-        const checks = mockTarsWithDomain();
+      it('refuses sharing an agent with picks with everyone', async () => {
+        const checks = mockTarsWithKnowledge();
 
-        const { res } = await runGuard(brainAgent(), { public: true });
+        const { res } = await runGuard(pickingAgent(), { public: true });
 
         expect(res.json).toHaveBeenCalledWith(
           expect.objectContaining({ code: TARS_MCP_PUBLIC_SHARE_BLOCKED }),
         );
-        expect(checks.domain).toEqual([]);
+        expect(checks.knowledge).toEqual([]);
       });
 
-      it('still checks the brain with the MCP gateway turned off', async () => {
+      it('asks nothing when no switch with picks is on', async () => {
+        const checks = mockTarsWithKnowledge();
+
+        const { next } = await runGuard(pickingAgent(['web_search']), { updated: [AMY] });
+
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(checks).toEqual({ mcp: [], knowledge: [] });
+      });
+
+      it('still checks the knowledge bases with the MCP gateway turned off', async () => {
         const savedMcp = process.env.TARS_MCP_ENABLED;
         process.env.TARS_MCP_ENABLED = 'false';
         try {
-          const checks = mockTarsWithDomain();
+          const checks = mockTarsWithKnowledge();
 
-          await runGuard(brainAgent([LIST_REPOS]), { updated: [AMY] });
+          await runGuard(pickingAgent([LIST_REPOS, 'tars_knowledge_search']), { updated: [AMY] });
 
           expect(checks.mcp).toEqual([]);
-          expect(checks.domain).toHaveLength(1);
+          expect(checks.knowledge).toHaveLength(1);
         } finally {
           if (savedMcp === undefined) {
             delete process.env.TARS_MCP_ENABLED;
@@ -404,10 +415,10 @@ describe('createTarsAgentShare', () => {
         }
       });
 
-      it('stays closed when pwc_tars cannot answer about the brain', async () => {
+      it('stays closed when pwc_tars cannot answer about the knowledge bases', async () => {
         jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
 
-        const { res, next } = await runGuard(brainAgent(), { updated: [AMY] });
+        const { res, next } = await runGuard(pickingAgent(), { updated: [AMY] });
 
         expect(next).not.toHaveBeenCalled();
         expect(res.status).toHaveBeenCalledWith(503);
@@ -508,25 +519,42 @@ describe('createTarsAgentShare', () => {
       expect(checks).toEqual([]);
     });
 
-    describe('a bound brain', () => {
-      const bound = { ...agent, tars_domain_id: '224' };
+    describe('knowledge-base picks', () => {
+      const picking = {
+        ...agent,
+        tools: [LIST_REPOS, 'tars_knowledge_search'],
+        tars_knowledge_bases: { rag_agent: ['kb1'], sql_agent: ['kb3'] },
+      };
 
-      it.each<[string, { tools?: string[]; tars_domain_id?: string | null }]>([
-        ['binds a brain', { tars_domain_id: '224' }],
-        ['switches to another brain', { tars_domain_id: '233' }],
-      ])('checks everyone shared when the save %s', async (_label, next) => {
-        const checks = mockTarsWithDomain({
-          domainMissing: [{ principal_type: 'user', principal_id: 'amy' }],
+      it.each<
+        [
+          string,
+          Parameters<ReturnType<typeof createTarsAgentShare>['refuseNewBindings']>[1],
+          string[],
+        ]
+      >([
+        [
+          'picks another knowledge base',
+          { tars_knowledge_bases: { rag_agent: ['kb1', 'kb2'], sql_agent: ['kb3'] } },
+          ['kb2'],
+        ],
+        [
+          'turns on a switch whose picks were waiting',
+          { tools: [LIST_REPOS, 'tars_knowledge_search', 'tars_sql_query'] },
+          ['kb3'],
+        ],
+      ])('checks everyone shared when the save %s', async (_label, next, asked) => {
+        const checks = mockTarsWithKnowledge({
+          knowledgeMissing: [
+            { principal_type: 'user', principal_id: 'amy', knowledge_bases: [ERP_GAP] },
+          ],
         });
 
-        const refusal = await createTarsAgentShare(deps()).refuseNewBindings(
-          next.tars_domain_id === '224' ? agent : bound,
-          next,
-        );
+        const refusal = await createTarsAgentShare(deps()).refuseNewBindings(picking, next);
 
-        expect(checks.domain).toEqual([
+        expect(checks.knowledge).toEqual([
           {
-            domain_id: next.tars_domain_id,
+            knowledge_base_ids: asked,
             principals: [
               { principal_type: 'user', principal_id: 'amy' },
               { principal_type: 'group', principal_id: 'g1' },
@@ -540,43 +568,53 @@ describe('createTarsAgentShare', () => {
               expect.objectContaining({
                 idOnTheSource: 'amy',
                 name: 'amy',
-                domain: expect.any(Object),
+                knowledge_bases: [ERP_GAP],
               }),
             ],
           }),
         );
       });
 
-      it.each<[string, { tools?: string[]; tars_domain_id?: string | null }]>([
-        ['keeps the same brain', { tools: [LIST_REPOS], tars_domain_id: '224' }],
-        ['does not send the brain', { tools: [LIST_REPOS] }],
-        ['unbinds the brain', { tars_domain_id: null }],
+      it.each<
+        [string, Parameters<ReturnType<typeof createTarsAgentShare>['refuseNewBindings']>[1]]
+      >([
+        [
+          'keeps the same picks',
+          { tars_knowledge_bases: { rag_agent: ['kb1'], sql_agent: ['kb3'] } },
+        ],
+        ['does not send the picks', { tools: [LIST_REPOS, 'tars_knowledge_search'] }],
+        ['drops a pick', { tars_knowledge_bases: { sql_agent: ['kb3'] } }],
+        ['clears every pick', { tars_knowledge_bases: null }],
+        [
+          'picks for a switch that stays off',
+          { tars_knowledge_bases: { rag_agent: ['kb1'], chart_agent: ['kb9'] } },
+        ],
       ])('lets a save through that %s', async (_label, next) => {
         const shareDeps = deps();
 
         await expect(
-          createTarsAgentShare(shareDeps).refuseNewBindings(bound, next),
+          createTarsAgentShare(shareDeps).refuseNewBindings(picking, next),
         ).resolves.toBeNull();
         expect(shareDeps.findEntriesByResource).not.toHaveBeenCalled();
       });
 
-      it('refuses binding a brain on an agent shared with everyone', async () => {
-        const checks = mockTarsWithDomain();
+      it('refuses a new pick on an agent shared with everyone', async () => {
+        const checks = mockTarsWithKnowledge();
 
         const refusal = await createTarsAgentShare(
           deps([...entries, { principalType: PrincipalType.PUBLIC }]),
-        ).refuseNewBindings(agent, { tars_domain_id: '224' });
+        ).refuseNewBindings(picking, { tars_knowledge_bases: { rag_agent: ['kb1', 'kb2'] } });
 
         expect(refusal?.body.code).toBe(TARS_MCP_PUBLIC_SHARE_BLOCKED);
-        expect(checks.domain).toEqual([]);
+        expect(checks.knowledge).toEqual([]);
       });
 
-      it('checks the new brain and the added tools in one go', async () => {
-        const checks = mockTarsWithDomain();
+      it('checks the new picks and the added tools in one go', async () => {
+        const checks = mockTarsWithKnowledge();
 
-        await createTarsAgentShare(deps()).refuseNewBindings(agent, {
-          tools: [LIST_REPOS, GET_FILE],
-          tars_domain_id: '224',
+        await createTarsAgentShare(deps()).refuseNewBindings(picking, {
+          tools: [LIST_REPOS, GET_FILE, 'tars_knowledge_search'],
+          tars_knowledge_bases: { rag_agent: ['kb1', 'kb2'] },
         });
 
         expect(checks.mcp).toEqual([
@@ -584,7 +622,9 @@ describe('createTarsAgentShare', () => {
             servers: [{ mcp_server_id: 's-github', mcp_tool_ids: ['t-file'] }],
           }),
         ]);
-        expect(checks.domain).toHaveLength(1);
+        expect(checks.knowledge).toEqual([
+          expect.objectContaining({ knowledge_base_ids: ['kb2'] }),
+        ]);
       });
     });
   });

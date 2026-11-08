@@ -56,6 +56,13 @@ export interface TarsErrorReply {
   error: string;
 }
 
+/** pwc_tars `/api/km_permission/*` answers `{success, message, data}`; a failure is a 4xx/5xx. */
+export interface TarsAccessEnvelope<T> {
+  success: boolean;
+  message?: string;
+  data?: T;
+}
+
 /**
  * The status and message a route answers with when a pwc_tars call fails. A pwc_tars 4xx is a
  * reason the operator can act on (a document still processing, a missing embedding model), so it

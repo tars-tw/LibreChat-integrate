@@ -2,6 +2,7 @@ import { logger } from '@librechat/data-schemas';
 import { tool } from '@librechat/agents/langchain/tools';
 import {
   TARS_BUILTIN_TOOLS,
+  tarsToolSwitchOf,
   tarsBuiltinToolOf,
   isTarsBuiltinToolName,
   isTarsSourceDownloadEnabled,
@@ -10,7 +11,9 @@ import type {
   AgentCapabilities,
   TTarsToolStep,
   TTarsToolSource,
+  TTarsToolSwitch,
   TTarsBuiltinTool,
+  TTarsAgentKnowledgeBases,
 } from 'librechat-data-provider';
 import type { DynamicStructuredTool } from '@librechat/agents/langchain/tools';
 import type { JsonSchemaType } from '@librechat/data-schemas';
@@ -18,6 +21,9 @@ import type { TarsBuiltinToolContext, TarsBuiltinToolResult } from './client';
 import type { TarsProgressReporter, TarsToolRunConfig } from './progress';
 import type { TarsBuiltinManifest } from '~/tars/plugins/client';
 import type { LangflowToolResult } from '~/tars/langflow/client';
+import type { TarsRagKnowledgeBase } from '~/tars/rag/client';
+import type { TarsSqlDatabase } from '~/tars/sql/client';
+import type { TarsKnowledgeScope } from '~/tars/scope';
 import type { TarsDataFile } from '~/tars/files/sign';
 import {
   langflowToolResult,
@@ -37,6 +43,7 @@ import { listTarsSqlDatabases } from '~/tars/sql/client';
 import { resolveTarsSourceLinks } from '~/tars/sources';
 import { recordTarsToolAuditTrace } from './auditTrace';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
+import { tarsSwitchScope } from '~/tars/scope';
 import { recordTarsCallUsage } from './usage';
 import { runTarsBuiltinTool } from './client';
 
@@ -150,9 +157,17 @@ export interface TarsBuiltinToolOptions {
   toolName: string;
   /** pwc_tars user the call runs as; absent for an unlinked LibreChat account. */
   tarsUserId?: string;
-  /** Active 專用腦 — knowledge bases and databases are narrowed to what it binds. */
+  /**
+   * Active 專用腦. Narrows knowledge bases and databases only without a saved agent, and
+   * always for the tools no switch mounts (the table task, the spreadsheet tools).
+   */
   domainId?: string | number | null;
-  /** The turn's tools; charts and files reach the database only when it is switched on. */
+  /**
+   * A saved agent's picks per switch; each switch's tool reaches its own picks, never the
+   * brain. Undefined for a chat without a saved agent.
+   */
+  agentKnowledgeBases?: TTarsAgentKnowledgeBases;
+  /** The turn's tools; without a saved agent, charts and files reach the database only while it is switched on. */
   agentTools?: readonly string[];
   /** The saved agent the turn runs; the download links of cited files name it. */
   agentId?: string;
@@ -187,6 +202,25 @@ interface BoundCall {
   context: TarsBuiltinToolContext;
 }
 
+type ScopeOptions = Pick<TarsBuiltinToolOptions, 'toolName' | 'agentKnowledgeBases' | 'domainId'>;
+
+/** The switch whose picks a tool reaches on a saved agent; undefined when the brain decides. */
+const pickedSwitchOf = (options: ScopeOptions): TTarsToolSwitch | undefined =>
+  options.agentKnowledgeBases ? tarsToolSwitchOf(options.toolName) : undefined;
+
+/** Where a tool's knowledge bases and databases come from: its switch's picks, else the brain. */
+const scopeOf = (options: ScopeOptions): TarsKnowledgeScope => {
+  const toolSwitch = pickedSwitchOf(options);
+  return toolSwitch
+    ? tarsSwitchScope(options.agentKnowledgeBases, toolSwitch, options.domainId)
+    : options.domainId;
+};
+
+const NO_PICKED_KNOWLEDGE =
+  'This agent picked no knowledge base for this tool that this user may use in chat, so there is nothing to search.';
+const NO_PICKED_DATABASE =
+  'This agent picked no database for this tool that this user may use in chat, so there is nothing to query.';
+
 async function bindKnowledgeBases(
   manifest: TarsBuiltinManifest,
   options: TarsBuiltinToolOptions & { tarsUserId: string },
@@ -195,10 +229,14 @@ async function bindKnowledgeBases(
   if (!needsContext(manifest, 'knowledge_base_ids')) {
     return undefined;
   }
-  const bases = await listTarsRagKnowledgeBases(options.tarsUserId, options.domainId);
+  const bases = await listTarsRagKnowledgeBases(options.tarsUserId, scopeOf(options));
   const ids = resolveTarsKnowledgeBaseIds(bases, asStrings(requested));
   if (!ids.length && requiresContext(manifest, 'knowledge_base_ids')) {
-    throw new Error('The active brain binds no knowledge base, so there is nothing to search.');
+    throw new Error(
+      pickedSwitchOf(options)
+        ? NO_PICKED_KNOWLEDGE
+        : 'The active brain binds no knowledge base this user may use in chat (none is bound, or the user is on none of their chat lists), so there is nothing to search.',
+    );
   }
   return ids.length ? ids.join(',') : undefined;
 }
@@ -213,21 +251,33 @@ async function bindDatabase(
     return undefined;
   }
   const required = requiresContext(manifest, 'knowledge_base_id');
-  const switchedOn = required || options.agentTools?.includes(TARS_DATABASE_SWITCH_TOOL) === true;
+  const picked = pickedSwitchOf(options) != null;
+  /** On a saved agent each tool has its own picks; without one, charts and files follow 資料庫查詢. */
+  const switchedOn =
+    required || picked || options.agentTools?.includes(TARS_DATABASE_SWITCH_TOOL) === true;
   if (!switchedOn) {
     if (requestedId) {
       throw new Error('No database is switched on for this turn, so none can be queried.');
     }
     return undefined;
   }
-  const databases = await listTarsSqlDatabases(options.tarsUserId, options.domainId);
+  const databases = await listTarsSqlDatabases(options.tarsUserId, scopeOf(options));
+  if (!databases.length && !required) {
+    if (requestedId) {
+      throw new Error(NO_PICKED_DATABASE);
+    }
+    return undefined;
+  }
   const id = resolveTarsDatabaseId(databases, requestedId);
   if (id || !required) {
     return id;
   }
+  if (databases.length > 1) {
+    throw new Error(`Several databases are available; name one as \`${DATABASE_ARG}\`.`);
+  }
   throw new Error(
-    databases.length > 1
-      ? `Several databases are bound; name one as \`${DATABASE_ARG}\`.`
+    picked
+      ? NO_PICKED_DATABASE
       : 'The active brain binds no database, so there is nothing to query.',
   );
 }
@@ -519,14 +569,91 @@ function toolGuides(mounted: ReadonlySet<string>): string[] {
 export interface TarsToolsContextParams {
   tarsUserId?: string;
   domainId?: string | number | null;
+  /** A saved agent's picks per switch; undefined for a chat without one. */
+  agentKnowledgeBases?: TTarsAgentKnowledgeBases;
   /** The turn's tools after gating; only the `tars_*` built-ins among them count. */
   tools: readonly string[];
+}
+
+/** The database switches, with the tools each mounts as the context names them. */
+const DATABASE_TOOLS: ReadonlyArray<[TTarsToolSwitch, string, string]> = [
+  ['sql_agent', TARS_DATABASE_SWITCH_TOOL, 'tars_sql_schema / tars_sql_query'],
+  ['chart_agent', 'tars_create_chart', 'tars_create_chart'],
+  ['file_agent', 'tars_generate_file', 'tars_generate_file'],
+];
+
+const knowledgeLine = (base: TarsRagKnowledgeBase) =>
+  base.description
+    ? `- ${base.name}（knowledge_base_id: ${base.knowledge_base_id}）— ${base.description}`
+    : `- ${base.name}（knowledge_base_id: ${base.knowledge_base_id}）`;
+
+const databaseLine = (db: TarsSqlDatabase) =>
+  `- ${db.name}（knowledge_base_id: ${db.knowledge_base_id}）`;
+
+/** One saved-agent tool's databases: picked, and on the acting user's chat list. */
+function pickedDatabaseLines(names: string, databases: TarsSqlDatabase[]): string[] {
+  if (databases.length === 1) {
+    return [`${names} 的資料庫：${databases[0].name}（自動使用，不必指定）。`];
+  }
+  if (databases.length > 1) {
+    return [
+      `${names} 可用的資料庫（呼叫時用 \`database_knowledge_base_id\` 指定要查哪一個）：`,
+      ...databases.map(databaseLine),
+    ];
+  }
+  return [`${names}：Agent 沒有選擇這位使用者可在聊天使用的資料庫。`];
+}
+
+/** What a saved agent's tools reach: each switch its own picks; the table task the brain's. */
+async function listPickedScope(
+  params: TarsToolsContextParams & { tarsUserId: string },
+  picks: TTarsAgentKnowledgeBases,
+  mounted: Set<string>,
+): Promise<string[]> {
+  const searches = mounted.has('tars_knowledge_search');
+  const tableTask = mounted.has('tars_table_task');
+  const databaseTools = DATABASE_TOOLS.filter(([, tool]) => mounted.has(tool));
+  const [bases, tableBases, databases] = await Promise.all([
+    searches
+      ? listTarsRagKnowledgeBases(params.tarsUserId, tarsSwitchScope(picks, 'rag_agent', null))
+      : [],
+    tableTask ? listTarsRagKnowledgeBases(params.tarsUserId, params.domainId) : [],
+    Promise.all(
+      databaseTools.map(([toolSwitch]) =>
+        listTarsSqlDatabases(params.tarsUserId, tarsSwitchScope(picks, toolSwitch, null)),
+      ),
+    ),
+  ]);
+  const lines: string[] = [];
+  if (searches) {
+    lines.push(
+      bases.length
+        ? '知識庫（預設全部搜尋，可用 `knowledge_base_ids` 縮小範圍）：'
+        : 'Agent 沒有選擇這位使用者可在聊天使用的知識庫。',
+      ...bases.map(knowledgeLine),
+    );
+  }
+  if (tableTask) {
+    lines.push(
+      tableBases.length
+        ? 'tars_table_task 使用的知識庫：'
+        : 'tars_table_task：目前的專用腦沒有綁定知識庫。',
+      ...tableBases.map(knowledgeLine),
+    );
+  }
+  databaseTools.forEach(([, , names], index) => {
+    lines.push(...pickedDatabaseLines(names, databases[index]));
+  });
+  return lines;
 }
 
 async function listScope(
   params: TarsToolsContextParams & { tarsUserId: string },
   mounted: Set<string>,
 ): Promise<string[]> {
+  if (params.agentKnowledgeBases) {
+    return listPickedScope(params, params.agentKnowledgeBases, mounted);
+  }
   const wantsBases = mounted.has('tars_knowledge_search') || mounted.has('tars_table_task');
   const wantsDatabases = mounted.has(TARS_DATABASE_SWITCH_TOOL);
   const [bases, databases] = await Promise.all([
@@ -539,11 +666,7 @@ async function listScope(
       bases.length
         ? '知識庫（預設全部搜尋，可用 `knowledge_base_ids` 縮小範圍）：'
         : '目前的專用腦沒有綁定知識庫。',
-      ...bases.map((base) =>
-        base.description
-          ? `- ${base.name}（knowledge_base_id: ${base.knowledge_base_id}）— ${base.description}`
-          : `- ${base.name}（knowledge_base_id: ${base.knowledge_base_id}）`,
-      ),
+      ...bases.map(knowledgeLine),
     );
   }
   if (wantsDatabases && databases.length === 1) {
@@ -551,7 +674,7 @@ async function listScope(
   } else if (wantsDatabases && databases.length > 1) {
     lines.push(
       '資料庫（呼叫時用 `database_knowledge_base_id` 指定要查哪一個）：',
-      ...databases.map((db) => `- ${db.name}（knowledge_base_id: ${db.knowledge_base_id}）`),
+      ...databases.map(databaseLine),
     );
   } else if (wantsDatabases) {
     lines.push('目前的專用腦沒有綁定資料庫。');
@@ -561,7 +684,8 @@ async function listScope(
 
 /**
  * The runtime context for the turn's TARS tools: pwc_tars's usage guide for
- * the ones mounted, then what the active 專用腦 lets them reach. Undefined
+ * the ones mounted, then what they reach — a saved agent's picks per tool, or
+ * without one, what the active 專用腦 binds. Undefined
  * when the turn carries none of them. Reads the primed manifests, so it runs
  * after {@link resolveTarsBuiltinTools}.
  */

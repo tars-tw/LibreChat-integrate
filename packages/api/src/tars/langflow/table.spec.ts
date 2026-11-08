@@ -8,6 +8,7 @@ jest.mock('@librechat/data-schemas', () => ({
 }));
 
 import type { TarsDataFile } from '~/tars/files/sign';
+import { invalidateTarsScopedKnowledgeBasesCache } from '~/tars/scope';
 import { invalidateTarsModelProfilesCache } from '~/tars/models';
 import { invalidateTarsSysConfigCache } from '~/tars/sysconfig';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
@@ -28,8 +29,14 @@ const buildResponse = (status: number, body: unknown): Response =>
     json: async () => body,
   }) as Response;
 
+/** The user's chat list (`km_permission`) by default: both of domain 100's knowledge bases. */
+const fullChatList = [
+  { id: 'kb-1', name: '規格庫' },
+  { id: 'kb-2', name: '文件庫' },
+];
+
 /** Domain 100 binds two knowledge bases; domain 200 binds none. */
-const mockBackend = (tableTask: { status: number; body: unknown }) =>
+const mockBackend = (tableTask: { status: number; body: unknown }, chatList = fullChatList) =>
   jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
     if (url.includes('/api/domain_settings/get_domain_by_user')) {
@@ -40,13 +47,8 @@ const mockBackend = (tableTask: { status: number; body: unknown }) =>
         ],
       });
     }
-    if (url.includes('/api/knowledge_base/prepare_data')) {
-      return buildResponse(200, {
-        knowledge_bases: [
-          { id: 'kb-1', name: '規格庫' },
-          { id: 'kb-2', name: '文件庫' },
-        ],
-      });
+    if (url.includes('/api/km_permission/chat_knowledge_bases')) {
+      return buildResponse(200, { success: true, data: chatList });
     }
     if (url.includes('/api/langflow-service/table-task')) {
       return buildResponse(tableTask.status, tableTask.body);
@@ -71,6 +73,7 @@ const tableBodyOf = (fetchMock: jest.SpyInstance): Record<string, unknown> => {
 
 beforeEach(() => {
   process.env.TARS_AUTH_URL = BASE_URL;
+  invalidateTarsScopedKnowledgeBasesCache();
   invalidateTarsSysConfigCache();
   invalidateTarsModelProfilesCache();
 });
@@ -110,6 +113,28 @@ describe('createTarsTableTaskTool', () => {
         path: expect.stringMatching(/^\/api\/tars\/files\/file-1\?u=lc-user&exp=\d+&sig=/),
       },
     ]);
+  });
+
+  it("sends only the brain's knowledge bases the user is on the chat list of", async () => {
+    const fetchMock = mockBackend(
+      { status: 200, body: { success: true, data: { answer: '| 列 |' } } },
+      [{ id: 'kb-2', name: '文件庫' }],
+    );
+    const tableTool = createTarsTableTaskTool({ tarsUserId: USER_ID, domainId: 100, dataFiles });
+
+    await tableTool.invoke({ task: 't' });
+
+    expect(tableBodyOf(fetchMock).knowledge_base_ids).toBe('kb-2');
+  });
+
+  it("refuses when the user is on none of the brain's chat lists", async () => {
+    const fetchMock = mockBackend({ status: 200, body: {} }, []);
+    const tableTool = createTarsTableTaskTool({ tarsUserId: USER_ID, domainId: 100, dataFiles });
+
+    await expect(tableTool.invoke({ task: 't' })).resolves.toMatch(/may use in chat/);
+    expect(
+      fetchMock.mock.calls.some(([url]) => String(url).includes('/api/langflow-service/')),
+    ).toBe(false);
   });
 
   it('relays the embedded download link without appending a second one', async () => {

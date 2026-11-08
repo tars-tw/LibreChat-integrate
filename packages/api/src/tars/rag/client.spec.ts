@@ -39,8 +39,8 @@ const domainResponse = {
 const mockBackend = (rag?: { status: number; body: unknown }) =>
   jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
-    if (url.includes('/api/knowledge_base/prepare_data')) {
-      return buildResponse(200, { knowledge_bases: knowledgeBases });
+    if (url.includes('/api/km_permission/chat_knowledge_bases')) {
+      return buildResponse(200, { success: true, data: knowledgeBases });
     }
     if (url.includes('/api/domain_settings/get_domain_by_user')) {
       return buildResponse(200, domainResponse);
@@ -154,8 +154,8 @@ describe('runTarsRagAgent', () => {
   it('refuses a brain that binds nothing', async () => {
     jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
       const url = String(input);
-      if (url.includes('/api/knowledge_base/prepare_data')) {
-        return buildResponse(200, { knowledge_bases: knowledgeBases });
+      if (url.includes('/api/km_permission/chat_knowledge_bases')) {
+        return buildResponse(200, { success: true, data: knowledgeBases });
       }
       if (url.includes('/api/domain_settings/get_domain_by_user')) {
         return buildResponse(200, {

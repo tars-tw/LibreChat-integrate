@@ -3,13 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryScope, ArtifactModes } from 'librechat-data-provider';
-import type { TTarsDomain } from 'librechat-data-provider';
+import type { TTarsChatKnowledgeBase, TTarsAgentKnowledgeBases } from 'librechat-data-provider';
 import type { ReactNode } from 'react';
 import type { AgentForm } from '~/common';
 import { AgentPickerPortalContext } from '../../../Advanced/AgentList';
 import BuiltinSection from '../sections/BuiltinSection';
 
-let mockTarsDomains: Array<Pick<TTarsDomain, 'id' | 'name' | 'status'>> = [];
+let mockChatKnowledgeBases: TTarsChatKnowledgeBase[] = [];
+let mockChatKnowledgeBasesLoading = false;
 
 jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string, vars?: Record<string, string>) =>
@@ -30,7 +31,10 @@ let mockWebSearchAuth: { authenticated: boolean; missingKeyProvider?: string } |
 jest.mock('~/data-provider', () => ({
   useVerifyAgentToolAuth: () => ({ data: mockWebSearchAuth }),
   useCodeEnvironmentStatusQueries: () => [],
-  useTarsDomainsQuery: () => ({ data: mockTarsDomains }),
+  useTarsChatKnowledgeBasesQuery: () => ({
+    data: mockChatKnowledgeBasesLoading ? undefined : mockChatKnowledgeBases,
+    isLoading: mockChatKnowledgeBasesLoading,
+  }),
 }));
 jest.mock('../../../Search/Action', () => ({ __esModule: true, default: () => <div /> }));
 jest.mock('../../../FileContext', () => ({ __esModule: true, default: () => <div /> }));
@@ -39,7 +43,13 @@ jest.mock('../../../Code/Files', () => ({ __esModule: true, default: () => <div 
 
 function ScopeProbe() {
   const value = useWatch<AgentForm>({ name: 'memory_scope' });
-  return <span data-testid="scope">{String(value)}</span>;
+  const picks = useWatch<AgentForm>({ name: 'tars_knowledge_bases' });
+  return (
+    <>
+      <span data-testid="scope">{String(value)}</span>
+      <span data-testid="picks">{JSON.stringify(picks ?? null)}</span>
+    </>
+  );
 }
 
 function renderSection(
@@ -159,64 +169,83 @@ describe('BuiltinSection artifacts mode docs link', () => {
   });
 });
 
-describe('BuiltinSection TARS brain binding', () => {
-  const brainTrigger = () => screen.getByRole('combobox', { name: /com_agents_tars_domain/ });
+describe('BuiltinSection TARS knowledge-base picks', () => {
+  const picks = () =>
+    JSON.parse(screen.getByTestId('picks').textContent ?? 'null') as TTarsAgentKnowledgeBases;
+  const optionNames = () => screen.getAllByRole('option').map((option) => option.textContent);
 
   beforeEach(() => {
-    mockTarsDomains = [
-      { id: 100, name: '通用腦', status: true },
-      { id: 154, name: '154文件檢索', status: false },
-      { id: 200, name: '法規比對', status: true },
-      { id: 201, name: '製程助手', status: true },
+    mockChatKnowledgeBasesLoading = false;
+    mockChatKnowledgeBases = [
+      { id: 'kb-hr', name: '人資知識庫', has_sql_database: false },
+      { id: 'kb-erp', name: 'ERP', has_sql_database: true },
+      { id: 'kb-sales', name: '業務資料', has_sql_database: true },
     ];
   });
 
-  test('offers only enabled brains, without the general brain', async () => {
+  test('知識庫檢索 picks several from the chat list and keeps the other tools apart', async () => {
     const user = userEvent.setup();
+    renderSection('rag_agent', { tars_knowledge_bases: { sql_agent: ['kb-erp'] } });
+
+    await user.click(screen.getByLabelText(/com_agents_tars_kb_knowledge_bases/));
+    expect(optionNames()).toEqual(['人資知識庫', 'ERP', '業務資料']);
+    await user.click(screen.getByRole('option', { name: '人資知識庫' }));
+    await user.click(screen.getByRole('option', { name: 'ERP' }));
+
+    expect(picks()).toEqual({ sql_agent: ['kb-erp'], rag_agent: ['kb-hr', 'kb-erp'] });
+  });
+
+  test('資料庫查詢 offers databases only and keeps a single pick', async () => {
+    const user = userEvent.setup();
+    renderSection('sql_agent');
+    const trigger = () => screen.getByLabelText(/com_agents_tars_kb_databases/);
+
+    await user.click(trigger());
+    expect(optionNames()).toEqual(['ERP', '業務資料']);
+    await user.click(screen.getByRole('option', { name: 'ERP' }));
+    await user.click(trigger());
+    await user.click(screen.getByRole('option', { name: '業務資料' }));
+
+    expect(picks()).toEqual({ sql_agent: ['kb-sales'] });
+  });
+
+  test('產生圖表 and 產生檔案 offer databases only and may stay empty', () => {
+    renderSection('chart_agent');
+
+    expect(screen.getByText('com_agents_tars_kb_hint_chart')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test('asks for a pick on the tools that need one', () => {
     renderSection('rag_agent');
 
-    await user.click(brainTrigger());
-
-    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
-      'com_agents_tars_domain_follow_chat',
-      '法規比對',
-      '製程助手',
-    ]);
+    expect(screen.getByRole('alert')).toHaveTextContent('com_agents_tars_kb_required_inline');
   });
 
-  test('keeps an agent already bound to the general brain, listed by name', async () => {
-    const user = userEvent.setup();
-    renderSection('rag_agent', { tars_domain_id: '100' });
+  test('keeps a pick the editor cannot use, marked, so it can be taken off', () => {
+    renderSection('rag_agent', { tars_knowledge_bases: { rag_agent: ['kb-hr', 'kb-secret'] } });
 
-    expect(brainTrigger()).toHaveTextContent('通用腦');
-    await user.click(brainTrigger());
-    expect(screen.getAllByRole('option')).toHaveLength(4);
+    expect(screen.getByText('人資知識庫')).toBeInTheDocument();
+    expect(screen.getByText('com_agents_tars_kb_unavailable:kb-secret')).toBeInTheDocument();
   });
 
-  test('keeps a bound brain that was since disabled, marked as disabled', async () => {
-    const user = userEvent.setup();
-    renderSection('sql_agent', { tars_domain_id: '154' });
+  test('says when the editor can use no knowledge base or no database', () => {
+    mockChatKnowledgeBases = [{ id: 'kb-hr', name: '人資知識庫', has_sql_database: false }];
+    const { unmount } = renderSection('sql_agent');
+    expect(screen.getByText('com_agents_tars_kb_no_databases')).toBeInTheDocument();
+    unmount();
 
-    expect(brainTrigger()).toHaveTextContent('com_agents_tars_domain_disabled:154文件檢索');
-    await user.click(brainTrigger());
-    expect(screen.getAllByRole('option')).toHaveLength(4);
+    mockChatKnowledgeBases = [];
+    renderSection('rag_agent');
+    expect(screen.getByText('com_agents_tars_kb_no_knowledge_bases')).toBeInTheDocument();
   });
 
-  test('keeps a bound brain the editor cannot see, listed by id', () => {
-    renderSection('rag_agent', { tars_domain_id: '999' });
-    expect(brainTrigger()).toHaveTextContent('999');
-  });
+  test('waits for the chat list before offering a picker', () => {
+    mockChatKnowledgeBasesLoading = true;
+    renderSection('rag_agent');
 
-  test('opens the brain list inside the dialog so the modal scroll lock lets it scroll', async () => {
-    const user = userEvent.setup();
-    const dialog = document.createElement('div');
-    document.body.appendChild(dialog);
-    renderSection('rag_agent', {}, dialog);
-
-    await user.click(brainTrigger());
-
-    expect(dialog).toContainElement(screen.getByRole('option', { name: '法規比對' }));
-    dialog.remove();
+    expect(screen.getByRole('status')).toHaveTextContent('com_ui_loading');
+    expect(screen.queryByLabelText(/com_agents_tars_kb_knowledge_bases/)).not.toBeInTheDocument();
   });
 });
 

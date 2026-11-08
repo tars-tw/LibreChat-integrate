@@ -10,6 +10,7 @@ import type { TPromptGroupSource, NativePromptSelection, LangfusePromptSelection
 import type { TAttachment, TPlugin, AgentProvider, MemoryScope, SkillsScope } from 'src/schemas';
 import type { TTokenUsageEvent, TContextUsageEvent, TPendingSteer } from './runs';
 import type { StatefulCodeEnvironment } from '../stateful-code';
+import type { TTarsAgentKnowledgeBases } from '../tars';
 import type { SummaryContentPart } from './content';
 import type { TFile } from './files';
 import { StepTypes, ContentTypes, ToolCallTypes } from './runs';
@@ -1187,11 +1188,10 @@ export type Agent = {
   /** Memory partition: `agent` isolates memories per (user, agent); default shared pool */
   memory_scope?: MemoryScope;
   /**
-   * pwc_tars 專用腦 the agent's TARS tools are scoped to. When set, every chat
-   * turn with this agent runs against this brain instead of the chat's own;
-   * `null` / absent follows the chat.
+   * The knowledge bases each TARS switch reaches (知識庫檢索 / 資料庫查詢 / 產生圖表 /
+   * 產生檔案), narrowed per turn to the acting user's chat list.
    */
-  tars_domain_id?: string | null;
+  tars_knowledge_bases?: TTarsAgentKnowledgeBases | null;
   /**
    * Whether the files a knowledge search cites can be downloaded from the
    * answer's 資料來源 line. Read when the link is shown and again when it is
@@ -1239,7 +1239,7 @@ export type AgentCreateParams = {
   | 'skills_scope'
   | 'subagents'
   | 'memory_scope'
-  | 'tars_domain_id'
+  | 'tars_knowledge_bases'
   | 'tars_source_download'
 >;
 
@@ -1281,7 +1281,7 @@ export type AgentUpdateParams = {
   | 'skills_scope'
   | 'subagents'
   | 'memory_scope'
-  | 'tars_domain_id'
+  | 'tars_knowledge_bases'
   | 'tars_source_download'
 >;
 

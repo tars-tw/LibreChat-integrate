@@ -58,7 +58,6 @@ jest.mock('@librechat/api', () => ({
     req.method === 'POST' &&
     req.originalUrl === '/agents/chat' &&
     typeof req.body?.text === 'string',
-  createBindTarsAgentDomain: jest.fn(() => (_req, _res, next) => next()),
 }));
 
 jest.mock('~/server/middleware', () => ({

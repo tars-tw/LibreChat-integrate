@@ -1,8 +1,9 @@
 import { Button, Checkbox } from '@librechat/client';
 import { Pencil, BookText, Trash2 } from 'lucide-react';
 import type { TTarsKnowledgeBase } from 'librechat-data-provider';
-import { accessSummaryKey, DEFAULT_MAX_RETRIEVE } from './helpers';
+import AccessSummary, { ACCESS_LABEL_KEYS } from './Access';
 import Pagination, { usePagination } from './Pagination';
+import { DEFAULT_MAX_RETRIEVE } from './helpers';
 import { useLocalize } from '~/hooks';
 import DatasetStats from './Stats';
 
@@ -43,9 +44,9 @@ export default function KnowledgeTable({
   return (
     <div className="space-y-3">
       <div className="border-border-light overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[64rem] border-collapse text-sm">
+        <table className="w-full min-w-[72rem] border-collapse text-sm">
           <thead className="bg-surface-secondary">
-            <tr className="text-text-secondary text-left">
+            <tr className="text-text-secondary text-left whitespace-nowrap">
               {selection != null && (
                 <th className="w-10 px-3 py-2">
                   <Checkbox
@@ -62,7 +63,8 @@ export default function KnowledgeTable({
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_llm_model')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_max_retrieve')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_datasets')}</th>
-              <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_access')}</th>
+              <th className="px-3 py-2 font-medium">{localize(ACCESS_LABEL_KEYS.manage)}</th>
+              <th className="px-3 py-2 font-medium">{localize(ACCESS_LABEL_KEYS.chat)}</th>
               <th className="px-3 py-2 text-right font-medium">{localize('com_ui_actions')}</th>
             </tr>
           </thead>
@@ -100,8 +102,11 @@ export default function KnowledgeTable({
                 <td className="px-3 py-1.5 whitespace-nowrap">
                   <DatasetStats knowledgeBase={kb} />
                 </td>
-                <td className="text-text-secondary px-3 py-1.5">
-                  {localize(accessSummaryKey(kb))}
+                <td className="px-3 py-1.5">
+                  <AccessSummary knowledgeBase={kb} kind="manage" />
+                </td>
+                <td className="px-3 py-1.5">
+                  <AccessSummary knowledgeBase={kb} kind="chat" />
                 </td>
                 <td className="px-3 py-1.5">
                   <div className="flex justify-end">

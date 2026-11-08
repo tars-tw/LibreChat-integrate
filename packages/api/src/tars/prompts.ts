@@ -134,6 +134,22 @@ export async function fetchTarsPromptsForChat(
   return groups.flat();
 }
 
+/**
+ * The ids of the knowledge bases a specialized brain binds, read from the brains the
+ * user may access — an inaccessible brain binds nothing.
+ */
+export async function fetchTarsDomainKnowledgeBaseIds(
+  tarsId: string,
+  domainId: number | string | null | undefined,
+  baseUrl?: string,
+): Promise<string[]> {
+  if (!tarsId || domainId == null || domainId === '') {
+    return [];
+  }
+  const domain = await fetchTarsDomainById(tarsId, domainId, baseUrl);
+  return parseIds(domain?.knowledge_base_ids);
+}
+
 /** A specialized brain's knowledge base, for the create form's scope picker. */
 export interface TarsPromptKnowledgeBase {
   id: string;
@@ -151,11 +167,7 @@ export async function fetchTarsDomainKnowledgeBases(
   domainId: number | string | null | undefined,
   baseUrl?: string,
 ): Promise<TarsPromptKnowledgeBase[]> {
-  if (!tarsId || domainId == null || domainId === '') {
-    return [];
-  }
-  const domain = await fetchTarsDomainById(tarsId, domainId, baseUrl);
-  const ids = parseIds(domain?.knowledge_base_ids);
+  const ids = await fetchTarsDomainKnowledgeBaseIds(tarsId, domainId, baseUrl);
   if (!ids.length) {
     return [];
   }

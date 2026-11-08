@@ -8,6 +8,7 @@ import {
   SkillsScope,
   actionDelimiter,
   isActionTool,
+  TARS_TOOL_SWITCHES,
 } from 'librechat-data-provider';
 import type { FilterQuery, Model, PipelineStage, ProjectionType, Types } from 'mongoose';
 import type { AgentSortOption, AgentToolResources } from 'librechat-data-provider';
@@ -1171,8 +1172,8 @@ export function createAgentMethods(
   }: {
     file_ids: string[];
   }) => Promise<{ matchedCount: number; modifiedCount: number }>;
-  unbindAgentsFromTarsDomain: (
-    domainId: string,
+  removeTarsKnowledgeBaseFromAgents: (
+    knowledgeBaseId: string,
   ) => Promise<{ matchedCount: number; modifiedCount: number }>;
   getSharedResourceFileIds: ({
     file_ids,
@@ -1830,21 +1831,21 @@ export function createAgentMethods(
   }
 
   /**
-   * Clears `tars_domain_id` from every agent bound to a deleted pwc_tars 專用腦. A
-   * bound agent is refused for everyone once its brain is gone; unbound, it
-   * follows the chat's brain again. Brain ids are pwc_tars's, so callers that must
-   * reach every tenant run this as the system tenant.
+   * Takes a deleted pwc_tars knowledge base off every agent's TARS picks, so the builder
+   * does not keep offering a knowledge base that no longer exists. Knowledge-base ids are
+   * pwc_tars's, so callers that must reach every tenant run this as the system tenant.
    */
-  async function unbindAgentsFromTarsDomain(
-    domainId: string,
+  async function removeTarsKnowledgeBaseFromAgents(
+    knowledgeBaseId: string,
   ): Promise<{ matchedCount: number; modifiedCount: number }> {
-    if (!domainId) {
+    if (!knowledgeBaseId) {
       return { matchedCount: 0, modifiedCount: 0 };
     }
     const Agent = mongoose.models.Agent as Model<IAgent>;
+    const paths = TARS_TOOL_SWITCHES.map((id) => `tars_knowledge_bases.${id}`);
     const result = await Agent.updateMany(
-      { tars_domain_id: domainId },
-      { $unset: { tars_domain_id: 1 } },
+      { $or: paths.map((path) => ({ [path]: knowledgeBaseId })) },
+      { $pull: Object.fromEntries(paths.map((path) => [path, knowledgeBaseId])) },
     );
     return {
       matchedCount: result.matchedCount ?? 0,
@@ -2829,7 +2830,7 @@ export function createAgentMethods(
     generateActionMetadataHash,
     removeAgentFromUserFavorites,
     removeAgentResourceFilesFromAllAgents,
-    unbindAgentsFromTarsDomain,
+    removeTarsKnowledgeBaseFromAgents,
     getSharedResourceFileIds,
   };
 }
