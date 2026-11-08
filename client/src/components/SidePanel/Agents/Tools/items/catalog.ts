@@ -246,7 +246,9 @@ export function buildCatalog(inputs: BuildCatalogInputs): AgentItem[] {
       items.push({
         kind: 'mcp',
         id: name,
-        name,
+        /** The server's title when it has one: a key such as `workflow_<project id>` says
+         * nothing to the reader, and the description below already comes from the same metadata. */
+        name: server.metadata?.name || name,
         description: server.metadata?.description ?? '',
         iconKey: 'mcp',
         server,
