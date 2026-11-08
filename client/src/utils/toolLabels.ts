@@ -100,7 +100,8 @@ function titleFromPluginName(pluginName: string): string {
  * render a code-style badge for the tool name next to the server).
  *
  *   - pwc_tars plugin → its display name from `pluginLabels`, else its name as a title
- *   - MCP tool  → server name (keeps the header summary short)
+ *   - MCP tool  → server name (keeps the header summary short), or its label in `pluginLabels`
+ *     (a Workflow server's project name)
  *   - Native   → localized friendly name from {@link TOOL_FRIENDLY_NAME_KEYS}
  *   - Unknown  → raw name
  */
@@ -115,7 +116,7 @@ export function getToolDisplayLabel(
     return pluginLabels?.get(rawName) || titleFromPluginName(pluginName);
   }
   const parsed = parseToolName(rawName, knownServerNames);
-  if (parsed.mcpServer) return parsed.mcpServer;
+  if (parsed.mcpServer) return pluginLabels?.get(parsed.mcpServer) || parsed.mcpServer;
   if (parsed.friendlyKey) return localize(parsed.friendlyKey);
   return parsed.toolName;
 }

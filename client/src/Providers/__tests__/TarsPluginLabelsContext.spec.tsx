@@ -5,6 +5,7 @@ import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/extend-expect';
 import { useTarsPluginLabels, TarsPluginLabelsProvider } from '~/Providers/TarsPluginLabelsContext';
+import { activateCatalog, resetCatalogWarmup } from '~/hooks/useCatalogWarmup';
 
 function Labels() {
   const labels = useTarsPluginLabels();
@@ -23,6 +24,8 @@ const renderWith = (queryClient: QueryClient, enabled: boolean) =>
   );
 
 describe('TarsPluginLabelsContext', () => {
+  beforeEach(() => resetCatalogWarmup());
+
   it('maps each listed pwc_tars plugin tool to its display name, other tools left out', () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(
@@ -38,6 +41,24 @@ describe('TarsPluginLabelsContext', () => {
       JSON.stringify([
         ['tars_plugin_python_exec', 'Python Calculator'],
         ['tars_plugin_text_stats', 'Text Stats'],
+      ]),
+    );
+  });
+
+  it("adds each Workflow server's project name under its server key, other servers left out", () => {
+    activateCatalog('mcpServers');
+    const queryClient = new QueryClient();
+    queryClient.setQueryData([QueryKeys.tools], []);
+    queryClient.setQueryData([QueryKeys.mcpServers], {
+      workflow_9093417d: { title: 'Starter Project' },
+      workflow_67168997: { title: '我的 - Starter Project' },
+      tars_redmine: { title: 'Redmine' },
+    });
+    renderWith(queryClient, true);
+    expect(screen.getByTestId('labels')).toHaveTextContent(
+      JSON.stringify([
+        ['workflow_9093417d', 'Starter Project'],
+        ['workflow_67168997', '我的 - Starter Project'],
       ]),
     );
   });

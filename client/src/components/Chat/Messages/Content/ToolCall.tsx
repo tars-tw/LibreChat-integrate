@@ -341,13 +341,15 @@ export default function ToolCall({
       return errorLine;
     }
     if (isMCPToolCall && mcpServerName) {
-      return localize('com_ui_via_server', { 0: mcpServerName });
+      return localize('com_ui_via_server', {
+        0: tarsPluginLabels.get(mcpServerName) || mcpServerName,
+      });
     }
     if (domain && domain.length !== Constants.ENCODED_DOMAIN_LENGTH) {
       return localize('com_ui_via_server', { 0: domain });
     }
     return undefined;
-  }, [phase, output, isMCPToolCall, mcpServerName, domain, localize]);
+  }, [phase, output, isMCPToolCall, mcpServerName, tarsPluginLabels, domain, localize]);
 
   /** Model-authored live label, streamed as the first args key (injected by
    *  the `tool_intents` capability); persists as the settled label —

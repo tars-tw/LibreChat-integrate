@@ -54,6 +54,16 @@ describe('getToolDisplayLabel', () => {
     expect(getToolDisplayLabel('search_code_mcp_github', identityLocalize)).toBe('github');
   });
 
+  it("returns a labelled server's label, such as a Workflow server's project name", () => {
+    const labels = new Map([['workflow_9093417d', 'Starter Project']]);
+    expect(
+      getToolDisplayLabel('tarsflow_mcp_workflow_9093417d', identityLocalize, undefined, labels),
+    ).toBe('Starter Project');
+    expect(getToolDisplayLabel('search_code_mcp_github', identityLocalize, undefined, labels)).toBe(
+      'github',
+    );
+  });
+
   it('returns the friendly translation key for a known native tool', () => {
     /** The identity-localize stub returns the translation key itself,
      *  which is what the real `useLocalize` would resolve at render time. */
