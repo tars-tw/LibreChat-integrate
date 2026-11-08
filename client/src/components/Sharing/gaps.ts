@@ -1,7 +1,7 @@
 import type {
   TTarsMcpShareGap,
   TTarsMcpShareBlock,
-  TTarsDomainShareGap,
+  TTarsKnowledgeBaseShareGap,
 } from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks';
 
@@ -27,20 +27,24 @@ function serverLabel(
   });
 }
 
-function domainLabel({ name, is_active }: TTarsDomainShareGap, localize: Localize): string {
-  if (name == null) {
-    return localize('com_ui_tars_mcp_share_gap_domain_deleted');
-  }
-  return localize(
-    is_active ? 'com_ui_tars_mcp_share_gap_domain' : 'com_ui_tars_mcp_share_gap_domain_disabled',
-    { domain: name },
-  );
+function knowledgeLabel(gaps: TTarsKnowledgeBaseShareGap[], localize: Localize): string {
+  const names = gaps.map(({ name }) => name);
+  const listed = names.slice(0, MAX_LISTED_TOOLS).join('、');
+  return localize('com_ui_tars_mcp_share_gap_knowledge_bases', {
+    names:
+      names.length > MAX_LISTED_TOOLS
+        ? localize('com_ui_tars_mcp_share_gap_more', { tools: listed, count: names.length })
+        : listed,
+  });
 }
 
-/** What one share target lacks: the 專用腦 first, then each MCP server. */
-export function shareGapLabel({ domain, servers }: TTarsMcpShareBlock, localize: Localize): string {
+/** What one share target lacks: the knowledge bases it may not use in chat, then each MCP server. */
+export function shareGapLabel(
+  { knowledge_bases: knowledgeBases = [], servers }: TTarsMcpShareBlock,
+  localize: Localize,
+): string {
   return [
-    ...(domain ? [domainLabel(domain, localize)] : []),
+    ...(knowledgeBases.length > 0 ? [knowledgeLabel(knowledgeBases, localize)] : []),
     ...servers.map((gap) => serverLabel(gap, localize)),
   ].join(', ');
 }

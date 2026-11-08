@@ -37,8 +37,8 @@ const answerBody = {
 const mockBackend = (sql: { status: number; body: unknown } = { status: 200, body: answerBody }) =>
   jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
-    if (url.includes('/api/knowledge_base/prepare_data')) {
-      return buildResponse(200, { knowledge_bases: knowledgeBases });
+    if (url.includes('/api/km_permission/chat_knowledge_bases')) {
+      return buildResponse(200, { success: true, data: knowledgeBases });
     }
     if (url.includes('/api/domain_settings/get_domain_by_user')) {
       return buildResponse(200, {
@@ -125,8 +125,8 @@ describe('createTarsSqlTool', () => {
   it('says so when the brain binds no database at all', async () => {
     jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
       const url = String(input);
-      if (url.includes('/api/knowledge_base/prepare_data')) {
-        return buildResponse(200, { knowledge_bases: [knowledgeBases[2]] });
+      if (url.includes('/api/km_permission/chat_knowledge_bases')) {
+        return buildResponse(200, { success: true, data: [knowledgeBases[2]] });
       }
       if (url.includes('/api/domain_settings/get_domain_by_user')) {
         return buildResponse(200, {

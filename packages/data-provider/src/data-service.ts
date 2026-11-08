@@ -1672,6 +1672,23 @@ export const saveTarsKnowledgeBaseSecurity = (
   return request.put(endpoints.tarsKnowledgeBaseSecurityLevel(id, levelId), data);
 };
 
+export const getTarsChatKnowledgeBases = (): Promise<t.TTarsChatKnowledgeBasesResponse> => {
+  return request.get(endpoints.tarsChatKnowledgeBases());
+};
+
+export const getTarsKnowledgeBaseChatPermissions = (
+  id: string,
+): Promise<t.TTarsKnowledgeBaseChatAssigneesResponse> => {
+  return request.get(endpoints.tarsKnowledgeBaseChatPermissions(id));
+};
+
+export const saveTarsKnowledgeBaseChatPermissions = (
+  id: string,
+  data: t.TTarsKnowledgeBaseChatSavePayload,
+): Promise<{ result: t.TTarsKnowledgeBaseChatSaveResult }> => {
+  return request.put(endpoints.tarsKnowledgeBaseChatPermissions(id), data);
+};
+
 export const getTarsKnowledgeBaseModelBindings = (
   id: string,
 ): Promise<t.TTarsKnowledgeBaseModelBindings> => {
@@ -1760,6 +1777,12 @@ export const deleteTarsChunk = (docId: string, chunkId: string): Promise<{ succe
 
 export const getTarsPrompts = (domainId?: string | number): Promise<t.TTarsPromptsResponse> => {
   return request.get(endpoints.tarsPrompts(domainId));
+};
+
+export const getTarsChatPrompts = (
+  knowledgeBaseIds: readonly string[],
+): Promise<t.TTarsPromptsResponse> => {
+  return request.get(endpoints.tarsChatPrompts(knowledgeBaseIds));
 };
 
 export const getTarsKnowledgeBasePrompts = (

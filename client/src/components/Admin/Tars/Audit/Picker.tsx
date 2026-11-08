@@ -42,6 +42,7 @@ export default function Picker({
   placeholder,
   disabled,
   chips = false,
+  single = false,
 }: {
   id: string;
   label: string;
@@ -52,6 +53,8 @@ export default function Picker({
   disabled?: boolean;
   /** Show every pick as a removable chip instead of a one-line summary. */
   chips?: boolean;
+  /** At most one pick: choosing another replaces it and closes the list. */
+  single?: boolean;
 }) {
   const localize = useLocalize();
   const [open, setOpen] = useState(false);
@@ -97,8 +100,14 @@ export default function Picker({
     [options],
   );
 
-  const toggle = (value: string) =>
+  const toggle = (value: string) => {
+    if (single) {
+      onChange(selected.includes(value) ? [] : [value]);
+      setOpen(false);
+      return;
+    }
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
+  };
 
   /** One pick reads better as its own name than as a count. */
   const summarize = (): string => {
@@ -213,7 +222,11 @@ export default function Picker({
                 className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0"
               />
             </div>
-            <ul role="listbox" aria-multiselectable className="max-h-60 overflow-y-auto py-1">
+            <ul
+              role="listbox"
+              aria-multiselectable={!single}
+              className="max-h-60 overflow-y-auto py-1"
+            >
               {visible.length === 0 && (
                 <li className="text-text-secondary px-3 py-2 text-sm">
                   {localize('com_ui_no_results_found')}

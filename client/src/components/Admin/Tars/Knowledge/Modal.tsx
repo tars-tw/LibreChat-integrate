@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Dropdown,
@@ -9,12 +9,20 @@ import {
   Spinner,
   useToastContext,
 } from '@librechat/client';
-import type { TTarsKnowledgeBase, TTarsKnowledgeBaseUser } from 'librechat-data-provider';
-import type { TTarsKnowledgeBaseGroup } from 'librechat-data-provider';
+import type {
+  TTarsKnowledgeBase,
+  TTarsPrincipalInfo,
+  TTarsKnowledgeBaseUser,
+  TTarsKnowledgeBaseGroup,
+} from 'librechat-data-provider';
+import type { ChatListStatus, PrincipalLists } from './Permissions';
+import type { PickerOption } from '../Audit/Picker';
 import {
   useTarsModelOptionsQuery,
   useUpdateTarsKnowledgeBaseMutation,
   useUploadTarsKnowledgeBaseMutation,
+  useTarsKnowledgeBaseChatAssigneesQuery,
+  useSaveTarsKnowledgeBaseChatPermissionsMutation,
 } from '~/data-provider';
 import {
   DEFAULT_MAX_RETRIEVE,
@@ -22,8 +30,8 @@ import {
   groupPickerOptions,
   userPickerOptions,
 } from './helpers';
+import KnowledgePermissions, { EMPTY_LISTS } from './Permissions';
 import { useLocalize } from '~/hooks';
-import Picker from '../Audit/Picker';
 
 const NAME_MIN = 2;
 const NAME_MAX = 40;
@@ -38,8 +46,6 @@ interface FormState {
   llmModel: string;
   embeddingModel: string;
   rerankModel: string;
-  allowedUserIds: string[];
-  allowedUserGroupIds: string[];
 }
 
 const emptyForm: FormState = {
@@ -50,8 +56,43 @@ const emptyForm: FormState = {
   llmModel: '',
   embeddingModel: '',
   rerankModel: '',
-  allowedUserIds: [],
-  allowedUserGroupIds: [],
+};
+
+const listsOf = (principals: TTarsPrincipalInfo[]): PrincipalLists => ({
+  users: principals.filter((p) => p.principal_type === 'user').map((p) => p.principal_id),
+  groups: principals.filter((p) => p.principal_type === 'group').map((p) => p.principal_id),
+});
+
+const sameIds = (a: string[], b: string[]): boolean =>
+  a.length === b.length && a.every((id) => b.includes(id));
+
+const sameLists = (a: PrincipalLists, b: PrincipalLists): boolean =>
+  sameIds(a.users, b.users) && sameIds(a.groups, b.groups);
+
+const toPrincipals = ({ users, groups }: PrincipalLists) => [
+  ...users.map((principal_id) => ({ principal_type: 'user' as const, principal_id })),
+  ...groups.map((principal_id) => ({ principal_type: 'group' as const, principal_id })),
+];
+
+/**
+ * The pickers list active users and groups only. A principal already on the chat list
+ * but missing there (a disabled one) joins its options, marked, so it shows by name
+ * and can be taken off.
+ */
+const withAssigned = (
+  options: PickerOption[],
+  assigned: TTarsPrincipalInfo[] | undefined,
+  type: TTarsPrincipalInfo['principal_type'],
+  disabledLabel: (name: string) => string,
+): PickerOption[] => {
+  const known = new Set(options.map((option) => option.value));
+  const extra = (assigned ?? [])
+    .filter((p) => p.principal_type === type && !known.has(p.principal_id))
+    .map((p) => {
+      const name = p.name || p.principal_id;
+      return { value: p.principal_id, label: p.is_active ? name : disabledLabel(name) };
+    });
+  return extra.length > 0 ? [...options, ...extra] : options;
 };
 
 /**
@@ -64,6 +105,9 @@ const emptyForm: FormState = {
  * Editing is a different, narrower endpoint, so the model pickers are shown
  * only when creating — an existing base rebinds its models from the batch
  * dialog, which is what pwc_tars' own page does.
+ *
+ * The chat list (`km_permission`) has its own endpoint, saved after the base:
+ * a new base only has an id once pwc_tars has created it.
  */
 export default function KnowledgeModal({
   knowledgeBase,
@@ -77,8 +121,9 @@ export default function KnowledgeModal({
   users: TTarsKnowledgeBaseUser[];
   groups: TTarsKnowledgeBaseGroup[];
   /**
-   * Only admins see and send the access lists, as on pwc_tars's own page; the
-   * proxy refuses them from anyone else.
+   * Only admins see and send the management list, as on pwc_tars's own page; the
+   * proxy refuses it from anyone else. The knowledge base's managers still set
+   * the chat list.
    */
   canManageAccess: boolean;
   onClose: () => void;
@@ -89,16 +134,61 @@ export default function KnowledgeModal({
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [file, setFile] = useState<File | null>(null);
+  const [manage, setManage] = useState<PrincipalLists>(EMPTY_LISTS);
+  const [chat, setChat] = useState<PrincipalLists>(EMPTY_LISTS);
+  /** The chat list as loaded; `null` until it is, so a save never overwrites an unread list. */
+  const [chatLoaded, setChatLoaded] = useState<PrincipalLists | null>(isEdit ? null : EMPTY_LISTS);
+
+  const chatQuery = useTarsKnowledgeBaseChatAssigneesQuery(knowledgeBase?.id ?? null);
 
   const modelsQuery = useTarsModelOptionsQuery({ enabled: !isEdit });
 
   const userOptions = useMemo(() => userPickerOptions(users), [users]);
   const groupOptions = useMemo(() => groupPickerOptions(groups), [groups]);
 
+  const disabledLabel = useCallback(
+    (name: string) => localize('com_ui_tars_kb_disabled_principal', { 0: name }),
+    [localize],
+  );
+  const chatUserOptions = useMemo(
+    () => withAssigned(userOptions, chatQuery.data, 'user', disabledLabel),
+    [userOptions, chatQuery.data, disabledLabel],
+  );
+  const chatGroupOptions = useMemo(
+    () => withAssigned(groupOptions, chatQuery.data, 'group', disabledLabel),
+    [groupOptions, chatQuery.data, disabledLabel],
+  );
+
+  useEffect(() => {
+    if (!isEdit || chatLoaded != null || chatQuery.data == null) {
+      return;
+    }
+    const lists = listsOf(chatQuery.data);
+    setChat(lists);
+    setChatLoaded(lists);
+  }, [isEdit, chatLoaded, chatQuery.data]);
+
+  let chatStatus: ChatListStatus = 'loading';
+  if (chatLoaded != null) {
+    chatStatus = 'ready';
+  } else if (chatQuery.isError) {
+    chatStatus = 'error';
+  }
+
+  /** The stored management list: what the add button copies when its tab is hidden. */
+  const storedManage = useMemo<PrincipalLists>(
+    () => ({
+      users: knowledgeBase?.allowed_user_ids ?? [],
+      groups: knowledgeBase?.allowed_user_group_ids ?? [],
+    }),
+    [knowledgeBase],
+  );
+
   useEffect(() => {
     if (knowledgeBase == null) {
       setForm(emptyForm);
       setFile(null);
+      setManage(EMPTY_LISTS);
       return;
     }
     setForm({
@@ -106,10 +196,9 @@ export default function KnowledgeModal({
       name: knowledgeBase.name,
       description: knowledgeBase.description ?? '',
       maxRetrieveCount: String(knowledgeBase.max_retrieve_count ?? DEFAULT_MAX_RETRIEVE),
-      allowedUserIds: knowledgeBase.allowed_user_ids ?? [],
-      allowedUserGroupIds: knowledgeBase.allowed_user_group_ids ?? [],
     });
-  }, [knowledgeBase]);
+    setManage(storedManage);
+  }, [knowledgeBase, storedManage]);
 
   /** Default each model picker to pwc_tars' first option, as the original does. */
   useEffect(() => {
@@ -129,29 +218,9 @@ export default function KnowledgeModal({
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const uploadMutation = useUploadTarsKnowledgeBaseMutation({
-    onSuccess: () => {
-      showToast({ message: localize('com_ui_tars_kb_saved'), status: 'success' });
-      onClose();
-    },
-    onError: (error) =>
-      showToast({
-        message: relayedError(error) ?? localize('com_ui_tars_kb_save_failed'),
-        status: 'error',
-      }),
-  });
-
-  const updateMutation = useUpdateTarsKnowledgeBaseMutation({
-    onSuccess: () => {
-      showToast({ message: localize('com_ui_tars_kb_saved'), status: 'success' });
-      onClose();
-    },
-    onError: (error) =>
-      showToast({
-        message: relayedError(error) ?? localize('com_ui_tars_kb_save_failed'),
-        status: 'error',
-      }),
-  });
+  const uploadMutation = useUploadTarsKnowledgeBaseMutation();
+  const updateMutation = useUpdateTarsKnowledgeBaseMutation();
+  const chatMutation = useSaveTarsKnowledgeBaseChatPermissionsMutation();
 
   const trimmedName = form.name.trim();
   const retrieveCount = Number(form.maxRetrieveCount);
@@ -160,28 +229,71 @@ export default function KnowledgeModal({
     !Number.isInteger(retrieveCount) ||
     retrieveCount < RETRIEVE_MIN ||
     retrieveCount > RETRIEVE_MAX;
-  const isSaving = uploadMutation.isLoading || updateMutation.isLoading;
-  const canSave = !nameInvalid && !retrieveInvalid && (isEdit || form.llmModel !== '') && !isSaving;
+  const isSaving = uploadMutation.isLoading || updateMutation.isLoading || chatMutation.isLoading;
+  const canSave =
+    !nameInvalid &&
+    !retrieveInvalid &&
+    (isEdit || form.llmModel !== '') &&
+    chatStatus !== 'loading' &&
+    !isSaving;
 
-  const submit = () => {
-    if (!canSave) {
-      return;
+  const failed = (
+    error: unknown,
+    fallback: 'com_ui_tars_kb_save_failed' | 'com_ui_tars_kb_chat_save_failed',
+  ) => showToast({ message: relayedError(error) ?? localize(fallback), status: 'error' });
+
+  const saved = () => {
+    showToast({ message: localize('com_ui_tars_kb_saved'), status: 'success' });
+    onClose();
+  };
+
+  /** Saves the chat list; on failure says so, since the knowledge base itself was saved. */
+  const saveChat = async (knowledgeBaseId: string): Promise<boolean> => {
+    try {
+      await chatMutation.mutateAsync({ knowledgeBaseId, data: { principals: toPrincipals(chat) } });
+      return true;
+    } catch (error) {
+      showToast({
+        message: localize('com_ui_tars_kb_chat_save_failed', {
+          0: relayedError(error) ?? localize('com_ui_tars_kb_save_failed'),
+        }),
+        status: 'error',
+      });
+      return false;
     }
-    if (isEdit && knowledgeBase != null) {
-      updateMutation.mutate({
-        id: knowledgeBase.id,
+  };
+
+  const submitEdit = async (id: string) => {
+    try {
+      await updateMutation.mutateAsync({
+        id,
         data: {
           name: trimmedName,
           description: form.description,
           new_max_retrieve_count: retrieveCount,
           ...(canManageAccess
-            ? {
-                allowed_user_ids: form.allowedUserIds,
-                allowed_user_group_ids: form.allowedUserGroupIds,
-              }
+            ? { allowed_user_ids: manage.users, allowed_user_group_ids: manage.groups }
             : {}),
         },
       });
+    } catch (error) {
+      failed(error, 'com_ui_tars_kb_save_failed');
+      return;
+    }
+    /** An unread list is left alone; an unchanged one is not rewritten (nor audited). */
+    /** On failure the dialog stays open with the edits, so saving again retries. */
+    if (chatLoaded != null && !sameLists(chat, chatLoaded) && !(await saveChat(id))) {
+      return;
+    }
+    saved();
+  };
+
+  const submit = async () => {
+    if (!canSave) {
+      return;
+    }
+    if (isEdit && knowledgeBase != null) {
+      await submitEdit(knowledgeBase.id);
       return;
     }
 
@@ -193,12 +305,27 @@ export default function KnowledgeModal({
     data.append('embeddingModel', form.embeddingModel);
     data.append('rerankModel', form.rerankModel);
     data.append('maxRetrieveCount', String(retrieveCount));
-    data.append('allowedUserIds', JSON.stringify(form.allowedUserIds));
-    data.append('allowedUserGroupIds', JSON.stringify(form.allowedUserGroupIds));
+    data.append('allowedUserIds', JSON.stringify(manage.users));
+    data.append('allowedUserGroupIds', JSON.stringify(manage.groups));
     if (file != null) {
       data.append('file', file);
     }
-    uploadMutation.mutate(data);
+    let created: Record<string, unknown>;
+    try {
+      created = await uploadMutation.mutateAsync(data);
+    } catch (error) {
+      failed(error, 'com_ui_tars_kb_save_failed');
+      return;
+    }
+    const createdId = created?.knowledge_base_id;
+    if (chat.users.length + chat.groups.length > 0) {
+      /** The base exists either way, so the dialog closes; the list can be set again by editing it. */
+      if (typeof createdId !== 'string' || !(await saveChat(createdId))) {
+        onClose();
+        return;
+      }
+    }
+    saved();
   };
 
   /**
@@ -246,14 +373,12 @@ export default function KnowledgeModal({
          * clips them. Where the whole form fits, nothing scrolls and the lists
          * may hang past the dialog's edge; shorter screens keep the scroll area.
          */
-        className={`w-11/12 [@media(min-height:640px)]:overflow-visible ${
-          canManageAccess ? 'md:max-w-4xl' : 'md:max-w-xl'
-        }`}
+        className="w-11/12 md:max-w-4xl [@media(min-height:640px)]:overflow-visible"
         /** The pickers are wide; without this the footer is pushed off the dialog. */
         mainClassName="min-w-0"
         main={
           <div className="max-h-[70vh] min-w-0 space-y-4 overflow-y-auto pr-1 [@media(min-height:640px)]:max-h-none [@media(min-height:640px)]:overflow-visible">
-            <div className={`grid gap-4 ${canManageAccess ? 'md:grid-cols-2' : ''}`}>
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="min-w-0 space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="tars-kb-name">
@@ -312,35 +437,19 @@ export default function KnowledgeModal({
                 </div>
               </div>
 
-              {canManageAccess && (
-                <div className="border-border-light min-w-0 space-y-3 self-start rounded-lg border p-3">
-                  <p className="text-text-primary text-sm font-medium">
-                    {localize('com_ui_tars_kb_access')}
-                  </p>
-                  {/* pwc_tars grants only who is listed; an empty pair leaves the base to admins. */}
-                  <p className="text-text-secondary text-xs">
-                    {localize('com_ui_tars_kb_access_hint')}
-                  </p>
-                  <Picker
-                    id="tars-kb-users"
-                    label={localize('com_ui_tars_kb_allowed_users')}
-                    options={userOptions}
-                    selected={form.allowedUserIds}
-                    onChange={(values) => set('allowedUserIds', values)}
-                    placeholder={localize('com_ui_tars_kb_select_users')}
-                    chips
-                  />
-                  <Picker
-                    id="tars-kb-groups"
-                    label={localize('com_ui_tars_kb_allowed_groups')}
-                    options={groupOptions}
-                    selected={form.allowedUserGroupIds}
-                    onChange={(values) => set('allowedUserGroupIds', values)}
-                    placeholder={localize('com_ui_tars_kb_select_groups')}
-                    chips
-                  />
-                </div>
-              )}
+              <KnowledgePermissions
+                canManageAccess={canManageAccess}
+                manage={manage}
+                onManageChange={setManage}
+                chat={chat}
+                onChatChange={setChat}
+                chatStatus={chatStatus}
+                copySource={canManageAccess ? manage : storedManage}
+                userOptions={userOptions}
+                groupOptions={groupOptions}
+                chatUserOptions={chatUserOptions}
+                chatGroupOptions={chatGroupOptions}
+              />
             </div>
 
             {!isEdit && (

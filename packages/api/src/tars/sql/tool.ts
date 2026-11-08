@@ -169,7 +169,7 @@ export async function createTarsSqlTool(
             ? `Pick a database first: pass one of ${databases
                 .map((database) => `${database.name} (${database.knowledge_base_id})`)
                 .join(', ')} as \`knowledge_base_id\`.`
-            : 'The active brain (專用腦) has no knowledge base with a database bound, so there is nothing to query.',
+            : 'The active brain (專用腦) has no knowledge base with a database bound that this user may use in chat, so there is nothing to query.',
         );
       }
       try {

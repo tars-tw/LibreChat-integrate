@@ -1,8 +1,9 @@
 import { Button } from '@librechat/client';
 import { Library, BookText, Pencil, Search, Trash2 } from 'lucide-react';
 import type { TTarsKnowledgeBase } from 'librechat-data-provider';
-import { accessSummaryKey, DEFAULT_MAX_RETRIEVE } from './helpers';
+import { DEFAULT_MAX_RETRIEVE } from './helpers';
 import { useLocalize } from '~/hooks';
+import AccessSummary from './Access';
 import DatasetStats from './Stats';
 
 /** The grid view of the knowledge-base list. */
@@ -102,11 +103,12 @@ export default function KnowledgeCards({
             {kb.description ?? ''}
           </p>
 
-          <div className="border-border-light mt-auto flex items-center justify-between gap-2 border-t pt-3">
+          <div className="border-border-light mt-auto space-y-2 border-t pt-3">
             <DatasetStats knowledgeBase={kb} />
-            <span className="text-text-tertiary shrink-0 text-xs">
-              {localize(accessSummaryKey(kb))}
-            </span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <AccessSummary knowledgeBase={kb} kind="manage" withIcon />
+              <AccessSummary knowledgeBase={kb} kind="chat" withIcon />
+            </div>
           </div>
         </div>
       ))}

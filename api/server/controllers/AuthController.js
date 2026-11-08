@@ -21,6 +21,7 @@ const {
   getSafeErrorMetadata,
   sanitizeUserForAuthResponse,
   clearSessionHintCookie,
+  withTarsAdminMenuKeys,
 } = require('@librechat/api');
 const {
   requestPasswordReset,
@@ -225,7 +226,7 @@ const resetPasswordController = createResetPasswordController({
 
 const refreshLocalSession = createLocalRefreshHandler({
   userProjection: AUTH_REFRESH_USER_PROJECTION,
-  getUserById,
+  getUserById: withTarsAdminMenuKeys(getUserById),
   findSession,
   setAuthTokens,
   deleteAllUserSessions,

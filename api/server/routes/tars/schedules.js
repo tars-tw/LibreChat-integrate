@@ -10,6 +10,7 @@ const {
   restartTarsSchedule,
   updateTarsScheduleSyncAll,
   TARS_SCHEDULE_DATASET_TYPES,
+  requireTarsScheduleAccess,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsMenuAccess } = require('~/server/middleware');
 const { relayTarsError } = require('./relay');
@@ -17,7 +18,14 @@ const { relayTarsError } = require('./relay');
 const router = express.Router();
 
 /** The knowledge-base detail page schedules its own datasets, so 知識庫清單 opens these too. */
-router.use('/schedules', requireJwtAuth, requireTarsMenuAccess('kb.list'));
+router.use(
+  '/schedules',
+  requireJwtAuth,
+  requireTarsMenuAccess('kb.list'),
+  requireTarsScheduleAccess,
+);
+/** A schedule serves only the managers of its knowledge base (or an admin). */
+router.use('/schedules/:id', requireTarsScheduleAccess);
 
 /**
  * @route GET /api/tars/schedules

@@ -1,18 +1,25 @@
 const { logger } = require('@librechat/data-schemas');
-const { isTarsConfigured, fetchTarsDomainById } = require('@librechat/api');
+const { isTarsConfigured, fetchTarsDomainById, isTarsSavedAgentChat } = require('@librechat/api');
 
 /**
  * When a chat request carries a pwc_tars `domain_id` (a selected 專用腦) and the
  * user has not supplied their own promptPrefix, inject the domain's description
  * as the system prompt. The domain is resolved from the user's authorized
- * domains, so a user can never inject one outside their role grants. Non-fatal:
- * any failure falls through to a normal chat.
+ * domains, so a user can never inject one outside their role grants. A saved
+ * agent binds no 專用腦 and brings its own instructions, so its turns are left
+ * alone. Non-fatal: any failure falls through to a normal chat.
  */
 const injectTarsDomain = async (req, res, next) => {
   try {
     const domainId = req.body?.domain_id;
     const tarsId = req.user?.tarsId;
-    if (!domainId || !tarsId || !isTarsConfigured() || req.body?.promptPrefix) {
+    if (
+      !domainId ||
+      !tarsId ||
+      !isTarsConfigured() ||
+      req.body?.promptPrefix ||
+      isTarsSavedAgentChat(req.body)
+    ) {
       return next();
     }
 

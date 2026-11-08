@@ -1,27 +1,29 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Plus, ArrowLeft, Cloud, BookText, User } from 'lucide-react';
+import { Plus, ArrowLeft, BookText, User } from 'lucide-react';
 import { Spinner, Button, TextareaAutosize } from '@librechat/client';
 import type {
-  TTarsDomain,
   TTarsPrompt,
   TTarsPromptScope,
   TTarsPromptInput,
   TTarsPromptKnowledgeBase,
 } from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks';
-import { useTarsPromptsQuery, useCreateTarsPromptMutation } from '~/data-provider';
 import { extractUniqueVariables, detectVariables } from '~/utils';
+import useTarsChatPrompts from '~/hooks/Tars/useTarsChatPrompts';
+import { useCreateTarsPromptMutation } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 
-const SCOPE_ORDER: TTarsPromptScope[] = ['domain', 'knowledge_base', 'personal'];
+/** The tiers a chat lists: an agent binds no 專用腦, so there is no brain tier. */
+type ChatPromptScope = Exclude<TTarsPromptScope, 'domain'>;
+
+const SCOPE_ORDER: ChatPromptScope[] = ['knowledge_base', 'personal'];
 
 /** Colors match the prompts side panel's group headers. */
 const SCOPE_META: Record<
-  TTarsPromptScope,
-  { icon: typeof Cloud; labelKey: TranslationKeys; colorClass: string }
+  ChatPromptScope,
+  { icon: typeof User; labelKey: TranslationKeys; colorClass: string }
 > = {
-  domain: { icon: Cloud, labelKey: 'com_ui_tars_prompts_domain', colorClass: 'text-blue-500' },
   knowledge_base: {
     icon: BookText,
     labelKey: 'com_ui_tars_prompts_kb',
@@ -46,13 +48,12 @@ const fillVariables = (content: string, values: Record<string, string>): string 
 type Mode = { kind: 'list' } | { kind: 'variables'; prompt: TTarsPrompt } | { kind: 'create' };
 
 /**
- * The "我的提示" panel: lists prompts grouped by tier (specialized brain /
- * knowledge base / personal), fills `{{variables}}` before insertion, and offers
- * quick creation of personal or brain-scoped prompts.
+ * The "我的提示" panel: lists prompts grouped by tier (the selected agent's picked
+ * knowledge bases / personal), fills `{{variables}}` before insertion, and offers
+ * quick creation of personal or knowledge-base prompts.
  */
-function Panel({ domain, onInsert }: { domain: TTarsDomain; onInsert: (text: string) => void }) {
-  const domainId = String(domain.id);
-  const { data, isLoading } = useTarsPromptsQuery(domainId);
+function Panel({ onInsert }: { onInsert: (text: string) => void }) {
+  const { data, isLoading } = useTarsChatPrompts();
   const prompts = useMemo(() => data?.prompts ?? [], [data]);
   const knowledgeBases = useMemo(() => data?.knowledgeBases ?? [], [data]);
   const createPrompt = useCreateTarsPromptMutation();
@@ -107,7 +108,6 @@ function Panel({ domain, onInsert }: { domain: TTarsDomain; onInsert: (text: str
       )}
       {mode.kind === 'create' && (
         <CreateView
-          domain={domain}
           knowledgeBases={knowledgeBases}
           isSaving={createPrompt.isLoading}
           onBack={() => setMode({ kind: 'list' })}
@@ -147,7 +147,7 @@ function ListView({
   onCreate,
 }: {
   isLoading: boolean;
-  grouped: { scope: TTarsPromptScope; items: TTarsPrompt[] }[];
+  grouped: { scope: ChatPromptScope; items: TTarsPrompt[] }[];
   search: string;
   setSearch: (value: string) => void;
   onSelect: (prompt: TTarsPrompt) => void;
@@ -274,13 +274,11 @@ function VariablesView({
 }
 
 function CreateView({
-  domain,
   knowledgeBases,
   isSaving,
   onBack,
   onSubmit,
 }: {
-  domain: TTarsDomain;
   knowledgeBases: TTarsPromptKnowledgeBase[];
   isSaving: boolean;
   onBack: () => void;
@@ -290,7 +288,7 @@ function CreateView({
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [content, setContent] = useState('');
-  /** 'personal' | 'domain' | a knowledge-base id. */
+  /** 'personal' | a knowledge-base id. */
   const [scope, setScope] = useState('personal');
 
   const variables = useMemo(() => extractUniqueVariables(content), [content]);
@@ -302,14 +300,11 @@ function CreateView({
     if (!canSave) {
       return;
     }
-    const isDomain = scope === 'domain';
-    const isKnowledgeBase = scope !== 'personal' && !isDomain;
     onSubmit({
       name: name.trim(),
       category: category.trim(),
       content: content.trim(),
-      domain_id: isDomain ? domain.id : undefined,
-      knowledge_base_id: isKnowledgeBase ? scope : undefined,
+      knowledge_base_id: scope !== 'personal' ? scope : undefined,
     });
   };
 
@@ -365,11 +360,6 @@ function CreateView({
             active={scope === 'personal'}
             label={localize('com_ui_tars_prompts_personal')}
             onClick={() => setScope('personal')}
-          />
-          <ScopeOption
-            active={scope === 'domain'}
-            label={domain.name}
-            onClick={() => setScope('domain')}
           />
           {knowledgeBases.map((kb) => (
             <ScopeOption

@@ -17,8 +17,8 @@ import {
   TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS,
 } from './client';
 import { TARS_NOT_LINKED, tarsToolFailureText } from '~/tars/failure';
-import { fetchTarsDomainKnowledgeBases } from '~/tars/prompts';
 import { toTarsDataFileRefsContext } from '~/tars/files/sign';
+import { listTarsScopedKnowledgeBases } from '~/tars/scope';
 import { recordTarsCallUsage } from '~/tars/tools/usage';
 import { TarsRequestError } from '~/tars/client';
 
@@ -97,7 +97,7 @@ const NO_FILES =
 const NO_DOMAIN =
   'No active brain (專用腦) is selected, so there is no knowledge base to enrich the rows from.';
 const NO_KNOWLEDGE_BASES =
-  'The active brain (專用腦) binds no knowledge base, so table-task has nothing to enrich the rows from.';
+  'The active brain (專用腦) binds no knowledge base this user may use in chat (none is bound, or the user is on none of their chat lists), so table-task has nothing to enrich the rows from.';
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof TarsRequestError && error.serverMessage) {
@@ -149,8 +149,8 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
         return langflowToolResult(NO_DOMAIN);
       }
       try {
-        const knowledgeBases = await fetchTarsDomainKnowledgeBases(options.tarsUserId, domainId);
-        const knowledgeBaseIds = (knowledgeBases ?? []).map((base) => base.id);
+        const knowledgeBases = await listTarsScopedKnowledgeBases(options.tarsUserId, domainId);
+        const knowledgeBaseIds = knowledgeBases.map((base) => base.id);
         if (!knowledgeBaseIds.length) {
           return langflowToolResult(NO_KNOWLEDGE_BASES);
         }

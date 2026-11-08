@@ -17,8 +17,9 @@ export default function ItemDialog({ item, agentId, onClose }: Props) {
   const [portalElement, setPortalElement] = useState<HTMLDivElement | null>(null);
   const isOrchestration =
     item?.kind === 'builtin' && (item.id === 'subagents' || item.id === 'handoffs');
+  const isTarsSwitch = item?.kind === 'builtin' && isTarsSwitchId(item.id);
   /** These bodies open pickers portaled into the dialog, which must not clip them. */
-  const hasInnerPicker = isOrchestration || (item?.kind === 'builtin' && isTarsSwitchId(item.id));
+  const hasInnerPicker = isOrchestration || isTarsSwitch;
   const isAction = item?.kind === 'action';
   const contentRef = useRef<HTMLDivElement | null>(null);
   const setContent = useCallback((node: HTMLDivElement | null) => {
@@ -52,9 +53,9 @@ export default function ItemDialog({ item, agentId, onClose }: Props) {
             <div
               className={cn(
                 'px-6 pt-2 pb-6',
-                isAction
-                  ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
-                  : 'flex-1 overflow-y-auto',
+                isAction && 'flex min-h-0 flex-1 flex-col overflow-hidden',
+                /** The knowledge-base picker lists inline; a scrolling body would clip it. */
+                !isAction && (isTarsSwitch ? 'flex-1 overflow-visible' : 'flex-1 overflow-y-auto'),
               )}
             >
               <AgentPickerPortalContext.Provider value={portalElement}>

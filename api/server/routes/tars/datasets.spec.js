@@ -1,5 +1,6 @@
 const express = require('express');
 const request = require('supertest');
+const { invalidateTarsManagedKnowledgeBasesCache } = require('@librechat/api');
 
 jest.mock('~/server/middleware', () => ({
   requireJwtAuth: (req, _res, next) => {
@@ -15,6 +16,9 @@ const TARS_URL = 'http://tars.test';
 const SECRET = 'datasets-route-secret-0123456789abcdef';
 const MANAGER = { tarsId: 'u-1', tarsRoleId: 109, tarsAdminMenuKeys: ['kb.list'] };
 const OUTSIDER = { tarsId: 'u-2', tarsRoleId: 110, tarsAdminMenuKeys: [] };
+/** Holds the menu, but manages another knowledge base. */
+const NEIGHBOUR = { tarsId: 'u-3', tarsRoleId: 109, tarsAdminMenuKeys: ['kb.list'] };
+const MANAGES = { 'u-1': ['kb1'], 'u-2': [], 'u-3': ['kb2'] };
 const KB = '/api/tars/knowledge-bases/kb1';
 
 /** The app parses JSON bodies globally (`api/server/index.js`). */
@@ -28,8 +32,16 @@ const reply = (status, body) => ({
   json: async () => body,
 });
 
+const ACCESS_CHECK = '/api/km_permission/';
+
+/** The calls the route relayed, past the access checks it made first. */
+const relayed = (fetchMock) =>
+  fetchMock.mock.calls.filter(
+    ([input]) => !new URL(String(input)).pathname.startsWith(ACCESS_CHECK),
+  );
+
 const sentTo = (fetchMock) => {
-  const [input, init] = fetchMock.mock.calls[0];
+  const [input, init] = relayed(fetchMock)[0];
   const url = new URL(String(input));
   return {
     path: url.pathname,
@@ -41,13 +53,24 @@ const sentTo = (fetchMock) => {
 describe('knowledge base data security routes', () => {
   const saved = { url: process.env.TARS_AUTH_URL, secret: process.env.TARS_JWT_SECRET };
   let fetchMock;
+  let answer;
 
   beforeEach(() => {
     process.env.TARS_AUTH_URL = TARS_URL;
     process.env.TARS_JWT_SECRET = SECRET;
-    fetchMock = jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValue(reply(200, { success: true, data: [] }));
+    invalidateTarsManagedKnowledgeBasesCache();
+    answer = reply(200, { success: true, data: [] });
+    fetchMock = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/api/km_permission/managed_knowledge_bases') {
+        const ids = MANAGES[url.searchParams.get('user_id')] ?? [];
+        return reply(200, { success: true, data: { all: false, knowledge_base_ids: ids } });
+      }
+      if (url.pathname === '/api/km_permission/resource_owners') {
+        return reply(200, { success: true, data: { document_ids: { d1: ['kb1'] } } });
+      }
+      return answer;
+    });
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -71,12 +94,23 @@ describe('knowledge base data security routes', () => {
     const res = await as(OUTSIDER, (agent) => agent[method](path));
 
     expect(res.status).toBe(403);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(relayed(fetchMock)).toHaveLength(0);
+  });
+
+  it.each([
+    ['get', `${KB}/data-security`],
+    ['put', `${KB}/data-security/1`],
+    ['post', `${KB}/datasets/level`],
+  ])('refuses %s %s to a manager of another knowledge base', async (method, path) => {
+    const res = await as(NEIGHBOUR, (agent) => agent[method](path));
+
+    expect(res.status).toBe(403);
+    expect(relayed(fetchMock)).toHaveLength(0);
   });
 
   it('reads the levels of the knowledge base in the path', async () => {
     const assignments = [{ id: '1', name: '高度機密', order: 1, principals: [] }];
-    fetchMock.mockResolvedValue(reply(200, { success: true, data: assignments }));
+    answer = reply(200, { success: true, data: assignments });
 
     const res = await as(MANAGER, (agent) => agent.get(`${KB}/data-security`));
 
@@ -116,7 +150,7 @@ describe('knowledge base data security routes', () => {
   });
 
   it("relays pwc_tars's refusal with its reason", async () => {
-    fetchMock.mockResolvedValue(reply(403, { success: false, message: '沒有權限設定這個知識庫' }));
+    answer = reply(403, { success: false, message: '沒有權限設定這個知識庫' });
 
     const res = await as(MANAGER, (agent) => agent.get(`${KB}/data-security`));
 
