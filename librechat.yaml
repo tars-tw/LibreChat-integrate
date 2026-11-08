@@ -48,7 +48,7 @@ endpoints:
       - actions
       - file_search
       - artifacts
-      #- execute_code  # Disabled for now; uncomment to enable code execution capability for agents.
+      - execute_code  # Disabled for now; uncomment to enable code execution capability for agents.
       - web_search
       - sql_agent
       - rag_agent
@@ -69,9 +69,6 @@ endpoints:
       - azure-ai-search
       - open_weather
       - flux
-      - tars_plugin_python_exec
-      - tars_plugin_summarize_text
-      - tars_plugin_text_stats
     # Hide the agent builder's Inline/Prompt instructions toggle, leaving inline only. Agents
     # already linked to a prompt keep the toggle so they can switch back. Default: false.
     hideInstructionsSource: true
