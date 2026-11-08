@@ -12,6 +12,9 @@ jest.mock('@librechat/api', () => {
     createTarsAuditDocumentHandler: () => (req, res) => res.sendStatus(404),
     createWorkflowAccountsHandler: () => (req, res) => res.json({ accounts: [] }),
     createWorkflowTransfer: () => ({ start: () => {}, requestSweep: () => {}, stop: () => {} }),
+    /** Per-knowledge-base guards: mounted at load, so they must pass the request on. */
+    requireTarsKnowledgeBase: jest.fn((req, res, next) => next()),
+    requireTarsScheduleAccess: jest.fn((req, res, next) => next()),
   };
   return new Proxy(stubs, {
     get: (target, key) => {
@@ -211,6 +214,57 @@ describe('/api/tars auth gates', () => {
         name: 'Renamed',
         new_max_retrieve_count: 10,
       });
+    });
+
+    /** The grant opens the page; which knowledge base a request may touch is checked per request. */
+    const guarded = { knowledge: [], schedule: [] };
+    const recordParams = (seen) => (req, res, next) => {
+      seen.push({ ...req.params });
+      next();
+    };
+
+    beforeEach(() => {
+      guarded.knowledge = [];
+      guarded.schedule = [];
+      api.requireTarsKnowledgeBase.mockImplementation(recordParams(guarded.knowledge));
+      api.requireTarsScheduleAccess.mockImplementation(recordParams(guarded.schedule));
+    });
+
+    it.each([
+      ['get', '/knowledge-bases/kb1/documents', { id: 'kb1' }],
+      ['put', '/knowledge-bases/kb1', { id: 'kb1' }],
+      ['get', '/knowledge-bases/kb1/chat-permissions', { id: 'kb1' }],
+      ['get', '/knowledge-bases/kb1/datasets', { id: 'kb1' }],
+      ['post', '/knowledge-bases/kb1/datasets/batch-delete', { id: 'kb1' }],
+    ])('checks the knowledge base of %s %s', async (method, path, params) => {
+      await request(app)
+        [method](`/api/tars${path}`)
+        .set('x-test-user', user({ menuKeys: ['kb.list'] }));
+      expect(guarded.knowledge).toContainEqual(params);
+    });
+
+    it.each([
+      ['put', '/knowledge-bases/kb1/documents/d1/rename', { id: 'kb1', docId: 'd1' }],
+      ['delete', '/knowledge-bases/kb1/documents/d1', { id: 'kb1', docId: 'd1' }],
+      ['get', '/documents/d1/chunks', { docId: 'd1' }],
+      ['put', '/documents/d1/chunks/c1', { docId: 'd1', chunkId: 'c1' }],
+      ['put', '/knowledge-bases/kb1/websites/w1', { id: 'kb1', websiteId: 'w1' }],
+    ])('checks the dataset %s %s names', async (method, path, params) => {
+      await request(app)
+        [method](`/api/tars${path}`)
+        .set('x-test-user', user({ menuKeys: ['kb.list'] }));
+      expect(guarded.knowledge).toContainEqual(params);
+    });
+
+    it.each([
+      ['get', '/schedules', {}],
+      ['post', '/schedules/s1/run', { id: 's1' }],
+      ['delete', '/schedules/s1', { id: 's1' }],
+    ])('checks the schedule %s %s names', async (method, path, params) => {
+      await request(app)
+        [method](`/api/tars${path}`)
+        .set('x-test-user', user({ menuKeys: ['kb.list'] }));
+      expect(guarded.schedule).toContainEqual(params);
     });
   });
 });

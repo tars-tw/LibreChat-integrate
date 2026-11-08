@@ -1,4 +1,5 @@
 import { tarsFetch, getTarsBaseUrl, TarsRequestError, readTarsErrorMessage } from './client';
+import { invalidateTarsManagedKnowledgeBasesCache } from './managed';
 
 /**
  * A pwc_tars knowledge base. Base fields mirror `KnowledgeBase.to_dict()`; the
@@ -24,9 +25,15 @@ export interface TarsKnowledgeBase {
   total_chunk_count?: number;
   total_token_count?: number;
   has_sql_database?: boolean;
-  /** Ids allowed to use the KB. With both lists empty only admins reach it, as in pwc_tars. */
+  /**
+   * The management list: who sees the KB in 知識庫清單 and manages its files. With both
+   * empty only admins do. Using it in chat is a separate list (`km_permission`).
+   */
   allowed_user_ids?: string[];
   allowed_user_group_ids?: string[];
+  /** Size of the chat list (`km_permission`), disabled principals included. */
+  chat_user_count?: number;
+  chat_user_group_count?: number;
 }
 
 /** A selectable model option for the knowledge-base upload form. */
@@ -329,6 +336,7 @@ export async function createTarsKnowledgeBase(
     '/api/knowledge_base/create_knowledge_base',
     { method: 'POST', body: { ...input, created_by: tarsId }, baseUrl },
   );
+  invalidateTarsManagedKnowledgeBasesCache();
   return data.knowledge_base;
 }
 
@@ -342,6 +350,9 @@ export async function updateTarsKnowledgeBase(
     `/api/knowledge_base/update_knowledge_base/${encodeURIComponent(knowledgeBaseId)}`,
     { method: 'PUT', body: { ...update, updated_by: tarsId }, baseUrl },
   );
+  if (update.allowed_user_ids !== undefined || update.allowed_user_group_ids !== undefined) {
+    invalidateTarsManagedKnowledgeBasesCache();
+  }
   return data.knowledge_base;
 }
 
@@ -364,6 +375,7 @@ export async function deleteTarsKnowledgeBase(
       baseUrl,
     },
   );
+  invalidateTarsManagedKnowledgeBasesCache();
 }
 
 /** LLM / embedding / rerank model options for the upload form. */
@@ -434,6 +446,7 @@ export async function createTarsKnowledgeBaseWithFile(
       await readTarsErrorMessage(response),
     );
   }
+  invalidateTarsManagedKnowledgeBasesCache();
   return (await response.json()) as KnowledgeBasesResponse & Record<string, unknown>;
 }
 

@@ -47,7 +47,7 @@ describe('agentSaveShareError', () => {
         data: {
           code: TARS_MCP_SHARE_BLOCKED,
           blocked: [
-            { name: 'Amy', servers: [], domain: { id: '224', name: 'HR', is_active: true } },
+            { name: 'Amy', servers: [], knowledge_bases: [{ id: 'kb1', name: 'HR' }] },
             {
               name: 'UAT',
               servers: [
@@ -60,7 +60,7 @@ describe('agentSaveShareError', () => {
     };
 
     expect(agentSaveShareError(error, localize)).toBe(
-      'com_ui_tars_mcp_save_blocked(Amy: com_ui_tars_mcp_share_gap_domain(HR); ' +
+      'com_ui_tars_mcp_save_blocked(Amy: com_ui_tars_mcp_share_gap_knowledge_bases(HR); ' +
         'UAT: com_ui_tars_mcp_share_gap_server(Maps))',
     );
   });

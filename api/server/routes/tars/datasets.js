@@ -23,6 +23,7 @@ const {
   setTarsDatasetLevel,
   fetchTarsKnowledgeBaseSecurity,
   saveTarsKnowledgeBaseSecurity,
+  requireTarsKnowledgeBase,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsMenuAccess } = require('~/server/middleware');
 const { relayTarsError } = require('./relay');
@@ -39,7 +40,14 @@ const KNOWLEDGE_BASE_SOURCES = [
 ].map((source) => `/knowledge-bases/:id/${source}`);
 
 /** The detail page behind 知識庫清單, so the same grant opens it. */
-router.use(KNOWLEDGE_BASE_SOURCES, requireJwtAuth, requireTarsMenuAccess('kb.list'));
+router.use(
+  KNOWLEDGE_BASE_SOURCES,
+  requireJwtAuth,
+  requireTarsMenuAccess('kb.list'),
+  requireTarsKnowledgeBase,
+);
+/** The datasets a route names (path, body or query) must belong to its knowledge base. */
+router.use('/knowledge-bases/:id/websites/:websiteId', requireTarsKnowledgeBase);
 
 /**
  * @route GET /api/tars/knowledge-bases/:id/datasets

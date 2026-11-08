@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { TMessageContentParts } from './types/content';
 import type { AgentSubagentGraph } from './types/agents';
 import type { TTarsTraceArtifact } from './types/tars';
+import type { TTarsAgentKnowledgeBases } from './tars';
 import type { SearchResultData } from './types/web';
 import type { FunctionTool } from './types/tools';
 import type { TFile } from './types/files';
@@ -459,8 +460,8 @@ export const defaultAgentFormValues = {
     | undefined,
   /** Memory partition: 'agent' isolates memories per (user, agent); default shared pool */
   memory_scope: undefined as MemoryScope | undefined,
-  /** pwc_tars 專用腦 the agent's TARS tools are scoped to; unset follows the chat. */
-  tars_domain_id: undefined as string | undefined,
+  /** The knowledge bases each TARS switch reaches; see `TTarsAgentKnowledgeBases`. */
+  tars_knowledge_bases: undefined as TTarsAgentKnowledgeBases | undefined,
   /** Knowledge-search source files are downloadable from the answer; unset is off. */
   tars_source_download: undefined as boolean | undefined,
 };

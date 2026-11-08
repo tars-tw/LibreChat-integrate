@@ -1,5 +1,5 @@
 const express = require('express');
-const { logger, runAsSystem } = require('@librechat/data-schemas');
+const { logger } = require('@librechat/data-schemas');
 const {
   isTarsConfigured,
   createTarsDomain,
@@ -12,7 +12,6 @@ const {
   fetchTarsDomainPrepareData,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
-const { unbindAgentsFromTarsDomain } = require('~/models');
 const { relayTarsError } = require('./relay');
 
 const router = express.Router();
@@ -141,7 +140,6 @@ router.put('/domains/:id', requireTarsAdmin, async (req, res) => {
  * @route DELETE /api/tars/domains/:id
  * @desc Delete a specialized brain. pwc_tars also removes its role bindings,
  *       prompts, token limit settings and MCP grants; token usage is kept.
- *       Saved agents bound to it are unbound so they follow the chat's brain.
  * @access Admin (pwc_tars)
  */
 router.delete('/domains/:id', requireTarsAdmin, async (req, res) => {
@@ -150,19 +148,6 @@ router.delete('/domains/:id', requireTarsAdmin, async (req, res) => {
   } catch (error) {
     logger.error('[DELETE /api/tars/domains/:id] Failed to delete pwc_tars domain', error);
     return relayTarsError(res, error, 'Failed to delete pwc_tars domain');
-  }
-
-  /** The brain is gone either way; a failed unbind only leaves those agents to be re-pointed by hand. */
-  try {
-    const domainId = String(req.params.id);
-    const { modifiedCount } = await runAsSystem(() => unbindAgentsFromTarsDomain(domainId));
-    if (modifiedCount > 0) {
-      logger.info(
-        `[DELETE /api/tars/domains/:id] Unbound ${modifiedCount} agent(s) from ${domainId}`,
-      );
-    }
-  } catch (error) {
-    logger.error('[DELETE /api/tars/domains/:id] Failed to unbind agents', error);
   }
   return res.json({ success: true });
 });

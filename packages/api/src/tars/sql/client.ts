@@ -2,6 +2,7 @@ import { logger } from '@librechat/data-schemas';
 import type { TTarsTraceArtifact } from 'librechat-data-provider';
 import type { TarsUsageAttribution } from '~/tars/langflow/client';
 import type { TarsKnowledgeBase } from '~/tars/knowledge';
+import type { TarsKnowledgeScope } from '~/tars/scope';
 import {
   langflowTimeoutMs,
   toTarsTraceArtifact,
@@ -65,7 +66,7 @@ const toSqlDatabase = (base: TarsKnowledgeBase): TarsSqlDatabase => ({
  */
 export async function listTarsSqlDatabases(
   tarsUserId: string,
-  domainId?: string | number | null,
+  domainId?: TarsKnowledgeScope,
 ): Promise<TarsSqlDatabase[]> {
   const bases = await listTarsScopedKnowledgeBases(tarsUserId, domainId);
   return bases.filter((base) => base.has_sql_database === true).map(toSqlDatabase);

@@ -5,16 +5,16 @@ import { Plus, Cloud, User, FileText, BookText, ListFilter, ChevronDown } from '
 import type { TTarsPrompt, TTarsPromptScope } from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks';
 import type { Option } from '~/common';
-import useTarsPromptsDomainId from '~/hooks/Tars/useTarsPromptsDomainId';
+import useTarsChatPrompts from '~/hooks/Tars/useTarsChatPrompts';
 import AutoSendPrompt from '../buttons/AutoSendPrompt';
-import { useTarsPromptsQuery } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 import Item from './Item';
 
 const ALL_CATEGORIES = '__all__';
 
-const SCOPE_ORDER: TTarsPromptScope[] = ['domain', 'knowledge_base', 'personal'];
+/** An agent binds no 專用腦, so the chat lists no brain tier. */
+const SCOPE_ORDER: TTarsPromptScope[] = ['knowledge_base', 'personal'];
 
 const SCOPE_META: Record<
   TTarsPromptScope,
@@ -36,7 +36,7 @@ const SCOPE_META: Record<
 /**
  * The prompts side panel, backed by pwc_tars prompts. On a chat route a card
  * inserts/sends its prompt; on `/prompts` it opens the prompt for editing.
- * Prompts are grouped by tier (specialized brain / knowledge base / personal),
+ * Prompts are grouped by tier (the selected agent's picked knowledge bases / personal),
  * matching the chat composer's prompt panel, with only the personal tier
  * editable/deletable here — brain and knowledge-base prompts are shared and
  * insert-only.
@@ -44,8 +44,7 @@ const SCOPE_META: Record<
 export default function TarsPromptsPanel() {
   const location = useLocation();
   const localize = useLocalize();
-  const domainId = useTarsPromptsDomainId();
-  const { data, isLoading } = useTarsPromptsQuery(domainId, { enabled: true });
+  const { data, isLoading } = useTarsChatPrompts();
   const prompts = useMemo(() => data?.prompts ?? [], [data]);
 
   const [search, setSearch] = useState('');

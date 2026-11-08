@@ -26,7 +26,6 @@ jest.mock('@librechat/api', () => ({
     getJob: jest.fn(),
   },
   getSafeErrorMetadata: mockGetSafeErrorMetadata,
-  createBindTarsAgentDomain: jest.fn(() => (_req, _res, next) => next()),
 }));
 
 jest.mock('~/server/middleware', () => ({

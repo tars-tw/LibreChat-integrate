@@ -1594,14 +1594,14 @@ describe('Agent Controllers - Mass Assignment Protection', () => {
       expect(response.conversation_starters).toEqual(starters);
     });
 
-    test('should include the 專用腦 binding and 參考資料下載 in the basic VIEW response', async () => {
+    test('should include the TARS knowledge-base picks and 參考資料下載 in the basic VIEW response', async () => {
       const agent = await Agent.create({
         id: `agent_${uuidv4()}`,
-        name: 'Bound Agent',
+        name: 'Picking Agent',
         provider: 'openai',
         model: 'gpt-4',
         author: mockReq.user.id,
-        tars_domain_id: '154',
+        tars_knowledge_bases: { rag_agent: ['kb1', 'kb2'], sql_agent: ['kb3'] },
         tars_source_download: true,
       });
 
@@ -1611,7 +1611,11 @@ describe('Agent Controllers - Mass Assignment Protection', () => {
 
       expect(mockRes.status).toHaveBeenCalledWith(200);
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.tars_domain_id).toBe('154');
+      expect(response.tars_knowledge_bases).toEqual({
+        rag_agent: ['kb1', 'kb2'],
+        sql_agent: ['kb3'],
+      });
+      expect(response).not.toHaveProperty('tars_domain_id');
       expect(response.tars_source_download).toBe(true);
     });
   });
@@ -2034,17 +2038,27 @@ describe('Agent Controllers - Mass Assignment Protection', () => {
       expect(agentInDb.git_identity).toBeUndefined();
     });
 
-    test('binds and clears a pwc_tars brain', async () => {
+    test('stores and clears the TARS knowledge-base picks, and never a brain', async () => {
       mockReq.user.id = existingAgentAuthorId.toString();
       mockReq.params.id = existingAgentId;
 
-      mockReq.body = { tars_domain_id: '224' };
+      mockReq.body = {
+        tars_knowledge_bases: { rag_agent: ['kb1'], chart_agent: ['kb2', 'kb3'] },
+        tars_domain_id: '224',
+      };
       await updateAgentHandler(mockReq, mockRes);
-      expect((await Agent.findOne({ id: existingAgentId })).tars_domain_id).toBe('224');
+      const stored = (await Agent.findOne({ id: existingAgentId }).lean()) ?? {};
+      expect(stored.tars_knowledge_bases).toEqual({
+        rag_agent: ['kb1'],
+        chart_agent: ['kb2', 'kb3'],
+      });
+      expect(stored).not.toHaveProperty('tars_domain_id');
 
-      mockReq.body = { tars_domain_id: null };
+      mockReq.body = { tars_knowledge_bases: null };
       await updateAgentHandler(mockReq, mockRes);
-      expect((await Agent.findOne({ id: existingAgentId })).tars_domain_id).toBeUndefined();
+      expect(
+        (await Agent.findOne({ id: existingAgentId }).lean()).tars_knowledge_bases,
+      ).toBeUndefined();
     });
 
     test('stores the 參考資料下載 switch both ways', async () => {

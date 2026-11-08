@@ -93,7 +93,7 @@ export interface TarsRagToolOptions {
 
 const NOT_LINKED = `${TARS_NOT_LINKED}, so no knowledge base can be searched.`;
 const NO_KNOWLEDGE_BASES =
-  'The active brain (專用腦) binds no knowledge base, so this tool cannot answer anything right now.';
+  'The active brain (專用腦) binds no knowledge base this user may use in chat (none is bound, or the user is on none of their chat lists), so this tool cannot answer anything right now.';
 
 function listKnowledgeBases(bases: TarsRagKnowledgeBase[]): string {
   if (!bases.length) {

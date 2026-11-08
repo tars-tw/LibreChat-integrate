@@ -148,8 +148,8 @@ const mockBackend = (
 ) =>
   jest.spyOn(global, 'fetch').mockImplementation(async (input, init) => {
     const url = String(input);
-    if (url.includes('/api/knowledge_base/prepare_data')) {
-      return buildResponse(200, { knowledge_bases: knowledgeBases });
+    if (url.includes('/api/km_permission/chat_knowledge_bases')) {
+      return buildResponse(200, { success: true, data: knowledgeBases });
     }
     if (url.includes('/api/domain_settings/get_domain_by_user')) {
       return buildResponse(200, domains);
@@ -402,7 +402,7 @@ describe('createTarsBuiltinTool', () => {
       domainId: 200,
     });
     const refused = await invoke(several, 'tars_sql_query', { purpose: 'p', sql: 'SELECT 1' });
-    expect(refused.content).toContain('Several databases are bound');
+    expect(refused.content).toContain('Several databases are available');
     expect(toolCallOf(fetchMock)).toBeUndefined();
 
     await invoke(several, 'tars_sql_query', {
@@ -563,6 +563,160 @@ describe('createTarsBuiltinTool', () => {
     const message = await invoke(unlinked, 'tars_knowledge_search', { query: 'q' });
     expect(message.content).toContain('not linked to pwc_tars');
     expect(toolCallOf(fetchMock)).toBeUndefined();
+  });
+});
+
+describe('on a saved agent, each tool reaches its own picks', () => {
+  const domainUrls = (fetchMock: jest.SpyInstance) =>
+    fetchMock.mock.calls.filter(([url]) => String(url).includes('get_domain_by_user'));
+
+  it('searches the picked knowledge bases on the chat list, never the brain', async () => {
+    const fetchMock = mockBackend(ok({ content: 'found' }));
+    const search = await createTarsBuiltinTool({
+      toolName: 'tars_knowledge_search',
+      tarsUserId: USER_ID,
+      domainId: 100,
+      agentKnowledgeBases: { rag_agent: ['kb-hr', 'kb-gone'], sql_agent: ['kb-general'] },
+    });
+
+    await invoke(search, 'tars_knowledge_search', { query: 'q' });
+    expect(bodyOf(fetchMock).context).toEqual({ knowledge_base_ids: 'kb-hr' });
+    expect(domainUrls(fetchMock)).toHaveLength(0);
+
+    fetchMock.mockClear();
+    const refused = await invoke(search, 'tars_knowledge_search', {
+      query: 'q',
+      knowledge_base_ids: ['kb-general'],
+    });
+    expect(refused.content).toContain('kb-general');
+    expect(toolCallOf(fetchMock)).toBeUndefined();
+  });
+
+  it('refuses a search when nothing usable is picked', async () => {
+    const fetchMock = mockBackend();
+    const search = await createTarsBuiltinTool({
+      toolName: 'tars_knowledge_search',
+      tarsUserId: USER_ID,
+      domainId: 100,
+      agentKnowledgeBases: {},
+    });
+
+    const refused = await invoke(search, 'tars_knowledge_search', { query: 'q' });
+    expect(refused.content).toContain('picked no knowledge base for this tool');
+    expect(toolCallOf(fetchMock)).toBeUndefined();
+  });
+
+  it('queries the one database picked for 資料庫查詢', async () => {
+    const fetchMock = mockBackend(ok({ content: 'rows' }));
+    const query = await createTarsBuiltinTool({
+      toolName: 'tars_sql_query',
+      tarsUserId: USER_ID,
+      domainId: 100,
+      agentKnowledgeBases: { sql_agent: ['kb-erp'], chart_agent: ['kb-general'] },
+    });
+
+    await invoke(query, 'tars_sql_query', { purpose: 'p', sql: 'SELECT 1' });
+    expect(bodyOf(fetchMock).context).toEqual({ knowledge_base_id: 'kb-erp' });
+
+    const none = await createTarsBuiltinTool({
+      toolName: 'tars_sql_query',
+      tarsUserId: USER_ID,
+      domainId: 100,
+      agentKnowledgeBases: { sql_agent: ['kb-docs'] },
+    });
+    fetchMock.mockClear();
+    const refused = await invoke(none, 'tars_sql_query', { purpose: 'p', sql: 'SELECT 1' });
+    expect(refused.content).toContain('picked no database for this tool');
+    expect(toolCallOf(fetchMock)).toBeUndefined();
+  });
+
+  it("charts from the chart's own picks, without 資料庫查詢 switched on", async () => {
+    const fetchMock = mockBackend(ok({ content: 'chart ready' }));
+    const create = (picks: string[]) =>
+      createTarsBuiltinTool({
+        toolName: 'tars_create_chart',
+        tarsUserId: USER_ID,
+        domainId: 100,
+        agentTools: ['tars_create_chart'],
+        agentKnowledgeBases: { chart_agent: picks, sql_agent: ['kb-hr'] },
+      });
+
+    await invoke(await create(['kb-erp']), 'tars_create_chart', { instruction: 'bar' });
+    expect(bodyOf(fetchMock).context).toEqual({ knowledge_base_id: 'kb-erp' });
+
+    const several = await create(['kb-general', 'kb-erp']);
+    fetchMock.mockClear();
+    await invoke(several, 'tars_create_chart', { instruction: 'bar' });
+    expect(bodyOf(fetchMock).context).toEqual({});
+    fetchMock.mockClear();
+    await invoke(several, 'tars_create_chart', {
+      instruction: 'bar',
+      database_knowledge_base_id: 'kb-general',
+    });
+    expect(bodyOf(fetchMock).context).toEqual({ knowledge_base_id: 'kb-general' });
+
+    fetchMock.mockClear();
+    const outside = await invoke(several, 'tars_create_chart', {
+      instruction: 'bar',
+      database_knowledge_base_id: 'kb-hr',
+    });
+    expect(outside.content).toContain('not a database this tool may use');
+    expect(toolCallOf(fetchMock)).toBeUndefined();
+
+    const unpicked = await create([]);
+    await invoke(unpicked, 'tars_create_chart', { instruction: 'bar' });
+    expect(bodyOf(fetchMock).context).toEqual({});
+    fetchMock.mockClear();
+    const refused = await invoke(unpicked, 'tars_create_chart', {
+      instruction: 'bar',
+      database_knowledge_base_id: 'kb-erp',
+    });
+    expect(refused.content).toContain('picked no database for this tool');
+    expect(toolCallOf(fetchMock)).toBeUndefined();
+  });
+
+  it('lists what each mounted tool reaches in the context', async () => {
+    mockBackend();
+    const tools = [
+      'tars_knowledge_search',
+      'tars_sql_schema',
+      'tars_sql_query',
+      'tars_create_chart',
+    ];
+    await resolveTarsBuiltinTools(tools);
+    const context = await buildTarsToolsContext({
+      tarsUserId: USER_ID,
+      domainId: 100,
+      agentKnowledgeBases: {
+        rag_agent: ['kb-hr'],
+        sql_agent: ['kb-erp'],
+        chart_agent: ['kb-general', 'kb-erp'],
+      },
+      tools,
+    });
+
+    expect(context).toContain('- 人資知識庫（knowledge_base_id: kb-hr）— 別的腦的');
+    expect(context).not.toContain('文件庫');
+    expect(context).toContain(
+      'tars_sql_schema / tars_sql_query 的資料庫：ERP（自動使用，不必指定）。',
+    );
+    expect(context).toContain('tars_create_chart 可用的資料庫');
+    expect(context).toContain('- 通用知識庫（knowledge_base_id: kb-general）');
+  });
+
+  it('says so in the context when a tool has nothing picked', async () => {
+    mockBackend();
+    const tools = ['tars_knowledge_search', 'tars_create_chart'];
+    await resolveTarsBuiltinTools(tools);
+    const context = await buildTarsToolsContext({
+      tarsUserId: USER_ID,
+      domainId: 100,
+      agentKnowledgeBases: {},
+      tools,
+    });
+
+    expect(context).toContain('Agent 沒有選擇這位使用者可在聊天使用的知識庫。');
+    expect(context).toContain('tars_create_chart：Agent 沒有選擇這位使用者可在聊天使用的資料庫。');
   });
 });
 

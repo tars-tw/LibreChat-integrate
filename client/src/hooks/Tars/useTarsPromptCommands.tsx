@@ -2,9 +2,8 @@ import { useMemo } from 'react';
 import type { TPromptGroup, TTarsPrompt, TTarsPromptScope } from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import type { PromptOption } from '~/common';
-import { useTarsDomainsQuery, useTarsPromptsQuery } from '~/data-provider';
 import CategoryIcon from '~/components/Prompts/utils/CategoryIcon';
-import useTarsPromptsDomain from './useTarsPromptsDomain';
+import useTarsChatPrompts from './useTarsChatPrompts';
 import useLocalize from '~/hooks/useLocalize';
 import { tarsPromptAsGroup } from '~/utils';
 
@@ -49,22 +48,16 @@ export const toTarsPromptCommands = (
   );
 
 /**
- * The slash-command picker's source: the chat brain's three-tier pwc_tars
- * prompts (brain, its knowledge bases, personal), the same list as 「我的提示」.
- * Fetched only once the picker opens and the brains are known, so it never asks
- * for a brain-less list first; a user with no reachable brain still gets their
- * personal prompts.
+ * The slash-command picker's source: the same list as 「我的提示」 — personal
+ * prompts plus those of the knowledge bases the selected agent's 知識庫檢索
+ * picked. Fetched only once the picker opens.
  */
 export default function useTarsPromptCommands(enabled: boolean): {
   data?: TarsPromptCommands;
   isLoading: boolean;
 } {
   const localize = useLocalize();
-  const domain = useTarsPromptsDomain();
-  const { isFetched: domainsFetched } = useTarsDomainsQuery();
-  const { data, isInitialLoading } = useTarsPromptsQuery(domain ? String(domain.id) : null, {
-    enabled: enabled && domainsFetched,
-  });
+  const { data, isInitialLoading } = useTarsChatPrompts(enabled);
 
   const commands = useMemo(() => {
     if (!data) {

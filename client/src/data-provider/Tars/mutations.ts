@@ -32,6 +32,8 @@ import type {
   TTarsDatasetLevelResult,
   TTarsDataSecurityAssignmentSavePayload,
   TTarsDataSecurityAssignmentSaveResult,
+  TTarsKnowledgeBaseChatSaveResult,
+  TTarsKnowledgeBaseChatSavePayload,
   TTarsDatasetBatchDelete,
   TTarsSchedule,
   TTarsScheduleInput,
@@ -474,6 +476,36 @@ export const useSaveTarsKnowledgeBaseSecurityMutation = (
       ...options,
       onSuccess: (...args) => {
         queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBaseSecurity, knowledgeBaseId]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+type ChatPermissionSave = { knowledgeBaseId: string; data: TTarsKnowledgeBaseChatSavePayload };
+type ChatPermissionSaveResponse = { result: TTarsKnowledgeBaseChatSaveResult };
+
+/**
+ * Overwrites one knowledge base's chat list. The id travels with each call, so the
+ * create dialog can save the list for a knowledge base it has only just created.
+ */
+export const useSaveTarsKnowledgeBaseChatPermissionsMutation = (
+  options?: UseMutationOptions<ChatPermissionSaveResponse, unknown, ChatPermissionSave>,
+): UseMutationResult<ChatPermissionSaveResponse, unknown, ChatPermissionSave> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ knowledgeBaseId, data }: ChatPermissionSave) =>
+      dataService.saveTarsKnowledgeBaseChatPermissions(knowledgeBaseId, data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        const [, { knowledgeBaseId }] = args;
+        queryClient.invalidateQueries([
+          QueryKeys.tarsKnowledgeBaseChatPermissions,
+          knowledgeBaseId,
+        ]);
+        queryClient.invalidateQueries([QueryKeys.tarsKnowledgeBases]);
+        queryClient.invalidateQueries([QueryKeys.tarsChatKnowledgeBases]);
         options?.onSuccess?.(...args);
       },
     },

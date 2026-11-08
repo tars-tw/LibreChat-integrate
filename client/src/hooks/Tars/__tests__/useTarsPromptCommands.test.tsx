@@ -3,12 +3,13 @@ import { RecoilRoot } from 'recoil';
 import { dataService } from 'librechat-data-provider';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { TTarsPrompt, TStartupConfig, TTarsDomainsResponse } from 'librechat-data-provider';
+import type { Agent, TTarsPrompt, TStartupConfig } from 'librechat-data-provider';
 import useTarsPromptCommands, { toTarsPromptCommands } from '../useTarsPromptCommands';
 
 /**
- * The `/` picker lists the chat brain's pwc_tars prompts, matched by command or
- * name, and only asks pwc_tars once the picker opens.
+ * The `/` picker lists the chat's pwc_tars prompts — personal, plus those of the knowledge
+ * bases the selected agent's 知識庫檢索 picked — matched by command or name, and only asks
+ * pwc_tars once the picker opens. An agent binds no 專用腦, so there is no brain tier.
  */
 
 jest.mock('librechat-data-provider', () => {
@@ -22,8 +23,14 @@ jest.mock('~/hooks/useLocalize', () => ({
   default: () => (key: string) => key,
 }));
 
+let mockSelectedAgentId: string | null = null;
+
 jest.mock('~/components/Chat/Menus/Tars/domain', () => ({
-  useSelectedTarsDomain: () => ({ domainId: '154', selectedAgentId: null }),
+  useSelectedTarsDomain: () => ({ domainId: '154', selectedAgentId: mockSelectedAgentId }),
+}));
+
+jest.mock('~/hooks/AuthContext', () => ({
+  useAuthContext: () => ({ user: { provider: 'tars' } }),
 }));
 
 const makePrompt = (overrides: Partial<TTarsPrompt>): TTarsPrompt => ({
@@ -96,46 +103,68 @@ describe('toTarsPromptCommands', () => {
 });
 
 describe('useTarsPromptCommands', () => {
+  const chatPrompts = prompts.filter((prompt) => prompt.scope !== 'domain');
+
   beforeEach(() => {
+    mockSelectedAgentId = null;
     jest
       .spyOn(dataService, 'getStartupConfig')
       .mockResolvedValue({ tarsAuth: true } as TStartupConfig);
-    jest.spyOn(dataService, 'getTarsDomains').mockResolvedValue({
-      domains: [
-        { id: 100, name: 'general' },
-        { id: 154, name: '業務' },
-      ],
-    } as TTarsDomainsResponse);
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
+  const agentWith = (tools: string[]) =>
+    jest.spyOn(dataService, 'getAgentById').mockResolvedValue({
+      id: 'agent_hr',
+      name: 'HR',
+      tools,
+      tars_knowledge_bases: { rag_agent: ['kb-orders'], sql_agent: ['kb-erp'] },
+    } as Agent);
+
   it('does not ask pwc_tars while the picker is closed', async () => {
-    const getPrompts = jest.spyOn(dataService, 'getTarsPrompts');
+    const getPrompts = jest.spyOn(dataService, 'getTarsChatPrompts');
 
     const { result } = renderCommands(false);
 
-    await waitFor(() => expect(dataService.getTarsDomains).toHaveBeenCalled());
+    await waitFor(() => expect(dataService.getStartupConfig).toHaveBeenCalled());
     expect(getPrompts).not.toHaveBeenCalled();
     expect(result.current).toEqual({ data: undefined, isLoading: false });
   });
 
-  it("lists the chat brain's prompts once opened, labelled by tier", async () => {
+  it("lists the picked knowledge bases' prompts and the user's own once opened", async () => {
+    mockSelectedAgentId = 'agent_hr';
+    agentWith(['tars_knowledge_search']);
     const getPrompts = jest
-      .spyOn(dataService, 'getTarsPrompts')
-      .mockResolvedValue({ prompts, knowledgeBases: [] });
+      .spyOn(dataService, 'getTarsChatPrompts')
+      .mockResolvedValue({ prompts: chatPrompts, knowledgeBases: [] });
 
     const { result } = renderCommands(true);
 
-    await waitFor(() => expect(result.current.data?.promptGroups).toHaveLength(3));
+    await waitFor(() => expect(result.current.data?.promptGroups).toHaveLength(2));
     expect(getPrompts).toHaveBeenCalledTimes(1);
-    expect(getPrompts).toHaveBeenCalledWith('154');
+    expect(getPrompts).toHaveBeenCalledWith(['kb-orders']);
     expect(result.current.data?.promptGroups.map((option) => option.description)).toEqual([
-      'com_ui_tars_prompts_domain',
       '訂單知識庫',
       'com_ui_tars_prompts_personal',
     ]);
+  });
+
+  it('asks for no knowledge base while the agent has 知識庫檢索 off, or without an agent', async () => {
+    mockSelectedAgentId = 'agent_hr';
+    agentWith(['tars_sql_query']);
+    const getPrompts = jest
+      .spyOn(dataService, 'getTarsChatPrompts')
+      .mockResolvedValue({ prompts: [], knowledgeBases: [] });
+
+    renderCommands(true);
+    await waitFor(() => expect(getPrompts).toHaveBeenCalledWith([]));
+
+    mockSelectedAgentId = null;
+    getPrompts.mockClear();
+    renderCommands(true);
+    await waitFor(() => expect(getPrompts).toHaveBeenCalledWith([]));
   });
 });

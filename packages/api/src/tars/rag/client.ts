@@ -2,6 +2,7 @@ import { logger } from '@librechat/data-schemas';
 import type { TTarsTraceArtifact } from 'librechat-data-provider';
 import type { TarsUsageAttribution } from '~/tars/langflow/client';
 import type { TarsKnowledgeBase } from '~/tars/knowledge';
+import type { TarsKnowledgeScope } from '~/tars/scope';
 import {
   langflowTimeoutMs,
   toTarsTraceArtifact,
@@ -67,7 +68,7 @@ const toRagKnowledgeBase = (base: TarsKnowledgeBase): TarsRagKnowledgeBase => ({
  */
 export async function listTarsRagKnowledgeBases(
   tarsUserId: string,
-  domainId?: string | number | null,
+  domainId?: TarsKnowledgeScope,
 ): Promise<TarsRagKnowledgeBase[]> {
   const bases = await listTarsScopedKnowledgeBases(tarsUserId, domainId);
   return bases.map(toRagKnowledgeBase);
@@ -109,7 +110,9 @@ export async function runTarsRagAgent(
 ): Promise<TarsRagAgentResult> {
   const reachable = await listTarsRagKnowledgeBases(tarsUserId, input.domainId);
   if (!reachable.length) {
-    throw new Error('The active brain binds no knowledge base, so there is nothing to search.');
+    throw new Error(
+      'The active brain binds no knowledge base this user may use in chat (none is bound, or the user is on none of their chat lists), so there is nothing to search.',
+    );
   }
   const knowledgeBaseIds = resolveTarsKnowledgeBaseIds(reachable, input.knowledgeBaseIds);
   const requestedModel = await resolveLangflowModelName(input.model, 'tars-rag');

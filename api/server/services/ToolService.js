@@ -24,6 +24,7 @@ const {
   getTarsTurnFiles,
   resolveTarsAgentBindings,
   buildTarsToolsContext,
+  tarsAgentKnowledgeBasesOf,
   resolveTarsBuiltinTools,
   createTarsProgressReporter,
   isTarsConfigured,
@@ -1654,12 +1655,14 @@ async function loadToolDefinitionsWrapper({
       logger.warn('[loadToolDefinitionsWrapper] Failed to build TARS agent context', error);
     }
   }
-  /** pwc_tars's usage guide for the mounted built-ins plus what the active
-   *  專用腦 lets them reach. Non-fatal: the tools still validate every id. */
+  /** pwc_tars's usage guide for the mounted built-ins plus what they reach: a saved
+   *  agent's picks per tool, or the active 專用腦 without one. Non-fatal: the tools
+   *  still validate every id. */
   try {
     const tarsToolsContext = await buildTarsToolsContext({
       tarsUserId: req.user?.tarsId,
       domainId: req.body?.domain_id,
+      agentKnowledgeBases: tarsAgentKnowledgeBasesOf(agent),
       tools: filteredTools,
     });
     if (tarsToolsContext) {

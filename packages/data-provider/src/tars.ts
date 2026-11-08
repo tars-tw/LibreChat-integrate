@@ -16,13 +16,6 @@ export const TARS_MCP_SHARE_BLOCKED = 'TARS_MCP_SHARE_BLOCKED';
 export const TARS_MCP_PUBLIC_SHARE_BLOCKED = 'TARS_MCP_PUBLIC_SHARE_BLOCKED';
 /** pwc_tars could not answer, so the share stays refused. */
 export const TARS_MCP_SHARE_CHECK_UNAVAILABLE = 'TARS_MCP_SHARE_CHECK_UNAVAILABLE';
-/**
- * A chat with an agent bound to a 專用腦 the user cannot use: no role grant, or the brain is
- * disabled or deleted. `domain` names the brain when pwc_tars knows it.
- */
-export const TARS_AGENT_DOMAIN_FORBIDDEN = 'TARS_AGENT_DOMAIN_FORBIDDEN';
-/** pwc_tars could not confirm the user may use the agent's 專用腦, so the chat is refused. */
-export const TARS_AGENT_DOMAIN_CHECK_UNAVAILABLE = 'TARS_AGENT_DOMAIN_CHECK_UNAVAILABLE';
 
 /**
  * Shared pwc_tars data-source facts. Both the form in the browser and the
@@ -183,6 +176,56 @@ export const TARS_SWITCH_TOOLS: Readonly<Record<TTarsToolSwitch, readonly TTarsB
   };
 
 export const TARS_TOOL_SWITCHES = Object.keys(TARS_SWITCH_TOOLS) as TTarsToolSwitch[];
+
+/**
+ * The knowledge bases a saved agent picked for each TARS switch (`agent.tars_knowledge_bases`).
+ * A chat turn reaches a pick only where the acting user is on its chat list (`km_permission`);
+ * a switch with nothing picked reaches no knowledge base. An agent binds no 專用腦.
+ */
+export type TTarsAgentKnowledgeBases = Partial<Record<TTarsToolSwitch, string[]>>;
+
+/** Switches whose picks must carry a SQL database: the query, the chart and the file. */
+export const TARS_DATABASE_SWITCHES: readonly TTarsToolSwitch[] = [
+  'sql_agent',
+  'chart_agent',
+  'file_agent',
+];
+
+/** Switches that cannot be saved on an agent without at least one knowledge base picked. */
+export const TARS_REQUIRED_KNOWLEDGE_SWITCHES: readonly TTarsToolSwitch[] = [
+  'rag_agent',
+  'sql_agent',
+];
+
+/** Switches that take a single pick: the query runs against exactly one database. */
+export const TARS_SINGLE_KNOWLEDGE_SWITCHES: readonly TTarsToolSwitch[] = ['sql_agent'];
+
+/** The switch that mounts a built-in tool; undefined for those no switch mounts (data, table task). */
+export const tarsToolSwitchOf = (
+  toolName: string | undefined | null,
+): TTarsToolSwitch | undefined =>
+  TARS_TOOL_SWITCHES.find((id) =>
+    (TARS_SWITCH_TOOLS[id] as readonly string[]).includes(toolName ?? ''),
+  );
+
+/**
+ * The knowledge bases an agent actually uses: the picks of every switch whose tools it
+ * carries. A pick left behind on a switch that is off reaches nothing, so it asks nothing
+ * of anyone the agent is shared with.
+ */
+export const tarsRequiredKnowledgeBaseIds = (
+  tools: readonly string[] | undefined | null,
+  picks: TTarsAgentKnowledgeBases | undefined | null,
+): string[] => {
+  const required = new Set<string>();
+  for (const id of TARS_TOOL_SWITCHES) {
+    const on = (TARS_SWITCH_TOOLS[id] as readonly string[]).some((tool) => tools?.includes(tool));
+    for (const knowledgeBaseId of on ? (picks?.[id] ?? []) : []) {
+      required.add(knowledgeBaseId);
+    }
+  }
+  return [...required];
+};
 
 /** Whether the agent carries the knowledge search, the one tool whose sources can be downloaded. */
 export const hasTarsKnowledgeSearch = (tools: readonly string[] | undefined | null): boolean =>

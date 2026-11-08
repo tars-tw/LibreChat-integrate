@@ -439,6 +439,8 @@ const tarsKb = (id: string) => `${BASE_URL}/api/tars/knowledge-bases/${encodeURI
 export const tarsKnowledgeBaseDatasets = (id: string) => `${tarsKb(id)}/datasets`;
 export const tarsKnowledgeBaseDatasetsLevel = (id: string) => `${tarsKb(id)}/datasets/level`;
 export const tarsKnowledgeBaseSecurity = (id: string) => `${tarsKb(id)}/data-security`;
+export const tarsChatKnowledgeBases = () => `${BASE_URL}/api/tars/chat-knowledge-bases`;
+export const tarsKnowledgeBaseChatPermissions = (id: string) => `${tarsKb(id)}/chat-permissions`;
 export const tarsKnowledgeBaseSecurityLevel = (id: string, levelId: string) =>
   `${tarsKnowledgeBaseSecurity(id)}/${encodeURIComponent(levelId)}`;
 export const tarsSchedules = (knowledgeBaseId?: string) =>
@@ -510,6 +512,11 @@ export const tarsPrompts = (domainId?: string | number) =>
   domainId != null && domainId !== ''
     ? `${BASE_URL}/api/tars/prompts?domain_id=${encodeURIComponent(String(domainId))}`
     : `${BASE_URL}/api/tars/prompts`;
+/** The chat's 我的提示: personal plus the picked knowledge bases' prompts (no 專用腦 tier). */
+export const tarsChatPrompts = (knowledgeBaseIds: readonly string[]) =>
+  knowledgeBaseIds.length > 0
+    ? `${BASE_URL}/api/tars/prompts/chat?knowledge_base_ids=${encodeURIComponent(knowledgeBaseIds.join(','))}`
+    : `${BASE_URL}/api/tars/prompts/chat`;
 export const tarsPromptCategoryRename = () => `${BASE_URL}/api/tars/prompts/categories/rename`;
 export const tarsKnowledgeBasePrompts = (knowledgeBaseId: string) =>
   `${BASE_URL}/api/tars/prompts/knowledge-base/${encodeURIComponent(knowledgeBaseId)}`;

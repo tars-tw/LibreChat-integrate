@@ -18,6 +18,7 @@ import {
   shouldSyncSavedStarters,
   isSavedAgentOption,
   computeInstructionsPromptChanged,
+  missingTarsKnowledgeSwitches,
 } from '../AgentPanel';
 
 test('the create identity contract excludes the update-only clear sentinel', () => {
@@ -268,17 +269,43 @@ describe('composeAgentUpdatePayload', () => {
     expect(payload.git_identity).toEqual({ name: 'Coding Agent', email: '' });
   });
 
-  it('keeps the brain binding only while a pwc_tars tool is selected', () => {
+  it('keeps the knowledge-base picks only of the TARS tools still selected', () => {
     const form = createForm();
-    form.tars_domain_id = '205';
-    form.tools = ['tars_knowledge_search'];
+    form.tars_knowledge_bases = {
+      rag_agent: ['kb1'],
+      sql_agent: ['kb2'],
+      chart_agent: [],
+      file_agent: ['kb3'],
+    };
+    form.tools = ['tars_knowledge_search', 'tars_create_chart', 'tars_generate_file'];
     const compose = (agentId?: string) =>
       composeAgentUpdatePayload(form, agentId, undefined, { instructionsPromptChanged: false });
-    expect(compose('agent_123').payload.tars_domain_id).toBe('205');
+    expect(compose('agent_123').payload.tars_knowledge_bases).toEqual({
+      rag_agent: ['kb1'],
+      file_agent: ['kb3'],
+    });
 
     form.tools = ['web_search'];
-    expect(compose('agent_123').payload.tars_domain_id).toBeNull();
-    expect(compose().payload.tars_domain_id).toBeUndefined();
+    expect(compose('agent_123').payload.tars_knowledge_bases).toBeNull();
+    expect(compose().payload.tars_knowledge_bases).toBeUndefined();
+  });
+
+  it('names the selected TARS tools that still need a knowledge base', () => {
+    const tools = [
+      'tars_knowledge_search',
+      'tars_sql_schema',
+      'tars_sql_query',
+      'tars_create_chart',
+    ];
+
+    expect(missingTarsKnowledgeSwitches(undefined, tools)).toEqual(['rag_agent', 'sql_agent']);
+    expect(missingTarsKnowledgeSwitches({ rag_agent: ['kb1'], sql_agent: [] }, tools)).toEqual([
+      'sql_agent',
+    ]);
+    expect(missingTarsKnowledgeSwitches({ rag_agent: ['kb1'], sql_agent: ['kb2'] }, tools)).toEqual(
+      [],
+    );
+    expect(missingTarsKnowledgeSwitches(undefined, ['tars_create_chart'])).toEqual([]);
   });
 
   it('saves 參考資料下載 as on only while the knowledge search is selected', () => {

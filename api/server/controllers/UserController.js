@@ -22,6 +22,7 @@ const {
   finalizeMCPAuthorizationMutation,
   clearSessionHintCookie,
   compareSecret,
+  resolveTarsAdminMenuKeys,
 } = require('@librechat/api');
 const { Tools, Constants, FileSources } = require('librechat-data-provider');
 const { updateUserPluginAuth, deleteUserPluginAuth } = require('~/server/services/PluginService');
@@ -108,6 +109,7 @@ const getUserController = async (req, res) => {
   const appConfig = req.config ?? (await getAppConfig(getAppConfigOptionsFromUser(req.user)));
   /** @type {IUser} */
   const userData = sanitizeUserForResponse(req.user);
+  userData.tarsAdminMenuKeys = await resolveTarsAdminMenuKeys(req.user);
   if (appConfig.fileStrategy === FileSources.s3 && userData.avatar) {
     const avatarNeedsRefresh = needsRefresh(userData.avatar, 3600);
     if (!avatarNeedsRefresh) {

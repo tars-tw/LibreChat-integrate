@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
-import type { TTarsDomainShareGap } from 'librechat-data-provider';
+import type { TTarsKnowledgeBaseShareGap } from 'librechat-data-provider';
 import McpShareBlocks from '../McpShareBlocks';
 
 jest.mock('~/hooks', () => ({
@@ -16,19 +16,25 @@ const gap = (no_access: boolean, tool_names: string[]) => ({
   tool_names,
 });
 
-const renderBlocks = (servers: ReturnType<typeof gap>[], domain?: TTarsDomainShareGap) =>
+const renderBlocks = (
+  servers: ReturnType<typeof gap>[],
+  knowledgeBases?: TTarsKnowledgeBaseShareGap[],
+) =>
   render(
     <McpShareBlocks
-      blocks={[{ principal_type: 'group', idOnTheSource: 'g1', name: 'UAT', servers, domain }]}
+      blocks={[
+        {
+          principal_type: 'group',
+          idOnTheSource: 'g1',
+          name: 'UAT',
+          servers,
+          knowledge_bases: knowledgeBases,
+        },
+      ]}
     />,
   );
 
-const brain = (overrides: Partial<TTarsDomainShareGap> = {}): TTarsDomainShareGap => ({
-  id: '224',
-  name: 'HR',
-  is_active: true,
-  ...overrides,
-});
+const kb = (id: string, name: string): TTarsKnowledgeBaseShareGap => ({ id, name });
 
 describe('McpShareBlocks', () => {
   it('names a server that was never assigned, without listing its tools', () => {
@@ -56,32 +62,30 @@ describe('McpShareBlocks', () => {
     );
   });
 
-  it('names a brain the target cannot use', () => {
-    renderBlocks([], brain());
+  it('names the knowledge bases the target may not use in chat', () => {
+    renderBlocks([], [kb('kb1', 'HR'), kb('kb2', '規章')]);
 
     expect(screen.getByRole('listitem')).toHaveTextContent(
-      'UAT: com_ui_tars_mcp_share_gap_domain(HR)',
+      'UAT: com_ui_tars_mcp_share_gap_knowledge_bases(HR、規章)',
     );
   });
 
-  it('tells a disabled or deleted brain apart from missing access', () => {
-    const { unmount } = renderBlocks([], brain({ is_active: false }));
-    expect(screen.getByRole('listitem')).toHaveTextContent(
-      'com_ui_tars_mcp_share_gap_domain_disabled(HR)',
+  it('caps a long knowledge-base list at three and states the total', () => {
+    renderBlocks(
+      [],
+      ['a', 'b', 'c', 'd'].map((name) => kb(name, name)),
     );
-    unmount();
 
-    renderBlocks([], brain({ name: null, is_active: false }));
     expect(screen.getByRole('listitem')).toHaveTextContent(
-      'com_ui_tars_mcp_share_gap_domain_deleted',
+      'com_ui_tars_mcp_share_gap_knowledge_bases(com_ui_tars_mcp_share_gap_more(a、b、c|4))',
     );
   });
 
-  it('lists the brain ahead of the MCP gaps', () => {
-    renderBlocks([gap(true, [])], brain());
+  it('lists the knowledge bases ahead of the MCP gaps', () => {
+    renderBlocks([gap(true, [])], [kb('kb1', 'HR')]);
 
     expect(screen.getByRole('listitem')).toHaveTextContent(
-      'UAT: com_ui_tars_mcp_share_gap_domain(HR), com_ui_tars_mcp_share_gap_server(Maps)',
+      'UAT: com_ui_tars_mcp_share_gap_knowledge_bases(HR), com_ui_tars_mcp_share_gap_server(Maps)',
     );
   });
 });

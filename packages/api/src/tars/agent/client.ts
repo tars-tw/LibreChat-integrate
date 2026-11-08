@@ -92,7 +92,7 @@ export function resolveTarsDatabaseId(
   if (id) {
     if (!databases.some((database) => database.knowledge_base_id === id)) {
       throw new Error(
-        `Knowledge base "${id}" has no database bound in the active brain, or this user cannot access it.`,
+        `Knowledge base "${id}" is not a database this tool may use, or this user cannot use it in chat.`,
       );
     }
     return id;

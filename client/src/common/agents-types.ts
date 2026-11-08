@@ -11,6 +11,7 @@ import type {
   GraphEdge,
   Agent,
   AgentInstructionsPrompt,
+  TTarsAgentKnowledgeBases,
   RestrictedAgentInstructionsPrompt,
 } from 'librechat-data-provider';
 import type { OptionWithIcon, ExtendedFile } from './types';
@@ -54,8 +55,8 @@ export type AgentForm = {
   skills_scope?: SkillsScope;
   /** Memory partition: 'agent' isolates memories per (user, agent); default shared pool */
   memory_scope?: MemoryScope;
-  /** pwc_tars 專用腦 the agent's TARS tools are scoped to; unset follows the chat. */
-  tars_domain_id?: string;
+  /** The knowledge bases each TARS tool reaches; see `TTarsAgentKnowledgeBases`. */
+  tars_knowledge_bases?: TTarsAgentKnowledgeBases;
   /** Knowledge-search source files are downloadable from the answer; unset is off. */
   tars_source_download?: boolean;
   /** Sharing scope for stateful Code API workspaces. */

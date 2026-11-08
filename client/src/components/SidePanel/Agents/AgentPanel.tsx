@@ -12,10 +12,16 @@ import {
   removeCodeExecutionCaller,
   resolveStatefulCodeEnvironment,
   isAssistantsEndpoint,
-  isTarsBuiltinToolName,
+  TARS_TOOL_SWITCHES,
   hasTarsKnowledgeSearch,
+  TARS_REQUIRED_KNOWLEDGE_SWITCHES,
 } from 'librechat-data-provider';
-import type { Agent, AgentUpdateParams } from 'librechat-data-provider';
+import type {
+  Agent,
+  TTarsToolSwitch,
+  AgentUpdateParams,
+  TTarsAgentKnowledgeBases,
+} from 'librechat-data-provider';
 import type { FieldNamesMarkedBoolean } from 'react-hook-form';
 import type { InstructionsPromptStatus } from './Instructions';
 import type { TranslationKeys } from '~/hooks/useLocalize';
@@ -43,6 +49,7 @@ import { useAgentPanelContext } from '~/Providers/AgentPanelContext';
 import { resolveCapabilityTools } from './Tools/items/capabilities';
 import { agentSaveShareError } from '~/components/Sharing/errors';
 import ResetApprovals from '~/components/Agents/ResetApprovals';
+import { isTarsSwitchSelected } from './Tools/items/tars';
 import AgentPanelSkeleton from './AgentPanelSkeleton';
 import AdvancedPanel from './Advanced/AdvancedPanel';
 import { Panel, isEphemeralAgent } from '~/common';
@@ -119,19 +126,43 @@ export function isSavedAgentOption(
 }
 
 /**
- * The 專用腦 binding to persist. Like a stale memory scope, a binding hidden behind
- * removed TARS tools would still rescope every turn, so it only survives while a TARS
- * tool is selected; an existing agent clears it with `null`.
+ * The knowledge-base picks to persist: only those of the TARS switches the agent still
+ * carries, so a pick left on a removed tool neither lingers nor asks anything of whoever
+ * the agent is shared with. Nothing left clears the field on an existing agent (`null`).
  */
-function resolveTarsDomainBinding(
-  domainId: string | undefined,
+export function resolveTarsKnowledgeBases(
+  picks: TTarsAgentKnowledgeBases | undefined,
   tools: AgentForm['tools'],
   agentId?: string | null,
-): string | null | undefined {
-  if (domainId && tools?.some(isTarsBuiltinToolName)) {
-    return domainId;
+): TTarsAgentKnowledgeBases | null | undefined {
+  const kept: TTarsAgentKnowledgeBases = {};
+  for (const id of TARS_TOOL_SWITCHES) {
+    const ids = picks?.[id] ?? [];
+    if (ids.length > 0 && isTarsSwitchSelected(tools ?? [], id)) {
+      kept[id] = ids;
+    }
+  }
+  if (Object.keys(kept).length > 0) {
+    return kept;
   }
   return agentId ? null : undefined;
+}
+
+const TARS_SWITCH_NAME_KEYS: Record<TTarsToolSwitch, TranslationKeys> = {
+  rag_agent: 'com_ui_tars_rag_agent',
+  sql_agent: 'com_ui_tars_sql_agent',
+  chart_agent: 'com_ui_tars_chart_agent',
+  file_agent: 'com_ui_tars_file_agent',
+};
+
+/** The switches the agent carries that must name a knowledge base before it can be saved. */
+export function missingTarsKnowledgeSwitches(
+  picks: TTarsAgentKnowledgeBases | undefined,
+  tools: AgentForm['tools'],
+): TTarsToolSwitch[] {
+  return TARS_REQUIRED_KNOWLEDGE_SWITCHES.filter(
+    (id) => isTarsSwitchSelected(tools ?? [], id) && !(picks?.[id]?.length ?? 0),
+  );
 }
 
 /**
@@ -201,7 +232,7 @@ export function composeAgentUpdatePayload(
     skill_authoring_enabled,
     skills_scope,
     memory_scope,
-    tars_domain_id,
+    tars_knowledge_bases,
     tars_source_download,
     avatar_action: avatarActionState,
   } = data;
@@ -298,7 +329,7 @@ export function composeAgentUpdatePayload(
       /** A hidden stale 'agent' scope must not survive disabling memory —
        *  runtime partitioning keys off memory_scope alone. */
       memory_scope: data.memory === true ? memory_scope : MemoryScope.user,
-      tars_domain_id: resolveTarsDomainBinding(tars_domain_id, data.tools, agent_id),
+      tars_knowledge_bases: resolveTarsKnowledgeBases(tars_knowledge_bases, data.tools, agent_id),
       tars_source_download: resolveTarsSourceDownload(tars_source_download, data.tools),
       ...(shouldResetAvatar ? { avatar: null } : {}),
     },
@@ -882,6 +913,17 @@ export default function AgentPanel() {
   const onSubmit = useCallback(
     async (data: AgentForm) => {
       const tools = Array.from(new Set([...(data.tools ?? []), ...resolveCapabilityTools(data)]));
+
+      /** 知識庫檢索 / 資料庫查詢 reach nothing without a pick, so the agent is not saved half set up. */
+      const unpicked = missingTarsKnowledgeSwitches(data.tars_knowledge_bases, data.tools);
+      if (unpicked.length > 0) {
+        return showToast({
+          message: localize('com_agents_tars_kb_required', {
+            0: unpicked.map((id) => localize(TARS_SWITCH_NAME_KEYS[id])).join('、'),
+          }),
+          status: 'error',
+        });
+      }
 
       /** A persisted agent whose expanded query hasn't resolved (or failed) carries no
        *  trustworthy link to diff against: the form may still hold the previously
