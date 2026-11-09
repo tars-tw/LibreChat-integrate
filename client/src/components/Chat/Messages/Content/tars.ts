@@ -57,39 +57,6 @@ export const TOOL_ICONS: Record<string, LucideIcon> = {
   langflow_run: Workflow,
 };
 
-/** pwc_tars agent tools by their pwc_tars name; the audit trace names them the same way. */
-export const TOOL_LABEL_KEYS: Record<string, TranslationKeys> = {
-  knowledge_search: 'com_ui_tars_trace_tool_knowledge_search',
-  sql_schema: 'com_ui_tars_trace_tool_sql_schema',
-  sql_query: 'com_ui_tars_trace_tool_sql_query',
-  data_schema: 'com_ui_tars_trace_tool_data_schema',
-  data_query: 'com_ui_tars_trace_tool_data_query',
-  create_chart: 'com_ui_tars_trace_tool_create_chart',
-  generate_file: 'com_ui_tars_trace_tool_generate_file',
-  web_search: 'com_ui_tars_trace_tool_web_search',
-  web_fetch: 'com_ui_tars_trace_tool_web_fetch',
-  delegate: 'com_ui_tars_trace_tool_delegate',
-  todo_write: 'com_ui_tars_trace_tool_todo_write',
-  ask_user: 'com_ui_tars_trace_tool_ask_user',
-  langflow_run: 'com_ui_tars_trace_tool_langflow_run',
-};
-
-export const TOOL_ICONS: Record<string, LucideIcon> = {
-  knowledge_search: BookOpen,
-  sql_schema: Database,
-  sql_query: Database,
-  data_schema: Table2,
-  data_query: Table2,
-  create_chart: ChartColumn,
-  generate_file: FileOutput,
-  web_search: Globe,
-  web_fetch: Link,
-  delegate: Users,
-  todo_write: ListChecks,
-  ask_user: MessageSquareText,
-  langflow_run: Workflow,
-};
-
 /**
  * How a directly called pwc_tars built-in tool reads to the user. Shared by its
  * own card (`TarsToolCall`) and by the live header of the activity fold that
