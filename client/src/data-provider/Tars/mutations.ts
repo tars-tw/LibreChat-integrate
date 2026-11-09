@@ -79,6 +79,10 @@ import type {
   TTarsTokenConfigInput,
   TTarsTokenQuotaInput,
   TTarsTokenSystemDefaultInput,
+  TTarsTokenQuotaBatchInput,
+  TTarsTokenQuotaBatchResult,
+  TTarsTokenQuotaBatchDeleteInput,
+  TTarsTokenQuotaBatchDeleteResult,
   TTarsWorkflowTicket,
   TTarsWorkflowActAs,
 } from 'librechat-data-provider';
@@ -1979,6 +1983,47 @@ export const useUpdateTarsTokenQuotaMutation = (
       ...options,
       onSuccess: (...args) => {
         invalidateTarsTokenQuotas(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useBatchSetTarsTokenQuotasMutation = (
+  options?: UseMutationOptions<TTarsTokenQuotaBatchResult, unknown, TTarsTokenQuotaBatchInput>,
+): UseMutationResult<TTarsTokenQuotaBatchResult, unknown, TTarsTokenQuotaBatchInput> => {
+  const queryClient = useQueryClient();
+  return useMutation<TTarsTokenQuotaBatchResult, unknown, TTarsTokenQuotaBatchInput>(
+    (data) => dataService.batchSetTarsTokenQuotas(data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsTokenQuotas]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useBatchDeleteTarsTokenQuotasMutation = (
+  options?: UseMutationOptions<
+    TTarsTokenQuotaBatchDeleteResult,
+    unknown,
+    TTarsTokenQuotaBatchDeleteInput
+  >,
+): UseMutationResult<
+  TTarsTokenQuotaBatchDeleteResult,
+  unknown,
+  TTarsTokenQuotaBatchDeleteInput
+> => {
+  const queryClient = useQueryClient();
+  return useMutation<TTarsTokenQuotaBatchDeleteResult, unknown, TTarsTokenQuotaBatchDeleteInput>(
+    (data) => dataService.batchDeleteTarsTokenQuotas(data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsTokenQuotas]);
+        queryClient.invalidateQueries([QueryKeys.tarsMyTokenQuotas]);
         options?.onSuccess?.(...args);
       },
     },

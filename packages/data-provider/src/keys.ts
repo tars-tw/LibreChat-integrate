@@ -86,6 +86,7 @@ export enum QueryKeys {
   tarsTokenConfigs = 'tarsTokenConfigs',
   tarsTokenQuotas = 'tarsTokenQuotas',
   tarsTokenDefaults = 'tarsTokenDefaults',
+  tarsMyTokenQuotas = 'tarsMyTokenQuotas',
   tarsTokenReportOverview = 'tarsTokenReportOverview',
   tarsTokenReportMembers = 'tarsTokenReportMembers',
   tarsTokenReportUser = 'tarsTokenReportUser',

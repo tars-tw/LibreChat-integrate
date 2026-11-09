@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Save } from 'lucide-react';
-import { HelpCircle } from 'lucide-react';
+import { Save, HelpCircle } from 'lucide-react';
 import { Button, Input, Label, Spinner, useToastContext } from '@librechat/client';
 import type { TTarsTokenConfig } from 'librechat-data-provider';
 import { useTarsTokenDefaultsQuery, useUpdateTarsTokenDefaultMutation } from '~/data-provider';
@@ -14,7 +13,6 @@ const SELECT_CLASS =
 
 interface DefaultForm {
   defaultUserLimit: string;
-  systemTotalLimit: string;
   resetType: string;
   resetDay: string;
   warningPercent: string;
@@ -22,13 +20,16 @@ interface DefaultForm {
 
 const formOf = (config: TTarsTokenConfig | undefined): DefaultForm => ({
   defaultUserLimit: toLimitField(config?.default_user_limit),
-  systemTotalLimit: toLimitField(config?.system_total_limit),
   resetType: config?.reset_type ?? 'monthly',
   resetDay: String(config?.reset_day ?? 1),
   warningPercent: String(Math.round((config?.warning_threshold ?? 0.8) * 100)),
 });
 
-/** One provider's fallback rule, saved on its own so a slip cannot touch the others. */
+/**
+ * One provider's fallback rule, saved on its own so a slip cannot touch the others.
+ * The system-wide total is no longer editable: it is never sent, so whatever the
+ * database holds (unlimited) stays as it is.
+ */
 function ProviderDefault({
   provider,
   config,
@@ -52,14 +53,12 @@ function ProviderDefault({
     },
   });
 
-  const invalid =
-    !isValidLimitField(form.defaultUserLimit) || !isValidLimitField(form.systemTotalLimit);
+  const invalid = !isValidLimitField(form.defaultUserLimit);
 
   const handleSave = () =>
     updateMutation.mutate({
       provider,
       default_user_limit: fromLimitField(form.defaultUserLimit),
-      system_total_limit: fromLimitField(form.systemTotalLimit),
       reset_type: form.resetType,
       reset_day: usesResetDay(form.resetType) ? Number(form.resetDay) : 1,
       warning_threshold: Number(form.warningPercent) / 100,
@@ -76,22 +75,17 @@ function ProviderDefault({
         )}
       </header>
 
-      <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
-        <LimitInput
-          id={`tars-default-user-${provider}`}
-          label={localize('com_ui_tars_quota_default_user_limit')}
-          value={form.defaultUserLimit}
-          onChange={(value) => set('defaultUserLimit', value)}
-        />
+      <div className="flex items-end gap-4 p-4">
+        <div className="min-w-0 flex-1">
+          <LimitInput
+            id={`tars-default-user-${provider}`}
+            label={localize('com_ui_tars_quota_default_user_limit')}
+            value={form.defaultUserLimit}
+            onChange={(value) => set('defaultUserLimit', value)}
+          />
+        </div>
 
-        <LimitInput
-          id={`tars-default-total-${provider}`}
-          label={localize('com_ui_tars_quota_system_total_limit')}
-          value={form.systemTotalLimit}
-          onChange={(value) => set('systemTotalLimit', value)}
-        />
-
-        <div className="space-y-1.5">
+        <div className="min-w-0 flex-1 space-y-1.5">
           <Label htmlFor={`tars-default-threshold-${provider}`}>
             {localize('com_ui_tars_quota_warning_threshold')}
           </Label>
@@ -105,7 +99,7 @@ function ProviderDefault({
           />
         </div>
 
-        <div className="space-y-1.5">
+        <div className="min-w-0 flex-1 space-y-1.5">
           <Label htmlFor={`tars-default-reset-${provider}`}>
             {localize('com_ui_tars_quota_col_reset')}
           </Label>
@@ -123,7 +117,7 @@ function ProviderDefault({
           </select>
         </div>
 
-        <div className="space-y-1.5">
+        <div className="min-w-0 flex-1 space-y-1.5">
           <Label htmlFor={`tars-default-day-${provider}`}>
             {localize('com_ui_tars_quota_reset_day')}
           </Label>
@@ -138,7 +132,7 @@ function ProviderDefault({
           />
         </div>
 
-        <div className="flex items-end justify-end">
+        <div className="flex shrink-0 items-end">
           <Button
             variant="submit"
             onClick={handleSave}
@@ -159,8 +153,8 @@ function ProviderDefault({
 
 /**
  * The per-provider fallback rules — config rows with neither brain nor group.
- * pwc_tars falls back to these when no group rule covers a request, so a missing
- * one means that provider is effectively unmetered.
+ * Anyone without a personal quota is held to these, so a missing one means that
+ * provider is effectively unmetered for them.
  */
 export default function Defaults() {
   const localize = useLocalize();

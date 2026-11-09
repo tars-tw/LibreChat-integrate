@@ -64,6 +64,10 @@ import {
   useAssistantsMapContext,
   BadgeRowProvider,
 } from '~/Providers';
+import useTokenQuotaGuard, {
+  useRefreshQuotaAfterReply,
+  TOKEN_PROVIDER_LABELS,
+} from '~/hooks/useTokenQuotaGuard';
 import {
   PendingToolApprovalButton,
   PendingToolApprovalPanel,
@@ -199,6 +203,8 @@ const ChatForm = memo(function ChatForm({
   const automaticPlayback = useRecoilValue(store.automaticPlayback);
   const maximizeChatSpace = useRecoilValue(store.maximizeChatSpace);
   const { isTemporary } = useChatSettings();
+  const quotaGuard = useTokenQuotaGuard(conversation?.model);
+  useRefreshQuotaAfterReply(isSubmitting);
 
   const [showStopButton, setShowStopButton] = useAtom(showStopButtonByIndex(index));
   const plusPopoverAtom = useMemo(() => store.showPlusPopoverFamily(index), [index]);
@@ -671,6 +677,7 @@ const ChatForm = memo(function ChatForm({
                 filesLoading ||
                 isPreparingFromUrl ||
                 disableInputs ||
+                quotaGuard.exceeded ||
                 !codeWorkspace.canSubmit ||
                 isNotAppendable ||
                 answerMode.composerLocked ||
@@ -691,6 +698,7 @@ const ChatForm = memo(function ChatForm({
       answerMode.composerLocked,
       submittableFileCount,
       methods.control,
+      quotaGuard.exceeded,
     ],
   );
 
@@ -765,6 +773,16 @@ const ChatForm = memo(function ChatForm({
         {/* Primary composer owns the selection popup so split-view doesn't double it. */}
         {index === 0 && quotesEnabled && <QuoteButton conversationId={conversationId} />}
         <div className="relative flex w-full flex-col">
+          {quotaGuard.exceeded && (
+            <div
+              role="status"
+              className="border-border-light text-text-secondary bg-surface-secondary mb-1 flex w-full items-center rounded-xl border px-4 py-3 text-sm"
+            >
+              {localize('com_ui_tars_quota_exceeded_notice', {
+                0: TOKEN_PROVIDER_LABELS[quotaGuard.provider ?? ''] ?? '',
+              })}
+            </div>
+          )}
           {steering.enabled && (
             <Queue
               steering={steering}
