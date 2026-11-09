@@ -17,6 +17,7 @@ import { rewriteTarsAssetLinks, sendTarsAsset, TARS_ASSET_ROUTE } from './assets
 const BASE_URL = 'http://tars.test';
 const CHART_PATH = '/static/quickchart/default/chart_1_abc.png';
 const XLSX_PATH = '/static/generate_output/kb_1/%E5%A0%B1%E8%A1%A8_ab.xlsx';
+const PLUGIN_PNG_PATH = '/static/generate_output/plugin_demo/heatmap_ab12cd34.png';
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const SIGNED = /\?sig=[\w-]{22}$/;
 
@@ -102,6 +103,16 @@ describe('sendTarsAsset', () => {
       "attachment; filename*=UTF-8''%E5%A0%B1%E8%A1%A8_ab.xlsx",
     );
     expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}${XLSX_PATH}`, expect.any(Object));
+  });
+
+  it('offers a plugin image from generate_output as a download', async () => {
+    mockTars(200);
+    const response = await request(appWithRelay()).get(rewriteTarsAssetLinks(PLUGIN_PNG_PATH));
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toBe('image/png');
+    expect(response.headers['content-disposition']).toMatch(/^attachment;/);
+    expect(Buffer.compare(response.body as Buffer, Buffer.from(PNG))).toBe(0);
   });
 
   it('refuses a missing, forged, or borrowed signature without asking pwc_tars', async () => {

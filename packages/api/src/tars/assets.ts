@@ -65,6 +65,7 @@ const ASSET_DIRECTORIES = new Map<string, AssetDirectory>([
         ['pdf', 'application/pdf'],
         ['docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
         ['pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+        ['png', 'image/png'],
       ]),
     },
   ],
