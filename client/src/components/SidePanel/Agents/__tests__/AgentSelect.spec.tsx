@@ -167,6 +167,35 @@ describe('AgentSelect resetAgentForm', () => {
       selection: { type: 'production' },
     });
   });
+
+  it('loads the saved knowledge-base picks of each TARS tool', async () => {
+    const picks = { rag_agent: ['kb-hr', 'kb-rules'], sql_agent: ['kb-erp'] };
+    let methods: UseFormReturn<AgentForm> | undefined;
+
+    render(
+      <Harness
+        agent={createAgent({ tars_knowledge_bases: picks })}
+        onMethods={(m) => (methods = m)}
+      />,
+    );
+
+    await waitFor(() => expect(methods?.getValues('tars_knowledge_bases')).toEqual(picks));
+  });
+
+  it('clears the picks of the previous agent when the loaded agent has none', async () => {
+    let methods: UseFormReturn<AgentForm> | undefined;
+
+    render(
+      <Harness
+        agent={createAgent({ tars_knowledge_bases: null })}
+        defaultValues={{ tars_knowledge_bases: { rag_agent: ['kb-other'] } }}
+        onMethods={(m) => (methods = m)}
+      />,
+    );
+
+    await waitFor(() => expect(methods?.getValues('name')).toBe('Agent'));
+    expect(methods?.getValues('tars_knowledge_bases')).toBeUndefined();
+  });
 });
 
 describe('AgentSelect ownership filter', () => {
