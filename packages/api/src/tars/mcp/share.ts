@@ -18,11 +18,14 @@ import type {
   TTarsKnowledgeBaseShareGap,
 } from 'librechat-data-provider';
 import type { NextFunction, Request, Response } from 'express';
+import type { TarsDirectoryCache } from '~/tars/directory';
 import type { TarsSharePrincipal } from '~/tars/domains';
 import type { TarsAvailableToolRow } from './client';
+import type { TarsBoundServer } from './enable';
 import { buildScopedToolName, PROXIED_SERVER_TYPES, tarsMcpFetch } from './client';
 import { gatewayNameFor, tarsMcpDirectEntries } from './names';
 import { fetchTarsKnowledgeBaseShareCheck } from '~/tars/access';
+import { enableTarsBoundServers } from './enable';
 import { isTarsConfigured } from '~/tars/client';
 import { isTarsMcpEnabled } from './config';
 
@@ -44,12 +47,6 @@ interface GatewayServer {
   taken: Set<string>;
   /** pwc_tars has no tool rows for it, so any bound tool asks for the whole server. */
   direct?: boolean;
-}
-
-interface ShareCheckServer {
-  mcp_server_id: string;
-  /** Empty binds the whole server: pwc_tars requires every enabled tool. */
-  mcp_tool_ids: string[];
 }
 
 interface ShareCheckMissing extends TarsSharePrincipal {
@@ -118,9 +115,10 @@ async function loadGatewayServers(): Promise<Map<string, GatewayServer>> {
 /**
  * The tools an agent binds, as pwc_tars ids. A key that resolves to nothing belongs to a
  * deleted tool or server nobody can use, and a server held only by its UI placeholder
- * token binds no tools, so neither asks anything of a share target.
+ * token binds no tools, so neither asks anything of a share target. A whole-server
+ * binding carries no tool ids: pwc_tars then requires every enabled tool.
  */
-function requiredServers(tools: string[], servers: Map<string, GatewayServer>): ShareCheckServer[] {
+function requiredServers(tools: string[], servers: Map<string, GatewayServer>): TarsBoundServer[] {
   const gatewayNames = [...servers.keys()];
   const required = new Map<string, { whole: boolean; toolIds: Set<string> }>();
   for (const tool of tools) {
@@ -292,6 +290,8 @@ export interface TarsAgentShareDeps {
   findEntriesByResource: (resourceType: string, resourceId: string) => Promise<ShareAclEntry[]>;
   findUsersByIds: (ids: string[]) => Promise<ShareUser[]>;
   findGroupsByIds: (ids: string[]) => Promise<Array<ShareGroup | null>>;
+  /** The share dialog's pwc_tars directory; its groups list their active members. */
+  directory: Pick<TarsDirectoryCache, 'get'>;
 }
 
 /** What a save or version restore would leave the agent bound to; omitted = unchanged. */
@@ -313,6 +313,36 @@ export interface TarsAgentShare {
     agent: SharedAgent,
     next: AgentBindings,
   ) => Promise<TarsMcpShareRefusal | null>;
+  /**
+   * Route middleware after `guard`: once the share is saved, turns the agent's MCP
+   * servers on in My Tools for each person the request added or re-roled, a group
+   * meaning its members at that moment.
+   */
+  enableOnShare: (req: Request, res: Response, next: NextFunction) => void;
+  /**
+   * After a save or version restore that leaves the agent bound to `tools`: turns on,
+   * for everyone it is shared with, the servers of the tools that change added.
+   * Never rejects.
+   */
+  enableNewBindings: (agent: SharedAgent, tools?: string[]) => Promise<void>;
+}
+
+/** Whether a principal read back from the ACL is one the request named, by either id. */
+function namedIn(updated: SharePrincipal[]): (principal: SharePrincipal) => boolean {
+  const keys = new Set(
+    updated.flatMap((principal) =>
+      [principal.id, principal.idOnTheSource].flatMap((id) =>
+        id ? [`${principal.type}:${id}`] : [],
+      ),
+    ),
+  );
+  return (principal) =>
+    keys.has(`${principal.type}:${principal.id}`) ||
+    keys.has(`${principal.type}:${principal.idOnTheSource}`);
+}
+
+function logEnableFailure(error: unknown): void {
+  logger.error('[tars-mcp] Failed to turn on the MCP servers of a shared agent', error);
 }
 
 export function createTarsAgentShare(deps: TarsAgentShareDeps): TarsAgentShare {
@@ -418,5 +448,87 @@ export function createTarsAgentShare(deps: TarsAgentShareDeps): TarsAgentShare {
     }));
   };
 
-  return { guard, refuseNewBindings };
+  /** pwc_tars account ids behind principals: users themselves, groups their active members now. */
+  const accountIds = async (principals: SharePrincipal[]): Promise<string[]> => {
+    const ids = new Set<string>();
+    const groupIds = new Set<string>();
+    for (const { type, idOnTheSource } of principals) {
+      if (!idOnTheSource) {
+        continue;
+      }
+      if (type === PrincipalType.USER) {
+        ids.add(idOnTheSource);
+      } else if (type === PrincipalType.GROUP) {
+        groupIds.add(idOnTheSource);
+      }
+    }
+    if (groupIds.size > 0) {
+      const { groups } = await deps.directory.get();
+      for (const group of groups) {
+        if (groupIds.has(group.id)) {
+          group.memberIds.forEach((id) => ids.add(id));
+        }
+      }
+    }
+    return [...ids];
+  };
+
+  const enableBindings = async (tools: string[], principals: SharePrincipal[]): Promise<void> => {
+    if (principals.length === 0) {
+      return;
+    }
+    const bound = requiredServers(tools, await loadGatewayServers());
+    if (bound.length === 0) {
+      return;
+    }
+    await enableTarsBoundServers(await accountIds(principals), bound);
+  };
+
+  const bindsGatewayTools = (tools: string[]): boolean =>
+    isTarsMcpEnabled() && tools.some(isTarsMcpToolKey);
+
+  const enableShared = async (resourceId: string, updated: SharePrincipal[]): Promise<void> => {
+    const agent = await deps.getAgent({ _id: resourceId });
+    const tools = agent?.tools ?? [];
+    if (!agent || !bindsGatewayTools(tools)) {
+      return;
+    }
+    const shared = await listSharedPrincipals(agent);
+    await enableBindings(tools, shared.filter(namedIn(updated)));
+  };
+
+  const enableOnShare: TarsAgentShare['enableOnShare'] = (req, res, next) => {
+    const { resourceType, resourceId } = req.params;
+    const { updated } = (req.body ?? {}) as { updated?: SharePrincipal[] };
+    if (
+      !SHARED_RESOURCES.includes(resourceType) ||
+      !Array.isArray(updated) ||
+      updated.length === 0 ||
+      !isTarsMcpEnabled()
+    ) {
+      next();
+      return;
+    }
+    res.once('finish', () => {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        enableShared(resourceId, updated).catch(logEnableFailure);
+      }
+    });
+    next();
+  };
+
+  const enableNewBindings: TarsAgentShare['enableNewBindings'] = async (agent, tools) => {
+    const existing = new Set(agent.tools ?? []);
+    const added = (tools ?? []).filter((tool) => !existing.has(tool));
+    if (!bindsGatewayTools(added)) {
+      return;
+    }
+    try {
+      await enableBindings(added, await listSharedPrincipals(agent));
+    } catch (error) {
+      logEnableFailure(error);
+    }
+  };
+
+  return { guard, refuseNewBindings, enableOnShare, enableNewBindings };
 }
