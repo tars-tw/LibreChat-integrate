@@ -486,7 +486,7 @@
   },
   "client/src/components/Admin/Tars/TokenQuota/Manager.tsx": {
     "shadcn/no-restyle": {
-      "count": 4
+      "count": 3
     }
   },
   "client/src/components/Admin/Tars/TokenQuota/QuotaModal.tsx": {
@@ -499,12 +499,7 @@
       "count": 1
     },
     "shadcn/no-raw-colors": {
-      "count": 13
-    }
-  },
-  "client/src/components/Admin/Tars/TokenQuota/Report/Groups.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 4
+      "count": 7
     }
   },
   "client/src/components/Admin/Tars/TokenQuota/Report/Members.tsx": {
@@ -530,12 +525,6 @@
   "client/src/components/Admin/Tars/TokenQuota/TokenQuotaInfo.tsx": {
     "design/disabled-recipe": {
       "count": 2
-    },
-    "shadcn/no-inline-styles": {
-      "count": 1
-    },
-    "shadcn/no-raw-colors": {
-      "count": 12
     }
   },
   "client/src/components/Admin/Tars/TokenQuota/UserPicker.tsx": {

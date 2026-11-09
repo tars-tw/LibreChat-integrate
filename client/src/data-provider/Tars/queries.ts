@@ -95,6 +95,7 @@ import type {
   TTarsTokenReportMembersResponse,
   TTarsTokenReportUserQuery,
   TTarsTokenReportUserResponse,
+  TTarsMyTokenQuotasResponse,
   TTarsEmbeddingUsageQuery,
   TTarsEmbeddingUsageSummary,
   TTarsMessageEmbeddingUsage,
@@ -1200,6 +1201,27 @@ export const useTarsTokenDefaultsQuery = (
     {
       select: (data) => data.defaults ?? [],
       ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** The signed-in user's own quota per provider, for the sidebar's usage button. */
+export const useTarsMyTokenQuotasQuery = (
+  config?: UseQueryOptions<
+    TTarsMyTokenQuotasResponse,
+    unknown,
+    TTarsMyTokenQuotasResponse['quotas']
+  >,
+): QueryObserverResult<TTarsMyTokenQuotasResponse['quotas']> => {
+  return useQuery<TTarsMyTokenQuotasResponse, unknown, TTarsMyTokenQuotasResponse['quotas']>(
+    [QueryKeys.tarsMyTokenQuotas],
+    () => dataService.getTarsMyTokenQuotas(),
+    {
+      select: (data) => data.quotas ?? [],
+      staleTime: 30 * 1000,
+      refetchInterval: 60 * 1000,
+      refetchOnWindowFocus: true,
       ...config,
     },
   );

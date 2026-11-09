@@ -571,11 +571,14 @@ export const tarsTokenConfig = (id: string) =>
 export const tarsTokenQuotas = () => `${BASE_URL}/api/tars/token/quotas`;
 export const tarsTokenQuota = (id: string) =>
   `${BASE_URL}/api/tars/token/quotas/${encodeURIComponent(id)}`;
+export const tarsTokenQuotasBatch = () => `${BASE_URL}/api/tars/token/quotas/batch`;
+export const tarsTokenQuotasBatchDelete = () => `${BASE_URL}/api/tars/token/quotas/batch-delete`;
 export const tarsTokenSystemDefaults = () => `${BASE_URL}/api/tars/token/system-defaults`;
 export const tarsTokenReportOverview = () => `${BASE_URL}/api/tars/token/report/overview`;
 export const tarsTokenReportMembers = () => `${BASE_URL}/api/tars/token/report/members`;
 export const tarsTokenReportUser = () => `${BASE_URL}/api/tars/token/report/user`;
 export const tarsTokenReportExport = () => `${BASE_URL}/api/tars/token/report/export`;
+export const tarsMyTokenQuotas = () => `${BASE_URL}/api/tars/me/token-quotas`;
 export const tarsEmbeddingUsageSummary = (query: Record<string, string>) =>
   `${BASE_URL}/api/tars/token/embedding/summary?${new URLSearchParams(query).toString()}`;
 export const tarsMessageEmbeddingUsage = (messageId: string) =>
