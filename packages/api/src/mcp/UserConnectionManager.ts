@@ -36,6 +36,7 @@ import { resolveDirectOpenIDBearerConfig, usesDirectOpenIDBearerRecovery } from 
 import { MCPServersRegistry } from '~/mcp/registry/MCPServersRegistry';
 import { ConnectionsRepository } from '~/mcp/ConnectionsRepository';
 import { MCPConnectionFactory } from '~/mcp/MCPConnectionFactory';
+import { assertTarsDirectMcpAccess } from '~/tars/mcp/access';
 import { processMCPEnv, isPluginSourced } from '~/utils/env';
 import { OAuthLifecycleRelay } from '~/mcp/oauth/pending';
 import { preProcessGraphTokens } from '~/utils/graph';
@@ -486,6 +487,7 @@ export abstract class UserConnectionManager {
     const directBearerRecoveryState = opts.directBearerRecoveryState ?? { attempted: false };
 
     const config = connectionTarget.serverConfig;
+    await assertTarsDirectMcpAccess(serverName, config, opts.user);
     const configGeneration = getMCPAppToolsPublicationGeneration(config);
     const missingBodyFields = config
       ? getMissingRuntimeBodyPlaceholderFields(config, opts.requestBody)

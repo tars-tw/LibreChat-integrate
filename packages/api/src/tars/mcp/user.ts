@@ -1,13 +1,18 @@
 import { logger } from '@librechat/data-schemas';
 import { Constants, TARS_MCP_SERVER_PREFIX } from 'librechat-data-provider';
-import type { TarsAvailableToolRow } from './client';
+import type { TTarsMcpDirectToolsStatus } from 'librechat-data-provider';
+import type { TarsAvailableToolRow, TarsMcpVisibility, TarsToolCheck } from './client';
+import type { TarsDirectToolCatalog } from './catalog';
 import {
   tarsMcpFetch,
   buildScopedToolName,
   PROXIED_SERVER_TYPES,
+  cachedTarsMcpVisibility,
   invalidateTarsMcpToolsCache,
 } from './client';
+import { listDirectCatalogTools, readDirectCatalogs } from './catalog';
 import { filterVisibleWorkflowMcpConfigs } from '~/langflow/config';
+import { TARS_MCP_AUTH_OIDC, tarsDirectEnabledTools } from './oidc';
 import { isTarsMcpEnabled } from './config';
 import { gatewayNameFor } from './names';
 
@@ -26,6 +31,8 @@ export interface TarsMcpUserTool {
   description?: string | null;
   input_schema?: Record<string, unknown> | null;
   user_enabled: boolean;
+  /** Full LibreChat tool key; set on an OIDC server's tools, read off the user's connection. */
+  tool_key?: string;
 }
 
 export interface TarsMcpUserServer {
@@ -41,6 +48,10 @@ export interface TarsMcpUserServer {
   auth_type: string;
   login_fields: string[];
   tools: TarsMcpUserTool[];
+  /** Why an enabled OIDC server's list reads as it does; see {@link withTarsDirectTools}. */
+  tools_status?: TTarsMcpDirectToolsStatus;
+  /** The user's own `{tool name: enabled}` choices; missing means enabled. */
+  tool_config?: Record<string, boolean> | null;
   /** Injected `mcpConfig` entry name; absent when the server has no chat entry. */
   gateway_name?: string;
 }
@@ -77,6 +88,70 @@ export interface TarsMcpDomainServer {
   tool_count?: number;
 }
 
+const isReachableDirectServer = (server: TarsMcpUserServer): boolean =>
+  server.user_enabled && server.auth_type === TARS_MCP_AUTH_OIDC && server.gateway_name != null;
+
+/** The admin's allow-lists live on the server rows, which `user-settings` does not carry. */
+async function readServerEnabledTools(): Promise<Map<string, ReadonlySet<string>>> {
+  const servers =
+    await tarsMcpFetch<{ id: string; tool_config?: Record<string, unknown> | null }[]>(
+      '/api/mcp/servers',
+    );
+  return new Map((servers ?? []).map((server) => [server.id, tarsDirectEnabledTools(server)]));
+}
+
+/**
+ * pwc_tars has no tool rows for an OIDC server, so its tools are filled in from the user's own
+ * connection. `tools_status` says why the list is what it is, so the page can explain an empty one.
+ */
+export async function withTarsDirectTools(
+  servers: TarsMcpUserServer[],
+  loadCatalog?: TarsDirectToolCatalog,
+  timeoutMs?: number,
+): Promise<TarsMcpUserServer[]> {
+  const entryNames = servers.filter(isReachableDirectServer).map((s) => s.gateway_name as string);
+  if (!loadCatalog || entryNames.length === 0) {
+    return servers;
+  }
+  try {
+    const [catalogs, serverEnabled] = await Promise.all([
+      readDirectCatalogs(loadCatalog, entryNames, timeoutMs),
+      readServerEnabledTools(),
+    ]);
+    return servers.map((server) => {
+      if (!isReachableDirectServer(server)) {
+        return server;
+      }
+      const outcome = catalogs.get(server.gateway_name as string);
+      if (outcome?.failure) {
+        return { ...server, tools_status: outcome.failure };
+      }
+      const listed = listDirectCatalogTools(server.gateway_name as string, outcome?.catalog);
+      const opened = listed.filter((tool) => serverEnabled.get(server.id)?.has(tool.name));
+      let tools_status: TTarsMcpDirectToolsStatus = 'ok';
+      if (listed.length === 0) {
+        tools_status = 'not_connected';
+      } else if (opened.length === 0) {
+        tools_status = 'none_opened';
+      }
+      return {
+        ...server,
+        tools_status,
+        tools: opened.map((tool) => ({
+          ...tool,
+          id: tool.name,
+          user_enabled: server.tool_config?.[tool.name] !== false,
+        })),
+      };
+    });
+  } catch (error) {
+    logger.warn('[tars-mcp] Failed to read the tools of OIDC MCP servers', error);
+    return servers.map((server) =>
+      isReachableDirectServer(server) ? { ...server, tools_status: 'error' as const } : server,
+    );
+  }
+}
+
 /**
  * The MCP servers assigned to the user (directly or through an active group),
  * split by the user's opt-in state. No brain (domain) is involved any more.
@@ -93,12 +168,18 @@ export interface TarsMcpDomainServer {
  * are read from the user's own settings (already limited to their grants) —
  * otherwise an assigned server would vanish from chat with no hint it exists.
  */
-export async function getUserTarsMcpTools(tarsUserId: string): Promise<TarsMcpDomainServer[]> {
+export async function getUserTarsMcpTools(
+  tarsUserId: string,
+  loadCatalog?: TarsDirectToolCatalog,
+  timeoutMs?: number,
+): Promise<TarsMcpDomainServer[]> {
   const [rows, settings] = await Promise.all([
     tarsMcpFetch<TarsAvailableToolRow[]>('/api/mcp/available-tools', {
       query: { user_id: tarsUserId },
     }),
-    getUserTarsMcpSettings(tarsUserId).catch(() => []),
+    getUserTarsMcpSettings(tarsUserId)
+      .then((servers) => withTarsDirectTools(servers, loadCatalog, timeoutMs))
+      .catch(() => []),
   ]);
 
   const servers = new Map<string, TarsMcpDomainServer>();
@@ -141,9 +222,12 @@ export async function getUserTarsMcpTools(tarsUserId: string): Promise<TarsMcpDo
   }
 
   /** Authoritative opt-in state: a server can be enabled yet contribute no rows
-   *  above (every tool individually disabled), and that is not a pending server. */
+   *  above (every tool individually disabled), and that is not a pending server.
+   *  An OIDC server is the exception: pwc_tars cannot list its tools, they come from
+   *  the user's own connection, so an enabled one has no rows and is still usable. */
   for (const setting of settings) {
-    if (setting.user_enabled || servers.has(setting.id)) {
+    const enabledOidc = setting.user_enabled && setting.auth_type === TARS_MCP_AUTH_OIDC;
+    if ((setting.user_enabled && !enabledOidc) || servers.has(setting.id)) {
       continue;
     }
     if (setting.is_enabled === false || !PROXIED_SERVER_TYPES.has(setting.type)) {
@@ -158,8 +242,14 @@ export async function getUserTarsMcpTools(tarsUserId: string): Promise<TarsMcpDo
       code: setting.code ?? null,
       type: setting.type,
       gateway_name: setting.gateway_name,
-      user_enabled: false,
-      tools: [],
+      user_enabled: enabledOidc,
+      tools: enabledOidc
+        ? setting.tools.flatMap((tool) =>
+            tool.user_enabled && tool.tool_key
+              ? [{ name: tool.name, description: tool.description, tool_key: tool.tool_key }]
+              : [],
+          )
+        : [],
       tool_count: setting.tools.length,
     });
   }
@@ -183,24 +273,63 @@ export async function getUserTarsMcpSettings(tarsUserId: string): Promise<TarsMc
 const isGatewayEntry = (serverName: string): boolean =>
   serverName.startsWith(TARS_MCP_SERVER_PREFIX);
 
-async function visibleGatewayNames(tarsUserId?: string | null): Promise<Set<string>> {
+const NO_TOOLS: ReadonlySet<string> = new Set();
+const ANY_TOOL: TarsToolCheck = () => true;
+
+/** Only an OIDC entry is checked here; pwc_tars applies a gateway entry's switches on its own. */
+const toolCheckFor = (
+  server: TarsMcpUserServer,
+  serverEnabled: ReadonlySet<string> = NO_TOOLS,
+): TarsToolCheck =>
+  server.auth_type === TARS_MCP_AUTH_OIDC
+    ? (toolName) => serverEnabled.has(toolName) && server.tool_config?.[toolName] !== false
+    : ANY_TOOL;
+
+const toVisibility = (
+  servers: TarsMcpUserServer[],
+  serverEnabled?: ReadonlyMap<string, ReadonlySet<string>>,
+): TarsMcpVisibility =>
+  new Map(
+    servers.flatMap((server): [string, TarsToolCheck][] =>
+      server.user_enabled && server.gateway_name != null
+        ? [[server.gateway_name, toolCheckFor(server, serverEnabled?.get(server.id))]]
+        : [],
+    ),
+  );
+
+const readVisibleEntries = async (tarsUserId: string): Promise<TarsMcpVisibility> =>
+  toVisibility(await getUserTarsMcpSettings(tarsUserId));
+
+/** The listing the per-call checks read, which needs the admin's allow-lists as well. */
+async function readToolAccess(tarsUserId: string): Promise<TarsMcpVisibility> {
+  const servers = await getUserTarsMcpSettings(tarsUserId);
+  return toVisibility(
+    servers,
+    servers.some(isReachableDirectServer) ? await readServerEnabledTools() : undefined,
+  );
+}
+
+async function failClosed(
+  tarsUserId: string | null | undefined,
+  read: (tarsUserId: string) => Promise<TarsMcpVisibility>,
+): Promise<TarsMcpVisibility> {
   if (!tarsUserId) {
-    return new Set();
+    return new Map();
   }
   try {
-    const servers = await getUserTarsMcpSettings(tarsUserId);
-    return new Set(
-      servers.flatMap((server) =>
-        server.user_enabled && server.gateway_name != null ? [server.gateway_name] : [],
-      ),
-    );
+    return await read(tarsUserId);
   } catch (error) {
     logger.warn(
       `[tars-mcp] Failed to read MCP settings for pwc_tars user ${tarsUserId}; hiding gateway entries`,
       error,
     );
-    return new Set();
+    return new Map();
   }
+}
+
+/** Per-call variant of the visibility read, for the direct entries' access checks. */
+export function cachedVisibleTarsEntries(tarsUserId?: string | null): Promise<TarsMcpVisibility> {
+  return failClosed(tarsUserId, (id) => cachedTarsMcpVisibility(id, () => readToolAccess(id)));
 }
 
 /**
@@ -220,7 +349,7 @@ export async function filterVisibleTarsMcpConfigs<T>(
   if (!isTarsMcpEnabled() || !Object.keys(configs).some(isGatewayEntry)) {
     return configs;
   }
-  const visible = await visibleGatewayNames(tarsUserId);
+  const visible = await failClosed(tarsUserId, readVisibleEntries);
   return Object.fromEntries(
     Object.entries(configs).filter(([name]) => !isGatewayEntry(name) || visible.has(name)),
   );

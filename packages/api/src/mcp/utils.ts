@@ -825,6 +825,8 @@ export function redactServerSecrets(
         authorization_url: _au,
         token_url: _tu,
         revocation_endpoint: _re,
+        oidc_issuer: _issuer,
+        oidc_jwks_uri: _jwks,
         ...restOAuth
       } = safe.oauth;
       safe.oauth = restOAuth;

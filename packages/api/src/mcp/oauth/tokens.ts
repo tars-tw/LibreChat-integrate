@@ -93,6 +93,7 @@ interface GetTokensParams {
       storedServerUrl?: string;
       clientSource?: OAuthStoredClientMetadata['client_source'];
       resource?: string;
+      idTokenSubject?: string;
     },
     signal?: AbortSignal,
   ) => Promise<MCPOAuthTokens>;
@@ -189,6 +190,11 @@ function getJwtAccessTokenExpiry(accessToken?: string): number | null {
     /* Not a JWT or malformed — fall through to other expiry sources. */
   }
   return null;
+}
+
+function getStoredIdTokenSubject(tokenData: IToken | null | undefined): string | undefined {
+  const subject = getTokenMetadata(tokenData).id_token_subject;
+  return typeof subject === 'string' ? subject : undefined;
 }
 
 function getTokenMetadata(tokenData: IToken | null | undefined): Record<string, unknown> {
@@ -626,7 +632,11 @@ export class MCPTokenStorage {
          */
         credentialSetId = validTokenCredentialSetId ?? randomUUID();
       }
-      const tokenMetadata = { credential_set_id: credentialSetId };
+      const idTokenSubject = 'id_token_subject' in tokens ? tokens.id_token_subject : undefined;
+      const tokenMetadata = {
+        credential_set_id: credentialSetId,
+        ...(idTokenSubject && { id_token_subject: idTokenSubject }),
+      };
 
       /**
        * Snapshot every record before the first write. Conditional updates below use these
@@ -1736,6 +1746,7 @@ export class MCPTokenStorage {
         storedServerUrl,
         clientSource,
         resource,
+        idTokenSubject: getStoredIdTokenSubject(refreshTokenData),
       };
 
       /**

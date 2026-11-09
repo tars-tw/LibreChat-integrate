@@ -23,6 +23,7 @@ export function createTokenMethods(mongoose: typeof import('mongoose')): {
   ) => Promise<boolean>;
   updateToken: (query: TokenQuery, updateData: TokenUpdateData) => Promise<IToken | null>;
   deleteTokens: (query: TokenQuery) => Promise<TokenDeleteResult>;
+  findTokenUserIds: (identifiers: string[]) => Promise<string[]>;
 } {
   let indexPromise: Promise<unknown> | null = null;
 
@@ -34,6 +35,14 @@ export function createTokenMethods(mongoose: typeof import('mongoose')): {
       });
     }
     return indexPromise;
+  }
+
+  /** Users holding a token under any of these identifiers. */
+  async function findTokenUserIds(identifiers: string[]): Promise<string[]> {
+    const userIds: Array<{ toString(): string }> = await mongoose.models.Token.distinct('userId', {
+      identifier: { $in: identifiers },
+    });
+    return userIds.map(String);
   }
 
   /**
@@ -234,7 +243,9 @@ export function createTokenMethods(mongoose: typeof import('mongoose')): {
     replaceTokenIfCurrent,
     updateToken,
     deleteTokens,
+    findTokenUserIds,
   };
 }
 
-export type TokenMethods = ReturnType<typeof createTokenMethods>;
+/** What the OAuth token stack takes as a dependency; holder lookups are for server teardown only. */
+export type TokenMethods = Omit<ReturnType<typeof createTokenMethods>, 'findTokenUserIds'>;

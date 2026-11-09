@@ -20,9 +20,9 @@ import type { TarsSharePrincipal } from '~/tars/domains';
 import type { TarsAvailableToolRow } from './client';
 import { buildScopedToolName, PROXIED_SERVER_TYPES, tarsMcpFetch } from './client';
 import { fetchTarsDomainShareCheck, toTarsDomainShareGap } from '~/tars/domains';
+import { gatewayNameFor, tarsMcpDirectEntries } from './names';
 import { isTarsConfigured } from '~/tars/client';
 import { isTarsMcpEnabled } from './config';
-import { gatewayNameFor } from './names';
 
 /**
  * Sharing an agent never gave anyone its pwc_tars MCP tools or its 專用腦: the gateway
@@ -40,6 +40,8 @@ interface GatewayServer {
   /** Gateway tool name → pwc_tars tool id. */
   toolIds: Map<string, string>;
   taken: Set<string>;
+  /** pwc_tars has no tool rows for it, so any bound tool asks for the whole server. */
+  direct?: boolean;
 }
 
 interface ShareCheckServer {
@@ -105,6 +107,9 @@ async function loadGatewayServers(): Promise<Map<string, GatewayServer>> {
       server.toolIds.set(scopedName, row.tool_id);
     }
   }
+  for (const [gatewayName, id] of tarsMcpDirectEntries()) {
+    servers.set(gatewayName, { id, toolIds: new Map(), taken: new Set(), direct: true });
+  }
   return servers;
 }
 
@@ -127,7 +132,7 @@ function requiredServers(tools: string[], servers: Map<string, GatewayServer>): 
     }
     const entry = required.get(server.id) ?? { whole: false, toolIds: new Set<string>() };
     const toolId = server.toolIds.get(toolName);
-    if (toolName === Constants.mcp_all) {
+    if (toolName === Constants.mcp_all || server.direct) {
       entry.whole = true;
     } else if (toolId != null) {
       entry.toolIds.add(toolId);

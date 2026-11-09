@@ -104,6 +104,11 @@ jest.mock('~/utils', () => ({
   getThreadData: (...args: unknown[]) => mockGetThreadData(...args),
 }));
 
+const mockDropDisabledTarsDirectTools = jest.fn((selection: unknown) => Promise.resolve(selection));
+jest.mock('~/tars/mcp/access', () => ({
+  dropDisabledTarsDirectTools: (...args: [unknown]) => mockDropDisabledTarsDirectTools(...args),
+}));
+
 const mockGetProviderConfig = jest.fn();
 jest.mock('~/endpoints', () => ({
   getProviderConfig: (...args: unknown[]) => mockGetProviderConfig(...args),
@@ -7135,6 +7140,31 @@ describe('initializeAgent — MCP tool cap by relevance', () => {
 
   afterEach(() => {
     delete process.env.MCP_MAX_TOOLS;
+  });
+
+  it('drops the tools a user switched off on an OIDC server before the cap reads them', async () => {
+    const off = mcpDefinition('whoami', 'Who am I');
+    const on = mcpDefinition('health', 'Health');
+    const { agent, req, res, loadTools, db } = createMocks({ loadedToolDefinitions: [off, on] });
+    mockDropDisabledTarsDirectTools.mockImplementationOnce((selection) =>
+      Promise.resolve({ ...(selection as object), toolDefinitions: [on] }),
+    );
+
+    const result = await initializeAgent(
+      {
+        req,
+        res,
+        agent,
+        loadTools,
+        endpointOption: { endpoint: EModelEndpoint.agents },
+        allowedProviders: new Set([Providers.OPENAI]),
+        isInitialAgent: true,
+      },
+      db,
+    );
+
+    expect(mockDropDisabledTarsDirectTools).toHaveBeenCalledTimes(1);
+    expect(result.toolDefinitions?.map((tool) => tool.name)).toEqual([on.name]);
   });
 
   it('keeps the MCP tools most relevant to the user message and every native tool', async () => {

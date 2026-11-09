@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { tarsMcpServerName } from 'librechat-data-provider';
 import {
   Tabs,
   Label,
@@ -21,6 +22,13 @@ import type {
   TTarsMcpParsedTool,
 } from 'librechat-data-provider';
 import {
+  useSyncTarsMcpServerMutation,
+  useCreateTarsMcpServerMutation,
+  useUpdateTarsMcpServerMutation,
+  useParseTarsMcpOpenapiMutation,
+  useGetStartupConfig,
+} from '~/data-provider';
+import {
   headersToRows,
   rowsToHeaders,
   readBoundValues,
@@ -30,20 +38,15 @@ import {
   type BoundValues,
   type HeaderRow,
 } from './boundValues';
-import {
-  useSyncTarsMcpServerMutation,
-  useCreateTarsMcpServerMutation,
-  useUpdateTarsMcpServerMutation,
-  useParseTarsMcpOpenapiMutation,
-} from '~/data-provider';
 import { errorMessage } from '~/components/Admin/Tars/Models/helpers';
 import McpOpenapiFixedValues from './McpOpenapiFixedValues';
 import McpCustomApiTools from './McpCustomApiTools';
 import McpStaticHeaders from './McpStaticHeaders';
 import McpParsedTools from './McpParsedTools';
+import McpFieldLabel from './McpFieldLabel';
 import { useLocalize } from '~/hooks';
 
-type AuthType = 'none' | 'bearer' | 'api_key' | 'basic' | 'login';
+type AuthType = 'none' | 'bearer' | 'api_key' | 'basic' | 'login' | 'oidc';
 
 interface AuthForm {
   type: AuthType;
@@ -55,6 +58,13 @@ interface AuthForm {
   tokenUrl: string;
   tokenField: string;
   credentialsJson: string;
+  oidcIssuer: string;
+  oidcClientId: string;
+  /** Write-only: blank keeps the stored secret, which the server never returns. */
+  oidcClientSecret: string;
+  oidcHasClientSecret: boolean;
+  oidcScope: string;
+  oidcAudience: string;
 }
 
 type ServerType = 'openapi' | 'custom_api' | 'external';
@@ -97,6 +107,12 @@ const DEFAULT_AUTH: AuthForm = {
   tokenUrl: '',
   tokenField: 'access_token',
   credentialsJson: '{\n  "email": "",\n  "password": ""\n}',
+  oidcIssuer: '',
+  oidcClientId: '',
+  oidcClientSecret: '',
+  oidcHasClientSecret: false,
+  oidcScope: '',
+  oidcAudience: '',
 };
 
 /** `TabsContent` ships with `mt-2 p-6`; each panel owns its own spacing instead. */
@@ -121,6 +137,11 @@ function parseAuthForm(config: Record<string, unknown> | null | undefined): Auth
     credentialsJson: auth.credentials
       ? JSON.stringify(auth.credentials, null, 2)
       : DEFAULT_AUTH.credentialsJson,
+    oidcIssuer: String(auth.issuer ?? ''),
+    oidcClientId: String(auth.client_id ?? ''),
+    oidcHasClientSecret: auth.has_client_secret === true,
+    oidcScope: String(auth.scope ?? ''),
+    oidcAudience: String(auth.audience ?? ''),
   };
 }
 
@@ -136,6 +157,16 @@ function buildAuth(form: AuthForm): Record<string, unknown> | undefined {
   }
   if (form.type === 'basic') {
     return { type: 'basic', username: form.username, password: form.password };
+  }
+  if (form.type === 'oidc') {
+    return {
+      type: 'oidc',
+      issuer: form.oidcIssuer.trim(),
+      client_id: form.oidcClientId.trim(),
+      client_secret: form.oidcClientSecret,
+      scope: form.oidcScope.trim(),
+      audience: form.oidcAudience.trim(),
+    };
   }
   return {
     type: 'login',
@@ -190,6 +221,7 @@ export default function McpServerModal({
 }) {
   const localize = useLocalize();
   const { showToast } = useToastContext();
+  const { data: startupConfig } = useGetStartupConfig();
   const isEdit = server != null;
   const [form, setForm] = useState<ServerForm>(() => toForm(server));
   const [parsed, setParsed] = useState<TTarsMcpParsedSpec | null>(null);
@@ -228,6 +260,15 @@ export default function McpServerModal({
     setForm((prev) => ({ ...prev, [key]: value }));
   const setAuth = <K extends keyof AuthForm>(key: K, value: AuthForm[K]) =>
     setForm((prev) => ({ ...prev, auth: { ...prev.auth, [key]: value } }));
+  /** OIDC exists only on external streamable_http, so a choice that leaves it clears the selection. */
+  const setConnectionKind = (kind: Partial<Pick<ServerForm, 'type' | 'transport'>>) =>
+    setForm((prev) => {
+      const next = { ...prev, ...kind };
+      const supportsOidc = next.type === 'external' && next.transport === 'streamable_http';
+      return next.auth.type === 'oidc' && !supportsOidc
+        ? { ...next, auth: { ...next.auth, type: 'none' } }
+        : next;
+    });
 
   const handleParse = async () => {
     if (!form.openapiUrl.trim()) {
@@ -323,14 +364,23 @@ export default function McpServerModal({
           return null;
         }
         connection.url = form.externalUrl.trim();
-        try {
-          const headers = JSON.parse(form.headersJson || '{}') as Record<string, unknown>;
-          if (Object.keys(headers).length > 0) {
-            connection.headers = headers;
-          }
-        } catch {
-          showToast({ message: localize('com_ui_tars_mcp_invalid_json'), status: 'error' });
+        if (
+          form.auth.type === 'oidc' &&
+          (!form.auth.oidcIssuer.trim() || !form.auth.oidcClientId.trim())
+        ) {
+          showToast({ message: localize('com_ui_tars_mcp_oidc_required'), status: 'error' });
           return null;
+        }
+        if (form.auth.type !== 'oidc') {
+          try {
+            const headers = JSON.parse(form.headersJson || '{}') as Record<string, unknown>;
+            if (Object.keys(headers).length > 0) {
+              connection.headers = headers;
+            }
+          } catch {
+            showToast({ message: localize('com_ui_tars_mcp_invalid_json'), status: 'error' });
+            return null;
+          }
         }
       } else {
         if (!form.command.trim()) {
@@ -397,7 +447,9 @@ export default function McpServerModal({
       const { server: saved } = isEdit
         ? await updateMutation.mutateAsync({ id: server.id, data: input })
         : await createMutation.mutateAsync(input);
-      if (saved?.id) {
+      if (form.auth.type === 'oidc') {
+        showToast({ message: localize('com_ui_tars_mcp_oidc_saved'), status: 'success' });
+      } else if (saved?.id) {
         try {
           const { result } = await syncMutation.mutateAsync(saved.id);
           showToast({
@@ -443,7 +495,7 @@ export default function McpServerModal({
             { value: 'bearer', label: localize('com_ui_tars_mcp_auth_bearer') },
             { value: 'api_key', label: localize('com_ui_tars_mcp_auth_api_key') },
             ...(isExternal
-              ? []
+              ? [{ value: 'oidc', label: localize('com_ui_tars_mcp_auth_oidc') }]
               : [
                   { value: 'basic', label: localize('com_ui_tars_mcp_auth_basic') },
                   { value: 'login', label: localize('com_ui_tars_mcp_auth_login') },
@@ -493,6 +545,97 @@ export default function McpServerModal({
             <p className="text-text-secondary mt-1 text-xs">
               {localize('com_ui_tars_mcp_auth_shared_hint')}
             </p>
+          </div>
+        </div>
+      )}
+      {form.auth.type === 'oidc' && (
+        <div className="space-y-3">
+          <p className="text-text-secondary text-xs">{localize('com_ui_tars_mcp_oidc_hint')}</p>
+          {form.code.trim() !== '' && startupConfig?.serverDomain != null && (
+            <p className="text-text-secondary text-xs break-all">
+              {localize('com_ui_tars_mcp_oidc_redirect_hint')}{' '}
+              <code className="text-text-primary">
+                {`${startupConfig.serverDomain.replace(/\/+$/, '')}/api/mcp/${tarsMcpServerName(form.code.trim())}/oauth/callback`}
+              </code>
+            </p>
+          )}
+          <div>
+            <McpFieldLabel
+              htmlFor="tars-mcp-oidc-issuer"
+              label={localize('com_ui_tars_mcp_oidc_issuer')}
+              help={localize('com_ui_tars_mcp_oidc_issuer_help')}
+              portalElement={dialogElement}
+            />
+            <Input
+              id="tars-mcp-oidc-issuer"
+              className="mt-1"
+              value={form.auth.oidcIssuer}
+              onChange={(e) => setAuth('oidcIssuer', e.target.value)}
+              placeholder="https://idp.example.com/realms/main"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="tars-mcp-oidc-client-id">
+                {localize('com_ui_tars_mcp_oidc_client_id')}
+              </Label>
+              <Input
+                id="tars-mcp-oidc-client-id"
+                className="mt-1"
+                value={form.auth.oidcClientId}
+                onChange={(e) => setAuth('oidcClientId', e.target.value)}
+              />
+            </div>
+            <div>
+              <McpFieldLabel
+                htmlFor="tars-mcp-oidc-client-secret"
+                label={localize('com_ui_tars_mcp_oidc_client_secret')}
+                help={localize('com_ui_tars_mcp_oidc_client_secret_help')}
+                portalElement={dialogElement}
+              />
+              <Input
+                id="tars-mcp-oidc-client-secret"
+                className="mt-1"
+                type="password"
+                autoComplete="new-password"
+                value={form.auth.oidcClientSecret}
+                onChange={(e) => setAuth('oidcClientSecret', e.target.value)}
+                placeholder={
+                  form.auth.oidcHasClientSecret
+                    ? localize('com_ui_tars_mcp_oidc_secret_kept')
+                    : localize('com_ui_tars_mcp_oidc_secret_public')
+                }
+              />
+            </div>
+            <div>
+              <McpFieldLabel
+                htmlFor="tars-mcp-oidc-scope"
+                label={localize('com_ui_tars_mcp_oidc_scope')}
+                help={localize('com_ui_tars_mcp_oidc_scope_help')}
+                portalElement={dialogElement}
+              />
+              <Input
+                id="tars-mcp-oidc-scope"
+                className="mt-1"
+                value={form.auth.oidcScope}
+                onChange={(e) => setAuth('oidcScope', e.target.value)}
+                placeholder={localize('com_ui_tars_mcp_oidc_scope_auto')}
+              />
+            </div>
+            <div>
+              <McpFieldLabel
+                htmlFor="tars-mcp-oidc-audience"
+                label={localize('com_ui_tars_mcp_oidc_audience')}
+                help={localize('com_ui_tars_mcp_oidc_audience_help')}
+                portalElement={dialogElement}
+              />
+              <Input
+                id="tars-mcp-oidc-audience"
+                className="mt-1"
+                value={form.auth.oidcAudience}
+                onChange={(e) => setAuth('oidcAudience', e.target.value)}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -623,7 +766,7 @@ export default function McpServerModal({
           <Label className="w-auto shrink-0">{localize('com_ui_tars_mcp_type')}</Label>
           <Dropdown
             value={form.type}
-            onChange={(value) => set('type', value as ServerForm['type'])}
+            onChange={(value) => setConnectionKind({ type: value as ServerForm['type'] })}
             disabled={isEdit}
             ariaLabel={localize('com_ui_tars_mcp_type')}
             variant="field"
@@ -711,7 +854,7 @@ export default function McpServerModal({
             <Label>{localize('com_ui_tars_mcp_transport')}</Label>
             <Dropdown
               value={form.transport}
-              onChange={(value) => set('transport', value as ExternalTransport)}
+              onChange={(value) => setConnectionKind({ transport: value as ExternalTransport })}
               ariaLabel={localize('com_ui_tars_mcp_transport')}
               options={[
                 { value: 'streamable_http', label: localize('com_ui_tars_mcp_transport_http') },
@@ -731,17 +874,21 @@ export default function McpServerModal({
                   placeholder="https://mcp.example.com/mcp"
                 />
               </div>
-              <div>
-                <Label htmlFor="tars-mcp-headers">{localize('com_ui_tars_mcp_headers_json')}</Label>
-                <textarea
-                  id="tars-mcp-headers"
-                  rows={4}
-                  value={form.headersJson}
-                  onChange={(e) => set('headersJson', e.target.value)}
-                  className={textareaClass}
-                  placeholder={'{\n  "X-Custom-Header": "value"\n}'}
-                />
-              </div>
+              {form.auth.type !== 'oidc' && (
+                <div>
+                  <Label htmlFor="tars-mcp-headers">
+                    {localize('com_ui_tars_mcp_headers_json')}
+                  </Label>
+                  <textarea
+                    id="tars-mcp-headers"
+                    rows={4}
+                    value={form.headersJson}
+                    onChange={(e) => set('headersJson', e.target.value)}
+                    className={textareaClass}
+                    placeholder={'{\n  "X-Custom-Header": "value"\n}'}
+                  />
+                </div>
+              )}
             </>
           )}
           {form.transport === 'stdio' && (

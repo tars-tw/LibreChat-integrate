@@ -800,6 +800,8 @@ export const tarsConfigSchema = z.object({
   /** Newest charts and files TARS tools generated earlier in a conversation that every turn
    *  re-lists for the model, outside the summarizable history. `0` lists none. */
   generatedLinksLimit: z.number().int().min(0).max(200).default(20),
+  /** How long My Tools, the chat menu and the admin list wait for an OIDC MCP server's tools. */
+  directToolCatalogTimeoutMs: z.number().int().min(1000).max(120000).default(10000),
   /** The conversation's attachments sent along with each Workflow (Langflow) tool call. A flow
    *  receives them only once it opts in, so enabling this changes nothing for other flows. */
   workflowFiles: z

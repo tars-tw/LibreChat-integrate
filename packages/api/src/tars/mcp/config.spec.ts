@@ -16,6 +16,7 @@ import {
   isTarsMcpEnabled,
   tarsMcpSelfUrl,
 } from './config';
+import { tarsMcpDirectEntries } from './names';
 
 const BASE_URL = 'http://tars.test';
 
@@ -255,5 +256,97 @@ describe('withTarsMcpConfig', () => {
     const result = await withTarsMcpConfig(appConfig);
     expect(Object.keys(result.mcpConfig ?? {}).sort()).toEqual(['other', 'tars_issues']);
     expect(result.mcpSettings?.allowedAddresses).toEqual(['langflow:7860', 'localhost:3080']);
+  });
+});
+
+describe('withTarsMcpConfig with an OIDC server', () => {
+  const oidcRow = (auth: Record<string, unknown> = {}) => ({
+    ...serverRow({ id: 'srv-oidc', code: 'secure', name: 'Secure', type: 'external' }),
+    connection_config: {
+      transport: 'streamable_http',
+      url: 'https://mcp.example.com/mcp',
+      auth: {
+        type: 'oidc',
+        issuer: 'https://idp.example.com',
+        client_id: 'librechat',
+        scope: 'openid',
+        authorization_url: 'https://idp.example.com/authorize',
+        token_url: 'https://idp.example.com/token',
+        jwks_uri: 'https://idp.example.com/jwks',
+        ...auth,
+      },
+    },
+  });
+
+  it('injects a direct entry with no gateway key and no loopback dependency', async () => {
+    process.env.TARS_AUTH_URL = BASE_URL;
+    process.env.JWT_SECRET = 'jwt-secret';
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, envelope([oidcRow()])));
+    const config = await withTarsMcpConfig({ mcpConfig: {} } as AppConfig);
+    const entry = config.mcpConfig?.tars_secure as Record<string, unknown>;
+    expect(entry.url).toBe('https://mcp.example.com/mcp');
+    expect(entry.requiresOAuth).toBe(true);
+    expect(JSON.stringify(entry)).not.toContain('X-Tars-Gateway-Key');
+    expect(JSON.stringify(entry)).not.toContain(deriveTarsMcpGatewayKey());
+    expect(MCPOptionsSchema.safeParse(entry).success).toBe(true);
+    expect(config.mcpSettings?.allowedAddresses ?? []).not.toContain('mcp.example.com:443');
+  });
+
+  it('skips a row it cannot trust instead of falling back to the gateway', async () => {
+    process.env.TARS_AUTH_URL = BASE_URL;
+    process.env.JWT_SECRET = 'jwt-secret';
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, envelope([oidcRow({ client_id: '${JWT_SECRET}' })])));
+    const config = await withTarsMcpConfig({ mcpConfig: {} } as AppConfig);
+    expect(config.mcpConfig?.tars_secure).toBeUndefined();
+  });
+
+  describe('direct entry registry', () => {
+    const injectOidc = async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(buildResponse(200, envelope([oidcRow()])));
+      await withTarsMcpConfig({ mcpConfig: {} } as AppConfig);
+      expect([...tarsMcpDirectEntries().keys()]).toEqual(['tars_secure']);
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('keeps the entries while a re-injection waits on pwc_tars, then replaces them', async () => {
+      await injectOidc();
+      let answer: (response: Response) => void = () => undefined;
+      jest.spyOn(global, 'fetch').mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            answer = resolve;
+          }),
+      );
+
+      const pending = withTarsMcpConfig({ mcpConfig: {} } as AppConfig);
+      await new Promise((resolve) => setImmediate(resolve));
+      expect([...tarsMcpDirectEntries().keys()]).toEqual(['tars_secure']);
+
+      answer(buildResponse(200, envelope([])));
+      await pending;
+      expect(tarsMcpDirectEntries().size).toBe(0);
+    });
+
+    it('drops the entries when the re-injection fails, since none are injected', async () => {
+      await injectOidc();
+      jest.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('ECONNREFUSED'));
+      await withTarsMcpConfig({ mcpConfig: {} } as AppConfig);
+      expect(tarsMcpDirectEntries().size).toBe(0);
+    });
+
+    it.each([
+      ['the gateway is disabled', () => (process.env.TARS_MCP_ENABLED = 'false')],
+      ['no gateway key can be derived', () => delete process.env.JWT_SECRET],
+    ])('drops the entries when %s', async (_label, disable) => {
+      await injectOidc();
+      disable();
+      await withTarsMcpConfig({ mcpConfig: {} } as AppConfig);
+      expect(tarsMcpDirectEntries().size).toBe(0);
+    });
   });
 });

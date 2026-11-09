@@ -74,11 +74,41 @@ interface ToolsCacheEntry {
 
 const toolsCache = new Map<string, ToolsCacheEntry>();
 const inflight = new Map<string, Promise<ToolsCacheEntry>>();
+/** Whether the user may use one tool of an entry, by upstream tool name. */
+export type TarsToolCheck = (toolName: string) => boolean;
+/** Gateway name of each entry the user may reach → its tool check. */
+export type TarsMcpVisibility = ReadonlyMap<string, TarsToolCheck>;
+
+const visibilityCache = new Map<string, { entries: TarsMcpVisibility; cachedAt: number }>();
+let visibilityGeneration = 0;
 
 /** Drops all cached tool lists so the next listing re-reads pwc_tars. */
 export function invalidateTarsMcpToolsCache(): void {
   toolsCache.clear();
   inflight.clear();
+  visibilityCache.clear();
+  visibilityGeneration += 1;
+}
+
+/**
+ * The user's visible entries, kept as briefly as the tool cache so a per-call access
+ * check does not cost a pwc_tars round trip. A failed load rejects and is not remembered, and
+ * neither is a load that an invalidation overtook, since it may predate a revocation.
+ */
+export async function cachedTarsMcpVisibility(
+  tarsUserId: string,
+  load: () => Promise<TarsMcpVisibility>,
+): Promise<TarsMcpVisibility> {
+  const cached = visibilityCache.get(tarsUserId);
+  if (cached && Date.now() - cached.cachedAt < TOOLS_CACHE_TTL_MS) {
+    return cached.entries;
+  }
+  const generation = visibilityGeneration;
+  const entries = await load();
+  if (generation === visibilityGeneration) {
+    visibilityCache.set(tarsUserId, { entries, cachedAt: Date.now() });
+  }
+  return entries;
 }
 
 function executeTimeoutMs(): number {

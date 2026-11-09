@@ -636,6 +636,34 @@ describe('Token Methods - Detailed Tests', () => {
     });
   });
 
+  describe('findTokenUserIds', () => {
+    const tokenFor = (userId: mongoose.Types.ObjectId, identifier: string) =>
+      Token.create({
+        userId,
+        identifier,
+        token: `${userId}-${identifier}`,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 3600000),
+      });
+
+    it('returns each holder once, as a string, for any of the identifiers', async () => {
+      const holder = new mongoose.Types.ObjectId();
+      const other = new mongoose.Types.ObjectId();
+      await tokenFor(holder, 'mcp:a');
+      await tokenFor(holder, 'mcp:a:refresh');
+      await tokenFor(other, 'mcp:a:client');
+      await tokenFor(new mongoose.Types.ObjectId(), 'mcp:b');
+
+      const userIds = await methods.findTokenUserIds(['mcp:a', 'mcp:a:client', 'mcp:a:refresh']);
+
+      expect(userIds.sort()).toEqual([holder.toString(), other.toString()].sort());
+    });
+
+    it('returns nothing when nobody holds one', async () => {
+      await expect(methods.findTokenUserIds(['mcp:none'])).resolves.toEqual([]);
+    });
+  });
+
   describe('deleteTokens', () => {
     let user1Id: mongoose.Types.ObjectId;
     let user2Id: mongoose.Types.ObjectId;

@@ -1,3 +1,4 @@
+import { logger } from '@librechat/data-schemas';
 import type {
   TTarsMcpPermission,
   TTarsMcpSystemVariable,
@@ -7,7 +8,20 @@ import type {
   TTarsMcpPermissionSavePayload,
   TTarsMcpServerPermissionSaveResult,
   TTarsMcpServerPermissionSavePayload,
+  TTarsMcpDirectToolsStatus,
 } from 'librechat-data-provider';
+import type { DirectCatalogTool, TarsDirectToolCatalog } from './catalog';
+import type { TarsOidcPolicy } from './oidc';
+import {
+  isTarsOidcServer,
+  sealTarsOidcInput,
+  testTarsOidcServer,
+  TarsOidcConfigError,
+  redactTarsOidcServer,
+  tarsDirectEnabledTools,
+} from './oidc';
+import { directToolsFailureStatus, listDirectCatalogTools, loadDirectCatalogs } from './catalog';
+import { gatewayNameFor } from './names';
 import { tarsMcpFetch } from './client';
 
 /**
@@ -105,37 +119,126 @@ export interface TarsMcpParsedSpec {
 
 export async function adminListTarsMcpServers(): Promise<TarsMcpServerDetail[]> {
   const servers = await tarsMcpFetch<TarsMcpServerDetail[]>('/api/mcp/servers');
-  return servers ?? [];
+  return (servers ?? []).map(redactTarsOidcServer);
+}
+
+/** The stored row, sealed OIDC secret included; never hand this to a response. */
+async function readStoredServer(serverId: string): Promise<TarsMcpServerDetail | undefined> {
+  return tarsMcpFetch<TarsMcpServerDetail>(`/api/mcp/servers/${encodeURIComponent(serverId)}`);
 }
 
 export async function adminGetTarsMcpServer(serverId: string): Promise<TarsMcpServerDetail | null> {
-  const server = await tarsMcpFetch<TarsMcpServerDetail>(
-    `/api/mcp/servers/${encodeURIComponent(serverId)}`,
-  );
-  return server ?? null;
+  const server = await readStoredServer(serverId);
+  return server ? redactTarsOidcServer(server) : null;
 }
 
 export async function adminCreateTarsMcpServer(
   input: TarsMcpServerInput,
   asUser: string,
+  policy?: TarsOidcPolicy,
 ): Promise<TarsMcpServerDetail | undefined> {
-  return tarsMcpFetch<TarsMcpServerDetail>('/api/mcp/servers', {
+  const server = await tarsMcpFetch<TarsMcpServerDetail>('/api/mcp/servers', {
     method: 'POST',
-    body: input,
+    body: await sealTarsOidcInput(input, { policy }),
     asUser,
   });
+  return server && redactTarsOidcServer(server);
 }
 
 export async function adminUpdateTarsMcpServer(
   serverId: string,
   input: Partial<TarsMcpServerInput>,
   asUser: string,
+  policy?: TarsOidcPolicy,
 ): Promise<TarsMcpServerDetail | undefined> {
-  return tarsMcpFetch<TarsMcpServerDetail>(`/api/mcp/servers/${encodeURIComponent(serverId)}`, {
+  const isOidc = input.connection_config != null && isTarsOidcServer(input);
+  const previous = isOidc ? await readStoredServer(serverId) : undefined;
+  const server = await tarsMcpFetch<TarsMcpServerDetail>(
+    `/api/mcp/servers/${encodeURIComponent(serverId)}`,
+    {
+      method: 'PUT',
+      body: await sealTarsOidcInput(input, { policy, previous }),
+      asUser,
+    },
+  );
+  return server && redactTarsOidcServer(server);
+}
+
+async function readStoredOidcServer(serverId: string): Promise<TarsMcpServerDetail> {
+  const stored = await readStoredServer(serverId);
+  if (!stored || !isTarsOidcServer(stored)) {
+    throw new TarsOidcConfigError('此伺服器未使用 OIDC 驗證');
+  }
+  return stored;
+}
+
+/** One tool of an OIDC server as the admin switches it for everyone. */
+export interface TarsMcpDirectAdminTool {
+  name: string;
+  description?: string | null;
+  is_enabled: boolean;
+}
+
+/**
+ * pwc_tars has no tool rows for an OIDC server, so the list comes from the admin's own connection
+ * and is empty until they are assigned and signed in. Tools opened earlier stay listed, so one the
+ * admin's connection no longer shows can still be closed.
+ */
+export async function adminListTarsDirectTools(
+  serverId: string,
+  loadCatalog: TarsDirectToolCatalog,
+  timeoutMs?: number,
+): Promise<{ tools: TarsMcpDirectAdminTool[]; tools_status: TTarsMcpDirectToolsStatus }> {
+  const stored = await readStoredOidcServer(serverId);
+  const enabled = tarsDirectEnabledTools(stored);
+  const gatewayName = gatewayNameFor(serverId, stored.code);
+  let listed: DirectCatalogTool[] = [];
+  let failure: TTarsMcpDirectToolsStatus | undefined;
+  if (gatewayName != null) {
+    try {
+      const catalogs = await loadDirectCatalogs(loadCatalog, [gatewayName], timeoutMs);
+      listed = listDirectCatalogTools(gatewayName, catalogs.get(gatewayName));
+    } catch (error) {
+      logger.warn(`[tars-mcp] Failed to read the tools of OIDC server ${serverId}`, error);
+      failure = directToolsFailureStatus(error);
+    }
+  }
+  const names = new Set(listed.map((tool) => tool.name));
+  return {
+    tools: [
+      ...listed.map(({ name, description }) => ({
+        name,
+        description,
+        is_enabled: enabled.has(name),
+      })),
+      ...[...enabled]
+        .filter((name) => !names.has(name))
+        .map((name) => ({ name, is_enabled: true })),
+    ],
+    tools_status: failure ?? (listed.length === 0 ? 'not_connected' : 'ok'),
+  };
+}
+
+/** Replaces the server's allow-list; the rest of the row's `tool_config` is kept. */
+export async function adminSetTarsDirectEnabledTools(
+  serverId: string,
+  enabledTools: unknown,
+  asUser: string,
+): Promise<string[]> {
+  if (
+    !Array.isArray(enabledTools) ||
+    !enabledTools.every((name) => typeof name === 'string' && name.trim() !== '')
+  ) {
+    throw new TarsOidcConfigError('enabled_tools 必須為工具名稱陣列');
+  }
+  const stored = await readStoredOidcServer(serverId);
+  const enabled_tools = [...new Set(enabledTools as string[])];
+  await tarsMcpFetch(`/api/mcp/servers/${encodeURIComponent(serverId)}`, {
     method: 'PUT',
-    body: input,
+    body: { tool_config: { ...stored.tool_config, enabled_tools } },
     asUser,
   });
+  return enabled_tools;
 }
 
 export async function adminDeleteTarsMcpServer(serverId: string, asUser: string): Promise<void> {
@@ -147,8 +250,8 @@ export async function adminDeleteTarsMcpServer(serverId: string, asUser: string)
 
 /** Result of `POST /api/mcp/servers/batch-delete` — some ids may be skipped or not found. */
 export interface TarsMcpBatchDeleteResult {
-  deleted: string[];
-  skipped: string[];
+  deleted: { id: string; name: string }[];
+  skipped: { id: string; name: string; reason: string }[];
   not_found: string[];
   deleted_count: number;
   skipped_count: number;
@@ -170,7 +273,12 @@ export async function adminBatchDeleteTarsMcpServers(
 export async function adminTestTarsMcpServer(
   serverId: string,
   asUser: string,
+  policy?: TarsOidcPolicy,
 ): Promise<Record<string, unknown> | undefined> {
+  const stored = await readStoredServer(serverId);
+  if (stored && isTarsOidcServer(stored)) {
+    return testTarsOidcServer(stored, policy);
+  }
   return tarsMcpFetch<Record<string, unknown>>(
     `/api/mcp/servers/${encodeURIComponent(serverId)}/test`,
     { method: 'POST', body: {}, timeoutMs: 60_000, asUser },
@@ -182,6 +290,11 @@ export async function adminSyncTarsMcpServer(
   serverId: string,
   asUser: string,
 ): Promise<TarsMcpSyncResult | undefined> {
+  /** pwc_tars holds no user token, so it could only fail; tools come from each user's connection. */
+  const stored = await readStoredServer(serverId);
+  if (stored && isTarsOidcServer(stored)) {
+    return { synced_count: 0, created_count: 0, updated_count: 0, deleted_count: 0 };
+  }
   return tarsMcpFetch<TarsMcpSyncResult>(`/api/mcp/servers/${encodeURIComponent(serverId)}/sync`, {
     method: 'POST',
     body: {},

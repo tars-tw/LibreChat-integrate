@@ -4,7 +4,14 @@ import { sanitizeMCPTitle } from 'librechat-data-provider';
 import type { MCPOptions } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
 import type { TarsMcpServerDetail } from './admin';
-import { clearTarsMcpEntryNames, recordTarsMcpEntryName, derivedTarsMcpEntryName } from './names';
+import type { TarsOidcEntryBase } from './oidc';
+import {
+  clearTarsMcpEntryNames,
+  recordTarsMcpEntryName,
+  derivedTarsMcpEntryName,
+  recordTarsMcpDirectEntry,
+} from './names';
+import { buildTarsOidcEntry, isTarsOidcServer } from './oidc';
 import { PROXIED_SERVER_TYPES, tarsMcpFetch } from './client';
 import { hostPortFromUrl } from '~/auth/allowedAddresses';
 import { isTarsConfigured } from '~/tars/client';
@@ -83,6 +90,13 @@ function buildServerEntry(
       'X-Tars-User-Id': '{{LIBRECHAT_USER_ID}}',
     },
     startup: false,
+    ...entryDisplay(server),
+  };
+}
+
+/** Display fields every entry shares, whichever way its tools are reached. */
+function entryDisplay(server: TarsMcpServerDetail): TarsOidcEntryBase {
+  return {
     chatMenu: true,
     /** Every config consumer re-parses this entry through `MCPOptionsSchema` — the
      * tool-cache generation hash does so on each `getMCPServerTools` call — so a
@@ -136,12 +150,13 @@ function entryNameFor(server: TarsMcpServerDetail, taken: Set<string>): string {
  */
 export async function withTarsMcpConfig(appConfig: AppConfig): Promise<AppConfig> {
   injectionFailed = false;
-  clearTarsMcpEntryNames();
   if (!appConfig || !isTarsMcpEnabled()) {
+    clearTarsMcpEntryNames();
     return appConfig;
   }
   const gatewayKey = deriveTarsMcpGatewayKey();
   if (!gatewayKey) {
+    clearTarsMcpEntryNames();
     logger.warn('[tars-mcp] JWT_SECRET is not set; skipping TARS MCP gateway registration');
     return appConfig;
   }
@@ -153,6 +168,7 @@ export async function withTarsMcpConfig(appConfig: AppConfig): Promise<AppConfig
         timeoutMs: serverListTimeoutMs(),
       })) ?? [];
   } catch (error) {
+    clearTarsMcpEntryNames();
     injectionFailed = true;
     logger.warn(
       '[tars-mcp] Failed to fetch the pwc_tars MCP server list; no gateway entries injected',
@@ -161,6 +177,11 @@ export async function withTarsMcpConfig(appConfig: AppConfig): Promise<AppConfig
     return appConfig;
   }
 
+  /**
+   * Only now, with no await before the registry is refilled: share checks and tool filters read it,
+   * and an empty one reads as "no OIDC server here" for as long as the fetch above takes.
+   */
+  clearTarsMcpEntryNames();
   const baseUrl = tarsMcpSelfUrl();
   const mcpConfig = { ...(appConfig.mcpConfig ?? {}) };
   const taken = new Set(Object.keys(mcpConfig));
@@ -174,13 +195,22 @@ export async function withTarsMcpConfig(appConfig: AppConfig): Promise<AppConfig
       logger.warn(`[tars-mcp] mcpConfig already defines "${name}"; skipping injection (YAML wins)`);
       continue;
     }
+    const oidc = isTarsOidcServer(server);
+    const entry = oidc
+      ? buildTarsOidcEntry(server, entryDisplay(server), {
+          allowedDomains: appConfig.mcpSettings?.allowedDomains,
+          allowedAddresses: appConfig.mcpSettings?.allowedAddresses,
+        })
+      : buildServerEntry(`${baseUrl}/${encodeURIComponent(server.id)}`, gatewayKey, server);
+    if (!entry) {
+      continue;
+    }
     taken.add(name);
-    mcpConfig[name] = buildServerEntry(
-      `${baseUrl}/${encodeURIComponent(server.id)}`,
-      gatewayKey,
-      server,
-    );
+    mcpConfig[name] = entry;
     recordTarsMcpEntryName(server.id, name);
+    if (oidc) {
+      recordTarsMcpDirectEntry(name, server.id);
+    }
     injected += 1;
   }
 

@@ -38,6 +38,7 @@ const {
   resolveMCPOAuthTarget,
   canAccessMCPOAuthFlow,
   filterVisibleTarsMcpConfigs,
+  canUseTarsDirectMcpServer,
 } = require('@librechat/api');
 const {
   createMCPServerController,
@@ -107,6 +108,8 @@ const getOAuthTargetDeps = () => ({
   getAppConfig,
   getServerConfigs: (principal) => resolveAllMcpConfigs(principal.userId, principal),
   registry: getMCPServersRegistry(),
+  canUseServer: (serverName, config, principal) =>
+    canUseTarsDirectMcpServer(serverName, config, { id: principal.userId }),
 });
 
 const checkMCPUsePermissions = generateCheckAccess({

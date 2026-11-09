@@ -32,6 +32,7 @@ import {
   selectRegistrationAuthMethod,
   inferClientAuthMethod,
 } from './methods';
+import { generateIdTokenNonce, MCPIdTokenKeysUnavailableError, verifyIdToken } from './idToken';
 import { isSSRFTarget, resolveHostnameSSRF, isOAuthUrlAllowed } from '~/auth';
 import { MCPTokenStorage, MCPTokenRefreshUnavailableError } from './tokens';
 import { probeResourceMetadataHint } from './resourceHint';
@@ -819,6 +820,7 @@ export class MCPOAuthHandler {
 
     try {
       this.assertNoUnpinnedClientSecret(config);
+      this.assertIdTokenCheckConfigured(config);
       const sendResourceParameter = this.shouldSendResourceParameter(config);
 
       if (config?.authorization_url && config?.token_url && config?.client_id) {
@@ -996,12 +998,25 @@ export class MCPOAuthHandler {
           logger.debug(`[MCPOAuth] Added audience parameter (pre-configured): ${config.audience}`);
         }
 
+        const idTokenCheck =
+          config.oidc_issuer && config.oidc_jwks_uri
+            ? {
+                issuer: config.oidc_issuer,
+                jwksUri: config.oidc_jwks_uri,
+                nonce: generateIdTokenNonce(),
+              }
+            : undefined;
+        if (idTokenCheck) {
+          authorizationUrl.searchParams.set('nonce', idTokenCheck.nonce);
+        }
+
         const flowMetadata: MCPOAuthFlowMetadata = {
           serverName,
           userId,
           serverUrl,
           state,
           codeVerifier,
+          ...(idTokenCheck && { idTokenCheck }),
           clientInfo,
           clientSource: 'configured',
           metadata,
@@ -1357,8 +1372,24 @@ export class MCPOAuthHandler {
         scope: tokens.scope,
       });
 
+      /** Before anything below stores or publishes these tokens: a failure here keeps none. */
+      const { idTokenCheck } = metadata;
+      const { id_token: idToken, ...tokensWithoutIdToken } = tokens;
+      const idTokenSubject = idTokenCheck
+        ? await verifyIdToken({
+            idToken,
+            issuer: idTokenCheck.issuer,
+            jwksUri: idTokenCheck.jwksUri,
+            nonce: idTokenCheck.nonce,
+            clientId: metadata.clientInfo.client_id,
+            allowedDomains: metadata.allowedDomains,
+            allowedAddresses: metadata.allowedAddresses,
+          })
+        : undefined;
+
       let mcpTokens: MCPOAuthTokens = {
-        ...tokens,
+        ...(idTokenCheck ? tokensWithoutIdToken : tokens),
+        ...(idTokenSubject && { id_token_subject: idTokenSubject }),
         credential_set_id: randomBytes(16).toString('hex'),
         obtained_at: Date.now(),
         expires_at:
@@ -1697,6 +1728,68 @@ export class MCPOAuthHandler {
     return getOAuthCallbackUrl(baseUrl, callbackPath);
   }
 
+  /** ID Token validation needs a client and endpoints fixed by the operator, never negotiated. */
+  private static assertIdTokenCheckConfigured(config?: MCPOptions['oauth']): void {
+    if (!config?.oidc_issuer && !config?.oidc_jwks_uri) {
+      return;
+    }
+    if (
+      !config.oidc_issuer ||
+      !config.oidc_jwks_uri ||
+      !config.authorization_url ||
+      !config.token_url ||
+      !config.client_id
+    ) {
+      throw new Error(
+        'oidc_issuer requires oidc_jwks_uri, authorization_url, token_url and client_id',
+      );
+    }
+  }
+
+  /**
+   * A refresh may omit the ID Token; one it does return must pass §12.2 before the new tokens
+   * are stored. The subject rides along either way so the next refresh can compare against it.
+   * Unreachable signing keys do not fail the refresh: the provider has already rotated the refresh
+   * token, so dropping this response would replay the old one and may revoke the whole family.
+   * The response came straight from the token endpoint, which Core §3.1.3.7 accepts in place of
+   * the signature check.
+   */
+  private static async checkRefreshedIdToken(
+    tokens: Record<string, unknown>,
+    clientId: string,
+    previousSubject: string | undefined,
+    config: MCPOptions['oauth'] | undefined,
+    allowedDomains?: string[] | null,
+    allowedAddresses?: string[] | null,
+    signal?: AbortSignal,
+  ): Promise<Record<string, unknown>> {
+    if (!config?.oidc_issuer || !config.oidc_jwks_uri) {
+      return tokens;
+    }
+    const { id_token: idToken, ...rest } = tokens;
+    let subject = previousSubject;
+    if (idToken != null) {
+      try {
+        subject = await verifyIdToken({
+          idToken,
+          issuer: config.oidc_issuer,
+          jwksUri: config.oidc_jwks_uri,
+          clientId,
+          previousSubject,
+          allowedDomains,
+          allowedAddresses,
+          signal,
+        });
+      } catch (error) {
+        if (!(error instanceof MCPIdTokenKeysUnavailableError)) {
+          throw error;
+        }
+        logger.warn(`[MCPOAuth] Keeping a refresh without its ID Token check: ${error.message}`);
+      }
+    }
+    return { ...rest, ...(subject && { id_token_subject: subject }) };
+  }
+
   /**
    * Processes and logs a token refresh response from an OAuth server.
    * Normalizes the response to MCPOAuthTokens format and logs debug info about refresh token rotation.
@@ -1834,6 +1927,7 @@ export class MCPOAuthHandler {
       storedServerUrl?: string;
       clientSource?: OAuthClientSource;
       resource?: string;
+      idTokenSubject?: string;
     },
     oauthHeaders: Record<string, string>,
     config?: MCPOptions['oauth'],
@@ -2065,7 +2159,15 @@ export class MCPOAuthHandler {
           );
         }
 
-        const tokens = await response.json();
+        const tokens = await this.checkRefreshedIdToken(
+          await response.json(),
+          metadata.clientInfo.client_id,
+          metadata.idTokenSubject,
+          config,
+          allowedDomains,
+          allowedAddresses,
+          signal,
+        );
         return this.processRefreshResponse(tokens, metadata.serverName, 'stored client info');
       }
 
@@ -2154,7 +2256,15 @@ export class MCPOAuthHandler {
           );
         }
 
-        const tokens = await response.json();
+        const tokens = await this.checkRefreshedIdToken(
+          await response.json(),
+          config.client_id,
+          metadata.idTokenSubject,
+          config,
+          allowedDomains,
+          allowedAddresses,
+          signal,
+        );
         return this.processRefreshResponse(tokens, metadata.serverName, 'pre-configured OAuth');
       }
 

@@ -38,6 +38,7 @@ import type {
   TTarsScheduleUpdate,
   TTarsMcpTool,
   TTarsMcpServer,
+  TTarsMcpDirectToolsResponse,
   TTarsMcpSyncResult,
   TTarsMcpToolUpdate,
   TTarsMcpParsedSpec,
@@ -80,6 +81,7 @@ import type {
   TTarsWorkflowActAs,
 } from 'librechat-data-provider';
 import type { UseMutationResult, UseMutationOptions } from '@tanstack/react-query';
+import { tarsMcpDirectToolsKey } from './queries';
 
 type DomainResponse = { domain: TTarsDomain };
 type KnowledgeResponse = { knowledgeBase: TTarsKnowledgeBase };
@@ -944,6 +946,7 @@ const invalidateTarsModelGrants = (queryClient: ReturnType<typeof useQueryClient
 const invalidateTarsMcp = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries([QueryKeys.tarsMcpServers]);
   queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+  queryClient.invalidateQueries([QueryKeys.tarsMcpChatTools]);
   /** Admin mutations change the injected per-server gateway entries — refresh the native MCP surfaces too. */
   queryClient.invalidateQueries([QueryKeys.mcpServers]);
   queryClient.invalidateQueries([QueryKeys.mcpTools]);
@@ -1108,6 +1111,33 @@ export const useClearTarsMcpUserCredentialsMutation = (
       options?.onSuccess?.(...args);
     },
   });
+};
+
+export const useUpdateTarsMcpDirectToolsMutation = (
+  serverId: string,
+  options?: UseMutationOptions<{ enabled_tools: string[] }, unknown, string[]>,
+): UseMutationResult<{ enabled_tools: string[] }, unknown, string[]> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    (enabledTools: string[]) => dataService.updateTarsMcpDirectTools(serverId, enabledTools),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        /** The panel builds its next save from this list, and the refetch reads the live server. */
+        const opened = new Set(args[0].enabled_tools);
+        queryClient.setQueryData<TTarsMcpDirectToolsResponse>(
+          tarsMcpDirectToolsKey(serverId),
+          (current) =>
+            current && {
+              ...current,
+              tools: current.tools.map((tool) => ({ ...tool, is_enabled: opened.has(tool.name) })),
+            },
+        );
+        invalidateTarsMcp(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
 };
 
 export const useUpdateTarsMcpToolMutation = (

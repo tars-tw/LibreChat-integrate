@@ -138,6 +138,15 @@ const OAuthOptionsBaseSchema = z.object({
    * from user-managed servers.
    */
   send_resource_parameter: z.boolean().optional(),
+  /**
+   * OIDC issuer the ID Token must come from. Set together with `oidc_jwks_uri`, it makes the
+   * flow a validating OIDC client: the authorization request carries a `nonce`, and a sign-in
+   * or refresh whose ID Token fails validation stores nothing. Requires pre-configured
+   * endpoints. Only accepted from trusted/admin MCP configuration.
+   */
+  oidc_issuer: z.string().url().optional(),
+  /** JWKS endpoint holding the issuer's signing keys; see `oidc_issuer`. */
+  oidc_jwks_uri: z.string().url().optional(),
   /** OAuth revocation endpoint (optional - can be auto-discovered) */
   revocation_endpoint: z
     .string()
@@ -176,6 +185,8 @@ const UserOAuthOptionsSchema = OAuthOptionsBaseSchema.omit({
   forward_audience_on_refresh: true,
   send_resource_parameter: true,
   client_secretPreview: true,
+  oidc_issuer: true,
+  oidc_jwks_uri: true,
 })
   .extend({
     authorization_url: userOAuthEndpointUrlSchema.optional(),
@@ -185,6 +196,8 @@ const UserOAuthOptionsSchema = OAuthOptionsBaseSchema.omit({
     audience: z.never().optional(),
     forward_audience_on_refresh: z.never().optional(),
     send_resource_parameter: z.never().optional(),
+    oidc_issuer: z.never().optional(),
+    oidc_jwks_uri: z.never().optional(),
   })
   .superRefine(validateOAuthClientCredentials);
 

@@ -119,4 +119,51 @@ describe('McpUserToolsTab', () => {
     expect(mockSave).toHaveBeenCalledTimes(1);
     expect(mockUpdate).not.toHaveBeenCalled();
   });
+
+  it('explains sign-in instead of an empty tool list on an OIDC server', () => {
+    mockServers = [server({ auth_type: 'oidc', user_enabled: true })];
+    render(<McpUserToolsTab />);
+
+    expect(screen.queryByText('com_ui_tars_mcp_server_tool_count')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(screen.getByText('com_ui_tars_mcp_oidc_user_hint')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['timeout', 'com_ui_tars_mcp_oidc_tools_timeout'],
+    ['error', 'com_ui_tars_mcp_oidc_tools_error'],
+    ['none_opened', 'com_ui_tars_mcp_oidc_tools_none_opened'],
+    ['not_connected', 'com_ui_tars_mcp_oidc_user_hint'],
+  ] as const)('explains an empty OIDC list when the status is %s', (tools_status, key) => {
+    mockServers = [server({ auth_type: 'oidc', user_enabled: true, tools_status })];
+    render(<McpUserToolsTab />);
+
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(screen.getByText(key)).toBeInTheDocument();
+  });
+
+  it("lets the user switch an OIDC server's tools one by one", () => {
+    mockServers = [
+      server({
+        auth_type: 'oidc',
+        user_enabled: true,
+        requires_user_credentials: false,
+        tools: [
+          { id: 'health', name: 'health', user_enabled: true },
+          { id: 'get_user_id', name: 'get_user_id', user_enabled: false },
+        ],
+      }),
+    ];
+    render(<McpUserToolsTab />);
+
+    expect(screen.getByText('com_ui_tars_mcp_server_tool_count')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(screen.queryByText('com_ui_tars_mcp_oidc_user_hint')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'get_user_id' }));
+
+    expect(mockUpdate).toHaveBeenCalledWith({
+      id: 's1',
+      data: { tool_config: { health: true, get_user_id: true } },
+    });
+  });
 });

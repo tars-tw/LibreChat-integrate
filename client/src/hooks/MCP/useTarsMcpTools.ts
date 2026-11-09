@@ -17,6 +17,7 @@ import type {
 import { ephemeralAgentByConvoId, mcpValuesAtomFamily, mcpToolValuesAtomFamily } from '~/store';
 import { useTarsMcpChatToolsQuery, useTarsMcpUserSettingsQuery } from '~/data-provider';
 import { useUpdateTarsMcpUserServerMutation } from '~/data-provider/Tars/mutations';
+import useTarsMcpConnectRefresh from './useTarsMcpConnectRefresh';
 import { useAuthContext } from '~/hooks/AuthContext';
 import { setTimestamp } from '~/utils/timestamps';
 
@@ -70,6 +71,7 @@ export default function useTarsMcpTools({
   const { user } = useAuthContext();
   const isTarsUser = user?.provider === 'tars';
   const { data: chatServers } = useTarsMcpChatToolsQuery({ enabled: isTarsUser });
+  useTarsMcpConnectRefresh(isTarsUser);
 
   /** Only opted-in servers are usable; the rest are offered as an opt-in below the list. */
   const serversByName = useMemo(() => {
@@ -230,7 +232,11 @@ export default function useTarsMcpTools({
   );
 
   const getDomainTools = useCallback(
-    (serverName: string): TTarsMcpDomainTool[] | undefined => serversByName.get(serverName)?.tools,
+    (serverName: string): TTarsMcpDomainTool[] | undefined => {
+      /** An OIDC server has no tools to offer until the user's connection can list them. */
+      const tools = serversByName.get(serverName)?.tools;
+      return tools != null && tools.length > 0 ? tools : undefined;
+    },
     [serversByName],
   );
 
