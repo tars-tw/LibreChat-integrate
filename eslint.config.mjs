@@ -318,6 +318,7 @@ export default [
             'reset-rc-number-input',
             'reset-rc-number-input-text-right',
             'assistant-item',
+            'tars-usage-gradient',
             'animated-tab',
             'animated-tab-list',
             'animated-tab-panel',

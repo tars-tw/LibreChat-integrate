@@ -94,7 +94,7 @@ function TokenQuotaBar() {
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-300',
-                isExceeded ? 'bg-text-tertiary' : 'bg-accent-primary',
+                isExceeded ? 'bg-text-tertiary' : 'tars-usage-gradient',
               )}
               style={{ width: pct == null ? '100%' : `${pct}%` }}
             />
