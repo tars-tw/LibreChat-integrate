@@ -2,17 +2,10 @@ import { useState } from 'react';
 import { OGDialogHeader, OGDialogTitle, OGDialogDescription } from '@librechat/client';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import type { AgentItem } from '../items/types';
+import { SECTION_LABEL_KEYS, itemSection } from '../items/sections';
 import { getIconForItem } from '../items/icons';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
-
-const KIND_LABEL_KEYS: Record<AgentItem['kind'], TranslationKeys> = {
-  builtin: 'com_ui_tools_kind_official',
-  tool: 'com_ui_tools_kind_tools',
-  skill: 'com_ui_tools_kind_skills',
-  mcp: 'com_ui_tools_kind_mcp',
-  action: 'com_ui_tools_kind_actions',
-};
 
 function HeaderIcon({ item }: { item: AgentItem }) {
   const { Icon, colorClass, iconUrl } = getIconForItem(item);
@@ -48,7 +41,7 @@ function HeaderIcon({ item }: { item: AgentItem }) {
 export default function ItemDialogHeader({ item }: { item: AgentItem }) {
   const localize = useLocalize();
   const displayName = item.kind === 'builtin' ? localize(item.name as TranslationKeys) : item.name;
-  const kindLabel = localize(KIND_LABEL_KEYS[item.kind]);
+  const kindLabel = localize(SECTION_LABEL_KEYS[itemSection(item)]);
 
   return (
     <OGDialogHeader className="flex flex-row items-center gap-3 space-y-0 px-6 pt-5 pb-4 text-start">

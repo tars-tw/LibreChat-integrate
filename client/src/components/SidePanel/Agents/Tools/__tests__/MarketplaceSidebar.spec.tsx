@@ -62,7 +62,7 @@ describe('MarketplaceSidebar', () => {
     activeKind: 'all' as const,
     onSelectView: jest.fn(),
     onSelectKind: jest.fn(),
-    counts: { tool: 2, skill: 3, mcp: 1, action: 0, builtin: 5 },
+    counts: { tool: 2, skill: 3, mcp: 1, workflow: 0, action: 0, builtin: 5 },
     totalCount: 11,
   };
 
@@ -83,6 +83,28 @@ describe('MarketplaceSidebar', () => {
     render(<MarketplaceSidebar {...defaultProps} onSelectKind={onSelectKind} />);
     fireEvent.click(screen.getByText('com_ui_tools_kind_tools'));
     expect(onSelectKind).toHaveBeenCalledWith('tool');
+  });
+
+  test('hides the TARS-Workflow section when there are no Workflow servers', () => {
+    render(<MarketplaceSidebar {...defaultProps} />);
+    expect(screen.queryByText('com_ui_tools_kind_workflow')).not.toBeInTheDocument();
+  });
+
+  test('lists the TARS-Workflow section after MCP servers and selects it', () => {
+    const onSelectKind = jest.fn();
+    render(
+      <MarketplaceSidebar
+        {...defaultProps}
+        counts={{ ...defaultProps.counts, workflow: 4 }}
+        onSelectKind={onSelectKind}
+      />,
+    );
+    const labels = screen.getAllByRole('button').map((el) => el.textContent);
+    expect(labels.indexOf('com_ui_tools_kind_workflow4')).toBe(
+      labels.indexOf('com_ui_tools_kind_mcp1') + 1,
+    );
+    fireEvent.click(screen.getByText('com_ui_tools_kind_workflow'));
+    expect(onSelectKind).toHaveBeenCalledWith('workflow');
   });
 
   test('does not render a Skills kind filter', () => {

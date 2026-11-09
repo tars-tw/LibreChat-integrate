@@ -2,23 +2,33 @@ import { useState, useMemo } from 'react';
 import * as Ariakit from '@ariakit/react/menu';
 import { Button, DropdownPopup } from '@librechat/client';
 import { Permissions, PermissionTypes, AgentCapabilities } from 'librechat-data-provider';
-import { LayoutGrid, ListFilter, Wrench, Server, Workflow, Star, User, Plus } from 'lucide-react';
+import {
+  LayoutGrid,
+  ListFilter,
+  GitFork,
+  Workflow,
+  Wrench,
+  Server,
+  Star,
+  User,
+  Plus,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
-import type { AgentItemKind, ItemFilter } from './items/types';
+import type { MarketplaceSection, ItemFilter } from './items/types';
 import { useGetStartupConfig } from '~/data-provider';
 import { useLocalize, useHasAccess } from '~/hooks';
 import { useAgentPanelContext } from '~/Providers';
 import { cn } from '~/utils';
 
 type View = NonNullable<ItemFilter['view']>;
-type Kind = AgentItemKind | 'all';
+type Kind = MarketplaceSection | 'all';
 
 interface MarketplaceSidebarProps {
   activeView: View;
   activeKind: Kind;
   onSelectView: (view: View) => void;
   onSelectKind: (kind: Kind) => void;
-  counts: Record<AgentItemKind, number>;
+  counts: Record<MarketplaceSection, number>;
   totalCount: number;
   onCreateNew?: (kind: 'mcp' | 'action') => void;
 }
@@ -84,6 +94,19 @@ function useMarketplaceNav({
       onClick: () => selectKind('mcp'),
       count: counts.mcp,
     },
+    /** Only where pwc_tars has Workflow projects to list; elsewhere it would be an empty section. */
+    ...(counts.workflow > 0
+      ? [
+          {
+            id: 'workflow',
+            icon: <GitFork className="size-4" />,
+            label: localize('com_ui_tools_kind_workflow'),
+            active: activeKind === 'workflow' && activeView === 'marketplace',
+            onClick: () => selectKind('workflow'),
+            count: counts.workflow,
+          },
+        ]
+      : []),
     {
       id: 'action',
       icon: <Workflow className="size-4" />,

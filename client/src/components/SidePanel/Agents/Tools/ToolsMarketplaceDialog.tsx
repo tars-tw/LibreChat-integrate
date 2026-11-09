@@ -11,7 +11,7 @@ import {
   useMediaQuery,
   useToastContext,
 } from '@librechat/client';
-import type { AgentItem, AgentItemKind, ItemFilter } from './items/types';
+import type { AgentItem, MarketplaceSection, ItemFilter } from './items/types';
 import type { CapabilityFileCounts } from './items/capabilities';
 import type { AgentForm } from '~/common';
 import {
@@ -32,6 +32,7 @@ import { useLocalize, useToolFavorites } from '~/hooks';
 import MarketplaceCatalog from './MarketplaceCatalog';
 import { toggleTarsSwitchTools } from './items/tars';
 import { useAgentPanelContext } from '~/Providers';
+import { countBySection } from './items/sections';
 import ItemDialog from './ItemDialog/ItemDialog';
 import { NEW_ACTION_ID } from './items/types';
 import { isEphemeralAgent } from '~/common';
@@ -43,7 +44,7 @@ interface ToolsMarketplaceDialogProps {
 }
 
 type View = NonNullable<ItemFilter['view']>;
-type Kind = AgentItemKind | 'all';
+type Kind = MarketplaceSection | 'all';
 
 export default function ToolsMarketplaceDialog({
   open,
@@ -107,16 +108,7 @@ export default function ToolsMarketplaceDialog({
     [knowledgeFiles, codeFiles],
   );
 
-  const counts = useMemo(
-    () => ({
-      builtin: libraryItems.filter((i) => i.kind === 'builtin').length,
-      tool: libraryItems.filter((i) => i.kind === 'tool').length,
-      mcp: libraryItems.filter((i) => i.kind === 'mcp').length,
-      skill: 0,
-      action: libraryItems.filter((i) => i.kind === 'action').length,
-    }),
-    [libraryItems],
-  );
+  const counts = useMemo(() => countBySection(libraryItems), [libraryItems]);
 
   const filtered = useMemo(
     () =>

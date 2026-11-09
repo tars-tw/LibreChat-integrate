@@ -19,9 +19,11 @@ import {
   Database,
   BarChart3,
   FileOutput,
+  GitFork,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { AgentItem } from './types';
+import { itemSection } from './sections';
 
 export interface ItemIcon {
   Icon: LucideIcon;
@@ -90,6 +92,12 @@ const TARS_PLUGIN_ICON: ItemIcon = {
   colorClass: 'bg-series-3/15 text-series-3',
 };
 
+/** TARS Workflow project servers wear the icon of their library section, not the MCP server's. */
+const WORKFLOW_ICON: ItemIcon = {
+  Icon: GitFork,
+  colorClass: 'bg-series-5/15 text-series-5',
+};
+
 const KIND_FALLBACK_ICONS: Record<AgentItem['kind'], ItemIcon> = {
   builtin: {
     Icon: Layers,
@@ -132,7 +140,7 @@ export function getIconForItem(item: AgentItem): ItemIcon {
   if (item.kind === 'tool' && isTarsPluginToolName(item.id)) {
     return TARS_PLUGIN_ICON;
   }
-  const base = KIND_FALLBACK_ICONS[item.kind];
+  const base = itemSection(item) === 'workflow' ? WORKFLOW_ICON : KIND_FALLBACK_ICONS[item.kind];
   const iconUrl = extractIconUrl(item);
   return iconUrl ? { ...base, iconUrl } : base;
 }

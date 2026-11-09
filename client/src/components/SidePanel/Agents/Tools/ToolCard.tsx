@@ -3,6 +3,7 @@ import { VerifiedIcon } from '@librechat/client';
 import { Check, Globe, Info, Settings, Star, User } from 'lucide-react';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import type { AgentItem, ItemStatus } from './items/types';
+import { SECTION_LABEL_KEYS, itemSection } from './items/sections';
 import { hasConfigurableSettings } from './items/configurable';
 import { useLocalize, useAuthContext } from '~/hooks';
 import { getMissingKeyProvider } from './items/auth';
@@ -31,14 +32,6 @@ function useDisplayStrings(item: AgentItem): { name: string; description: string
   }
   return { name: item.name, description: item.description ?? '' };
 }
-
-const KIND_LABEL_KEYS: Record<AgentItem['kind'], TranslationKeys> = {
-  builtin: 'com_ui_tools_kind_official',
-  tool: 'com_ui_tools_kind_tools',
-  skill: 'com_ui_tools_kind_skills',
-  mcp: 'com_ui_tools_kind_mcp',
-  action: 'com_ui_tools_kind_actions',
-};
 
 interface ItemIconProps {
   item: AgentItem;
@@ -117,7 +110,7 @@ function ToolCardImpl({
   const { name, description } = useDisplayStrings(item);
   const { user } = useAuthContext();
   const isNative = item.kind === 'builtin';
-  const kindLabel = localize(KIND_LABEL_KEYS[item.kind]);
+  const kindLabel = localize(SECTION_LABEL_KEYS[itemSection(item)]);
   const canFavorite = onToggleFavorite !== undefined && item.kind !== 'action';
   const canConfigure = hasConfigurableSettings(item) && onConfigure !== undefined;
   const skill = item.kind === 'skill' ? item.skill : undefined;

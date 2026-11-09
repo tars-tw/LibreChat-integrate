@@ -3,6 +3,10 @@ import type { MCPServerInfo } from '~/common';
 
 export type AgentItemKind = 'builtin' | 'tool' | 'mcp' | 'skill' | 'action';
 
+/** A library sidebar section: an item kind, or `workflow` for the MCP servers that
+ *  carry TARS Workflow projects (see `sections.ts`). */
+export type MarketplaceSection = AgentItemKind | 'workflow';
+
 /**
  * Literal IDs for the built-in agent capabilities surfaced in the catalog.
  * Derived from `AgentCapabilities` so a renamed or removed enum member breaks
@@ -99,7 +103,7 @@ export interface ItemStatus {
 
 export type ItemFilter = {
   search?: string;
-  kind?: AgentItemKind | 'all';
+  kind?: MarketplaceSection | 'all';
   category?: string | 'all';
   view?: 'marketplace' | 'favorites' | 'mine';
 };
