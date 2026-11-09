@@ -48,7 +48,7 @@ endpoints:
       - actions
       - file_search
       - artifacts
-      #- execute_code  # Disabled for now; uncomment to enable code execution capability for agents.
+      - execute_code
       - web_search
       - sql_agent
       - rag_agent
