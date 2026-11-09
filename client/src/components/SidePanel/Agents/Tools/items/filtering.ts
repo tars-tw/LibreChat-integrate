@@ -1,4 +1,5 @@
 import type { AgentItem, ItemFilter } from './types';
+import { itemSection } from './sections';
 import { itemKey } from './selectors';
 
 /**
@@ -30,7 +31,7 @@ function matchesSearch(item: AgentItem, search: string): boolean {
 
 function matchesKind(item: AgentItem, kind: ItemFilter['kind']): boolean {
   if (!kind || kind === 'all') return true;
-  return item.kind === kind;
+  return itemSection(item) === kind;
 }
 
 function matchesCategory(item: AgentItem, category: ItemFilter['category']): boolean {

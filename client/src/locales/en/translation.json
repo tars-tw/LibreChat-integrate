@@ -5185,6 +5185,7 @@
   "com_ui_tools_kind_official": "Native",
   "com_ui_tools_kind_skills": "Skills",
   "com_ui_tools_kind_tools": "Tools",
+  "com_ui_tools_kind_workflow": "TARS-Workflow",
   "com_ui_tools_marketplace": "Tool Library",
   "com_ui_tools_marketplace_description": "Browse and add tools, MCP servers, and actions to your agent.",
   "com_ui_tools_marketplace_search": "Search tools…",

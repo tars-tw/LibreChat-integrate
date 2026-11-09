@@ -4520,6 +4520,7 @@
   "com_ui_tools_kind_official": "原生",
   "com_ui_tools_kind_skills": "技能",
   "com_ui_tools_kind_tools": "工具",
+  "com_ui_tools_kind_workflow": "TARS-Workflow",
   "com_ui_tools_marketplace": "工具庫",
   "com_ui_tools_marketplace_description": "瀏覽工具、MCP 伺服器與動作，並將其加入你的 Agent。",
   "com_ui_tools_marketplace_search": "搜尋工具…",
