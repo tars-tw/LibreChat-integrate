@@ -1411,6 +1411,7 @@ const updateAgentHandler = async (req, res) => {
             updatingUserId: req.user.id,
           })
         : existingAgent;
+    tarsAgentShare.enableNewBindings(existingAgent, updateData.tools);
 
     // Add version count to the response
     updatedAgent.version = updatedAgent.versions ? updatedAgent.versions.length : 0;
@@ -2233,6 +2234,7 @@ const revertAgentVersionHandler = async (req, res) => {
     if (Object.keys(revertUpdates).length > 0) {
       updatedAgent = await db.updateAgent({ id }, revertUpdates, { updatingUserId: req.user.id });
     }
+    tarsAgentShare.enableNewBindings(existingAgent, updatedAgent.tools);
 
     if (updatedAgent.author) {
       updatedAgent.author = updatedAgent.author.toString();
