@@ -47,8 +47,6 @@ export interface TarsMcpUserServer {
   has_credentials: boolean;
   auth_type: string;
   login_fields: string[];
-  /** The user's raw per-tool switches by tool name; `false` turns a tool off. */
-  tool_config?: Record<string, boolean>;
   tools: TarsMcpUserTool[];
   /** Why an enabled OIDC server's list reads as it does; see {@link withTarsDirectTools}. */
   tools_status?: TTarsMcpDirectToolsStatus;
