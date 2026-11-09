@@ -43,6 +43,12 @@ jest.mock(
       mockTeardown(...args),
 );
 
+/** Enabling has its own spec (`packages/api/src/tars/mcp/grant.spec.ts`); here it only wraps the save. */
+const mockSaveThenEnable = jest.fn((_adminTarsId, save) => save());
+jest.mock('~/server/services/tarsMcpGrantEnable', () => ({
+  saveThenEnable: (...args) => mockSaveThenEnable(...args),
+}));
+
 jest.mock('~/server/middleware', () => ({
   requireJwtAuth: (req, _res, next) => {
     req.user = JSON.parse(req.headers['x-test-user']);
@@ -98,6 +104,7 @@ describe('TARS MCP permission admin routes', () => {
     process.env.TARS_JWT_SECRET = SECRET;
     mockInvalidateTools.mockClear();
     mockInvalidateConfig.mockClear();
+    mockSaveThenEnable.mockClear();
   });
 
   afterEach(() => {
@@ -178,6 +185,32 @@ describe('TARS MCP permission admin routes', () => {
     });
     expect(mockInvalidateTools).toHaveBeenCalledTimes(1);
     expect(mockInvalidateConfig).toHaveBeenCalledTimes(1);
+    expect(mockSaveThenEnable).toHaveBeenCalledWith(ADMIN.tarsId, expect.any(Function));
+  });
+
+  it('turns newly assigned servers on around a server-side save too', async () => {
+    const result = { mcp_server_id: 's1', user_count: 1, group_count: 0 };
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(jsonResponse(200, envelope(result)));
+    const payload = {
+      mcp_server_id: 's1',
+      principals: [{ principal_type: 'user', principal_id: 'u1', mcp_tool_ids: [] }],
+    };
+
+    const res = await as(
+      ADMIN,
+      request(app).post('/api/tars/mcp/admin/permissions/server/save').send(payload),
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ result });
+    expect(tarsCall(fetchMock)).toMatchObject({
+      path: '/api/mcp/permission/server/save',
+      body: payload,
+      actingUser: ADMIN.tarsId,
+    });
+    expect(mockSaveThenEnable).toHaveBeenCalledWith(ADMIN.tarsId, expect.any(Function));
   });
 
   it("relays pwc_tars's validation message without invalidating anything", async () => {

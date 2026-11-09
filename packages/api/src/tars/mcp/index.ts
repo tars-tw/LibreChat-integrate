@@ -3,6 +3,7 @@ export * from './admin';
 export * from './catalog';
 export * from './client';
 export * from './config';
+export * from './grant';
 export * from './names';
 export * from './oidc';
 export * from './server';

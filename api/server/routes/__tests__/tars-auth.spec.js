@@ -43,6 +43,9 @@ jest.mock('~/server/services/Config', () => ({ invalidateConfigCaches: jest.fn()
 jest.mock('~/server/services/MCP', () => ({ resolveAllMcpConfigs: jest.fn() }));
 jest.mock('~/server/services/Tools/mcp', () => ({ loadMCPServerCatalogs: jest.fn() }));
 jest.mock('~/server/services/tarsOidcTeardown', () => jest.fn());
+jest.mock('~/server/services/tarsMcpGrantEnable', () => ({
+  saveThenEnable: jest.fn((tarsUserId, save) => save()),
+}));
 
 jest.mock('~/server/middleware', () => ({
   configMiddleware: jest.fn((req, res, next) => next()),

@@ -47,8 +47,6 @@ export interface TarsMcpUserServer {
   has_credentials: boolean;
   auth_type: string;
   login_fields: string[];
-  /** The user's raw per-tool switches by tool name; `false` turns a tool off. */
-  tool_config?: Record<string, boolean>;
   tools: TarsMcpUserTool[];
   /** Why an enabled OIDC server's list reads as it does; see {@link withTarsDirectTools}. */
   tools_status?: TTarsMcpDirectToolsStatus;
@@ -169,6 +167,8 @@ export async function withTarsDirectTools(
  * Servers the user has NOT opted into are dropped from `available-tools`, so they
  * are read from the user's own settings (already limited to their grants) —
  * otherwise an assigned server would vanish from chat with no hint it exists.
+ * A server still waiting on personal credentials is neither: switching it on from
+ * chat cannot make it run, so it is left to My Tools.
  */
 export async function getUserTarsMcpTools(
   tarsUserId: string,
@@ -184,11 +184,18 @@ export async function getUserTarsMcpTools(
       .catch(() => []),
   ]);
 
+  const awaitingCredentials = new Set(
+    settings.flatMap((setting) => (awaitsTarsMcpCredentials(setting) ? [setting.id] : [])),
+  );
   const servers = new Map<string, TarsMcpDomainServer>();
   const takenByServer = new Map<string, Set<string>>();
   const skipped = new Set<string>();
   for (const row of rows ?? []) {
-    if (!PROXIED_SERVER_TYPES.has(row.server_type) || skipped.has(row.server_id)) {
+    if (
+      !PROXIED_SERVER_TYPES.has(row.server_type) ||
+      skipped.has(row.server_id) ||
+      awaitingCredentials.has(row.server_id)
+    ) {
       continue;
     }
     let server = servers.get(row.server_id);
@@ -229,7 +236,11 @@ export async function getUserTarsMcpTools(
    *  the user's own connection, so an enabled one has no rows and is still usable. */
   for (const setting of settings) {
     const enabledOidc = setting.user_enabled && setting.auth_type === TARS_MCP_AUTH_OIDC;
-    if ((setting.user_enabled && !enabledOidc) || servers.has(setting.id)) {
+    if (
+      (setting.user_enabled && !enabledOidc) ||
+      servers.has(setting.id) ||
+      awaitingCredentials.has(setting.id)
+    ) {
       continue;
     }
     if (setting.is_enabled === false || !PROXIED_SERVER_TYPES.has(setting.type)) {
@@ -271,6 +282,17 @@ export async function getUserTarsMcpSettings(tarsUserId: string): Promise<TarsMc
   }));
 }
 
+/**
+ * A server the user must give personal credentials for before it can run. My Tools
+ * shows it switched off and locked until then, so every listing treats it as off,
+ * whatever pwc_tars has stored for the switch.
+ */
+export function awaitsTarsMcpCredentials(
+  server: Pick<TarsMcpUserServer, 'requires_user_credentials' | 'has_credentials'>,
+): boolean {
+  return server.requires_user_credentials && !server.has_credentials;
+}
+
 /** Only the injected per-server entries are assignment-scoped; the legacy `tars` aggregate is not. */
 const isGatewayEntry = (serverName: string): boolean =>
   serverName.startsWith(TARS_MCP_SERVER_PREFIX);
@@ -293,7 +315,7 @@ const toVisibility = (
 ): TarsMcpVisibility =>
   new Map(
     servers.flatMap((server): [string, TarsToolCheck][] =>
-      server.user_enabled && server.gateway_name != null
+      server.user_enabled && !awaitsTarsMcpCredentials(server) && server.gateway_name != null
         ? [[server.gateway_name, toolCheckFor(server, serverEnabled?.get(server.id))]]
         : [],
     ),
@@ -336,8 +358,8 @@ export function cachedVisibleTarsEntries(tarsUserId?: string | null): Promise<Ta
 
 /**
  * Narrows a resolved MCP config map to the `tars_*` gateway entries the user
- * may see: assigned to them or an active group (`sys_mcp_permission`) and opted
- * in. The config itself is shared by every user, so a listing that skips this
+ * may see: assigned to them or an active group (`sys_mcp_permission`), opted in,
+ * and not waiting on personal credentials. The config itself is shared by every user, so a listing that skips this
  * hands the whole pwc_tars catalog to anyone. Fails closed: an unlinked account
  * or an unreachable pwc_tars lists no gateway entry. Other users' personal
  * Workflow project servers (`workflow_*`) are dropped too. Other servers pass

@@ -3,12 +3,13 @@ import type { TarsMcpUserServer } from './user';
 import { getUserTarsMcpSettings, updateUserTarsMcpServer } from './user';
 
 /**
- * My Tools opt-in for the people an agent is shared with. pwc_tars defaults every
- * server to off, and the gateway lists a server's tools only once the user turns it
- * on, so a shared agent's MCP tools would not load until each person found the
- * server in My Tools. Sharing turns it on for them through the same per-user
- * settings API the page uses; a server that needs credentials only the user can
- * give stays off.
+ * My Tools opt-in on someone's behalf: for the people an agent is shared with, and for
+ * the people an admin newly assigns a server to. pwc_tars defaults every server to
+ * off, and the gateway lists a server's tools only once the user turns it on, so the
+ * server would stay out of their agents (and the Agent Builder tool list) until each
+ * person found it in My Tools. Both paths turn it on for them through the same
+ * per-user settings API the page uses. A server that needs personal credentials is
+ * never turned on this way, saved or not: it stays the person's own switch.
  */
 
 /** A server an agent binds, as pwc_tars ids; no tool ids binds the whole server. */
@@ -38,14 +39,15 @@ function withToolsOn(toolConfig: ToolConfig, toolNames: Set<string> | null): Too
 
 /**
  * The write that lets a user run what `bound` names on `server`, or null when there is
- * nothing to change: already on, or waiting on credentials only the user can give.
- * `tool_config` is sent only when it changes, since pwc_tars overwrites it whole.
+ * nothing to change: already on, or a server that needs personal credentials (left to
+ * the user even once they saved theirs). `tool_config` is sent only when it changes,
+ * since pwc_tars overwrites it whole.
  */
 export function enableUpdateFor(
   server: TarsMcpUserServer,
   bound: TarsBoundServer,
 ): ServerUpdate | null {
-  if (server.requires_user_credentials && !server.has_credentials) {
+  if (server.requires_user_credentials) {
     return null;
   }
   const wanted = new Set(bound.mcp_tool_ids);
@@ -78,29 +80,41 @@ async function enableForUser(tarsUserId: string, bound: TarsBoundServer[]): Prom
   return enabled;
 }
 
-/** Turns the bound servers on for every user; one user's failure does not stop the rest. */
-export async function enableTarsBoundServers(
-  tarsUserIds: string[],
-  bound: TarsBoundServer[],
+/**
+ * Turns each user's servers on; one user's failure does not stop the rest. `reason`
+ * names what asked for it in the log.
+ */
+export async function enableTarsServersFor(
+  plan: Map<string, TarsBoundServer[]>,
+  reason: string,
 ): Promise<void> {
-  for (let start = 0; start < tarsUserIds.length; start += ENABLE_BATCH_SIZE) {
-    const batch = tarsUserIds.slice(start, start + ENABLE_BATCH_SIZE);
+  const entries = [...plan.entries()];
+  for (let start = 0; start < entries.length; start += ENABLE_BATCH_SIZE) {
+    const batch = entries.slice(start, start + ENABLE_BATCH_SIZE);
     await Promise.all(
-      batch.map(async (tarsUserId) => {
+      batch.map(async ([tarsUserId, servers]) => {
         try {
-          const enabled = await enableForUser(tarsUserId, bound);
+          const enabled = await enableForUser(tarsUserId, servers);
           if (enabled > 0) {
             logger.info(
-              `[tars-mcp] Turned on ${enabled} MCP server(s) for pwc_tars user ${tarsUserId} after an agent share`,
+              `[tars-mcp] Turned on ${enabled} MCP server(s) for pwc_tars user ${tarsUserId} after ${reason}`,
             );
           }
         } catch (error) {
           logger.warn(
-            `[tars-mcp] Failed to turn on shared MCP servers for pwc_tars user ${tarsUserId}`,
+            `[tars-mcp] Failed to turn on MCP servers for pwc_tars user ${tarsUserId} after ${reason}`,
             error,
           );
         }
       }),
     );
   }
+}
+
+/** Turns the same bound servers on for every user, as an agent share does. */
+export function enableTarsBoundServers(
+  tarsUserIds: string[],
+  bound: TarsBoundServer[],
+): Promise<void> {
+  return enableTarsServersFor(new Map(tarsUserIds.map((id) => [id, bound])), 'an agent share');
 }
