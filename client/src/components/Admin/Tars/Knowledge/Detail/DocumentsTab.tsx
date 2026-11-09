@@ -1,354 +1,354 @@
-import { useMemo, useState } from 'react';
-import { Checkbox, useToastContext } from '@librechat/client';
-import type {
-  TTarsDocument,
-  TTarsDatasetLimits,
-  TTarsDataSecurityLevel,
-} from 'librechat-data-provider';
-import {
-  useDeleteTarsDocumentMutation,
-  useReprocessTarsDocumentMutation,
-  useRetryTarsStuckDocumentMutation,
-  useRetryTarsStuckDocumentsMutation,
-} from '~/data-provider';
-import { docStatusMeta, formatCount, matchesName } from './helpers';
-import DocumentDetailsDialog from './DocumentDetailsDialog';
-import Pagination, { usePagination } from '../Pagination';
-import { useLocalize, useTarsAdminAccess } from '~/hooks';
-import DocumentRowActions from './DocumentRowActions';
-import { formatDateTime } from '../../Users/helpers';
-import SourceIcon, { sourceLabel } from './Source';
-import LevelDialog, { LevelChip } from './Level';
-import ConfirmDialog from './ConfirmDialog';
-import RenameDialog from './RenameDialog';
-import UploadDialog from './UploadDialog';
-import { relayedError } from '../helpers';
-import StatusBadge from './StatusBadge';
-import Toolbar from './Toolbar';
-const ALL_SOURCES = '__all__';
+  import { useMemo, useState } from 'react';
+  import { Checkbox, useToastContext } from '@librechat/client';
+  import type {
+    TTarsDocument,
+    TTarsDatasetLimits,
+    TTarsDataSecurityLevel,
+  } from 'librechat-data-provider';
+  import {
+    useDeleteTarsDocumentMutation,
+    useReprocessTarsDocumentMutation,
+    useRetryTarsStuckDocumentMutation,
+    useRetryTarsStuckDocumentsMutation,
+  } from '~/data-provider';
+  import { docStatusMeta, formatCount, matchesName } from './helpers';
+  import DocumentDetailsDialog from './DocumentDetailsDialog';
+  import Pagination, { usePagination } from '../Pagination';
+  import { useLocalize, useTarsAdminAccess } from '~/hooks';
+  import DocumentRowActions from './DocumentRowActions';
+  import { formatDateTime } from '../../Users/helpers';
+  import SourceIcon, { sourceLabel } from './Source';
+  import LevelDialog, { LevelChip } from './Level';
+  import ConfirmDialog from './ConfirmDialog';
+  import RenameDialog from './RenameDialog';
+  import UploadDialog from './UploadDialog';
+  import { relayedError } from '../helpers';
+  import StatusBadge from './StatusBadge';
+  import Toolbar from './Toolbar';
+  const ALL_SOURCES = '__all__';
 
-/** The file datasets of a knowledge base. */
-export default function DocumentsTab({
-  knowledgeBaseId,
-  documents,
-  levels,
-  limits,
-  locale,
-  onRefresh,
-  isRefreshing,
-  onViewChunks,
-  onBatchDelete,
-}: {
-  knowledgeBaseId: string;
-  documents: TTarsDocument[];
-  levels: TTarsDataSecurityLevel[];
-  limits: TTarsDatasetLimits;
-  locale: string;
-  onRefresh: () => void;
-  isRefreshing: boolean;
-  onViewChunks: (document: TTarsDocument) => void;
-  onBatchDelete: (documentIds: string[]) => void;
-}) {
-  const localize = useLocalize();
-  const { isTarsAdmin } = useTarsAdminAccess();
-  const { showToast } = useToastContext();
+  /** The file datasets of a knowledge base. */
+  export default function DocumentsTab({
+    knowledgeBaseId,
+    documents,
+    levels,
+    limits,
+    locale,
+    onRefresh,
+    isRefreshing,
+    onViewChunks,
+    onBatchDelete,
+  }: {
+    knowledgeBaseId: string;
+    documents: TTarsDocument[];
+    levels: TTarsDataSecurityLevel[];
+    limits: TTarsDatasetLimits;
+    locale: string;
+    onRefresh: () => void;
+    isRefreshing: boolean;
+    onViewChunks: (document: TTarsDocument) => void;
+    onBatchDelete: (documentIds: string[]) => void;
+  }) {
+    const localize = useLocalize();
+    const { isTarsAdmin } = useTarsAdminAccess();
+    const { showToast } = useToastContext();
 
-  const [search, setSearch] = useState('');
-  const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [showUpload, setShowUpload] = useState(false);
-  const [renaming, setRenaming] = useState<TTarsDocument | null>(null);
-  const [deleting, setDeleting] = useState<TTarsDocument | null>(null);
-  const [reprocessing, setReprocessing] = useState<TTarsDocument | null>(null);
-  const [details, setDetails] = useState<TTarsDocument | null>(null);
-  const [leveling, setLeveling] = useState<TTarsDocument | null>(null);
-  const [levelingSelected, setLevelingSelected] = useState(false);
+    const [search, setSearch] = useState('');
+    const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES);
+    const [selected, setSelected] = useState<string[]>([]);
+    const [showUpload, setShowUpload] = useState(false);
+    const [renaming, setRenaming] = useState<TTarsDocument | null>(null);
+    const [deleting, setDeleting] = useState<TTarsDocument | null>(null);
+    const [reprocessing, setReprocessing] = useState<TTarsDocument | null>(null);
+    const [details, setDetails] = useState<TTarsDocument | null>(null);
+    const [leveling, setLeveling] = useState<TTarsDocument | null>(null);
+    const [levelingSelected, setLevelingSelected] = useState(false);
 
-  const visible = useMemo(
-    () =>
-      documents.filter((doc) => {
-        const matchesSearch = matchesName(doc.filename, search);
-        const matchesSource =
-          sourceFilter === ALL_SOURCES || doc.file_source?.trim().toUpperCase() === sourceFilter;
+    const visible = useMemo(
+      () =>
+        documents.filter((doc) => {
+          const matchesSearch = matchesName(doc.filename, search);
+          const matchesSource =
+            sourceFilter === ALL_SOURCES || doc.file_source?.trim().toUpperCase() === sourceFilter;
 
-        return matchesSearch && matchesSource;
-      }),
-    [documents, search, sourceFilter],
-  );
+          return matchesSearch && matchesSource;
+        }),
+      [documents, search, sourceFilter],
+    );
 
-  /** The filtered list is what gets paged, so a search resets to page one
-   *  by way of the clamp rather than by a separate effect. */
-  const paged = usePagination(visible);
+    /** The filtered list is what gets paged, so a search resets to page one
+     *  by way of the clamp rather than by a separate effect. */
+    const paged = usePagination(visible);
 
-  const deleteMutation = useDeleteTarsDocumentMutation(knowledgeBaseId, {
-    onSuccess: () => {
-      showToast({ message: localize('com_ui_tars_kb_ds_deleted'), status: 'success' });
-      setDeleting(null);
-    },
-    onError: (error) =>
-      showToast({
-        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
-        status: 'error',
-      }),
-  });
+    const deleteMutation = useDeleteTarsDocumentMutation(knowledgeBaseId, {
+      onSuccess: () => {
+        showToast({ message: localize('com_ui_tars_kb_ds_deleted'), status: 'success' });
+        setDeleting(null);
+      },
+      onError: (error) =>
+        showToast({
+          message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+          status: 'error',
+        }),
+    });
 
-  const reprocessMutation = useReprocessTarsDocumentMutation(knowledgeBaseId, {
-    onSuccess: () => {
-      showToast({ message: localize('com_ui_tars_kb_reprocess_started'), status: 'success' });
-      setReprocessing(null);
-    },
-    onError: (error) =>
-      showToast({
-        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
-        status: 'error',
-      }),
-  });
+    const reprocessMutation = useReprocessTarsDocumentMutation(knowledgeBaseId, {
+      onSuccess: () => {
+        showToast({ message: localize('com_ui_tars_kb_reprocess_started'), status: 'success' });
+        setReprocessing(null);
+      },
+      onError: (error) =>
+        showToast({
+          message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+          status: 'error',
+        }),
+    });
 
-  const retryStuckMutation = useRetryTarsStuckDocumentsMutation(knowledgeBaseId, {
-    onSuccess: (data) =>
-      showToast({
-        message: data.message || localize('com_ui_tars_kb_retry_stuck_success'),
-        status: 'success',
-      }),
-    onError: (error) =>
-      showToast({
-        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
-        status: 'error',
-      }),
-  });
+    const retryStuckMutation = useRetryTarsStuckDocumentsMutation(knowledgeBaseId, {
+      onSuccess: (data) =>
+        showToast({
+          message: data.message || localize('com_ui_tars_kb_retry_stuck_success'),
+          status: 'success',
+        }),
+      onError: (error) =>
+        showToast({
+          message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+          status: 'error',
+        }),
+    });
 
-  const retryStuckOneMutation = useRetryTarsStuckDocumentMutation(knowledgeBaseId, {
-    onSuccess: (data) =>
-      showToast({
-        message: data.message || localize('com_ui_tars_kb_retry_stuck_success'),
-        status: 'success',
-      }),
-    onError: (error) =>
-      showToast({
-        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
-        status: 'error',
-      }),
-  });
+    const retryStuckOneMutation = useRetryTarsStuckDocumentMutation(knowledgeBaseId, {
+      onSuccess: (data) =>
+        showToast({
+          message: data.message || localize('com_ui_tars_kb_retry_stuck_success'),
+          status: 'success',
+        }),
+      onError: (error) =>
+        showToast({
+          message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+          status: 'error',
+        }),
+    });
 
-  const sourceOptions = useMemo(
-    () => [
-      { value: ALL_SOURCES, label: localize('com_ui_tars_kb_ds_all_sources') },
-      ...Array.from(
-        new Set(
-          documents
-            .map((doc) => doc.file_source?.trim().toUpperCase())
-            .filter((source): source is string => Boolean(source)),
-        ),
-      )
-        .sort()
-        .map((source) => ({
-          value: source,
-          label: sourceLabel(source, localize),
-          icon: <SourceIcon source={source} />,
-        })),
-    ],
-    [documents, localize],
-  );
+    const sourceOptions = useMemo(
+      () => [
+        { value: ALL_SOURCES, label: localize('com_ui_tars_kb_ds_all_sources') },
+        ...Array.from(
+          new Set(
+            documents
+              .map((doc) => doc.file_source?.trim().toUpperCase())
+              .filter((source): source is string => Boolean(source)),
+          ),
+        )
+          .sort()
+          .map((source) => ({
+            value: source,
+            label: sourceLabel(source, localize),
+            icon: <SourceIcon source={source} />,
+          })),
+      ],
+      [documents, localize],
+    );
 
-  const toggle = (id: string) =>
-    setSelected((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]));
+    const toggle = (id: string) =>
+      setSelected((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]));
 
-  const allSelected = paged.rows.length > 0 && paged.rows.every((row) => selected.includes(row.id));
+    const allSelected = paged.rows.length > 0 && paged.rows.every((row) => selected.includes(row.id));
 
-  return (
-    <div className="space-y-3">
-      <Toolbar
-        search={search}
-        onSearchChange={setSearch}
-        sourceFilter={sourceFilter}
-        onSourceFilterChange={setSourceFilter}
-        sourceOptions={sourceOptions}
-        onRefresh={onRefresh}
-        isRefreshing={isRefreshing}
-        selectedCount={selected.length}
-        onBatchLevel={() => setLevelingSelected(true)}
-        onBatchDelete={() => {
-          onBatchDelete(selected);
-          setSelected([]);
-        }}
-        onRetryStuck={isTarsAdmin ? () => retryStuckMutation.mutate() : undefined}
-        isRetryingStuck={retryStuckMutation.isLoading}
-        addLabel={localize('com_ui_tars_kb_upload_documents')}
-        onAdd={() => setShowUpload(true)}
-      />
+    return (
+      <div className="space-y-3">
+        <Toolbar
+          search={search}
+          onSearchChange={setSearch}
+          sourceFilter={sourceFilter}
+          onSourceFilterChange={setSourceFilter}
+          sourceOptions={sourceOptions}
+          onRefresh={onRefresh}
+          isRefreshing={isRefreshing}
+          selectedCount={selected.length}
+          onBatchLevel={() => setLevelingSelected(true)}
+          onBatchDelete={() => {
+            onBatchDelete(selected);
+            setSelected([]);
+          }}
+          onRetryStuck={isTarsAdmin ? () => retryStuckMutation.mutate() : undefined}
+          isRetryingStuck={retryStuckMutation.isLoading}
+          addLabel={localize('com_ui_tars_kb_upload_documents')}
+          onAdd={() => setShowUpload(true)}
+        />
 
-      {visible.length === 0 ? (
-        <p className="text-text-secondary py-12 text-center text-sm">
-          {localize(
-            documents.length === 0 ? 'com_ui_tars_kb_no_documents' : 'com_ui_tars_kb_ds_no_match',
-          )}
-        </p>
-      ) : (
-        <div className="border-border-light overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[62rem] border-collapse text-sm">
-            <thead className="bg-surface-secondary">
-              <tr className="text-text-secondary text-left whitespace-nowrap">
-                <th className="w-10 px-3 py-2">
-                  <Checkbox
-                    checked={allSelected}
-                    onCheckedChange={(checked) =>
-                      setSelected(checked === true ? paged.rows.map((doc) => doc.id) : [])
-                    }
-                    aria-label={localize('com_ui_tars_kb_ds_select_all')}
-                  />
-                </th>
-                <th className="w-[40%] px-3 py-2 font-medium">
-                  {localize('com_ui_tars_kb_ds_name')}
-                </th>
-                <th className="px-3 py-2 font-medium">
-                  {localize('com_ui_tars_kb_ds_file_source')}
-                </th>
-                <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_status')}</th>
-                <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_level')}</th>
-                <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_ds_words')}</th>
-                <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_tokens')}</th>
-                <th className="px-3 py-2 font-medium">
-                  {localize('com_ui_tars_kb_ds_created_at')}
-                </th>
-                <th className="px-3 py-2 text-right font-medium">{localize('com_ui_actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paged.rows.map((doc) => (
-                <tr key={doc.id} className="border-border-light hover:bg-surface-hover border-t">
-                  <td className="px-3 py-1.5">
+        {visible.length === 0 ? (
+          <p className="text-text-secondary py-12 text-center text-sm">
+            {localize(
+              documents.length === 0 ? 'com_ui_tars_kb_no_documents' : 'com_ui_tars_kb_ds_no_match',
+            )}
+          </p>
+        ) : (
+          <div className="border-border-light overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[62rem] border-collapse text-sm">
+              <thead className="bg-surface-secondary">
+                <tr className="text-text-secondary text-left whitespace-nowrap">
+                  <th className="w-10 px-3 py-2">
                     <Checkbox
-                      checked={selected.includes(doc.id)}
-                      onCheckedChange={() => toggle(doc.id)}
-                      aria-label={localize('com_ui_tars_kb_ds_select_item', { 0: doc.filename })}
-                    />
-                  </td>
-                  <td className="max-w-0 px-3 py-1.5">
-                    <span className="text-text-primary block truncate" title={doc.filename}>
-                      {doc.filename}
-                    </span>
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <SourceIcon source={doc.file_source} />
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <StatusBadge meta={docStatusMeta(doc.status)} />
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <LevelChip levels={levels} levelId={doc.data_security_level_id} />
-                  </td>
-                  <td className="text-text-secondary px-3 py-1.5 tabular-nums">
-                    {formatCount(doc.word_count)}
-                  </td>
-                  <td className="text-text-secondary px-3 py-1.5 tabular-nums">
-                    {formatCount(doc.tokens)}
-                  </td>
-                  <td className="text-text-secondary px-3 py-1.5 whitespace-nowrap">
-                    {formatDateTime(doc.created_at, locale)}
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <DocumentRowActions
-                      doc={doc}
-                      isRetryingStuck={retryStuckOneMutation.isLoading}
-                      onDetails={() => setDetails(doc)}
-                      onViewChunks={() => onViewChunks(doc)}
-                      onRename={() => setRenaming(doc)}
-                      onSetLevel={() => setLeveling(doc)}
-                      onReprocess={() => setReprocessing(doc)}
-                      onRetryStuck={
-                        isTarsAdmin ? () => retryStuckOneMutation.mutate(doc.id) : undefined
+                      checked={allSelected}
+                      onCheckedChange={(checked) =>
+                        setSelected(checked === true ? paged.rows.map((doc) => doc.id) : [])
                       }
-                      onDelete={() => setDeleting(doc)}
+                      aria-label={localize('com_ui_tars_kb_ds_select_all')}
                     />
-                  </td>
+                  </th>
+                  <th className="w-[40%] px-3 py-2 font-medium">
+                    {localize('com_ui_tars_kb_ds_name')}
+                  </th>
+                  <th className="px-3 py-2 font-medium">
+                    {localize('com_ui_tars_kb_ds_file_source')}
+                  </th>
+                  <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_status')}</th>
+                  <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_level')}</th>
+                  <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_ds_words')}</th>
+                  <th className="px-3 py-2 font-medium">{localize('com_ui_tars_kb_tokens')}</th>
+                  <th className="px-3 py-2 font-medium">
+                    {localize('com_ui_tars_kb_ds_created_at')}
+                  </th>
+                  <th className="px-3 py-2 text-right font-medium">{localize('com_ui_actions')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {paged.rows.map((doc) => (
+                  <tr key={doc.id} className="border-border-light hover:bg-surface-hover border-t">
+                    <td className="px-3 py-1.5">
+                      <Checkbox
+                        checked={selected.includes(doc.id)}
+                        onCheckedChange={() => toggle(doc.id)}
+                        aria-label={localize('com_ui_tars_kb_ds_select_item', { 0: doc.filename })}
+                      />
+                    </td>
+                    <td className="max-w-0 px-3 py-1.5">
+                      <span className="text-text-primary block truncate" title={doc.filename}>
+                        {doc.filename}
+                      </span>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <SourceIcon source={doc.file_source} />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <StatusBadge meta={docStatusMeta(doc.status)} />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <LevelChip levels={levels} levelId={doc.data_security_level_id} />
+                    </td>
+                    <td className="text-text-secondary px-3 py-1.5 tabular-nums">
+                      {formatCount(doc.word_count)}
+                    </td>
+                    <td className="text-text-secondary px-3 py-1.5 tabular-nums">
+                      {formatCount(doc.tokens)}
+                    </td>
+                    <td className="text-text-secondary px-3 py-1.5 whitespace-nowrap">
+                      {formatDateTime(doc.created_at, locale)}
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <DocumentRowActions
+                        doc={doc}
+                        isRetryingStuck={retryStuckOneMutation.isLoading}
+                        onDetails={() => setDetails(doc)}
+                        onViewChunks={() => onViewChunks(doc)}
+                        onRename={() => setRenaming(doc)}
+                        onSetLevel={() => setLeveling(doc)}
+                        onReprocess={() => setReprocessing(doc)}
+                        onRetryStuck={
+                          isTarsAdmin ? () => retryStuckOneMutation.mutate(doc.id) : undefined
+                        }
+                        onDelete={() => setDeleting(doc)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-      {visible.length > 0 && <Pagination state={paged} />}
+        {visible.length > 0 && <Pagination state={paged} />}
 
-      {showUpload && (
-        <UploadDialog
-          knowledgeBaseId={knowledgeBaseId}
-          levels={levels}
-          limits={limits}
-          onClose={() => setShowUpload(false)}
-        />
-      )}
+        {showUpload && (
+          <UploadDialog
+            knowledgeBaseId={knowledgeBaseId}
+            levels={levels}
+            limits={limits}
+            onClose={() => setShowUpload(false)}
+          />
+        )}
 
-      {renaming != null && (
-        <RenameDialog
-          knowledgeBaseId={knowledgeBaseId}
-          document={renaming}
-          onClose={() => setRenaming(null)}
-        />
-      )}
+        {renaming != null && (
+          <RenameDialog
+            knowledgeBaseId={knowledgeBaseId}
+            document={renaming}
+            onClose={() => setRenaming(null)}
+          />
+        )}
 
-      {deleting != null && (
-        <ConfirmDialog
-          title={localize('com_ui_tars_kb_ds_delete_document')}
-          message={localize('com_ui_tars_kb_ds_delete_confirm', { 0: deleting.filename })}
-          note={localize('com_ui_tars_kb_ds_delete_warning')}
-          confirmLabel={localize('com_ui_delete')}
-          destructive
-          isBusy={deleteMutation.isLoading}
-          onConfirm={() => deleteMutation.mutate(deleting.id)}
-          onClose={() => setDeleting(null)}
-        />
-      )}
+        {deleting != null && (
+          <ConfirmDialog
+            title={localize('com_ui_tars_kb_ds_delete_document')}
+            message={localize('com_ui_tars_kb_ds_delete_confirm', { 0: deleting.filename })}
+            note={localize('com_ui_tars_kb_ds_delete_warning')}
+            confirmLabel={localize('com_ui_delete')}
+            destructive
+            isBusy={deleteMutation.isLoading}
+            onConfirm={() => deleteMutation.mutate(deleting.id)}
+            onClose={() => setDeleting(null)}
+          />
+        )}
 
-      {reprocessing != null && (
-        <ConfirmDialog
-          title={localize('com_ui_tars_kb_reprocess')}
-          message={localize('com_ui_tars_kb_reprocess_confirm')}
-          confirmLabel={localize('com_ui_tars_kb_reprocess')}
-          isBusy={reprocessMutation.isLoading}
-          onConfirm={() =>
-            reprocessMutation.mutate({
-              docId: reprocessing.id,
-              /** Keep whatever the document was originally chunked with. */
-              data: {
-                chunkSize: reprocessing.chunk_size ?? undefined,
-                overlap: reprocessing.overlap_size ?? undefined,
-              },
-            })
-          }
-          onClose={() => setReprocessing(null)}
-        />
-      )}
+        {reprocessing != null && (
+          <ConfirmDialog
+            title={localize('com_ui_tars_kb_reprocess')}
+            message={localize('com_ui_tars_kb_reprocess_confirm')}
+            confirmLabel={localize('com_ui_tars_kb_reprocess')}
+            isBusy={reprocessMutation.isLoading}
+            onConfirm={() =>
+              reprocessMutation.mutate({
+                docId: reprocessing.id,
+                /** Keep whatever the document was originally chunked with. */
+                data: {
+                  chunkSize: reprocessing.chunk_size ?? undefined,
+                  overlap: reprocessing.overlap_size ?? undefined,
+                },
+              })
+            }
+            onClose={() => setReprocessing(null)}
+          />
+        )}
 
-      {leveling != null && (
-        <LevelDialog
-          knowledgeBaseId={knowledgeBaseId}
-          levels={levels}
-          name={leveling.filename}
-          targets={{ documentIds: [leveling.id] }}
-          currentLevelId={leveling.data_security_level_id ?? null}
-          onClose={() => setLeveling(null)}
-        />
-      )}
+        {leveling != null && (
+          <LevelDialog
+            knowledgeBaseId={knowledgeBaseId}
+            levels={levels}
+            name={leveling.filename}
+            targets={{ documentIds: [leveling.id] }}
+            currentLevelId={leveling.data_security_level_id ?? null}
+            onClose={() => setLeveling(null)}
+          />
+        )}
 
-      {levelingSelected && (
-        <LevelDialog
-          knowledgeBaseId={knowledgeBaseId}
-          levels={levels}
-          name={localize('com_ui_tars_kb_level_selected', { 0: String(selected.length) })}
-          targets={{ documentIds: selected }}
-          onSaved={() => setSelected([])}
-          onClose={() => setLevelingSelected(false)}
-        />
-      )}
+        {levelingSelected && (
+          <LevelDialog
+            knowledgeBaseId={knowledgeBaseId}
+            levels={levels}
+            name={localize('com_ui_tars_kb_level_selected', { 0: String(selected.length) })}
+            targets={{ documentIds: selected }}
+            onSaved={() => setSelected([])}
+            onClose={() => setLevelingSelected(false)}
+          />
+        )}
 
-      {details != null && (
-        <DocumentDetailsDialog
-          document={details}
-          locale={locale}
-          onClose={() => setDetails(null)}
-        />
-      )}
-    </div>
-  );
-}
+        {details != null && (
+          <DocumentDetailsDialog
+            document={details}
+            locale={locale}
+            onClose={() => setDetails(null)}
+          />
+        )}
+      </div>
+    );
+  }

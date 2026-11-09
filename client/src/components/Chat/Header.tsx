@@ -23,6 +23,7 @@ import BookmarkMenu from './Menus/BookmarkMenu';
 import { useChatContext } from '~/Providers';
 import AddMultiConvo from './AddMultiConvo';
 import Selectors from './Menus/Selectors';
+import TokenQuotaBar from './TokenQuotaBar';
 import { useHasAccess } from '~/hooks';
 import { cn } from '~/utils';
 import store from '~/store';
@@ -132,6 +133,7 @@ function Header({
       </div>
 
       <div className={cn('flex shrink-0 items-center gap-2', hiddenBehindNav)}>
+        {!readOnly && !isSmallScreen && <TokenQuotaBar />}
         {showTemporaryChat && <TemporaryChatIndicator />}
         {!isNewChat && <NewChat className={isSmallScreen ? undefined : 'hidden'} />}
         {!isNewChat && parentConversationId == null && (

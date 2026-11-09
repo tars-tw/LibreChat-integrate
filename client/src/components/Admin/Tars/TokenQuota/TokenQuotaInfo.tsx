@@ -1,95 +1,47 @@
+
 import { useState } from 'react';
 import { OGDialog, OGDialogTemplate } from '@librechat/client';
-import { ChevronLeft, ChevronRight, Target, User, CalendarDays, Bell } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  User,
+  CalendarDays,
+  Bell,
+  Settings2,  
+  type LucideIcon,
+} from 'lucide-react';
 import { useLocalize } from '~/hooks';
 
-type QuotaPyramidProps = {
-  activeLayer: 0 | 1 | 2;
-  color: string;
-  labels: [string, string, string];
-};
-
-function QuotaPyramid({ activeLayer, color, labels }: QuotaPyramidProps) {
-  const layers = [
-    { idx: 0, points: '10,280 290,280 243.5,200 56.5,200', label: labels[0], labelPos: [150, 250] },
-    {
-      idx: 1,
-      points: '56.5,200 243.5,200 196.5,115 103.5,115',
-      label: labels[1],
-      labelPos: [150, 165],
-    },
-    { idx: 2, points: '103.5,115 196.5,115 150,30', label: labels[2], labelPos: [150, 80] },
-  ] as const;
-
-  const inactiveColors = ['#B9C0C9', '#CDD2D8', '#DDE1E5'];
-
-  return (
-    <svg viewBox="0 0 300 300" className="h-auto w-full max-w-[300px]">
-      {layers.map((l) => {
-        const isActive = l.idx === activeLayer;
-        return (
-          <g key={l.idx}>
-            <polygon
-              points={l.points}
-              fill={isActive ? color : inactiveColors[l.idx]}
-              stroke="#fff"
-              strokeWidth="7"
-              strokeLinejoin="round"
-              style={{ transition: 'fill 0.3s ease' }}
-            />
-            <text
-              x={l.labelPos[0]}
-              y={l.labelPos[1]}
-              textAnchor="middle"
-              fontSize="15"
-              fontWeight="700"
-              fill={isActive ? '#fff' : '#212529'}
-              stroke={isActive ? color : 'none'}
-              strokeWidth={isActive ? 2 : 0}
-              paintOrder="stroke"
-            >
-              {l.label}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-function FieldInfoCard({
+function FieldInfoRow({
   icon: Icon,
   title,
   desc,
 }: {
-  icon: typeof Target;
+  icon: LucideIcon;
   title: string;
   desc: string;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl bg-orange-50 p-4 dark:bg-orange-950/20">
-      <div className="dark:bg-surface-primary flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-orange-600 dark:text-orange-400">
+    <div className="flex items-start gap-3 py-3">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400">
         <Icon className="size-4" aria-hidden />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="text-text-primary text-sm font-semibold">{title}</div>
-        <div className="text-text-secondary mt-0.5 text-xs leading-relaxed">{desc}</div>
+        <div className="text-text-secondary mt-0.5 text-xs leading-relaxed">
+          {desc}
+        </div>
       </div>
     </div>
   );
 }
 
-type Slide =
-  | {
-      key: string;
-      type: 'pyramid';
-      layer: 0 | 1 | 2;
-      title: string;
-      scope: string;
-      desc: string;
-      color: string;
-    }
-  | { key: string; type: 'fields' };
+type QuotaSlide = {
+  key: string;
+  title: string;
+  scope: string;
+  desc: string;
+};
 
 export default function TokenQuotaInfo({
   open,
@@ -101,62 +53,30 @@ export default function TokenQuotaInfo({
   const localize = useLocalize();
   const [slide, setSlide] = useState(0);
 
-  const slides: Slide[] = [
+  const quotaSlides: QuotaSlide[] = [
     {
       key: 'personal',
-      type: 'pyramid',
-      layer: 2,
       title: localize('com_ui_tars_quota_info_personal_title'),
       scope: localize('com_ui_tars_quota_info_personal_scope'),
       desc: localize('com_ui_tars_quota_info_personal_desc'),
-      color: '#F5A623',
-    },
-    {
-      key: 'group',
-      type: 'pyramid',
-      layer: 1,
-      title: localize('com_ui_tars_quota_info_group_title'),
-      scope: localize('com_ui_tars_quota_info_group_scope'),
-      desc: localize('com_ui_tars_quota_info_group_desc'),
-      color: '#FE7C39',
     },
     {
       key: 'system',
-      type: 'pyramid',
-      layer: 0,
       title: localize('com_ui_tars_quota_info_system_title'),
       scope: localize('com_ui_tars_quota_info_system_scope'),
       desc: localize('com_ui_tars_quota_info_system_desc'),
-      color: '#FF5722',
     },
-    { key: 'fields', type: 'fields' },
-  ];
-
-  const pyramidLabels: [string, string, string] = [
-    localize('com_ui_tars_quota_info_system_title'),
-    localize('com_ui_tars_quota_info_group_title'),
-    localize('com_ui_tars_quota_info_personal_title'),
   ];
 
   const fieldGroups = [
     {
-      label: localize('com_ui_tars_quota_info_fields_group_partial'),
+      label: localize('com_ui_tars_quota_info_fields_group_all'),
       fields: [
-        {
-          icon: Target,
-          title: localize('com_ui_tars_quota_info_fields_system_total_title'),
-          desc: localize('com_ui_tars_quota_info_fields_system_total_desc'),
-        },
         {
           icon: User,
           title: localize('com_ui_tars_quota_info_fields_default_user_title'),
           desc: localize('com_ui_tars_quota_info_fields_default_user_desc'),
         },
-      ],
-    },
-    {
-      label: localize('com_ui_tars_quota_info_fields_group_all'),
-      fields: [
         {
           icon: CalendarDays,
           title: localize('com_ui_tars_quota_info_fields_reset_title'),
@@ -171,7 +91,9 @@ export default function TokenQuotaInfo({
     },
   ];
 
-  const current = slides[slide];
+  const totalSlides = 3;
+  const isFieldsSlide = slide === 2;
+  const current = quotaSlides[slide];
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
@@ -182,106 +104,138 @@ export default function TokenQuotaInfo({
     <OGDialog open={open} onOpenChange={handleOpenChange}>
       <OGDialogTemplate
         title={
-          current.type === 'fields'
+          isFieldsSlide
             ? localize('com_ui_tars_quota_info_fields_title')
             : localize('com_ui_tars_quota_info_title')
         }
-        className="w-11/12 max-w-2xl"
+        className="w-[calc(100%-2rem)] max-w-md"
         showCloseButton={true}
         main={
-          <div>
-            {current.type === 'pyramid' && (
-              <p className="text-text-secondary mb-4 text-sm">
-                {localize('com_ui_tars_quota_info_priority_label')}
-                {localize('com_ui_tars_quota_info_priority_full', {
-                  personal: localize('com_ui_tars_quota_info_personal_title'),
-                  group: localize('com_ui_tars_quota_info_group_title'),
-                  system: localize('com_ui_tars_quota_info_system_title'),
-                })}
-              </p>
-            )}
+          <div className="space-y-4">
+            {!isFieldsSlide ? (
+              <>
+                {/* 套用順序 */}
+                <div className="rounded-lg bg-surface-secondary px-3 py-2.5">
+                  <div className="text-text-secondary mb-2 text-xs">
+                    {localize('com_ui_tars_quota_info_priority_label')}
+                  </div>
+                  <div className="flex items-center justify-center gap-2">
+                    <span
+                      className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                        slide === 0
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-surface-primary text-text-secondary'
+                      }`}
+                    >
+                      {localize('com_ui_tars_quota_info_personal_title')}
+                    </span>
+                    <ChevronRight className="text-text-secondary size-4 shrink-0" />
+                    <span
+                      className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                        slide === 1
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-surface-primary text-text-secondary'
+                      }`}
+                    >
+                      {localize('com_ui_tars_quota_info_system_title')}
+                    </span>
+                  </div>
+                </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                aria-label={localize('com_ui_tars_quota_info_prev')}
-                onClick={() => setSlide((s) => Math.max(0, s - 1))}
-                disabled={slide === 0}
-                className="border-border-light text-text-secondary disabled:hover:border-border-light disabled:hover:text-text-secondary flex size-9 shrink-0 items-center justify-center rounded-full border transition-colors hover:border-orange-500 hover:bg-orange-500 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
-              >
-                <ChevronLeft className="size-4" aria-hidden />
-              </button>
-
-              <div className="flex min-h-[300px] flex-1 items-center">
-                {current.type === 'pyramid' ? (
-                  <div className="flex w-full flex-col items-center gap-6 sm:flex-row sm:items-center">
-                    <div className="w-full flex-1 rounded-xl bg-orange-50 p-5 dark:bg-orange-950/20">
-                      <div className="text-text-primary mb-3 text-base font-bold">
-                        {current.title}
-                      </div>
-                      <div className="text-text-secondary mt-2 mb-0.5 text-xs">
-                        {localize('com_ui_tars_quota_info_scope_label')}
-                      </div>
-                      <div className="text-text-primary text-sm">{current.scope}</div>
-                      <div className="text-text-secondary mt-3 mb-0.5 text-xs">
-                        {localize('com_ui_tars_quota_info_desc_label')}
-                      </div>
-                      <div className="text-text-primary text-sm leading-relaxed">
-                        {current.desc}
-                      </div>
+                {/* 說明內容 */}
+                <div className="rounded-lg border border-border-light p-4">
+                  <div className="text-text-primary mb-3 flex items-center gap-2 text-base font-semibold">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400">
+                      {slide === 0 ? (
+                        <User className="size-4" aria-hidden />
+                      ) : (
+                        <Settings2 className="size-4" aria-hidden />
+                      )}
                     </div>
-                    <div className="flex flex-1 justify-center">
-                      <QuotaPyramid
-                        activeLayer={current.layer}
-                        color={current.color}
-                        labels={pyramidLabels}
-                      />
+                    {current.title}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="text-text-secondary text-xs">
+                      {localize('com_ui_tars_quota_info_scope_label')}
+                    </div>
+                    <div className="text-text-primary text-sm">
+                      {current.scope}
                     </div>
                   </div>
-                ) : (
-                  <div className="w-full space-y-5">
-                    {fieldGroups.map((group) => (
-                      <div key={group.label}>
-                        <div className="text-text-secondary mb-2.5 text-sm">{group.label}</div>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          {group.fields.map((f) => (
-                            <FieldInfoCard
-                              key={f.title}
-                              icon={f.icon}
-                              title={f.title}
-                              desc={f.desc}
-                            />
-                          ))}
-                        </div>
-                      </div>
+
+                  <div className="bg-border-light my-3 h-px" />
+
+                  <div className="space-y-1.5">
+                    <div className="text-text-secondary text-xs">
+                      {localize('com_ui_tars_quota_info_desc_label')}
+                    </div>
+                    <div className="text-text-primary text-sm leading-relaxed">
+                      {current.desc}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="divide-y divide-border-light">
+                {fieldGroups.map((group) => (
+                  <div key={group.label} className="py-1">
+                    <div className="text-text-secondary pt-2 text-xs font-medium">
+                      {group.label}
+                    </div>
+                    {group.fields.map((field) => (
+                      <FieldInfoRow
+                        key={field.title}
+                        icon={field.icon}
+                        title={field.title}
+                        desc={field.desc}
+                      />
                     ))}
                   </div>
-                )}
+                ))}
+              </div>
+            )}
+
+            {/* 頁面切換 */}
+            <div className="flex items-center justify-between border-t border-border-light pt-3">
+              <button
+                type="button"
+                onClick={() => setSlide((s) => Math.max(0, s - 1))}
+                disabled={slide === 0}
+                className="text-text-secondary flex items-center gap-1 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <ChevronLeft className="size-4" aria-hidden />
+                {localize('com_ui_tars_quota_info_prev')}
+              </button>
+
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: totalSlides }, (_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    aria-label={`${index + 1}`}
+                    aria-current={index === slide ? 'step' : undefined}
+                    onClick={() => setSlide(index)}
+                    className={`h-1.5 rounded-full transition-all ${
+                      index === slide
+                        ? 'w-5 bg-orange-500'
+                        : 'w-1.5 bg-border-medium'
+                    }`}
+                  />
+                ))}
               </div>
 
               <button
                 type="button"
-                aria-label={localize('com_ui_tars_quota_info_next')}
-                onClick={() => setSlide((s) => Math.min(slides.length - 1, s + 1))}
-                disabled={slide === slides.length - 1}
-                className="border-border-light text-text-secondary disabled:hover:border-border-light disabled:hover:text-text-secondary flex size-9 shrink-0 items-center justify-center rounded-full border transition-colors hover:border-orange-500 hover:bg-orange-500 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
+                onClick={() =>
+                  setSlide((s) => Math.min(totalSlides - 1, s + 1))
+                }
+                disabled={slide === totalSlides - 1}
+                className="text-text-secondary flex items-center gap-1 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-30"
               >
+                {localize('com_ui_tars_quota_info_next')}
                 <ChevronRight className="size-4" aria-hidden />
               </button>
-            </div>
-
-            <div className="mt-5 flex justify-center gap-2">
-              {slides.map((s, i) => (
-                <span
-                  key={s.key}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSlide(i)}
-                  className={`h-2 cursor-pointer rounded-full transition-all ${
-                    i === slide ? 'w-5 bg-orange-500' : 'bg-border-light w-2'
-                  }`}
-                />
-              ))}
             </div>
           </div>
         }

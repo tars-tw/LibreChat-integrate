@@ -1207,6 +1207,22 @@ export const updateTarsTokenQuota = (
   return request.put(endpoints.tarsTokenQuota(id), data);
 };
 
+export function batchSetTarsTokenQuotas(
+  data: t.TTarsTokenQuotaBatchInput,
+): Promise<t.TTarsTokenQuotaBatchResult> {
+  return request.put(endpoints.tarsTokenQuotasBatch(), data);
+}
+
+export function batchDeleteTarsTokenQuotas(
+  data: t.TTarsTokenQuotaBatchDeleteInput,
+): Promise<t.TTarsTokenQuotaBatchDeleteResult> {
+  return request.post(endpoints.tarsTokenQuotasBatchDelete(), data);
+}
+
+export function getTarsMyTokenQuotas(): Promise<t.TTarsMyTokenQuotasResponse> {
+  return request.get(endpoints.tarsMyTokenQuotas());
+}
+
 export const deleteTarsTokenQuota = (id: string): Promise<{ success: boolean }> => {
   return request.delete(endpoints.tarsTokenQuota(id));
 };

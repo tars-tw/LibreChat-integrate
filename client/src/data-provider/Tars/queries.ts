@@ -91,6 +91,7 @@ import type {
   TTarsTokenReportMembersResponse,
   TTarsTokenReportUserQuery,
   TTarsTokenReportUserResponse,
+  TTarsMyTokenQuotasResponse,
   TTarsEmbeddingUsageQuery,
   TTarsEmbeddingUsageSummary,
   TTarsMessageEmbeddingUsage,
@@ -1128,6 +1129,27 @@ export const useTarsTokenDefaultsQuery = (
   );
 };
 
+/** The signed-in user's own quota per provider, for the sidebar's usage button. */
+export const useTarsMyTokenQuotasQuery = (
+  config?: UseQueryOptions<
+    TTarsMyTokenQuotasResponse,
+    unknown,
+    TTarsMyTokenQuotasResponse['quotas']
+  >,
+): QueryObserverResult<TTarsMyTokenQuotasResponse['quotas']> => {
+  return useQuery<TTarsMyTokenQuotasResponse, unknown, TTarsMyTokenQuotasResponse['quotas']>(
+    [QueryKeys.tarsMyTokenQuotas],
+    () => dataService.getTarsMyTokenQuotas(),
+    {
+      select: (data) => data.quotas ?? [],
+      staleTime: 30 * 1000,
+      refetchInterval: 60 * 1000,
+      refetchOnWindowFocus: true,
+      ...config,
+    },
+  );
+};
+
 /**
  * Admin: the token usage report for one period.
  *
@@ -1169,6 +1191,28 @@ export const useTarsTokenReportMembersQuery = (
     {
       enabled: query != null && query.user_group_ids.length > 0,
       select: (data) => data.members ?? [],
+      keepPreviousData: true,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/** Admin: every user's totals for one period, for the report's per-person table. */
+export const useTarsTokenReportUsersQuery = (
+  range: TTarsTokenReportRange | null,
+  config?: UseQueryOptions<
+    TTarsTokenReportUsersResponse,
+    unknown,
+    TTarsTokenReportUsersResponse['users']
+  >,
+): QueryObserverResult<TTarsTokenReportUsersResponse['users']> => {
+  return useQuery<TTarsTokenReportUsersResponse, unknown, TTarsTokenReportUsersResponse['users']>(
+    [QueryKeys.tarsTokenReportUsers, range],
+    () => dataService.getTarsTokenReportUsers(range as TTarsTokenReportRange),
+    {
+      enabled: range != null,
+      select: (data) => data.users ?? [],
       keepPreviousData: true,
       ...adminQueryOptions,
       ...config,

@@ -22,19 +22,43 @@ const stampOf = (range: TTarsTokenReportRange): string =>
 const text = (value: string | number | null | undefined): string =>
   value == null ? '' : String(value);
 
+const asTextCell = (value: string): string => `="${value}"`;
+
+/** The optional per-day split pwc_tars returns, which the shared daily type does not declare. */
+type DayParts = { prompt_tokens?: number; completion_tokens?: number };
+
+interface CsvFile {
+  name: string;
+  headers: string[];
+  rows: string[][];
+}
+
+async function saveFiles(files: CsvFile[]): Promise<void> {
+  for (const file of files) {
+    downloadBlob(toCsvBlob(file.headers, file.rows), file.name);
+    await new Promise((resolve) => setTimeout(resolve, SPACING_MS));
+  }
+}
+
 /**
  * The embedding usage file: the by-day, by-purpose, by-brain, by-knowledge-base
  * and by-model totals one under the other, as the pwc_tars sheet lays them out.
+ * With a `userId` it covers only that person's usage.
  * Null when it cannot be read, so the chat files still download without it.
  */
 async function embeddingRows(
   range: TTarsTokenReportRange,
   localize: Localize,
+  userId?: string,
 ): Promise<string[][] | null> {
   try {
     const reports = await Promise.all(
       TARS_EMBEDDING_GROUP_BY.map((group_by) =>
-        dataService.getTarsEmbeddingUsageSummary({ ...range, group_by }),
+        dataService.getTarsEmbeddingUsageSummary({
+          ...range,
+          group_by,
+          ...(userId ? { user_id: userId } : {}),
+        }),
       ),
     );
     return reports.flatMap((report, index) => {
@@ -57,6 +81,30 @@ async function embeddingRows(
     return null;
   }
 }
+
+/** Columns prepended to every row of a per-person file, so it says whose it is. */
+interface Identity {
+  headers: string[];
+  cells: string[];
+}
+
+const embeddingFile = (
+  name: string,
+  rows: string[][],
+  localize: Localize,
+  who?: Identity,
+): CsvFile => ({
+  name,
+  headers: [
+    ...(who?.headers ?? []),
+    localize('com_ui_tars_embedding_col_dimension'),
+    localize('com_ui_tars_embedding_col_item'),
+    localize('com_ui_tars_embedding_col_tokens'),
+    localize('com_ui_tars_embedding_requests'),
+    localize('com_ui_tars_embedding_col_texts'),
+  ],
+  rows: who == null ? rows : rows.map((row) => [...who.cells, ...row]),
+});
 
 /** Why an export leaves the embedding usage out: a range pwc_tars will not summarize, or a failed read. */
 export type EmbeddingLeftOut = 'range' | 'failed';
@@ -82,7 +130,7 @@ export async function downloadTokenReportCsvs(
   ]);
   const stamp = stampOf(range);
 
-  const files: { name: string; headers: string[]; rows: string[][] }[] = [
+  const files: CsvFile[] = [
     {
       name: `TokenReport_Groups_${stamp}.csv`,
       headers: [
@@ -142,23 +190,79 @@ export async function downloadTokenReportCsvs(
     },
   ];
   if (embedding != null && embedding.length > 0) {
-    files.push({
-      name: `TokenReport_Embedding_${stamp}.csv`,
-      headers: [
-        localize('com_ui_tars_embedding_col_dimension'),
-        localize('com_ui_tars_embedding_col_item'),
-        localize('com_ui_tars_embedding_col_tokens'),
-        localize('com_ui_tars_embedding_requests'),
-        localize('com_ui_tars_embedding_col_texts'),
-      ],
-      rows: embedding,
-    });
+    files.push(embeddingFile(`TokenReport_Embedding_${stamp}.csv`, embedding, localize));
   }
 
-  for (const file of files) {
-    downloadBlob(toCsvBlob(file.headers, file.rows), file.name);
-    await new Promise((resolve) => setTimeout(resolve, SPACING_MS));
+  await saveFiles(files);
+  if (tooLong) {
+    return { embeddingLeftOut: 'range' };
   }
+  return { embeddingLeftOut: embedding == null ? 'failed' : null };
+}
+
+/**
+ * One person's report: their day-by-day chat usage, and the embedding usage their
+ * chats and uploads spent. Same rules as the group export for the embedding file —
+ * left out for a range pwc_tars will not summarize or a failed read, and absent when
+ * the person has none.
+ */
+export async function downloadPersonReportCsvs(
+  range: TTarsTokenReportRange,
+  user: {
+    id: string;
+    username?: string | null;
+    display_name?: string | null;
+    email?: string | null;
+  },
+  localize: Localize,
+): Promise<{ embeddingLeftOut: EmbeddingLeftOut | null }> {
+  const tooLong = isTarsEmbeddingRangeTooLong(range);
+  const [report, embedding] = await Promise.all([
+    dataService.getTarsTokenReportUser({ ...range, user_id: user.id }),
+    tooLong ? Promise.resolve(null) : embeddingRows(range, localize, user.id),
+  ]);
+  const stamp = stampOf(range);
+  const who = user.username ?? user.id;
+  const identity: Identity = {
+    headers: [
+      localize('com_ui_tars_report_col_username'),
+      localize('com_ui_tars_report_col_display_name'),
+      'Email',
+    ],
+    cells: [text(user.username), text(user.display_name), text(user.email)],
+  };
+
+  const files: CsvFile[] = [
+    {
+      name: `TokenReport_User_${who}_${stamp}.csv`,
+      headers: [
+        ...identity.headers,
+        localize('com_ui_tars_usage_col_date'),
+        localize('com_ui_tars_report_col_logs'),
+        localize('com_ui_tars_usage_input_tokens'),
+        localize('com_ui_tars_usage_output_tokens'),
+        localize('com_ui_tars_report_col_tokens'),
+      ],
+      rows: (report.usage?.daily_usage ?? []).map((day) => {
+        const parts = day as DayParts;
+        return [
+          ...identity.cells,
+          asTextCell(day.date),
+          text(day.log_count),
+          text(parts.prompt_tokens),
+          text(parts.completion_tokens),
+          text(day.total_tokens),
+        ];
+      }),
+    },
+  ];
+  if (embedding != null && embedding.length > 0) {
+    files.push(
+      embeddingFile(`TokenReport_Embedding_${who}_${stamp}.csv`, embedding, localize, identity),
+    );
+  }
+
+  await saveFiles(files);
   if (tooLong) {
     return { embeddingLeftOut: 'range' };
   }

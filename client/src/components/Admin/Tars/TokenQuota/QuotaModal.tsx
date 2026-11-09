@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
+import { User, Users } from 'lucide-react';
+import { PrincipalType } from 'librechat-data-provider';
 import {
+  Chip,
   Label,
   Input,
   Button,
@@ -10,10 +13,10 @@ import {
   useToastContext,
 } from '@librechat/client';
 import type {
-  TTarsTokenUser,
+  TPrincipal,
   TTarsTokenUserQuota,
-  TTarsTokenQuotaInput,
-  TTarsTokenPrepareData,
+  TTarsTokenQuotaBatchInput,
+  TTarsTokenQuotaBatchResult,
 } from 'librechat-data-provider';
 import {
   RESET_TYPES,
@@ -22,39 +25,54 @@ import {
   TOKEN_PROVIDERS,
   RESET_LABEL_KEYS,
   usesResetDay,
-  allowedDomainSet,
   isActiveQuota,
+  providerBadgeClass,
 } from './helpers';
-import { useCreateTarsTokenQuotaMutation, useUpdateTarsTokenQuotaMutation } from '~/data-provider';
 import LimitInput, { toLimitField, fromLimitField, isValidLimitField } from './LimitInput';
-import UserPicker from './UserPicker';
+import DirectoryPeoplePicker from '~/components/Sharing/PeoplePicker/DirectoryPeoplePicker';
+import { useBatchSetTarsTokenQuotasMutation } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-border-light bg-surface-primary px-3 text-sm text-text-primary disabled:opacity-50';
 
+const keyOf = (principal: TPrincipal) => `${principal.type}:${principal.idOnTheSource ?? principal.name}`;
+
+const mergeUnique = (...lists: TPrincipal[][]): TPrincipal[] => {
+  const byKey = new Map<string, TPrincipal>();
+  for (const list of lists) {
+    for (const principal of list) {
+      byKey.set(keyOf(principal), principal);
+    }
+  }
+  return [...byKey.values()];
+};
+
 /**
- * The personal override editor. The user is fixed once a quota exists — pwc_tars
- * keys consumption to the row, so moving it to another account would carry that
- * person's spent tokens with it.
+ * The personal-quota editor. Quotas are per person: when creating, users and groups are
+ * picked from the directory and groups are only a shortcut — the backend expands them to
+ * their current members and writes one quota per person × provider, so a group is a
+ * snapshot, not a rule. Editing an existing row goes through the same endpoint with the
+ * one user it belongs to.
  */
 export default function QuotaModal({
   quota,
-  options,
   open,
   onOpenChange,
 }: {
   quota: TTarsTokenUserQuota | null;
-  options: TTarsTokenPrepareData | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const localize = useLocalize();
   const { showToast } = useToastContext();
 
-  const [user, setUser] = useState<TTarsTokenUser | null>(null);
-  const [domainId, setDomainId] = useState(quota?.domain_id ?? '');
-  const [provider, setProvider] = useState(quota?.provider ?? TOKEN_PROVIDERS[0]);
+  const [assignees, setAssignees] = useState<TPrincipal[]>([]);
+  /** Checked in the picker but not yet added with its Add button — still saved. */
+  const [pending, setPending] = useState<TPrincipal[]>([]);
+  const [providers, setProviders] = useState<string[]>(() => [
+    quota?.provider ?? TOKEN_PROVIDERS[0],
+  ]);
   const [customLimit, setCustomLimit] = useState(() => toLimitField(quota?.custom_limit));
   const [active, setActive] = useState(quota == null ? true : isActiveQuota(quota));
   const [resetType, setResetType] = useState(quota?.reset_type ?? 'monthly');
@@ -63,59 +81,63 @@ export default function QuotaModal({
     String(Math.round((quota?.warning_threshold ?? 0.8) * 100)),
   );
 
-  const domains = useMemo(() => options?.domains ?? [], [options]);
-  const availableDomains = useMemo(() => {
-    if (user == null) {
-      return domains;
-    }
-    const allowed = allowedDomainSet(user.allowed_domains);
-    return domains.filter((domain) => allowed.has(domain.id));
-  }, [domains, user]);
+  const targets = assignees;
+  const excludeIds = useMemo(() => assignees.map((principal) => principal.idOnTheSource), [assignees]);
+  const hasGroup = targets.some((principal) => principal.type === PrincipalType.GROUP);
 
   const onError = (error: unknown) => {
     const relayed = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
     showToast({ message: relayed ?? localize('com_ui_tars_admin_error'), status: 'error' });
   };
 
-  const onSuccess = () => {
-    showToast({ message: localize('com_ui_tars_quota_saved'), status: 'success' });
+  const onSuccess = (result: TTarsTokenQuotaBatchResult) => {
+    showToast({
+      message: localize('com_ui_tars_quota_batch_result', {
+        0: String(result.user_count),
+        1: String(result.created),
+        2: String(result.updated),
+      }),
+      status: 'success',
+    });
     onOpenChange(false);
   };
 
-  const createMutation = useCreateTarsTokenQuotaMutation({ onSuccess, onError });
-  const updateMutation = useUpdateTarsTokenQuotaMutation({ onSuccess, onError });
-  const isSaving = createMutation.isLoading || updateMutation.isLoading;
+  const batchMutation = useBatchSetTarsTokenQuotasMutation({ onSuccess, onError });
 
-  /**
-   * A brain is required, not optional: `get_effective_quota` matches a personal
-   * override with `domain_id == str(domain_id)`, so a row saved without one can
-   * never be found by a request and the ceiling would silently never apply.
-   */
+  const toggleProvider = (provider: string) =>
+    setProviders((prev) =>
+      prev.includes(provider) ? prev.filter((item) => item !== provider) : [...prev, provider],
+    );
+
+  const percent = Number(warningPercent);
   const invalid =
-    domainId === '' ||
     !isValidLimitField(customLimit) ||
-    Number.isNaN(Number(warningPercent)) ||
-    (quota == null && (user == null || provider === ''));
+    Number.isNaN(percent) ||
+    percent < 0 ||
+    percent > 100 ||
+    (quota == null && (targets.length === 0 || pending.length > 0 || providers.length === 0)) ||
+    (quota != null && (quota.user_id == null || quota.provider == null));
 
   const handleSave = () => {
-    const input: TTarsTokenQuotaInput = {
-      domain_id: domainId,
-      provider,
-      custom_limit: fromLimitField(customLimit),
+    const principals: TTarsTokenQuotaBatchInput['principals'] =
+      quota == null
+        ? targets
+            .filter((principal) => !!principal.idOnTheSource)
+            .map((principal) => ({
+              type: principal.type === PrincipalType.GROUP ? 'group' : 'user',
+              id: principal.idOnTheSource as string,
+            }))
+        : [{ type: 'user', id: String(quota.user_id) }];
+
+    batchMutation.mutate({
+      principals,
+      providers: quota == null ? providers : [String(quota.provider)],
+      custom_limit: Number(fromLimitField(customLimit)),
       reset_type: resetType,
       reset_day: usesResetDay(resetType) ? Number(resetDay) : 1,
-      warning_threshold: Number(warningPercent) / 100,
+      warning_threshold: percent / 100,
       status: active ? QUOTA_STATUS_ON : QUOTA_STATUS_OFF,
-    };
-    if (quota == null) {
-      createMutation.mutate({
-        ...input,
-        user_id: user?.id,
-        user_group_id: user?.group_id ?? null,
-      });
-      return;
-    }
-    updateMutation.mutate({ id: quota.id, data: input });
+    });
   };
 
   return (
@@ -125,11 +147,71 @@ export default function QuotaModal({
           quota == null ? 'com_ui_tars_quota_user_add' : 'com_ui_tars_quota_user_edit',
         )}
         showCloseButton={true}
-        className="w-11/12 md:max-w-2xl"
+        className="w-11/12 md:max-w-3xl"
         main={
           <div className="space-y-4">
             {quota == null ? (
-              <UserPicker selected={user} onSelect={setUser} />
+              <div className="space-y-3">
+                <DirectoryPeoplePicker
+                  excludeIds={excludeIds}
+                  onAddPeople={(principals) =>
+                    setAssignees((prev) => mergeUnique(prev, principals))
+                  }
+                  onPendingChange={setPending}
+                  columnHeightClassName="max-h-56"
+                />
+
+                <div className="space-y-1.5">
+                  <Label>{localize('com_ui_tars_quota_assignees')}</Label>
+                  {assignees.length === 0 ? (
+                    pending.length === 0 && (
+                      <p className="text-status-warning text-xs">
+                        {localize('com_ui_tars_quota_assignees_empty')}
+                      </p>
+                    )
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {assignees.map((principal) => {
+                        const isGroup = principal.type === PrincipalType.GROUP;
+                        return (
+                          <Chip
+                            key={keyOf(principal)}
+                            tone={isGroup ? 'info' : 'neutral'}
+                            className="max-w-[14rem]"
+                            leading={
+                              isGroup ? (
+                                <Users className="size-3 shrink-0" aria-hidden="true" />
+                              ) : (
+                                <User className="size-3 shrink-0" aria-hidden="true" />
+                              )
+                            }
+                            removeLabel={localize('com_ui_share_remove_selected', {
+                              0: principal.name,
+                            })}
+                            onRemove={() =>
+                              setAssignees((prev) =>
+                                prev.filter((item) => keyOf(item) !== keyOf(principal)),
+                              )
+                            }
+                          >
+                            {principal.name}
+                          </Chip>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {pending.length > 0 && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      {localize('com_ui_tars_quota_pending_hint', { 0: String(pending.length) })}
+                    </p>
+                  )}
+                  {hasGroup && (
+                    <p className="text-text-secondary text-xs">
+                      {localize('com_ui_tars_quota_group_snapshot_hint')}
+                    </p>
+                  )}
+                </div>
+              </div>
             ) : (
               <div className="border-border-light rounded-lg border px-3 py-2">
                 <p className="text-text-secondary text-xs">
@@ -142,49 +224,29 @@ export default function QuotaModal({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="tars-quota-user-domain">
-                  {localize('com_ui_tars_quota_col_domain')}
-                </Label>
-                <select
-                  id="tars-quota-user-domain"
-                  className={SELECT_CLASS}
-                  value={domainId}
-                  onChange={(event) => setDomainId(event.target.value)}
-                >
-                  <option value="">{localize('com_ui_tars_quota_select_domain')}</option>
-                  {availableDomains.map((domain) => (
-                    <option key={domain.id} value={domain.id}>
-                      {domain.name}
-                    </option>
-                  ))}
-                </select>
+                <Label>{localize('com_ui_tars_quota_col_provider')}</Label>
+                {quota == null ? (
+                  <div className="flex flex-wrap items-center gap-3 pt-1.5">
+                    {TOKEN_PROVIDERS.map((candidate) => (
+                      <label
+                        key={candidate}
+                        className="text-text-primary flex cursor-pointer items-center gap-1.5 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={providers.includes(candidate)}
+                          onChange={() => toggleProvider(candidate)}
+                        />
+                        {candidate}
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="pt-1.5">
+                    <span className={providerBadgeClass(quota.provider)}>{quota.provider}</span>
+                  </div>
+                )}
               </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="tars-quota-user-provider">
-                  {localize('com_ui_tars_quota_col_provider')}
-                </Label>
-                <select
-                  id="tars-quota-user-provider"
-                  className={SELECT_CLASS}
-                  value={provider}
-                  disabled={quota != null}
-                  onChange={(event) => setProvider(event.target.value)}
-                >
-                  {TOKEN_PROVIDERS.map((candidate) => (
-                    <option key={candidate} value={candidate}>
-                      {candidate}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <LimitInput
-                id="tars-quota-custom-limit"
-                label={localize('com_ui_tars_quota_custom_limit')}
-                value={customLimit}
-                onChange={setCustomLimit}
-              />
 
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="tars-quota-user-status">
@@ -195,6 +257,27 @@ export default function QuotaModal({
                   aria-label={localize('com_ui_tars_quota_col_status')}
                   checked={active}
                   onCheckedChange={setActive}
+                />
+              </div>
+
+              <LimitInput
+                id="tars-quota-custom-limit"
+                label={localize('com_ui_tars_quota_custom_limit')}
+                value={customLimit}
+                onChange={setCustomLimit}
+              />
+
+              <div className="space-y-1.5">
+                <Label htmlFor="tars-quota-user-threshold">
+                  {localize('com_ui_tars_quota_warning_threshold')}
+                </Label>
+                <Input
+                  id="tars-quota-user-threshold"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={warningPercent}
+                  onChange={(event) => setWarningPercent(event.target.value)}
                 />
               </div>
 
@@ -230,20 +313,6 @@ export default function QuotaModal({
                   onChange={(event) => setResetDay(event.target.value)}
                 />
               </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="tars-quota-user-threshold">
-                  {localize('com_ui_tars_quota_warning_threshold')}
-                </Label>
-                <Input
-                  id="tars-quota-user-threshold"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={warningPercent}
-                  onChange={(event) => setWarningPercent(event.target.value)}
-                />
-              </div>
             </div>
 
             {quota != null && (
@@ -260,8 +329,12 @@ export default function QuotaModal({
           </div>
         }
         buttons={
-          <Button variant="submit" onClick={handleSave} disabled={isSaving || invalid}>
-            {isSaving ? <Spinner /> : localize('com_ui_save')}
+          <Button
+            variant="submit"
+            onClick={handleSave}
+            disabled={batchMutation.isLoading || invalid}
+          >
+            {batchMutation.isLoading ? <Spinner /> : localize('com_ui_save')}
           </Button>
         }
       />

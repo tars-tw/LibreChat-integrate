@@ -1920,6 +1920,43 @@ export const useUpdateTarsTokenQuotaMutation = (
   );
 };
 
+export const useBatchSetTarsTokenQuotasMutation = (
+  options?: t.MutationOptions<t.TTarsTokenQuotaBatchResult, t.TTarsTokenQuotaBatchInput>,
+) => {
+  const queryClient = useQueryClient();
+  return useMutation<t.TTarsTokenQuotaBatchResult, unknown, t.TTarsTokenQuotaBatchInput>(
+    (data) => dataService.batchSetTarsTokenQuotas(data),
+    {
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries([QueryKeys.tarsTokenQuotas]);
+        options?.onSuccess?.(...args);
+      },
+    },
+  );
+};
+
+export const useBatchDeleteTarsTokenQuotasMutation = (
+  options?: t.MutationOptions<
+    t.TTarsTokenQuotaBatchDeleteResult,
+    t.TTarsTokenQuotaBatchDeleteInput
+  >,
+) => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    t.TTarsTokenQuotaBatchDeleteResult,
+    unknown,
+    t.TTarsTokenQuotaBatchDeleteInput
+  >((data) => dataService.batchDeleteTarsTokenQuotas(data), {
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries([QueryKeys.tarsTokenQuotas]);
+      queryClient.invalidateQueries([QueryKeys.tarsMyTokenQuotas]);
+      options?.onSuccess?.(...args);
+    },
+  });
+};
+
 export const useDeleteTarsTokenQuotaMutation = (
   options?: UseMutationOptions<{ success: boolean }, unknown, string>,
 ): UseMutationResult<{ success: boolean }, unknown, string> => {

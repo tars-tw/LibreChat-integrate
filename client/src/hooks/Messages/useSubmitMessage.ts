@@ -5,6 +5,7 @@ import type { TMessage, TReasoningOverride } from 'librechat-data-provider';
 import { useChatContext, useChatFormContext, useAddedChatContext } from '~/Providers';
 import { useGetLatestMessage } from '~/hooks/Messages/useLatestMessage';
 import { useAuthContext } from '~/hooks/AuthContext';
+import useTokenQuotaGuard from '~/hooks/useTokenQuotaGuard';
 import { mainTextareaId } from '~/common';
 import store from '~/store';
 
@@ -12,8 +13,9 @@ export default function useSubmitMessage() {
   const { user } = useAuthContext();
   const methods = useChatFormContext();
   const { conversation: addedConvo } = useAddedChatContext();
-  const { ask, index, getMessages, setMessages } = useChatContext();
+  const { ask, index, getMessages, setMessages, conversation } = useChatContext();
   const getLatestMessage = useGetLatestMessage(index);
+  const quotaGuard = useTokenQuotaGuard(conversation?.model);
 
   const autoSendPrompts = useRecoilValue(store.autoSendPrompts);
   const setActivePrompt = useSetRecoilState(store.activePromptByIndex(index));
@@ -32,6 +34,9 @@ export default function useSubmitMessage() {
     }) => {
       if (!data) {
         return console.warn('No data provided to submitMessage');
+      }
+      if (quotaGuard.exceeded) {
+        return false;
       }
       const latestMessage = getLatestMessage();
       const rootMessages = getMessages();
@@ -68,7 +73,7 @@ export default function useSubmitMessage() {
       }
       methods.reset();
     },
-    [ask, methods, addedConvo, setMessages, getMessages, getLatestMessage],
+    [ask, methods, addedConvo, setMessages, getMessages, getLatestMessage, quotaGuard.exceeded],
   );
 
   /** Always append the prompt to the composer, never send — ignores `autoSendPrompts`. */

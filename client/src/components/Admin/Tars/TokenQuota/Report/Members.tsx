@@ -7,15 +7,15 @@ import { personIdentity } from '../helpers';
 import { useLocalize } from '~/hooks';
 
 /**
- * The members of the drilled-into group, against their personal ceilings. A
- * person with no override shows the group rule's ceiling as "inherited", which
- * is what pwc_tars falls back to when it meters their request.
+ * The members of the drilled-into group, against their personal ceilings. Someone
+ * with no personal quota is held to the provider's system default, which is a
+ * per-provider rule rather than one number, so no ceiling or utilization is drawn
+ * for them — only a note that the default applies.
  */
 export default function Members({
   groupName,
   members,
   ceilings,
-  inherited,
   isLoading,
   onSelect,
   onClear,
@@ -23,7 +23,6 @@ export default function Members({
   groupName: string;
   members: TTarsTokenUserUsage[];
   ceilings: Map<string, QuotaCeiling>;
-  inherited: QuotaCeiling | undefined;
   isLoading: boolean;
   onSelect: (user: TTarsTokenUserUsage) => void;
   onClear: () => void;
@@ -79,9 +78,8 @@ export default function Members({
               {ranked.map((member) => {
                 const userId = String(member.user_id ?? '');
                 const own = ceilings.get(userId);
-                const ceiling = own ?? inherited;
-                const share = ceilingShare(member.total_tokens, ceiling);
-                const warning = isOverWarning(share, ceiling);
+                const share = ceilingShare(member.total_tokens, own);
+                const warning = isOverWarning(share, own);
                 const { primary, secondary } = personIdentity(member, userId);
                 return (
                   <tr
@@ -106,23 +104,27 @@ export default function Members({
                       {formatTokens(member.total_tokens)}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <span className="text-text-secondary block tabular-nums">
-                        {ceiling?.limit == null
-                          ? localize('com_ui_tars_quota_unlimited')
-                          : formatTokens(ceiling.limit)}
-                      </span>
-                      <span className="text-text-secondary block text-xs">
-                        {localize(
-                          own == null
-                            ? 'com_ui_tars_report_ceiling_inherited'
-                            : 'com_ui_tars_report_ceiling_personal',
-                        )}
-                      </span>
+                      {own == null ? (
+                        <span className="text-text-secondary block text-xs">
+                          {localize('com_ui_tars_report_ceiling_system_default')}
+                        </span>
+                      ) : (
+                        <>
+                          <span className="text-text-secondary block tabular-nums">
+                            {own.limit == null
+                              ? localize('com_ui_tars_quota_unlimited')
+                              : formatTokens(own.limit)}
+                          </span>
+                          <span className="text-text-secondary block text-xs">
+                            {localize('com_ui_tars_report_ceiling_personal')}
+                          </span>
+                        </>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       {share == null ? (
                         <span className="text-text-secondary text-xs">
-                          {localize('com_ui_tars_report_no_ceiling')}
+                          {own == null ? '—' : localize('com_ui_tars_report_no_ceiling')}
                         </span>
                       ) : (
                         <>
@@ -158,3 +160,4 @@ export default function Members({
     </section>
   );
 }
+  

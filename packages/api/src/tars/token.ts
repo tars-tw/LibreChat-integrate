@@ -116,6 +116,19 @@ export interface TarsTokenQuotaInput {
   status?: string;
 }
 
+export interface TarsTokenReportUser {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  email: string | null;
+  user_group_ids: string[];
+  group_name: string;
+  log_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 /** The system-wide default for one provider — a config row with no domain and no group. */
 export interface TarsTokenSystemDefaultInput {
   provider: string;
@@ -269,4 +282,74 @@ export async function updateTarsTokenSystemDefault(
     { method: 'PUT', body: { ...input, updated_by: actor.tarsId }, baseUrl },
   );
   return response.data;
+}
+
+export interface TarsTokenQuotaBatchInput {
+  principals: { type: 'user' | 'group'; id: string }[];
+  providers: string[];
+  custom_limit: number;
+  reset_type?: string;
+  reset_day?: number;
+  warning_threshold?: number;
+  status?: string;
+}
+
+export interface TarsTokenQuotaBatchResult {
+  success?: boolean;
+  message?: string;
+  created: number;
+  updated: number;
+  user_count: number;
+  missing_user_ids: string[];
+  missing_group_ids: string[];
+}
+
+export async function batchSetTarsTokenUserQuotas(
+  actor: TarsTokenActor,
+  input: TarsTokenQuotaBatchInput,
+  baseUrl?: string,
+): Promise<TarsTokenQuotaBatchResult> {
+  return tarsFetch<TarsTokenQuotaBatchResult>(`${TOKEN_BASE}/batch_set_user_quotas`, {
+    method: 'PUT',
+    body: { ...input, updated_by: actor.tarsId },
+    baseUrl,
+  });
+}
+
+export interface TarsTokenQuotaBatchDeleteResult {
+  success?: boolean;
+  message?: string;
+  deleted: number;
+  requested: number;
+}
+
+export async function batchDeleteTarsTokenUserQuotas(
+  ids: string[],
+  baseUrl?: string,
+): Promise<TarsTokenQuotaBatchDeleteResult> {
+  return tarsFetch<TarsTokenQuotaBatchDeleteResult>(`${TOKEN_BASE}/batch_delete_user_quotas`, {
+    method: 'POST',
+    body: { ids },
+    baseUrl,
+  });
+}
+
+export interface TarsMyTokenQuota {
+  provider: string;
+  limit: number | null;
+  used: number;
+  quota_exceeded: boolean;
+  quota_warning: boolean;
+  unlimited: boolean;
+}
+
+export async function fetchTarsMyTokenQuotas(
+  userId: string,
+  baseUrl?: string,
+): Promise<TarsMyTokenQuota[]> {
+  const response = await tarsFetch<TarsEnvelope<TarsMyTokenQuota[]>>(
+    `${TOKEN_BASE}/get_my_quotas`,
+    { query: { user_id: userId }, baseUrl },
+  );
+  return response.data ?? [];
 }
