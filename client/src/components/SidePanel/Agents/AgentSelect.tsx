@@ -162,6 +162,7 @@ function AgentSelect({
         repositoryInstructions: fullAgent.repositoryInstructions,
         code_workspace_id: fullAgent.code_workspace_id,
         git_identity: fullAgent.git_identity,
+        tars_knowledge_bases: fullAgent.tars_knowledge_bases ?? undefined,
         instructionsSource: resolvedInstructionsSource,
         instructionsPrompt: resolvedInstructionsPrompt,
       };
