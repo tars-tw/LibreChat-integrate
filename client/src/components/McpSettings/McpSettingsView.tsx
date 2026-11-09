@@ -55,11 +55,16 @@ type SettingsTab = 'mytools' | 'servers' | 'permissions' | 'logs';
 const isSettingsTab = (value: string | null): value is SettingsTab =>
   value === 'mytools' || value === 'servers' || value === 'permissions' || value === 'logs';
 
-type ServerStatus = 'disabled' | 'pending' | 'connected';
+type ServerStatus = 'disabled' | 'pending' | 'connected' | 'userLogin';
 
 function serverStatus(server: TTarsMcpServer): ServerStatus {
   if (!server.is_enabled) {
     return 'disabled';
+  }
+  /** pwc_tars never lists an OIDC server's tools, so "not synced yet" would never clear. */
+  const auth = server.connection_config?.auth as { type?: string } | undefined;
+  if (auth?.type === 'oidc') {
+    return 'userLogin';
   }
   return (server.tool_count ?? 0) > 0 ? 'connected' : 'pending';
 }
@@ -68,12 +73,14 @@ const STATUS_STYLES: Record<ServerStatus, string> = {
   disabled: 'bg-surface-tertiary text-text-secondary',
   pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
   connected: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
+  userLogin: 'bg-surface-secondary text-text-primary',
 };
 
 const STATUS_LABEL_KEYS: Record<ServerStatus, TranslationKeys> = {
   disabled: 'com_ui_tars_mcp_disabled',
   pending: 'com_ui_tars_mcp_status_pending',
   connected: 'com_ui_tars_mcp_status_connected',
+  userLogin: 'com_ui_tars_mcp_status_user_login',
 };
 
 /** `TabsContent` ships with `mt-2 p-6`; each panel owns its own spacing instead. */
@@ -174,8 +181,11 @@ export default function McpSettingsView() {
   const handleTest = async (server: TTarsMcpServer) => {
     setBusyServerId(server.id);
     try {
-      await testMutation.mutateAsync(server.id);
+      const { result } = await testMutation.mutateAsync(server.id);
       showToast({ message: localize('com_ui_tars_mcp_test_success'), status: 'success' });
+      if (result?.refresh_token_expected === false) {
+        showToast({ message: localize('com_ui_tars_mcp_oidc_no_refresh'), status: 'warning' });
+      }
     } catch (error) {
       showToast({
         message: `${localize('com_ui_tars_mcp_test_failed')}: ${(error as Error)?.message ?? ''}`,

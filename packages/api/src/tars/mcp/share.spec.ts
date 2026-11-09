@@ -12,7 +12,7 @@ import {
 import type { Request, NextFunction, Response as ExpressResponse } from 'express';
 import type { TarsAvailableToolRow } from './client';
 import type { TarsAgentShareDeps } from './share';
-import { clearTarsMcpEntryNames } from './names';
+import { clearTarsMcpEntryNames, recordTarsMcpDirectEntry } from './names';
 import { createTarsAgentShare } from './share';
 
 const BASE_URL = 'http://tars.test';
@@ -160,6 +160,19 @@ describe('createTarsAgentShare', () => {
           ],
         },
       ]);
+    });
+
+    it('asks for the whole server when the agent binds an OIDC server pwc_tars lists no tools for', async () => {
+      const checks = mockTars();
+      recordTarsMcpDirectEntry('tars_secure', 's-oidc');
+      const deps = createDeps({
+        getAgent: jest.fn().mockResolvedValue({ _id: 'a1', tools: ['whoami_mcp_tars_secure'] }),
+      });
+
+      const { next } = await runGuard(deps, { updated: [AMY] });
+
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(checks[0].servers).toEqual([{ mcp_server_id: 's-oidc', mcp_tool_ids: [] }]);
     });
 
     it('refuses with who lacks what, and writes nothing', async () => {

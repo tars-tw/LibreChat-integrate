@@ -1227,6 +1227,7 @@ export class MCPConnectionFactory {
       clientInfo?: OAuthClientInformation;
       storedTokenEndpoint?: string;
       storedAuthMethods?: string[];
+      idTokenSubject?: string;
       storedServerUrl?: string;
       clientSource?: OAuthClientSource;
       resource?: string;
@@ -1245,6 +1246,7 @@ export class MCPConnectionFactory {
           storedServerUrl: metadata.storedServerUrl,
           clientSource: metadata.clientSource,
           resource: metadata.resource,
+          idTokenSubject: metadata.idTokenSubject,
         },
         this.serverConfig.oauth_headers ?? {},
         this.serverConfig.oauth,

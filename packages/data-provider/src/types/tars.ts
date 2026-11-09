@@ -904,6 +904,30 @@ export type TTarsMcpTool = {
   is_enabled?: boolean;
 };
 
+/**
+ * Why an OIDC server's tool list reads as it does: `not_connected` the connection lists nothing
+ * (not signed in, or it cannot be reached), `none_opened` an admin has opened none of them,
+ * `timeout` the server did not answer in time, `error` the list could not be read.
+ */
+export type TTarsMcpDirectToolsStatus =
+  | 'ok'
+  | 'not_connected'
+  | 'none_opened'
+  | 'timeout'
+  | 'error';
+
+/** One tool of an OIDC server, read off the admin's own connection and opened for everyone. */
+export type TTarsMcpDirectTool = {
+  name: string;
+  description?: string | null;
+  is_enabled: boolean;
+};
+
+export type TTarsMcpDirectToolsResponse = {
+  tools: TTarsMcpDirectTool[];
+  tools_status: TTarsMcpDirectToolsStatus;
+};
+
 /** Admin view of a pwc_tars MCP server (`McpServer.to_dict()` + injected fields). */
 export type TTarsMcpServer = {
   id: string;
@@ -1075,8 +1099,8 @@ export type TTarsMcpSystemVariablesResponse = { variables: TTarsMcpSystemVariabl
 
 /** Result of a batch server delete — some ids may be skipped or not found. */
 export type TTarsMcpBatchDeleteResult = {
-  deleted: string[];
-  skipped: string[];
+  deleted: { id: string; name: string }[];
+  skipped: { id: string; name: string; reason: string }[];
   not_found: string[];
   deleted_count: number;
   skipped_count: number;
@@ -1155,6 +1179,8 @@ export type TTarsMcpUserServer = {
   auth_type: string;
   login_fields: string[];
   tools: TTarsMcpUserTool[];
+  /** Set on an enabled OIDC server, whose tools come from the user's connection. */
+  tools_status?: TTarsMcpDirectToolsStatus;
   /**
    * Injected `mcpConfig` entry name (`tars_<code>`, plus a collision suffix when
    * one was needed). Absent when the server has no chat entry at all.

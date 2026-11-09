@@ -53,10 +53,15 @@ const defaultMCPAppsPolicy = {
   maxPersistedAppBytes: 1048576,
 };
 
+const mockCanUseTarsDirect = jest.fn(async () => true);
+const mockTarsToolFilter = jest.fn(async () => () => true);
+
 jest.mock('@librechat/api', () => {
   const actual = jest.requireActual('@librechat/api');
   return {
     ...actual,
+    canUseTarsDirectMcpServer: (...args) => mockCanUseTarsDirect(...args),
+    resolveTarsDirectToolFilter: (...args) => mockTarsToolFilter(...args),
     MCPOAuthHandler: {
       initiateOAuthFlow: jest.fn(),
       getFlowState: jest.fn(),
@@ -373,6 +378,32 @@ describe('MCP Routes', () => {
 
     beforeEach(() => {
       mockResolveAllMcpConfigs.mockResolvedValue({ 'test-server': { url: serverUrl } });
+    });
+
+    it('refuses a server the access check denies, before any OAuth step', async () => {
+      const mockFlowManager = {
+        getFlowState: jest.fn().mockResolvedValue({
+          status: 'PENDING',
+          createdAt: Date.now(),
+          metadata: storedFlowMetadata,
+        }),
+      };
+      getLogStores.mockReturnValue({});
+      require('~/config').getFlowStateManager.mockReturnValue(mockFlowManager);
+      mockCanUseTarsDirect.mockResolvedValueOnce(false);
+
+      const response = await request(app).get('/api/mcp/test-server/oauth/initiate').query({
+        userId: 'test-user-id',
+        flowId: 'test-user-id:test-server',
+      });
+
+      expect(mockCanUseTarsDirect).toHaveBeenCalledWith(
+        'test-server',
+        expect.objectContaining({ url: serverUrl }),
+        { id: 'test-user-id' },
+      );
+      expect(response.status).not.toBe(302);
+      expect(MCPOAuthHandler.initiateOAuthFlow).not.toHaveBeenCalled();
     });
 
     it('should reuse stored authorization URL without starting a new OAuth flow', async () => {
@@ -4045,6 +4076,29 @@ describe('MCP Routes', () => {
         recoveryPolicy,
         mcpApps: defaultMCPAppsPolicy,
       });
+    });
+
+    it('leaves out the tools the TARS filter refuses, by their upstream name', async () => {
+      const { Constants } = require('librechat-data-provider');
+      const openKey = `health${Constants.mcp_delimiter}tars_demo`;
+      const closedKey = `whoami${Constants.mcp_delimiter}tars_demo`;
+      const tool = { type: 'function', function: { description: '', parameters: {} } };
+      mockResolveAllMcpConfigs.mockResolvedValueOnce({
+        tars_demo: { type: 'streamable-http', url: 'https://mcp.example.com/mcp' },
+      });
+      mockLoadMCPServerCatalogs.mockResolvedValueOnce({
+        serverTools: new Map([
+          ['tars_demo', { [openKey]: tool, [closedKey]: { ...tool, serverToolName: 'demo_who' } }],
+        ]),
+        serversWithoutTools: [],
+      });
+      const isUsable = jest.fn((_server, name) => name === 'health');
+      mockTarsToolFilter.mockResolvedValueOnce(isUsable);
+
+      const response = await request(app).get('/api/mcp/tools');
+
+      expect(response.body.servers.tars_demo.tools.map((item) => item.name)).toEqual(['health']);
+      expect(isUsable).toHaveBeenCalledWith('tars_demo', 'demo_who');
     });
 
     it('renders an authoritative empty catalog as a configured server', async () => {

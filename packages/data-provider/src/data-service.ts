@@ -1895,6 +1895,19 @@ export const parseTarsMcpOpenapi = (
   return request.post(endpoints.tarsMcpAdminParseOpenapi(), data);
 };
 
+export const getTarsMcpDirectTools = (id: string): Promise<t.TTarsMcpDirectToolsResponse> => {
+  return request.get(endpoints.tarsMcpAdminServerDirectTools(id));
+};
+
+export const updateTarsMcpDirectTools = (
+  id: string,
+  enabledTools: string[],
+): Promise<{ enabled_tools: string[] }> => {
+  return request.put(endpoints.tarsMcpAdminServerDirectTools(id), {
+    enabled_tools: enabledTools,
+  });
+};
+
 export const updateTarsMcpTool = (
   id: string,
   data: t.TTarsMcpToolUpdate,

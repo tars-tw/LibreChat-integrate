@@ -13,6 +13,7 @@ import type {
   TTarsModelPermission,
   TTarsModelPermissionsResponse,
   TTarsModelAssigneesResponse,
+  TTarsMcpDirectToolsResponse,
   TTarsMcpServer,
   TTarsModelOptions,
   TTarsModelsResponse,
@@ -466,6 +467,24 @@ export const useTarsMcpServerQuery = (
     {
       select: (data) => data.server ?? null,
       enabled: serverId != null,
+      ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+export const tarsMcpDirectToolsKey = (serverId: string) =>
+  [QueryKeys.tarsMcpServers, serverId, 'direct-tools'] as const;
+
+/** Admin: an OIDC server's tools from the admin's own connection, with its allow-list. */
+export const useTarsMcpDirectToolsQuery = (
+  serverId: string,
+  config?: UseQueryOptions<TTarsMcpDirectToolsResponse>,
+): QueryObserverResult<TTarsMcpDirectToolsResponse> => {
+  return useQuery<TTarsMcpDirectToolsResponse>(
+    tarsMcpDirectToolsKey(serverId),
+    () => dataService.getTarsMcpDirectTools(serverId),
+    {
       ...adminQueryOptions,
       ...config,
     },

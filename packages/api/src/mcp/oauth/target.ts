@@ -31,6 +31,12 @@ export interface MCPOAuthTargetDeps {
     principal: t.MCPPrincipal,
   ) => Promise<Record<string, t.ParsedServerConfig> | undefined>;
   registry: MCPServerLookup;
+  /** A further access boundary for servers the merged config lists for every principal. */
+  canUseServer?: (
+    serverName: string,
+    config: t.ParsedServerConfig,
+    principal: t.MCPPrincipal,
+  ) => Promise<boolean>;
 }
 
 /** The server an OAuth flow step may act on, as the principal's config defines it now. */
@@ -100,6 +106,9 @@ export async function resolveMCPOAuthTarget(
       idOnTheSource: principal.idOnTheSource,
     }));
   if (!config) {
+    return { ok: false, error: { code: 'server_not_found' } };
+  }
+  if (deps.canUseServer && !(await deps.canUseServer(serverName, config, principal))) {
     return { ok: false, error: { code: 'server_not_found' } };
   }
   if (!isAdmittedDefinition(flow, config)) {

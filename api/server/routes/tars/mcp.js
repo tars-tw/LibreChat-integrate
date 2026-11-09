@@ -31,12 +31,51 @@ const {
   adminSaveTarsMcpServerPermissions,
   adminGetTarsMcpLogs,
   adminListTarsMcpSystemVariables,
+  configureTarsMcpAccess,
+  withTarsDirectTools,
+  adminListTarsDirectTools,
+  adminSetTarsDirectEnabledTools,
+  readTarsOidcTeardownTargets,
+  movedTarsOidcTargets,
+  deletedTarsOidcTargets,
 } = require('@librechat/api');
-const { requireJwtAuth, requireTarsAdmin } = require('~/server/middleware');
+const { requireJwtAuth, requireTarsAdmin, configMiddleware } = require('~/server/middleware');
 const { invalidateConfigCaches } = require('~/server/services/Config');
+const { getMCPServersRegistry } = require('~/config');
+const { resolveAllMcpConfigs } = require('~/server/services/MCP');
+const { loadMCPServerCatalogs } = require('~/server/services/Tools/mcp');
+const tarsOidcTeardown = require('~/server/services/tarsOidcTeardown');
 const { getUserById } = require('~/models');
 
 const router = express.Router();
+
+configureTarsMcpAccess({
+  resolveTarsId: async (userId) => (await getUserById(userId, 'tarsId'))?.tarsId,
+});
+
+/** The operator's allowlists, which OIDC issuer and server URLs are validated against. */
+const mcpAllowlists = (req) =>
+  getMCPServersRegistry().resolveAllowlists({ userId: req.user.id, role: req.user.role });
+
+/** The tools of a user's OIDC servers, which only that user's own connection can list. */
+const directToolCatalog = (req) => {
+  let configsRead;
+  return async (entryNames, signal) => {
+    configsRead ??= resolveAllMcpConfigs(req.user.id, req.user);
+    const configs = await configsRead;
+    const { serverTools } = await loadMCPServerCatalogs({
+      user: req.user,
+      servers: entryNames.flatMap((serverName) =>
+        configs[serverName] ? [{ serverName, serverConfig: configs[serverName] }] : [],
+      ),
+      signal,
+      recoveryPolicy: req.config?.mcpSettings?.catalogRecovery,
+    });
+    return serverTools;
+  };
+};
+
+const directToolTimeout = (req) => req.config?.config?.tars?.directToolCatalogTimeoutMs;
 
 function jsonRpcError(res, status, code, message) {
   return res.status(status).json({ jsonrpc: '2.0', error: { code, message }, id: null });
@@ -175,7 +214,11 @@ router.post(
   '/mcp/admin/servers',
   adminMiddleware,
   adminHandler('POST /api/tars/mcp/admin/servers', async (req) => {
-    const server = await adminCreateTarsMcpServer(req.body ?? {}, req.user.tarsId);
+    const server = await adminCreateTarsMcpServer(
+      req.body ?? {},
+      req.user.tarsId,
+      await mcpAllowlists(req),
+    );
     await invalidateMcpCaches('POST /api/tars/mcp/admin/servers');
     return { server };
   }),
@@ -185,12 +228,16 @@ router.put(
   '/mcp/admin/servers/:serverId',
   adminMiddleware,
   adminHandler('PUT /api/tars/mcp/admin/servers/:serverId', async (req) => {
+    const allowlists = await mcpAllowlists(req);
+    const targets = await readTarsOidcTeardownTargets([req.params.serverId], allowlists);
     const server = await adminUpdateTarsMcpServer(
       req.params.serverId,
       req.body ?? {},
       req.user.tarsId,
+      allowlists,
     );
     await invalidateMcpCaches('PUT /api/tars/mcp/admin/servers/:serverId');
+    await tarsOidcTeardown(movedTarsOidcTargets(targets, server), req.user.id);
     return { server };
   }),
 );
@@ -199,8 +246,13 @@ router.delete(
   '/mcp/admin/servers/:serverId',
   adminMiddleware,
   adminHandler('DELETE /api/tars/mcp/admin/servers/:serverId', async (req) => {
+    const targets = await readTarsOidcTeardownTargets(
+      [req.params.serverId],
+      await mcpAllowlists(req),
+    );
     await adminDeleteTarsMcpServer(req.params.serverId, req.user.tarsId);
     await invalidateMcpCaches('DELETE /api/tars/mcp/admin/servers/:serverId');
+    await tarsOidcTeardown(targets, req.user.id);
     return { success: true };
   }),
 );
@@ -216,8 +268,10 @@ router.post(
       error.serverMessage = 'ids is required';
       throw error;
     }
+    const targets = await readTarsOidcTeardownTargets(ids, await mcpAllowlists(req));
     const result = await adminBatchDeleteTarsMcpServers(ids, req.user.tarsId);
     await invalidateMcpCaches('POST /api/tars/mcp/admin/servers/batch-delete');
+    await tarsOidcTeardown(deletedTarsOidcTargets(targets, result), req.user.id);
     return { result };
   }),
 );
@@ -226,7 +280,11 @@ router.post(
   '/mcp/admin/servers/:serverId/test',
   adminMiddleware,
   adminHandler('POST /api/tars/mcp/admin/servers/:serverId/test', async (req) => ({
-    result: await adminTestTarsMcpServer(req.params.serverId, req.user.tarsId),
+    result: await adminTestTarsMcpServer(
+      req.params.serverId,
+      req.user.tarsId,
+      await mcpAllowlists(req),
+    ),
   })),
 );
 
@@ -246,6 +304,29 @@ router.post(
   adminHandler('POST /api/tars/mcp/admin/parse-openapi', async (req) => ({
     parsed: await adminParseTarsOpenapi(req.body ?? {}, req.user.tarsId),
   })),
+);
+
+router.get(
+  '/mcp/admin/servers/:serverId/direct-tools',
+  adminMiddleware,
+  configMiddleware,
+  adminHandler('GET /api/tars/mcp/admin/servers/:serverId/direct-tools', (req) =>
+    adminListTarsDirectTools(req.params.serverId, directToolCatalog(req), directToolTimeout(req)),
+  ),
+);
+
+router.put(
+  '/mcp/admin/servers/:serverId/direct-tools',
+  adminMiddleware,
+  adminHandler('PUT /api/tars/mcp/admin/servers/:serverId/direct-tools', async (req) => {
+    const enabled_tools = await adminSetTarsDirectEnabledTools(
+      req.params.serverId,
+      req.body?.enabled_tools,
+      req.user.tarsId,
+    );
+    await invalidateMcpCaches('PUT /api/tars/mcp/admin/servers/:serverId/direct-tools');
+    return { enabled_tools };
+  }),
 );
 
 router.put(
@@ -369,8 +450,13 @@ const userHandler = (label, handler) => async (req, res) => {
 router.get(
   '/mcp/user/settings',
   userMiddleware,
+  configMiddleware,
   userHandler('GET /api/tars/mcp/user/settings', async (req, tarsId) => ({
-    servers: await getUserTarsMcpSettings(tarsId),
+    servers: await withTarsDirectTools(
+      await getUserTarsMcpSettings(tarsId),
+      directToolCatalog(req),
+      directToolTimeout(req),
+    ),
   })),
 );
 
@@ -378,8 +464,9 @@ router.get(
 router.get(
   '/mcp/user/tools',
   userMiddleware,
+  configMiddleware,
   userHandler('GET /api/tars/mcp/user/tools', async (req, tarsId) => ({
-    servers: await getUserTarsMcpTools(tarsId),
+    servers: await getUserTarsMcpTools(tarsId, directToolCatalog(req), directToolTimeout(req)),
   })),
 );
 

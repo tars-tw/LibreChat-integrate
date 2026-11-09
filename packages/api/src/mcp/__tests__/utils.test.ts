@@ -483,11 +483,15 @@ describe('redactServerSecrets', () => {
         authorization_url: 'https://infra.internal/oauth/authorize',
         token_url: 'https://infra.internal/oauth/token',
         revocation_endpoint: 'https://infra.internal/oauth/revoke',
+        oidc_issuer: 'https://infra.internal/oauth',
+        oidc_jwks_uri: 'https://infra.internal/oauth/jwks',
         scope: 'read',
       },
     };
     const redacted = redactServerSecrets(config);
     expect(redacted.url).toBeUndefined();
+    expect(redacted.oauth).not.toHaveProperty('oidc_issuer');
+    expect(redacted.oauth).not.toHaveProperty('oidc_jwks_uri');
     expect(redacted.oauth?.authorization_url).toBeUndefined();
     expect(redacted.oauth?.token_url).toBeUndefined();
     expect(redacted.oauth?.revocation_endpoint).toBeUndefined();

@@ -9,7 +9,7 @@ jest.mock('@librechat/data-schemas', () => ({
 
 import type { TarsAvailableToolRow } from './client';
 import type { TarsMcpUserServer } from './user';
-import { filterVisibleTarsMcpConfigs, getUserTarsMcpTools } from './user';
+import { filterVisibleTarsMcpConfigs, getUserTarsMcpTools, withTarsDirectTools } from './user';
 import { clearTarsMcpEntryNames } from './names';
 
 const BASE_URL = 'http://tars.test';
@@ -251,5 +251,258 @@ describe('filterVisibleTarsMcpConfigs', () => {
 
     await expect(filterVisibleTarsMcpConfigs(configs, USER_ID)).resolves.toBe(configs);
     expect(urls).toEqual([]);
+  });
+});
+
+describe('getUserTarsMcpTools with OIDC servers', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('keeps an enabled OIDC server usable even though pwc_tars lists no tools for it', async () => {
+    process.env.TARS_AUTH_URL = BASE_URL;
+    clearTarsMcpEntryNames();
+    const oidc = userServer({
+      id: 's-oidc',
+      name: 'Secure',
+      code: 'secure',
+      type: 'external',
+      user_enabled: true,
+      auth_type: 'oidc',
+      tools: [],
+    });
+    jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async (input) =>
+        jsonResponse(envelope(String(input).includes('available-tools') ? [] : [oidc])),
+      );
+    await expect(getUserTarsMcpTools(USER_ID)).resolves.toEqual([
+      expect.objectContaining({
+        id: 's-oidc',
+        gateway_name: 'tars_secure',
+        user_enabled: true,
+        tools: [],
+      }),
+    ]);
+  });
+});
+
+describe('getUserTarsMcpTools with an OIDC server', () => {
+  const setting = userServer({
+    id: 's-oidc',
+    code: 'demo',
+    type: 'external',
+    auth_type: 'oidc',
+    user_enabled: true,
+    tools: [],
+    tool_config: { whoami: false },
+  });
+  const load = jest.fn().mockResolvedValue(
+    new Map([
+      [
+        'tars_demo',
+        {
+          health_mcp_tars_demo: { function: { description: 'Up?' } },
+          whoami_mcp_tars_demo: { function: {} },
+          closed_mcp_tars_demo: { function: {} },
+        },
+      ],
+    ]),
+  );
+
+  beforeEach(() => {
+    process.env.TARS_AUTH_URL = BASE_URL;
+    clearTarsMcpEntryNames();
+    jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      const { pathname } = new URL(String(input));
+      const routes: Record<string, unknown> = {
+        '/api/mcp/available-tools': [],
+        '/api/mcp/user-settings': [setting],
+        '/api/mcp/servers': [
+          { id: 's-oidc', tool_config: { enabled_tools: ['health', 'whoami'] } },
+        ],
+      };
+      return jsonResponse(envelope(routes[pathname]));
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    delete process.env.TARS_AUTH_URL;
+  });
+
+  it('offers the chat menu only tools the admin opened and the user left on', async () => {
+    const [server] = await getUserTarsMcpTools(USER_ID, load);
+
+    expect(server).toMatchObject({ gateway_name: 'tars_demo', user_enabled: true });
+    expect(server.tools).toEqual([
+      { name: 'health', description: 'Up?', tool_key: 'health_mcp_tars_demo' },
+    ]);
+  });
+});
+
+describe('withTarsDirectTools', () => {
+  const oidcServer = (overrides: Partial<TarsMcpUserServer> = {}): TarsMcpUserServer =>
+    userServer({
+      id: 's-oidc',
+      code: 'demo',
+      type: 'external',
+      auth_type: 'oidc',
+      user_enabled: true,
+      tools: [],
+      gateway_name: 'tars_demo',
+      tool_config: { get_user_id: false },
+      ...overrides,
+    });
+  const catalog = {
+    health_mcp_tars_demo: { function: { description: 'Up?', parameters: { type: 'object' } } },
+    get_user_id_mcp_tars_demo: { function: {} },
+  };
+
+  const allOpen = [{ id: 's-oidc', tool_config: { enabled_tools: ['health', 'get_user_id'] } }];
+  const stubServerList = (servers: unknown = allOpen) =>
+    jest.spyOn(global, 'fetch').mockResolvedValue(jsonResponse(envelope(servers)) as Response);
+
+  beforeEach(() => {
+    process.env.TARS_AUTH_URL = BASE_URL;
+    stubServerList();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    delete process.env.TARS_AUTH_URL;
+  });
+
+  it('lists only the tools an admin opened', async () => {
+    stubServerList([{ id: 's-oidc', tool_config: { enabled_tools: ['get_user_id'] } }]);
+    const load = jest.fn().mockResolvedValue(new Map([['tars_demo', catalog]]));
+
+    const [server] = await withTarsDirectTools([oidcServer()], load);
+
+    expect(server.tools.map((tool) => tool.name)).toEqual(['get_user_id']);
+  });
+
+  it('lists nothing until an admin opens a tool', async () => {
+    stubServerList([{ id: 's-oidc' }]);
+    const load = jest.fn().mockResolvedValue(new Map([['tars_demo', catalog]]));
+
+    const [server] = await withTarsDirectTools([oidcServer()], load);
+
+    expect(server.tools).toEqual([]);
+    expect(server.tools_status).toBe('none_opened');
+  });
+
+  it('gives up on a server that does not answer, within the limit', async () => {
+    const load = jest.fn(
+      (_names: string[], signal?: AbortSignal) =>
+        new Promise<never>((_, reject) => {
+          signal?.addEventListener('abort', () => reject(new Error('aborted')));
+        }),
+    );
+
+    const [server] = await withTarsDirectTools([oidcServer()], load, 20);
+
+    expect(server.tools).toEqual([]);
+    expect(server.tools_status).toBe('timeout');
+    expect(load.mock.calls[0][1]?.aborted).toBe(true);
+  });
+
+  it('keeps listing a healthy server when another does not answer', async () => {
+    stubServerList([...allOpen, { id: 's-stuck', tool_config: { enabled_tools: ['anything'] } }]);
+    const load = jest.fn((names: string[], signal?: AbortSignal) =>
+      names[0] === 'tars_demo'
+        ? Promise.resolve(new Map([['tars_demo', catalog]]))
+        : new Promise<never>((_, reject) => {
+            signal?.addEventListener('abort', () => reject(new Error('aborted')));
+          }),
+    );
+
+    const [healthy, stuck] = await withTarsDirectTools(
+      [oidcServer(), oidcServer({ id: 's-stuck', gateway_name: 'tars_stuck' })],
+      load,
+      20,
+    );
+
+    expect(healthy.tools_status).toBe('ok');
+    expect(healthy.tools.map((tool) => tool.name)).toEqual(['health', 'get_user_id']);
+    expect(stuck.tools_status).toBe('timeout');
+    expect(stuck.tools).toEqual([]);
+  });
+
+  it('reports a failed read on that server alone', async () => {
+    const load = jest.fn((names: string[]) =>
+      names[0] === 'tars_demo'
+        ? Promise.resolve(new Map([['tars_demo', catalog]]))
+        : Promise.reject(new Error('boom')),
+    );
+
+    const [healthy, broken] = await withTarsDirectTools(
+      [oidcServer(), oidcServer({ id: 's-broken', gateway_name: 'tars_broken' })],
+      load,
+    );
+
+    expect(healthy.tools_status).toBe('ok');
+    expect(broken.tools_status).toBe('error');
+  });
+
+  it("fills an OIDC server's tools from the catalog and applies the user's switches", async () => {
+    const load = jest.fn().mockResolvedValue(new Map([['tars_demo', catalog]]));
+    const [server] = await withTarsDirectTools([oidcServer()], load);
+
+    expect(load).toHaveBeenCalledWith(['tars_demo'], expect.any(AbortSignal));
+    expect(server.tools_status).toBe('ok');
+    expect(server.tools).toEqual([
+      {
+        id: 'health',
+        name: 'health',
+        description: 'Up?',
+        input_schema: { type: 'object' },
+        user_enabled: true,
+        tool_key: 'health_mcp_tars_demo',
+      },
+      {
+        id: 'get_user_id',
+        name: 'get_user_id',
+        description: null,
+        input_schema: null,
+        user_enabled: false,
+        tool_key: 'get_user_id_mcp_tars_demo',
+      },
+    ]);
+  });
+
+  it('uses the upstream name for a tool whose key dropped a redundant prefix', async () => {
+    stubServerList([{ id: 's-oidc', tool_config: { enabled_tools: ['demo_health'] } }]);
+    const stripped = { health_mcp_tars_demo: { serverToolName: 'demo_health', function: {} } };
+    const load = jest.fn().mockResolvedValue(new Map([['tars_demo', stripped]]));
+    const [server] = await withTarsDirectTools(
+      [oidcServer({ tool_config: { demo_health: false } })],
+      load,
+    );
+
+    expect(server.tools[0]).toMatchObject({ name: 'demo_health', user_enabled: false });
+  });
+
+  it('does not load a catalog for a server that is off, not OIDC or has no entry', async () => {
+    const load = jest.fn();
+    const servers = [
+      oidcServer({ user_enabled: false }),
+      oidcServer({ auth_type: 'none' }),
+      oidcServer({ gateway_name: undefined }),
+    ];
+
+    await expect(withTarsDirectTools(servers, load)).resolves.toEqual(servers);
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it('leaves the tools empty when the catalog is missing or cannot be read', async () => {
+    const empty = await withTarsDirectTools([oidcServer()], jest.fn().mockResolvedValue(new Map()));
+    expect(empty[0].tools).toEqual([]);
+    expect(empty[0].tools_status).toBe('not_connected');
+
+    const failed = await withTarsDirectTools(
+      [oidcServer()],
+      jest.fn().mockRejectedValue(new Error('down')),
+    );
+    expect(failed[0].tools).toEqual([]);
+    expect(failed[0].tools_status).toBe('error');
   });
 });

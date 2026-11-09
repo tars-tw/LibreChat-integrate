@@ -1252,6 +1252,50 @@ describe('MCPTokenStorage', () => {
       ).rejects.toThrow(ReauthenticationRequiredError);
     });
 
+    it('hands the stored ID Token subject to the next refresh, and keeps it stored', async () => {
+      await createBoundToken(store, {
+        userId: 'u1',
+        type: 'mcp_oauth',
+        identifier: 'mcp:srv1',
+        token: 'enc:expired-token',
+        expiresIn: -1,
+      });
+      await createBoundToken(store, {
+        userId: 'u1',
+        type: 'mcp_oauth_refresh',
+        identifier: 'mcp:srv1:refresh',
+        token: 'enc:rt',
+        expiresIn: 86400,
+        metadata: { id_token_subject: 'user-1' },
+      });
+      const refreshTokens = jest.fn().mockResolvedValue({
+        access_token: 'at-2',
+        refresh_token: 'rt-2',
+        token_type: 'Bearer',
+        id_token_subject: 'user-1',
+        expires_in: 3600,
+        obtained_at: Date.now(),
+        expires_at: Date.now() + 3600000,
+      });
+
+      await MCPTokenStorage.getTokens({
+        userId: 'u1',
+        serverName: 'srv1',
+        findToken: store.findToken,
+        createToken: store.createToken,
+        updateToken: store.updateToken,
+        refreshTokens,
+      });
+
+      expect(refreshTokens).toHaveBeenCalledWith(
+        'rt',
+        expect.objectContaining({ idTokenSubject: 'user-1' }),
+        expect.any(AbortSignal),
+      );
+      const row = await store.findToken({ userId: 'u1', identifier: 'mcp:srv1:refresh' });
+      expect(row?.metadata).toMatchObject({ id_token_subject: 'user-1' });
+    });
+
     it('should refresh expired access token when refresh token and callback are available', async () => {
       await createBoundToken(store, {
         userId: 'u1',

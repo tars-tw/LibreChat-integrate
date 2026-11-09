@@ -77,6 +77,45 @@ describe('resolveMCPOAuthTarget', () => {
     );
   });
 
+  describe('canUseServer', () => {
+    const config = { type: 'streamable-http', url: URL } as const;
+
+    it('hides a server the principal may not use, on every flow step', async () => {
+      const canUseServer = jest.fn(async () => false);
+      const deps = { ...createDeps({ configs: { docs: config } }), canUseServer };
+
+      await expect(resolve(deps, { serverName: 'docs', serverUrl: URL })).resolves.toEqual({
+        ok: false,
+        error: { code: 'server_not_found' },
+      });
+      expect(canUseServer).toHaveBeenCalledWith('docs', config, principal);
+    });
+
+    it('lets a permitted server through', async () => {
+      const deps = {
+        ...createDeps({ configs: { docs: config } }),
+        canUseServer: jest.fn(async () => true),
+      };
+
+      await expect(resolve(deps, { serverName: 'docs', serverUrl: URL })).resolves.toMatchObject({
+        ok: true,
+      });
+    });
+
+    it('rejects rather than admitting the flow when the check itself fails', async () => {
+      const deps = {
+        ...createDeps({ configs: { docs: config } }),
+        canUseServer: jest.fn(async () => {
+          throw new Error('check failed');
+        }),
+      };
+
+      await expect(resolve(deps, { serverName: 'docs', serverUrl: URL })).rejects.toThrow(
+        'check failed',
+      );
+    });
+  });
+
   it('finds a config-tier server the resolved catalog omits in the merged config', async () => {
     const merged = { type: 'streamable-http', url: URL } as const;
     const deps = createDeps({ appConfig: { mcpConfig: { docs: merged } } });

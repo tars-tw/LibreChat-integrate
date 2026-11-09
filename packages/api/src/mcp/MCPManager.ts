@@ -77,6 +77,7 @@ import { MCPServersRegistry } from './registry/MCPServersRegistry';
 import { UserConnectionManager } from './UserConnectionManager';
 import { ConnectionsRepository } from './ConnectionsRepository';
 import { MCPConnectionFactory } from './MCPConnectionFactory';
+import { assertTarsDirectMcpAccess } from '~/tars/mcp/access';
 import { processMCPEnv, isPluginSourced } from '~/utils/env';
 import { OAuthLifecycleRelay } from './oauth/pending';
 import { noteTarsMcpToolError } from '~/tars/failure';
@@ -613,6 +614,7 @@ export class MCPManager extends UserConnectionManager {
       logger.warn('[MCP][Discovery] Server configuration not found');
       return { tools: null, oauthRequired: false, oauthUrl: null };
     }
+    await assertTarsDirectMcpAccess(serverName, serverConfig, user);
 
     try {
       const useAppConnection =
@@ -1669,6 +1671,7 @@ Please follow these instructions when using tools from the respective MCP server
             `${logPrefix} Configuration for server "${serverName}" not found.`,
           );
         }
+        await assertTarsDirectMcpAccess(serverName, rawConfig, user, toolName);
         const isDbSourced = isUserSourced(rawConfig);
         const ephemeralConnection = !!userId && requiresEphemeralUserConnection(rawConfig);
         disposeAfterCall = ephemeralConnection && !requestScopedConnections;

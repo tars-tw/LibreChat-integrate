@@ -140,6 +140,7 @@ import { applyIntentLabels, sanitizeIntentLabels } from './intent';
 import { prepareQueuedCodeFileContext } from '~/files/code/queued';
 import { ContentFilterError } from '../middleware/contentFilter';
 import { resolveToolRoleGrants } from '~/tools/rolePermissions';
+import { dropDisabledTarsDirectTools } from '~/tars/mcp/access';
 import { createRequestAgentExecutionContext } from './runtime';
 import { withTarsSpreadsheetTools } from '~/tars/tools/names';
 import { resolveTurnDeliveryRouting } from './files/delivery';
@@ -2294,6 +2295,17 @@ export async function initializeAgent(
       dropFileSearchResources();
     }
     loadToolsResult = await callLoadTools(baseToolNames);
+  }
+
+  if (loadToolsResult?.toolDefinitions?.length) {
+    const selection = await dropDisabledTarsDirectTools(
+      {
+        toolDefinitions: loadToolsResult.toolDefinitions,
+        toolRegistry: loadToolsResult.toolRegistry,
+      },
+      user,
+    );
+    loadToolsResult = { ...loadToolsResult, ...selection };
   }
 
   /** Cap the MCP tools bound this turn by relevance to the user message

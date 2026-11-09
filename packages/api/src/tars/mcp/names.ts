@@ -16,10 +16,22 @@ export const PROVIDER_TOOL_NAME_LIMIT = 64;
  * here instead of re-deriving it.
  */
 const injectedEntryNames = new Map<string, string>();
+/** Entry name → pwc_tars server id, for entries that bypass the gateway (OIDC servers). */
+const directEntryServers = new Map<string, string>();
 
 /** Resets the registry; called at the start of every injection run. */
 export function clearTarsMcpEntryNames(): void {
   injectedEntryNames.clear();
+  directEntryServers.clear();
+}
+
+/** Records an injected entry whose tools pwc_tars cannot list, so it cannot map them to ids. */
+export function recordTarsMcpDirectEntry(entryName: string, serverId: string): void {
+  directEntryServers.set(entryName, serverId);
+}
+
+export function tarsMcpDirectEntries(): ReadonlyMap<string, string> {
+  return directEntryServers;
 }
 
 /** Records the entry name injection chose for a pwc_tars server id. */

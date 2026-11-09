@@ -621,6 +621,8 @@ export const tarsMcpAdminServersBatchDelete = () =>
   `${BASE_URL}/api/tars/mcp/admin/servers/batch-delete`;
 export const tarsMcpAdminServerTest = (id: string) => `${tarsMcpAdminServer(id)}/test`;
 export const tarsMcpAdminServerSync = (id: string) => `${tarsMcpAdminServer(id)}/sync`;
+export const tarsMcpAdminServerDirectTools = (id: string) =>
+  `${tarsMcpAdminServer(id)}/direct-tools`;
 export const tarsMcpAdminParseOpenapi = () => `${BASE_URL}/api/tars/mcp/admin/parse-openapi`;
 export const tarsMcpAdminTool = (id: string) =>
   `${BASE_URL}/api/tars/mcp/admin/tools/${encodeURIComponent(id)}`;

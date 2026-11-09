@@ -26,6 +26,7 @@ const {
   prepareMCPServerOAuthDeletion,
   cleanupDeletedMCPServerOAuthUsers,
   filterVisibleTarsMcpConfigs,
+  resolveTarsDirectToolFilter,
 } = require('@librechat/api');
 const {
   Constants,
@@ -219,6 +220,8 @@ const getMCPTools = async (req, res) => {
       );
     }
 
+    const isTarsToolUsable = await resolveTarsDirectToolFilter(req.user);
+
     // Process each configured server
     for (const serverName of configuredServers) {
       try {
@@ -263,6 +266,9 @@ const getMCPTools = async (req, res) => {
               serverName,
               normalizeServerName(serverName),
             ]);
+            if (!isTarsToolUsable(serverName, toolData.serverToolName ?? toolName)) {
+              continue;
+            }
             server.tools.push({
               name: toolName,
               pluginKey: toolKey,

@@ -80,6 +80,8 @@ export interface MCPOAuthFlowMetadata extends FlowMetadata {
   oauthPersistenceWaitTimeout?: number;
   state: string;
   codeVerifier?: string;
+  /** Present when the server is configured for ID Token validation; see `oauth.oidc_issuer`. */
+  idTokenCheck?: { issuer: string; jwksUri: string; nonce: string };
   clientInfo?: OAuthClientInformation;
   /** Whether this flow uses a configured client or a dynamically registered client. */
   clientSource?: OAuthClientSource;
@@ -114,6 +116,8 @@ export interface MCPOAuthFlowMetadata extends FlowMetadata {
 export interface MCPOAuthTokens extends OAuthTokens {
   /** Internal identifier for the persisted credential set; never sent to the OAuth provider. */
   credential_set_id?: string;
+  /** The validated ID Token's subject; a later refresh must keep it. Never the token itself. */
+  id_token_subject?: string;
   /** When the tokens were obtained */
   obtained_at: number;
   /** Calculated expiry time */
