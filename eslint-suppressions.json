@@ -495,9 +495,6 @@
     }
   },
   "client/src/components/Admin/Tars/TokenQuota/Quotas.tsx": {
-    "shadcn/no-inline-styles": {
-      "count": 1
-    },
     "shadcn/no-raw-colors": {
       "count": 7
     }

@@ -126,6 +126,18 @@
     rgb(var(--pwc-orange-500)) 0%,
     rgb(var(--pwc-orange-400)) 100%
   );
+  /* TARS token usage bars (the chat header's usage bar, an unlimited quota on the quota page). */
+  --tars-usage-yellow: 253 226 147;
+  --tars-usage-peach: 244 180 166;
+  --tars-usage-blue: 174 203 250;
+  --tars-usage-green: 168 218 181;
+  --tars-usage-gradient: linear-gradient(
+    90deg,
+    rgb(var(--tars-usage-yellow)) 0%,
+    rgb(var(--tars-usage-peach)) 35%,
+    rgb(var(--tars-usage-blue)) 65%,
+    rgb(var(--tars-usage-green)) 100%
+  );
 }
 
 html {
