@@ -44,6 +44,7 @@ const { invalidateConfigCaches } = require('~/server/services/Config');
 const { getMCPServersRegistry } = require('~/config');
 const { resolveAllMcpConfigs } = require('~/server/services/MCP');
 const { loadMCPServerCatalogs } = require('~/server/services/Tools/mcp');
+const tarsMcpGrantEnable = require('~/server/services/tarsMcpGrantEnable');
 const tarsOidcTeardown = require('~/server/services/tarsOidcTeardown');
 const { getUserById } = require('~/models');
 
@@ -383,7 +384,9 @@ router.post(
   '/mcp/admin/permissions/save',
   adminMiddleware,
   adminHandler('POST /api/tars/mcp/admin/permissions/save', async (req) => {
-    const result = await adminSaveTarsMcpPermissions(req.body ?? {}, req.user.tarsId);
+    const result = await tarsMcpGrantEnable.saveThenEnable(req.user.tarsId, () =>
+      adminSaveTarsMcpPermissions(req.body ?? {}, req.user.tarsId),
+    );
     await invalidateMcpCaches('POST /api/tars/mcp/admin/permissions/save');
     return { result };
   }),
@@ -411,7 +414,9 @@ router.post(
   '/mcp/admin/permissions/server/save',
   adminMiddleware,
   adminHandler('POST /api/tars/mcp/admin/permissions/server/save', async (req) => {
-    const result = await adminSaveTarsMcpServerPermissions(req.body ?? {}, req.user.tarsId);
+    const result = await tarsMcpGrantEnable.saveThenEnable(req.user.tarsId, () =>
+      adminSaveTarsMcpServerPermissions(req.body ?? {}, req.user.tarsId),
+    );
     await invalidateMcpCaches('POST /api/tars/mcp/admin/permissions/server/save');
     return { result };
   }),
