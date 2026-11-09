@@ -8,6 +8,7 @@ const mockUpdate = jest.fn();
 const mockSync = jest.fn();
 const mockShowToast = jest.fn();
 let mockStartupConfig: { serverDomain: string } | undefined;
+let pointerX = 0;
 
 jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string, values?: { field?: string }) =>
@@ -128,8 +129,10 @@ describe('McpServerModal OIDC', () => {
     expect(screen.getByLabelText(label)).toBeInTheDocument();
     const button = screen.getByRole('button', { name: `com_ui_tars_mcp_oidc_field_help:${label}` });
     expect(button).toHaveAttribute('type', 'button');
+    /** Ariakit ignores a move without a position change unless NODE_ENV is `test`; CI runs `development`. */
+    pointerX += 1;
     fireEvent.mouseEnter(button);
-    fireEvent.mouseMove(button);
+    fireEvent.mouseMove(button, { screenX: pointerX });
 
     expect(await screen.findByText(help)).toBeInTheDocument();
   });

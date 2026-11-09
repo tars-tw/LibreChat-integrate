@@ -36,6 +36,11 @@ jest.mock('~/models', () => ({
 
 jest.mock('~/server/services/Config', () => ({ invalidateConfigCaches: jest.fn() }));
 
+/** These reach `getLogStores`, whose `new Keyv` at module load rejects the stubbed `logFile`. */
+jest.mock('~/server/services/MCP', () => ({ resolveAllMcpConfigs: jest.fn() }));
+jest.mock('~/server/services/Tools/mcp', () => ({ loadMCPServerCatalogs: jest.fn() }));
+jest.mock('~/server/services/tarsOidcTeardown', () => jest.fn());
+
 jest.mock('~/server/middleware', () => ({
   configMiddleware: jest.fn((req, res, next) => next()),
   requireJwtAuth: jest.fn((req, res, next) => {
