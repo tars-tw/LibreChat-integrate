@@ -18,7 +18,7 @@ export default function AddedConvo({
   const { data: endpointsConfig } = useGetEndpointsQuery();
   const localize = useLocalize();
   const title = useMemo(() => {
-    // Priority: agent name > modelDisplayLabel > modelLabel > model
+    // Priority: agent name > modelLabel > model > modelDisplayLabel (the endpoint's name)
     if (isAgentsEndpoint(addedConvo?.endpoint)) {
       const agent = addedConvo?.agent_id ? agentsMap?.[addedConvo.agent_id] : undefined;
       /** Never fall into the model-label chain for agents — it would reveal the
@@ -28,7 +28,7 @@ export default function AddedConvo({
 
     const endpointConfig = endpointsConfig?.[addedConvo?.endpoint ?? ''];
     const displayLabel =
-      endpointConfig?.modelDisplayLabel || addedConvo?.modelLabel || addedConvo?.model || 'AI';
+      addedConvo?.modelLabel || addedConvo?.model || endpointConfig?.modelDisplayLabel || 'AI';
 
     return `+ ${displayLabel}`;
   }, [addedConvo, agentsMap, endpointsConfig, localize]);

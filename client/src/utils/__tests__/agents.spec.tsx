@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import type t from 'librechat-data-provider';
-import { getAgentAvatarUrl, renderAgentAvatar } from '../agents';
+import { getAgentAvatarUrl, renderAgentAvatar, getEphemeralAgentLabel } from '../agents';
 
 // Mock the Feather icon from lucide-react
 jest.mock('lucide-react', () => ({
@@ -118,6 +118,29 @@ describe('Agent Utilities', () => {
 
       const container = screen.getByAltText('Test Agent avatar').parentElement;
       expect(container).toHaveClass('custom-class');
+    });
+  });
+
+  describe('getEphemeralAgentLabel', () => {
+    it('shows the model instead of the endpoint display label', () => {
+      expect(getEphemeralAgentLabel({ sender: 'vLLM', model: 'Qwen3.6-35B-A3B' }, 'vLLM')).toBe(
+        'Qwen3.6-35B-A3B',
+      );
+    });
+
+    it('shows the model when the endpoint sets no label', () => {
+      expect(getEphemeralAgentLabel({ sender: '', model: 'gpt-5.4-mini' })).toBe('gpt-5.4-mini');
+    });
+
+    it('keeps a sender configured for the conversation', () => {
+      expect(getEphemeralAgentLabel({ sender: 'My Qwen', model: 'Qwen3.6-35B-A3B' }, 'vLLM')).toBe(
+        'My Qwen',
+      );
+    });
+
+    it('falls back to the endpoint label, then AI, when there is no model', () => {
+      expect(getEphemeralAgentLabel({ sender: 'vLLM', model: '' }, 'vLLM')).toBe('vLLM');
+      expect(getEphemeralAgentLabel({ model: '' })).toBe('AI');
     });
   });
 

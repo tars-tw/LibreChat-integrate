@@ -140,3 +140,17 @@ export const resolveAgentTarget = (
   const parsed = parseEphemeralAgentId(agentId);
   return parsed == null ? undefined : { provider: parsed.endpoint, model: parsed.model };
 };
+
+/**
+ * The name heading an ephemeral agent's response. A sender someone configured for the
+ * conversation (custom name, model spec label) is kept, but an endpoint's
+ * `modelDisplayLabel` names the provider (`vLLM`), not the model, so the model stands in
+ * for it, as it already does for endpoints that set no label.
+ */
+export const getEphemeralAgentLabel = (
+  parsed: { sender?: string; model: string },
+  modelDisplayLabel?: string,
+): string => {
+  const sender = parsed.sender === modelDisplayLabel ? '' : parsed.sender;
+  return sender || parsed.model || parsed.sender || 'AI';
+};

@@ -6,9 +6,10 @@ import type { TMessage, Agent } from 'librechat-data-provider';
 import { useMessagePartsHost } from '~/Providers/MessagePartsHostContext';
 import { useBranchMessageMutation } from '~/data-provider/Messages';
 import MessageIcon from '~/components/Share/MessageIcon';
+import { useGetEndpointsQuery } from '~/data-provider';
+import { cn, getEphemeralAgentLabel } from '~/utils';
 import { useAgentsMapContext } from '~/Providers';
 import { useLocalize } from '~/hooks';
-import { cn } from '~/utils';
 
 type SiblingHeaderProps = {
   /** The agentId from the content part (could be real agent ID or endpoint__model format) */
@@ -35,6 +36,7 @@ export default function SiblingHeader({
   isSubmitting,
 }: SiblingHeaderProps) {
   const agentsMap = useAgentsMapContext();
+  const { data: endpointsConfig } = useGetEndpointsQuery();
   const localize = useLocalize();
   const showToast = useMessagePartsHost().useToast();
 
@@ -80,7 +82,10 @@ export default function SiblingHeader({
       const parsed = parseEphemeralAgentId(agentId);
       if (parsed) {
         return {
-          displayName: parsed.sender || parsed.model || 'AI',
+          displayName: getEphemeralAgentLabel(
+            parsed,
+            endpointsConfig?.[parsed.endpoint]?.modelDisplayLabel,
+          ),
           displayEndpoint: parsed.endpoint,
           displayModel: parsed.model,
           agent: undefined,
@@ -103,7 +108,7 @@ export default function SiblingHeader({
       displayModel: undefined,
       agent: undefined,
     };
-  }, [agentId, agentsMap]);
+  }, [agentId, agentsMap, endpointsConfig]);
 
   return (
     <div className="border-border-light mb-2 flex items-center justify-between gap-2 border-b pb-2">
