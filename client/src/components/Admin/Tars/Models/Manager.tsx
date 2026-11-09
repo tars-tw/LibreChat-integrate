@@ -38,6 +38,7 @@ import {
   collectModelTypes,
   displayModelType,
   displayDescription,
+  modelTypeBadgeClass,
 } from './helpers';
 import { TYPE_ICON_COLOR } from '~/components/McpSettings/McpPermissionPrincipals';
 import AssigneesCell from '~/components/Tars/Assignees';
@@ -410,7 +411,10 @@ export default function ModelProfileManager() {
                         {profile.type ? (
                           <span
                             title={displayModelType(profile.type)}
-                            className="bg-surface-tertiary text-text-primary inline-block max-w-full truncate rounded-full px-2 py-0.5 text-xs"
+                            className={cn(
+                              'inline-block max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium',
+                              modelTypeBadgeClass(profile.type),
+                            )}
                           >
                             {displayModelType(profile.type)}
                           </span>

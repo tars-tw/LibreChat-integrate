@@ -13,6 +13,20 @@ const TYPE_DISPLAY: Partial<Record<string, string>> = { VLLM: 'vLLM' };
 /** How a stored model type reads in the list, e.g. `VLLM` → `vLLM`. */
 export const displayModelType = (type: string): string => TYPE_DISPLAY[type] ?? type;
 
+/**
+ * Badge colors by how common a type is: CLOUD fills most of the list, so it gets the
+ * calmest tint; the rarer VLLM and GOOGLE_VERTEX get hues that stand out from it.
+ */
+const TYPE_BADGE: Partial<Record<string, string>> = {
+  CLOUD: 'bg-series-2/10 text-series-2',
+  VLLM: 'bg-series-5/15 text-series-5',
+  GOOGLE_VERTEX: 'bg-series-3/20 text-series-3',
+};
+
+/** Badge colors for a stored model type; a legacy type keeps the neutral surface. */
+export const modelTypeBadgeClass = (type: string): string =>
+  TYPE_BADGE[type] ?? 'bg-surface-tertiary text-text-primary';
+
 /** The selectable types plus any legacy one still in use, for the list filter. */
 export const collectModelTypes = (profiles: TTarsModelProfile[]): string[] => {
   const types = new Set<string>(TARS_MODEL_TYPES);
