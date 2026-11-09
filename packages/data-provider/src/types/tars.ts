@@ -2254,6 +2254,46 @@ export type TTarsTokenQuotaInput = {
   status?: string;
 };
 
+export type TTarsTokenQuotaBatchInput = {
+  principals: { type: 'user' | 'group'; id: string }[];
+  providers: string[];
+  custom_limit: number;
+  reset_type?: string;
+  reset_day?: number;
+  warning_threshold?: number;
+  status?: string;
+};
+
+export type TTarsTokenQuotaBatchDeleteInput = { ids: string[] };
+
+export type TTarsTokenQuotaBatchDeleteResult = {
+  success?: boolean;
+  message?: string;
+  deleted: number;
+  requested: number;
+};
+
+export type TTarsTokenQuotaBatchResult = {
+  success?: boolean;
+  message?: string;
+  created: number;
+  updated: number;
+  user_count: number;
+  missing_user_ids: string[];
+  missing_group_ids: string[];
+};
+
+export type TTarsMyTokenQuota = {
+  provider: string;
+  limit: number | null;
+  used: number;
+  quota_exceeded: boolean;
+  quota_warning: boolean;
+  unlimited: boolean;
+};
+
+export type TTarsMyTokenQuotasResponse = { quotas: TTarsMyTokenQuota[] };
+
 /** The per-provider fallback rule — a config row with neither brain nor group. */
 export type TTarsTokenSystemDefaultInput = {
   provider: string;

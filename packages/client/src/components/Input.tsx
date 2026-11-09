@@ -8,12 +8,14 @@ import './Field.css';
  *  a row with icon Buttons, so it takes their height role and the row stays one height when a
  *  theme sizes fields and buttons apart. `floating` is the sign-in form field whose label rests
  *  inside it and lifts on focus. `flush` draws no border or ring because the surrounding frame owns
- *  the indicator, and `embedded` fills a list or popover row edge to edge. */
+ *  the indicator, and `embedded` fills a list or popover row edge to edge. `search` leaves room at
+ *  the start for a search icon the caller positions over the field. */
 export const INPUT_VARIANTS: Record<
-  'default' | 'inline' | 'title' | 'title-sm' | 'floating' | 'flush' | 'embedded',
+  'default' | 'inline' | 'title' | 'title-sm' | 'floating' | 'flush' | 'embedded' | 'search',
   string
 > = {
   default: '',
+  search: 'ps-9',
   inline: 'h-theme-button',
   title: 'h-theme-field-lg text-2xl font-semibold tracking-tight',
   'title-sm': 'text-base font-semibold tracking-tight',

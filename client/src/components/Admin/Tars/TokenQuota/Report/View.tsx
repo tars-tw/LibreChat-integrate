@@ -3,27 +3,28 @@ import { Download, RotateCcw, Search } from 'lucide-react';
 import { TARS_EMBEDDING_MAX_RANGE_DAYS } from 'librechat-data-provider';
 import { Button, Input, Label, Spinner, useToastContext } from '@librechat/client';
 import type {
+  TTarsTokenUser,
   TTarsTokenUserUsage,
   TTarsTokenReportRange,
   TTarsTokenPrepareData,
 } from 'librechat-data-provider';
 import {
   useTarsTokenQuotasQuery,
-  useTarsTokenConfigsQuery,
   useTarsTokenReportMembersQuery,
   useTarsTokenReportOverviewQuery,
 } from '~/data-provider';
 import {
-  groupCeilings,
   userCeilings,
   reportTotals,
   formatTokens,
   totalDailyUsage,
   defaultReportRange,
 } from './helpers';
+import { downloadTokenReportCsvs, downloadPersonReportCsvs } from './export';
 import Picker, { type PickerOption } from '../../Audit/Picker';
-import { downloadTokenReportCsvs } from './export';
 import EmbeddingUsage from './EmbeddingUsage';
+import PersonSearch from './PersonSearch';
+import PersonUsage from './PersonUsage';
 import UserDialog from './UserDialog';
 import { useLocalize } from '~/hooks';
 import Members from './Members';
@@ -38,9 +39,11 @@ interface Drilldown {
 }
 
 /**
- * The token usage report (Token 使用報表), read against the quota rules that
- * cap it. Filters on top, then the period totals, the daily trend, the group
- * table — which drills into its members — and the brain and model splits.
+ * The token usage report (Token 使用報表). Filters on top — period, group, and a
+ * lookup for one person — then, if a person is picked, their usage; below it the period
+ * totals, the daily trend, the group table (which drills into its members) and the
+ * brain and model splits. Quotas belong to people, so ceilings appear only against a
+ * person's own quota; groups are read for spending alone.
  */
 export default function Report({ options }: { options: TTarsTokenPrepareData | undefined }) {
   const localize = useLocalize();
@@ -52,10 +55,13 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
   const [submittedGroups, setSubmittedGroups] = useState<string[]>([]);
   const [drilldown, setDrilldown] = useState<Drilldown | null>(null);
   const [openUser, setOpenUser] = useState<TTarsTokenUserUsage | null>(null);
+  /** Picked in the filter row; only becomes the shown person once the search runs. */
+  const [person, setPerson] = useState<TTarsTokenUser | null>(null);
+  const [submittedPerson, setSubmittedPerson] = useState<TTarsTokenUser | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const overviewQuery = useTarsTokenReportOverviewQuery(submitted);
-  const configsQuery = useTarsTokenConfigsQuery({});
+  /** Looking up one person replaces the group view, so the group overview is not fetched then. */
+  const overviewQuery = useTarsTokenReportOverviewQuery(submittedPerson == null ? submitted : null);
   const quotasQuery = useTarsTokenQuotasQuery({});
 
   const membersQuery = useTarsTokenReportMembersQuery(
@@ -79,7 +85,6 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
 
   const totals = useMemo(() => reportTotals(groupRows), [groupRows]);
   const daily = useMemo(() => totalDailyUsage(groupRows), [groupRows]);
-  const groupLimits = useMemo(() => groupCeilings(configsQuery.data ?? []), [configsQuery.data]);
   const userLimits = useMemo(() => userCeilings(quotasQuery.data ?? []), [quotasQuery.data]);
 
   const groupOptions: PickerOption[] = useMemo(
@@ -90,16 +95,28 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
   const runSearch = () => {
     setDrilldown(null);
     setSubmittedGroups(groupIds);
+    setSubmittedPerson(person);
     setSubmitted({ start_date: range.start, end_date: range.end });
   };
 
+  /**
+   * One button for both exports: with a person picked it downloads theirs, over the
+   * period currently in the filter row; otherwise it is the group report of the last search.
+   */
   const handleExport = async () => {
-    if (submitted == null) {
+    if (person == null && submitted == null) {
       return;
     }
     setExporting(true);
     try {
-      const { embeddingLeftOut } = await downloadTokenReportCsvs(submitted, localize);
+      const { embeddingLeftOut } =
+        person != null
+          ? await downloadPersonReportCsvs(
+              { start_date: range.start, end_date: range.end },
+              person,
+              localize,
+            )
+          : await downloadTokenReportCsvs(submitted as TTarsTokenReportRange, localize);
       if (embeddingLeftOut != null) {
         showToast({
           message:
@@ -128,7 +145,7 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
         </header>
 
         <form
-          className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-4"
+          className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-5"
           onSubmit={(event) => {
             event.preventDefault();
             if (!rangeInvalid) {
@@ -166,6 +183,13 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
             selected={groupIds}
             onChange={setGroupIds}
             placeholder={localize('com_ui_tars_quota_all_groups')}
+            disabled={person != null}
+          />
+
+          <PersonSearch
+            disabled={rangeInvalid || groupIds.length > 0}
+            selected={person}
+            onSelect={setPerson}
           />
 
           <div className="flex items-end justify-end gap-2">
@@ -175,6 +199,8 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
               onClick={() => {
                 setRange(defaultReportRange());
                 setGroupIds([]);
+                setPerson(null);
+                setSubmittedPerson(null);
               }}
               aria-label={localize('com_ui_reset')}
               title={localize('com_ui_reset')}
@@ -184,7 +210,7 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
             <Button
               type="button"
               variant="outline"
-              disabled={submitted == null || exporting}
+              disabled={(person == null ? submitted == null : rangeInvalid) || exporting}
               onClick={handleExport}
               aria-label={localize('com_ui_tars_report_export')}
               title={localize('com_ui_tars_report_export')}
@@ -210,12 +236,24 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
           </div>
 
           {rangeInvalid && (
-            <p className="text-xs text-red-500 md:col-span-2 xl:col-span-4">
+            <p className="text-xs text-red-500 md:col-span-2 xl:col-span-5">
               {localize('com_ui_tars_audit_date_range_invalid')}
             </p>
           )}
         </form>
       </section>
+
+      {submittedPerson != null && submitted != null && (
+        <PersonUsage
+          key={submittedPerson.id}
+          user={submittedPerson}
+          range={submitted}
+          onClear={() => {
+            setPerson(null);
+            setSubmittedPerson(null);
+          }}
+        />
+      )}
 
       {overviewQuery.isError && (
         <p className="rounded-xl border border-red-500/40 bg-red-500/5 px-4 py-3 text-sm text-red-500">
@@ -229,7 +267,7 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
         </p>
       )}
 
-      {submitted != null && overview != null && (
+      {submitted != null && submittedPerson == null && overview != null && (
         <>
           <p className="text-text-secondary text-sm">
             {`${localize('com_ui_tars_audit_period')}: ${overview.date_range.start_date} ~ ${overview.date_range.end_date}`}
@@ -260,7 +298,6 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
 
           <Groups
             rows={groupRows}
-            ceilings={groupLimits}
             selectedId={drilldown?.groupId ?? null}
             onSelect={(groupId, groupName) => setDrilldown({ groupId, groupName })}
           />
@@ -270,32 +307,21 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
               groupName={drilldown.groupName}
               members={membersQuery.data ?? []}
               ceilings={userLimits}
-              inherited={groupLimits.get(drilldown.groupId)}
               isLoading={membersQuery.isFetching}
               onSelect={setOpenUser}
               onClear={() => setDrilldown(null)}
             />
           )}
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Ranked
-              title={localize('com_ui_tars_report_by_domain')}
-              items={overview.domain_usage.map((domain) => ({
-                key: String(domain.domain_id ?? domain.domain_name ?? ''),
-                label: domain.domain_name ?? localize('com_ui_tars_report_unassigned'),
-                value: domain.total_tokens,
-              }))}
-            />
-            <Ranked
-              title={localize('com_ui_tars_report_by_model')}
-              items={overview.model_usage.map((model) => ({
-                key: model.model_name,
-                label: model.model_name,
-                value: model.total_tokens,
-                share: Math.round(model.usage_rate),
-              }))}
-            />
-          </div>
+          <Ranked
+            title={localize('com_ui_tars_report_by_model')}
+            items={overview.model_usage.map((model) => ({
+              key: model.model_name,
+              label: model.model_name,
+              value: model.total_tokens,
+              share: Math.round(model.usage_rate),
+            }))}
+          />
 
           <EmbeddingUsage range={submitted} userGroupIds={submittedGroups} />
         </>

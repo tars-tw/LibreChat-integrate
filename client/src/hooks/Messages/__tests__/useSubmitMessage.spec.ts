@@ -27,6 +27,11 @@ jest.mock('~/hooks/AuthContext', () => ({
   useAuthContext: jest.fn(),
 }));
 
+jest.mock('~/hooks/useTokenQuotaGuard', () => ({
+  __esModule: true,
+  default: () => ({ provider: null, quota: undefined, exceeded: false }),
+}));
+
 jest.mock('~/hooks/Messages/useLatestMessage', () => ({
   useGetLatestMessage: jest.fn(),
 }));

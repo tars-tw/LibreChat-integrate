@@ -10,9 +10,12 @@ const {
   createTarsTokenUserQuota,
   updateTarsTokenUserQuota,
   deleteTarsTokenUserQuota,
+  batchSetTarsTokenUserQuotas,
+  batchDeleteTarsTokenUserQuotas,
   fetchTarsTokenPrepareData,
   fetchTarsTokenSystemDefaults,
   updateTarsTokenSystemDefault,
+  fetchTarsMyTokenQuotas,
   fetchTarsTokenReportUser,
   fetchTarsTokenReportExport,
   fetchTarsTokenReportMembers,
@@ -217,6 +220,62 @@ router.post('/token/quotas', async (req, res) => {
   }
 });
 
+const BATCH_QUOTA_FIELDS = [
+  'principals',
+  'providers',
+  'custom_limit',
+  'reset_type',
+  'reset_day',
+  'warning_threshold',
+  'status',
+];
+
+/**
+ * @route PUT /api/tars/token/quotas/batch
+ * @desc Set personal quotas for several users and/or groups at once.
+ * @access Admin (pwc_tars)
+ */
+router.put('/token/quotas/batch', async (req, res) => {
+  const { principals, providers } = req.body ?? {};
+  if (!Array.isArray(principals) || principals.length === 0) {
+    return res.status(400).json({ error: 'At least one user or group is required' });
+  }
+  if (!Array.isArray(providers) || providers.length === 0) {
+    return res.status(400).json({ error: 'At least one provider is required' });
+  }
+  try {
+    const result = await batchSetTarsTokenUserQuotas(
+      actorOf(req),
+      pick(req.body, BATCH_QUOTA_FIELDS),
+    );
+    return res.json(result);
+  } catch (error) {
+    logger.error('[PUT /api/tars/token/quotas/batch] Failed', error);
+    return relayTarsError(res, error, 'Failed to set the personal token quotas');
+  }
+});
+
+/**
+ * @route POST /api/tars/token/quotas/batch-delete
+ * @desc Delete several personal quotas by id; those people fall back to the default.
+ * @access Admin (pwc_tars)
+ */
+router.post('/token/quotas/batch-delete', async (req, res) => {
+  const ids = Array.isArray(req.body?.ids)
+    ? req.body.ids.filter((id) => typeof id === 'string' && id !== '')
+    : [];
+  if (ids.length === 0) {
+    return res.status(400).json({ error: 'At least one quota is required' });
+  }
+  try {
+    const result = await batchDeleteTarsTokenUserQuotas(ids);
+    return res.json(result);
+  } catch (error) {
+    logger.error('[POST /api/tars/token/quotas/batch-delete] Failed', error);
+    return relayTarsError(res, error, 'Failed to delete the personal token quotas');
+  }
+});
+
 router.put('/token/quotas/:quotaId', async (req, res) => {
   try {
     const quota = await updateTarsTokenUserQuota(
@@ -404,6 +463,25 @@ router.get('/token/embedding/messages/:messageId', configMiddleware, async (req,
   } catch (err) {
     logger.error('[GET /api/tars/token/embedding/messages/:messageId] Failed', err);
     return relayTarsError(res, err, 'Failed to fetch the embedding usage of the message');
+  }
+});
+
+/**
+ * @route GET /api/tars/me/token-quotas
+ * @desc The signed-in user's own effective quota per provider. The user id comes from
+ *       the session, never from the request.
+ * @access Any signed-in pwc_tars user
+ */
+router.get('/me/token-quotas', requireJwtAuth, async (req, res) => {
+  if (!req.user?.tarsId) {
+    return res.json({ quotas: [] });
+  }
+  try {
+    const quotas = await fetchTarsMyTokenQuotas(req.user.tarsId);
+    return res.json({ quotas });
+  } catch (error) {
+    logger.error('[GET /api/tars/me/token-quotas] Failed', error);
+    return relayTarsError(res, error, 'Failed to load your token quota');
   }
 });
 
