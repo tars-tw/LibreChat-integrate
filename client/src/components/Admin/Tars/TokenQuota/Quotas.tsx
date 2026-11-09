@@ -363,13 +363,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
 
                       <div className="bg-surface-tertiary mt-1 h-1.5 overflow-hidden rounded-full">
                         {capOf(quota.custom_limit) == null ? (
-                          <div
-                            className="h-full w-full rounded-full"
-                            style={{
-                              background:
-                                'linear-gradient(90deg, #FDE293 0%, #F4B4A6 35%, #AECBFA 65%, #A8DAB5 100%)',
-                            }}
-                          />
+                          <div className="tars-usage-gradient h-full w-full rounded-full" />
                         ) : (
                           <div
                             className="bg-brand-primary h-full rounded-full"
