@@ -1122,7 +1122,9 @@ export const useSaveTarsMcpUserCredentialsMutation = (
     {
       ...options,
       onSuccess: (...args) => {
-        queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+        /** A server waiting on credentials is hidden from the native MCP listings
+         * (agent builder, chat menu); saving them can bring it back. */
+        invalidateTarsMcp(queryClient);
         /** pwc_tars re-syncs the server's tools once it authenticates. */
         queryClient.invalidateQueries([QueryKeys.tarsMcpChatTools]);
         options?.onSuccess?.(...args);
@@ -1138,7 +1140,8 @@ export const useClearTarsMcpUserCredentialsMutation = (
   return useMutation((id: string) => dataService.clearTarsMcpUserCredentials(id), {
     ...options,
     onSuccess: (...args) => {
-      queryClient.invalidateQueries([QueryKeys.tarsMcpUserSettings]);
+      /** Clearing them hides the server from the native MCP listings again. */
+      invalidateTarsMcp(queryClient);
       queryClient.invalidateQueries([QueryKeys.tarsMcpChatTools]);
       options?.onSuccess?.(...args);
     },
