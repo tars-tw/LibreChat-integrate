@@ -753,7 +753,10 @@ describe('createTarsAgentShare', () => {
 
       it('reaches a group through its active members', async () => {
         const { reads, writes } = mockMyTools({
-          bob: [github(), maps({ has_credentials: true, tool_config: { search_places: false } })],
+          bob: [
+            github(),
+            maps({ requires_user_credentials: false, tool_config: { search_places: false } }),
+          ],
         });
 
         await share(deps(), { updated: [GROUP] });
@@ -817,8 +820,8 @@ describe('createTarsAgentShare', () => {
 
       it('turns on only what the change added, for everyone shared except the author', async () => {
         const { reads, writes } = mockMyTools({
-          amy: [github(), maps()],
-          bob: [github(), maps({ has_credentials: true })],
+          amy: [github(), maps({ has_credentials: true })],
+          bob: [github(), maps({ requires_user_credentials: false })],
         });
 
         await createTarsAgentShare(deps()).enableNewBindings(saved, [LIST_REPOS, MAPS_ALL]);

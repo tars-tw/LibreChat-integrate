@@ -152,6 +152,42 @@ describe('getUserTarsMcpTools', () => {
     await expect(getUserTarsMcpTools(USER_ID)).resolves.toEqual([]);
   });
 
+  it('leaves a server waiting on personal credentials to My Tools, switched on or not', async () => {
+    mockTars(
+      [toolRow()],
+      [
+        userServer({
+          id: 's-github',
+          code: 'github',
+          user_enabled: true,
+          requires_user_credentials: true,
+        }),
+        userServer({ requires_user_credentials: true }),
+      ],
+    );
+
+    await expect(getUserTarsMcpTools(USER_ID)).resolves.toEqual([]);
+  });
+
+  it('lists a credentialed server once the user has saved theirs', async () => {
+    mockTars(
+      [toolRow()],
+      [
+        userServer({
+          id: 's-github',
+          code: 'github',
+          user_enabled: true,
+          requires_user_credentials: true,
+          has_credentials: true,
+        }),
+      ],
+    );
+
+    const servers = await getUserTarsMcpTools(USER_ID);
+
+    expect(servers.map((server) => [server.id, server.user_enabled])).toEqual([['s-github', true]]);
+  });
+
   it('still lists usable tools when the settings read fails', async () => {
     jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
       const url = new URL(String(input));
@@ -204,6 +240,33 @@ describe('filterVisibleTarsMcpConfigs', () => {
       workflow: configs.workflow,
       tars: configs.tars,
       tars_github: configs.tars_github,
+    });
+  });
+
+  it('hides a switched-on entry still waiting on personal credentials', async () => {
+    mockTars(
+      [],
+      [
+        userServer({
+          id: 's-github',
+          code: 'github',
+          user_enabled: true,
+          requires_user_credentials: true,
+        }),
+        userServer({
+          id: 's-maps',
+          code: 'maps',
+          user_enabled: true,
+          requires_user_credentials: true,
+          has_credentials: true,
+        }),
+      ],
+    );
+
+    await expect(filterVisibleTarsMcpConfigs(configs, USER_ID)).resolves.toEqual({
+      workflow: configs.workflow,
+      tars: configs.tars,
+      tars_maps: configs.tars_maps,
     });
   });
 

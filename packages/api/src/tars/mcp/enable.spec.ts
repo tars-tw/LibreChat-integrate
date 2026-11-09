@@ -36,9 +36,9 @@ describe('enableUpdateFor', () => {
     expect(enableUpdateFor(setting({ requires_user_credentials: true }), WHOLE)).toBeNull();
   });
 
-  it('turns on a credentialed server once the user has saved theirs', () => {
+  it('keeps a credentialed server off even once the user has saved theirs', () => {
     const saved = setting({ requires_user_credentials: true, has_credentials: true });
-    expect(enableUpdateFor(saved, WHOLE)).toEqual({ is_enabled: true });
+    expect(enableUpdateFor(saved, WHOLE)).toBeNull();
   });
 
   it('turns the bound tools back on and keeps the other switches', () => {

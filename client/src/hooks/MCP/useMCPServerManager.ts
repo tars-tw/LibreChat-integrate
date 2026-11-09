@@ -132,8 +132,9 @@ export function useMCPServerManager({
   /**
    * Per-user visibility for the injected pwc_tars gateway entries (`tars_*`).
    * Enforcement is server-side and fail-closed (pwc_tars filters tools by
-   * user); this only hides entries the user hasn't enabled. Non-tars users see
-   * none, and a failed query falls back to showing everything.
+   * user); this only hides entries the user hasn't enabled, or that still wait
+   * on personal credentials (My Tools shows those switched off). Non-tars users
+   * see none, and a failed query falls back to showing everything.
    */
   const { user } = useAuthContext();
   const isTarsUser = user?.provider === 'tars';
@@ -146,7 +147,7 @@ export function useMCPServerManager({
     }
     const names = new Set<string>();
     for (const server of tarsUserServers) {
-      if (!server.user_enabled) {
+      if (!server.user_enabled || (server.requires_user_credentials && !server.has_credentials)) {
         continue;
       }
       /** The backend reports the entry name it actually injected; deriving from
