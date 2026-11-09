@@ -223,6 +223,7 @@ router.put(
   checkSharePublicAccess,
   rejectSharedLinkOwnerPermissionChanges,
   tarsAgentShare.guard,
+  tarsAgentShare.enableOnShare,
   configMiddleware,
   updateResourcePermissions,
 );

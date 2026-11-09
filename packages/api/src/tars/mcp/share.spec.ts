@@ -2,6 +2,7 @@ jest.mock('@librechat/data-schemas', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), debug: jest.fn(), error: jest.fn() },
 }));
 
+import { EventEmitter } from 'events';
 import {
   PrincipalType,
   ResourceType,
@@ -99,6 +100,7 @@ const createDeps = (overrides: Partial<TarsAgentShareDeps> = {}): TarsAgentShare
   findEntriesByResource: jest.fn().mockResolvedValue([]),
   findUsersByIds: jest.fn().mockResolvedValue([]),
   findGroupsByIds: jest.fn().mockResolvedValue([]),
+  directory: { get: jest.fn().mockResolvedValue({ users: [], groups: [] }) },
   ...overrides,
 });
 
@@ -625,6 +627,221 @@ describe('createTarsAgentShare', () => {
         expect(checks.knowledge).toEqual([
           expect.objectContaining({ knowledge_base_ids: ['kb2'] }),
         ]);
+      });
+    });
+  });
+
+  describe('turning the MCP servers on for whoever it is shared with', () => {
+    const github = (overrides: Record<string, unknown> = {}) => ({
+      id: 's-github',
+      name: 'Github-repo',
+      code: 'github',
+      type: 'external',
+      is_enabled: true,
+      user_enabled: false,
+      requires_user_credentials: false,
+      has_credentials: false,
+      auth_type: 'none',
+      login_fields: [],
+      tool_config: {},
+      tools: [
+        { id: 't-list', name: 'list_repos', user_enabled: true },
+        { id: 't-file', name: 'get_file', user_enabled: true },
+      ],
+      ...overrides,
+    });
+    const maps = (overrides: Record<string, unknown> = {}) => ({
+      ...github(),
+      id: 's-maps',
+      name: 'Google Maps',
+      code: 'maps',
+      requires_user_credentials: true,
+      tools: [{ id: 't-place', name: 'search_places', user_enabled: true }],
+      ...overrides,
+    });
+
+    /** Serves My Tools per pwc_tars user and records every write. */
+    const mockMyTools = (settingsByUser: Record<string, unknown[]>) => {
+      const reads: string[] = [];
+      const writes: unknown[] = [];
+      jest.spyOn(global, 'fetch').mockImplementation(async (input, init) => {
+        const url = new URL(String(input));
+        if (url.pathname === '/api/mcp/available-tools') {
+          return jsonResponse(ROWS);
+        }
+        if (url.pathname === '/api/mcp/user-settings' && init?.method === 'PUT') {
+          writes.push(JSON.parse(String(init.body)));
+          return jsonResponse({});
+        }
+        if (url.pathname === '/api/mcp/user-settings') {
+          const userId = url.searchParams.get('user_id') ?? '';
+          reads.push(userId);
+          return jsonResponse(settingsByUser[userId] ?? []);
+        }
+        throw new Error(`Unexpected fetch: ${url}`);
+      });
+      return { reads, writes };
+    };
+
+    const agent = { _id: 'a1', author: 'author-id', tools: [LIST_REPOS, MAPS_ALL] };
+    const deps = (overrides: Partial<TarsAgentShareDeps> = {}) =>
+      createDeps({
+        getAgent: jest.fn().mockResolvedValue(agent),
+        findEntriesByResource: jest.fn().mockImplementation(async (resourceType: string) =>
+          resourceType === ResourceType.AGENT
+            ? [
+                { principalType: PrincipalType.USER, principalId: 'author-id' },
+                { principalType: PrincipalType.USER, principalId: 'u1' },
+                { principalType: PrincipalType.GROUP, principalId: 'mongo-g1' },
+              ]
+            : [],
+        ),
+        findUsersByIds: jest
+          .fn()
+          .mockResolvedValue([{ _id: 'u1', username: 'amy', idOnTheSource: 'amy' }]),
+        findGroupsByIds: jest
+          .fn()
+          .mockResolvedValue([{ _id: 'mongo-g1', name: 'UAT', idOnTheSource: 'g1' }]),
+        directory: {
+          get: jest.fn().mockResolvedValue({
+            users: [],
+            groups: [{ id: 'g1', name: 'UAT', memberIds: ['bob', 'cat'] }],
+          }),
+        },
+        ...overrides,
+      });
+
+    /** Lets the background work a `finish` starts run to completion. */
+    const settle = async () => {
+      for (let round = 0; round < 30; round += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+    };
+
+    const share = async (
+      shareDeps: TarsAgentShareDeps,
+      body: unknown,
+      { statusCode = 200, resourceType = ResourceType.AGENT as string } = {},
+    ) => {
+      const res = Object.assign(new EventEmitter(), { statusCode });
+      const next = jest.fn() as NextFunction;
+      const req = { params: { resourceType, resourceId: 'a1' }, body } as unknown as Request;
+      createTarsAgentShare(shareDeps).enableOnShare(req, res as unknown as ExpressResponse, next);
+      expect(next).toHaveBeenCalledTimes(1);
+      res.emit('finish');
+      await settle();
+    };
+
+    describe('enableOnShare', () => {
+      it('turns the servers on for the person added, keeping a credentialed one off', async () => {
+        const { reads, writes } = mockMyTools({
+          amy: [github({ tool_config: { list_repos: false, get_file: false } }), maps()],
+        });
+
+        await share(deps(), { updated: [AMY] });
+
+        expect(reads).toEqual(['amy']);
+        expect(writes).toEqual([
+          {
+            user_id: 'amy',
+            server_id: 's-github',
+            is_enabled: true,
+            tool_config: { get_file: false },
+          },
+        ]);
+      });
+
+      it('reaches a group through its active members', async () => {
+        const { reads, writes } = mockMyTools({
+          bob: [github(), maps({ has_credentials: true, tool_config: { search_places: false } })],
+        });
+
+        await share(deps(), { updated: [GROUP] });
+
+        expect(reads.sort()).toEqual(['bob', 'cat']);
+        expect(writes).toEqual([
+          { user_id: 'bob', server_id: 's-github', is_enabled: true },
+          { user_id: 'bob', server_id: 's-maps', is_enabled: true, tool_config: {} },
+        ]);
+      });
+
+      it('writes nothing for someone already set up', async () => {
+        const { writes } = mockMyTools({ amy: [github({ user_enabled: true })] });
+
+        await share(deps(), { updated: [AMY] });
+
+        expect(writes).toEqual([]);
+      });
+
+      it('writes nothing when the share was not saved', async () => {
+        const { reads } = mockMyTools({ amy: [github()] });
+
+        await share(deps(), { updated: [AMY] }, { statusCode: 409 });
+
+        expect(reads).toEqual([]);
+      });
+
+      it('takes only people the saved share holds, by their stored pwc_tars id', async () => {
+        const { reads } = mockMyTools({});
+        const stranger = { type: PrincipalType.USER, idOnTheSource: 'mallory', name: 'M' };
+
+        await share(deps(), { updated: [stranger] });
+
+        expect(reads).toEqual([]);
+      });
+
+      it('leaves other resources alone', async () => {
+        const shareDeps = deps();
+        mockMyTools({});
+
+        await share(shareDeps, { updated: [AMY] }, { resourceType: ResourceType.PROMPTGROUP });
+
+        expect(shareDeps.getAgent).not.toHaveBeenCalled();
+      });
+
+      it('does nothing with the MCP gateway turned off', async () => {
+        process.env.TARS_MCP_ENABLED = 'false';
+        const shareDeps = deps();
+        try {
+          await share(shareDeps, { updated: [AMY] });
+        } finally {
+          delete process.env.TARS_MCP_ENABLED;
+        }
+
+        expect(shareDeps.getAgent).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('enableNewBindings', () => {
+      const saved = { ...agent, tools: [LIST_REPOS] };
+
+      it('turns on only what the change added, for everyone shared except the author', async () => {
+        const { reads, writes } = mockMyTools({
+          amy: [github(), maps()],
+          bob: [github(), maps({ has_credentials: true })],
+        });
+
+        await createTarsAgentShare(deps()).enableNewBindings(saved, [LIST_REPOS, MAPS_ALL]);
+
+        expect(reads.sort()).toEqual(['amy', 'bob', 'cat']);
+        expect(writes).toEqual([{ user_id: 'bob', server_id: 's-maps', is_enabled: true }]);
+      });
+
+      it('reads nothing when no gateway tool was added', async () => {
+        const shareDeps = deps();
+        mockMyTools({});
+
+        await createTarsAgentShare(shareDeps).enableNewBindings(saved, [LIST_REPOS, 'web_search']);
+
+        expect(shareDeps.findEntriesByResource).not.toHaveBeenCalled();
+      });
+
+      it('never rejects when pwc_tars cannot answer', async () => {
+        jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
+
+        await expect(
+          createTarsAgentShare(deps()).enableNewBindings(saved, [GET_FILE]),
+        ).resolves.toBeUndefined();
       });
     });
   });
