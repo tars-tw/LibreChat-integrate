@@ -1,3 +1,4 @@
+import { TARS_MODEL_TYPES } from 'librechat-data-provider';
 import type { TTarsModelProfile } from 'librechat-data-provider';
 import {
   formatConfig,
@@ -8,6 +9,7 @@ import {
   displayModelType,
   collectModelTypes,
   displayDescription,
+  modelTypeBadgeClass,
 } from '../helpers';
 
 const profile = (type: string | null): TTarsModelProfile => ({
@@ -38,6 +40,15 @@ describe('displayModelType', () => {
     expect(displayModelType('VLLM')).toBe('vLLM');
     expect(displayModelType('CLOUD')).toBe('CLOUD');
     expect(displayModelType('OPEN_AI')).toBe('OPEN_AI');
+  });
+});
+
+describe('modelTypeBadgeClass', () => {
+  it('gives each selectable type its own color and a legacy type the neutral surface', () => {
+    const classes = TARS_MODEL_TYPES.map(modelTypeBadgeClass);
+    expect(new Set(classes).size).toBe(TARS_MODEL_TYPES.length);
+    expect(classes).not.toContain(modelTypeBadgeClass('OPEN_AI'));
+    expect(modelTypeBadgeClass('OPEN_AI')).toBe('bg-surface-tertiary text-text-primary');
   });
 });
 
