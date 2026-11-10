@@ -15,6 +15,9 @@ jest.mock('@librechat/api', () => {
     /** Per-knowledge-base guards: mounted at load, so they must pass the request on. */
     requireTarsKnowledgeBase: jest.fn((req, res, next) => next()),
     requireTarsScheduleAccess: jest.fn((req, res, next) => next()),
+    generateCheckAccess: () => (req, res, next) => next(),
+    createTarsMemoryHandlers: () =>
+      new Proxy({}, { get: () => (req, res) => res.json({ memories: [] }) }),
   };
   return new Proxy(stubs, {
     get: (target, key) => {
