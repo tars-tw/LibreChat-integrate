@@ -51,10 +51,6 @@ const getAvailableTools = async (req, res) => {
       toolsOutput.push(...(await listTarsPluginCatalog(req.user.tarsId)));
     }
 
-    if (!isAssistantsRoute) {
-      toolsOutput.push(...(await listTarsPluginCatalog(req.user.tarsId)));
-    }
-
     res.status(200).json(toolsOutput);
   } catch (error) {
     logger.error('[getAvailableTools]', error);
