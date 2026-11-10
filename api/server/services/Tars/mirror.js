@@ -6,8 +6,9 @@ const {
   deleteTarsConversation,
   deleteTarsConversations,
   mirrorTarsMessageFeedback,
+  deleteTarsConversationMemories,
 } = require('@librechat/api');
-const { getConvo, saveConvo, getMessage, getMessages } = require('~/models');
+const { getConvo, saveConvo, getMessage, getMessages, getRoleByName } = require('~/models');
 
 let chatMirror;
 
@@ -17,7 +18,7 @@ let chatMirror;
  * `@librechat/api` without it, and a throw here would break the chat controller.
  */
 function mirrorChatToTars(req, input) {
-  chatMirror ??= createTarsChatMirror?.({ getConvo, saveConvo, getMessages });
+  chatMirror ??= createTarsChatMirror?.({ getConvo, saveConvo, getMessages, getRoleByName });
   return chatMirror?.(req, input);
 }
 
@@ -77,6 +78,15 @@ async function mirrorDeleteManyToTars(req, tarsConversationIds) {
 }
 
 /**
+ * Clears what deleted conversations left in pwc_tars's memory. Takes LibreChat's own ids,
+ * which memory is stored under, not the linked `tarsConversationId`. Never throws; `?.`
+ * because upstream specs mock `@librechat/api` without it.
+ */
+function forgetTarsConversations(req, conversationIds) {
+  return deleteTarsConversationMemories?.(req?.user?.tarsId, conversationIds);
+}
+
+/**
  * The message's feedback before a change, which the pwc_tars feedback mirror compares
  * against. Read only for pwc_tars-linked users; never throws.
  */
@@ -113,5 +123,6 @@ module.exports = {
   getTarsFeedbackBaseline,
   mirrorDeleteToTars,
   mirrorDeleteManyToTars,
+  forgetTarsConversations,
   collectTarsConversationIds,
 };

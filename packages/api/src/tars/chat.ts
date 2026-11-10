@@ -1,6 +1,7 @@
 import { logger } from '@librechat/data-schemas';
 import { TARS_MESSAGE_STATUS } from 'librechat-data-provider';
-import type { TEphemeralAgent } from 'librechat-data-provider';
+import type { TEphemeralAgent, TTarsMemoryAssistConfig } from 'librechat-data-provider';
+import type { TarsMemoryUser, TarsMemoryAccessDeps, TarsTemporaryTurnFields } from './memory';
 import type { TarsPluginHistorySource } from './plugins/context';
 import type { TarsTurnSource, TarsTurnOutcome } from './mirror';
 import type { TarsTraceInput, TarsTurnFile } from './trace';
@@ -13,6 +14,7 @@ import {
   resolveTarsMessageOutcome,
 } from './mirror';
 import { sumTarsUsage, resolveTarsUsage, buildTarsMirrorTrace } from './trace';
+import { getTarsMemoryAudit, scheduleTarsMemoryUpdate } from './memory';
 import { getTarsToolAuditTrace } from './tools/auditTrace';
 import { withTarsVertexUsageModel } from './vertex';
 import { takeTarsFailedToolCalls } from './failure';
@@ -30,9 +32,17 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === 'object' && !Array.isArray(value);
 
 /** The request fields a mirrored turn reads. */
-export interface TarsMirrorRequest {
-  user?: { id?: string; tarsId?: string | null } | null;
+export interface TarsMirrorRequest extends TarsTemporaryTurnFields {
+  user?: TarsMemoryUser | null;
+  /** The resolved app config, for `tars.memoryAssist` and the retention mode. */
+  config?:
+    | (NonNullable<TarsTemporaryTurnFields['config']> & {
+        config?: { tars?: { memoryAssist?: Partial<TTarsMemoryAssistConfig> } };
+      })
+    | null;
   body?: {
+    isTemporary?: boolean;
+    compact?: boolean;
     model?: string | null;
     files?: TarsTurnFile[] | null;
     promptPrefix?: string | null;
@@ -83,6 +93,8 @@ export interface TarsChatMirrorDeps {
     options: { context: string },
   ) => Promise<unknown>;
   getMessages: TarsPluginHistorySource['getMessages'];
+  /** Resolves the role that decides whether this user's memory may be updated. */
+  getRoleByName?: TarsMemoryAccessDeps['getRoleByName'];
 }
 
 /**
@@ -205,16 +217,18 @@ export function createTarsChatMirror(deps: TarsChatMirrorDeps) {
         status === TARS_MESSAGE_STATUS.failed ? null : input.tokenEstimate,
       );
       const toolUsage = getTarsToolUsage(req);
+      const turnFields = buildTarsTurnFields(turn);
+      const history = await loadHistory(req, conversationId);
       await createTarsMessage(tarsId, {
         conversationId: tarsConversationId,
         messageId: input.messageId,
         query,
         modelName: model,
         ipAddr: req.ip,
-        ...buildTarsTurnFields(turn),
+        ...turnFields,
         ...sumTarsUsage([...turnUsage, ...toolUsage.values()]),
         responseLatency: startedAt ? (finishedAt - startedAt) / 1000 : undefined,
-        history: await loadHistory(req, conversationId),
+        history,
         status,
         errorMessage,
         trace: buildTarsMirrorTrace({
@@ -233,12 +247,27 @@ export function createTarsChatMirror(deps: TarsChatMirrorDeps) {
           availableTools: agent?.tools,
           usage: turnUsage,
           threadFiles: getTarsTurnFiles(req),
+          memoryContext: await getTarsMemoryAudit(req),
           toolAuditTrace: getTarsToolAuditTrace(req),
           failedToolCalls,
           toolUsage,
           attachments: input.attachments,
         }),
       });
+      /** Only a finished turn teaches anything; a stopped or failed one may be half an answer. */
+      if (status === TARS_MESSAGE_STATUS.success && req.body?.compact !== true) {
+        await scheduleTarsMemoryUpdate(req, {
+          conversationId,
+          query: textOf(input.query),
+          response: turnFields.response,
+          history,
+          model,
+          messageId: input.messageId,
+          domainId: input.domainId,
+          config: req.config?.config?.tars?.memoryAssist,
+          getRoleByName: deps.getRoleByName,
+        });
+      }
     } catch (error) {
       logger.error('[mirrorChatToTars] Failed to mirror conversation to pwc_tars', error);
     }

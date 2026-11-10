@@ -2290,3 +2290,41 @@ export const useTarsWorkflowTicketMutation = (
   options?: UseMutationOptions<TTarsWorkflowTicket, unknown, TTarsWorkflowActAs | undefined>,
 ): UseMutationResult<TTarsWorkflowTicket, unknown, TTarsWorkflowActAs | undefined> =>
   useMutation((actAs?: TTarsWorkflowActAs) => dataService.createTarsWorkflowTicket(actAs), options);
+
+export const useClearTarsMemoriesMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation(() => dataService.clearTarsMemories(), {
+    onSettled: () => queryClient.invalidateQueries([QueryKeys.tarsMemories]),
+  });
+};
+
+export const useCreateTarsMemoryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation((content: string) => dataService.createTarsMemory(content), {
+    onSettled: () => queryClient.invalidateQueries([QueryKeys.tarsMemories]),
+  });
+};
+
+/** Edits one memory. Every outcome refetches: an edit replaces the record's id, and a stale id means the list moved on. */
+export const useUpdateTarsMemoryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    ({ id, content }: { id: string; content: string }) => dataService.updateTarsMemory(id, content),
+    { onSettled: () => queryClient.invalidateQueries([QueryKeys.tarsMemories]) },
+  );
+};
+
+export const useDeleteTarsMemoryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.deleteTarsMemory(id), {
+    onSettled: () => queryClient.invalidateQueries([QueryKeys.tarsMemories]),
+  });
+};
+
+export const useUpdateTarsMemoryPreferencesMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    (memoryAutoUpdate: boolean) => dataService.updateTarsMemoryPreferences({ memoryAutoUpdate }),
+    { onSettled: () => queryClient.invalidateQueries([QueryKeys.user]) },
+  );
+};

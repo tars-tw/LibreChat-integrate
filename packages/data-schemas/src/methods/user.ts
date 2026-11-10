@@ -193,6 +193,7 @@ export function createUserMethods(
     action: 'install' | 'uninstall',
   ) => Promise<IUser | null>;
   toggleUserMemories: (userId: string, memoriesEnabled: boolean) => Promise<IUser | null>;
+  updateUserMemoryAutoUpdate: (userId: string, autoUpdate: boolean) => Promise<IUser | null>;
   updateUserStatefulCodeEnvironment: (
     userId: string,
     environment: StatefulCodeEnvironment,
@@ -883,6 +884,22 @@ export function createUserMethods(
     return updated;
   }
 
+  async function updateUserMemoryAutoUpdate(
+    userId: string,
+    autoUpdate: boolean,
+  ): Promise<IUser | null> {
+    const User = mongoose.models.User;
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      { $set: { 'personalization.memoryAutoUpdate': autoUpdate } },
+      { new: true, runValidators: true },
+    ).lean<IUser>();
+    if (updated) {
+      await invalidateAuthUserDocCache(userId);
+    }
+    return updated;
+  }
+
   async function updateUserStatefulCodeEnvironment(
     userId: string,
     environment: StatefulCodeEnvironment,
@@ -1075,6 +1092,7 @@ export function createUserMethods(
     deleteUserById,
     updateUserPlugins,
     toggleUserMemories,
+    updateUserMemoryAutoUpdate,
     updateUserStatefulCodeEnvironment,
   };
 }

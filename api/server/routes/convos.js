@@ -72,6 +72,7 @@ const {
 const getLogStores = require('~/cache/getLogStores');
 const {
   mirrorDeleteManyToTars,
+  forgetTarsConversations,
   collectTarsConversationIds,
 } = require('~/server/services/Tars/mirror');
 const db = require('~/models');
@@ -591,6 +592,7 @@ router.delete('/', configMiddleware, async (req, res) => {
         () => deleteOwnerConversationPersistence(req.user.id, filter, tenantId, checkpointer),
         () => deleteOwnerConversationPersistence(req.user.id, filter, tenantId, checkpointer),
       );
+      forgetTarsConversations(req, fencedDeletion.result.conversationIds);
       return res.status(201).json(fencedDeletion.result);
     }
     let deletedConversationIds = [
@@ -647,6 +649,7 @@ router.delete('/', configMiddleware, async (req, res) => {
     await checkpointDeletion?.acknowledge();
     // Best-effort, non-blocking mirror of the deletion into pwc_tars (LibreChat → pwc_tars).
     mirrorDeleteManyToTars(req, tarsConversationIds);
+    forgetTarsConversations(req, deletedConversationIds);
     res.status(201).json(dbResponse);
   } catch (error) {
     logger.error('Error clearing conversations', error);
@@ -681,6 +684,7 @@ router.delete('/all', configMiddleware, async (req, res) => {
     await deleteAllSharedLinksWithCleanup(req.user.id);
     // Best-effort, non-blocking mirror of the clear-all into pwc_tars (LibreChat → pwc_tars).
     mirrorDeleteManyToTars(req, tarsConversationIds);
+    forgetTarsConversations(req, dbResponse.conversationIds);
     res.status(201).json(dbResponse);
   } catch (error) {
     logger.error('Error clearing conversations', error);

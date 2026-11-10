@@ -14,7 +14,7 @@ import {
   useToastContext,
 } from '@librechat/client';
 import type { TMessage } from 'librechat-data-provider';
-import { useDeleteConversationMutation } from '~/data-provider';
+import { useDeleteConversationMutation, useGetStartupConfig } from '~/data-provider';
 import { useLocalize, useNewConvo } from '~/hooks';
 import { NotificationSeverity } from '~/common';
 
@@ -49,6 +49,7 @@ export function DeleteConversationDialog({
   title: string;
 }) {
   const localize = useLocalize();
+  const { data: startupConfig } = useGetStartupConfig();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { showToast } = useToastContext();
@@ -105,6 +106,11 @@ export function DeleteConversationDialog({
           values={{ title }}
           components={{ strong: <strong /> }}
         />
+        {startupConfig?.tarsMemoryEnabled === true && (
+          <p className="text-text-secondary mt-2 text-xs whitespace-normal">
+            {localize('com_ui_tars_memory_delete_convo_notice')}
+          </p>
+        )}
       </div>
       <div className="flex justify-end gap-4 pt-4">
         <OGDialogClose asChild>
