@@ -5727,5 +5727,6 @@
   "com_ui_tars_report_person_search": "Look up one person",
   "com_ui_tars_quota_exceeded_notice": "The usage quota for {{0}} has been reached. Please try again later.",
   "com_ui_tars_report_group_search_placeholder": "Search groups",
-  "com_ui_tars_report_group_search_empty": "No matching groups found"
+  "com_ui_tars_report_group_search_empty": "No matching groups found",
+  "com_ui_tars_about_database_licenses": "Database Licenses"
 }

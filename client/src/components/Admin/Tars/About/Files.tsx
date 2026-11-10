@@ -10,7 +10,7 @@ export default function Files() {
           <a
             href={`/sbom/${file.filename}`}
             download={file.filename}
-            className="flex w-fit items-center gap-2 text-sm text-blue-600 hover:underline dark:text-blue-400"
+            className="text-link-inline flex w-fit items-center gap-2 text-sm hover:underline dark:text-blue-400"
           >
             <Download className="size-3.5 shrink-0" aria-hidden />
             {file.filename}

@@ -27,7 +27,7 @@ export default function Groups({
   const ranked = useMemo(() => {
     return [...rows]
       .filter((group) =>
-        (group.user_group_name ?? group.user_group_id ?? '')
+        String(group.user_group_name ?? group.user_group_id ?? '')
           .toLowerCase()
           .includes(search.trim().toLowerCase()),
       )
