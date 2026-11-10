@@ -23,6 +23,7 @@ import {
   DecibelSelector,
 } from '../SettingsTabs/Speech/STT';
 import DisplayUsernameMessages from '../SettingsTabs/Account/DisplayUsernameMessages';
+import { showTarsMemoryRecallAtom } from '~/components/SidePanel/Memories/Tars/store';
 import ConversationModeSwitch from '../SettingsTabs/Speech/ConversationModeSwitch';
 import EnableTwoFactorItem from '../SettingsTabs/Account/TwoFactorAuthentication';
 import LangfuseConnection from '../SettingsTabs/Integrations/LangfuseConnection';
@@ -651,15 +652,29 @@ export const registry: SettingEntry[] = [
     Component: CacheTTSSwitch,
   },
 
-  // Data controls · Memory
+  // Chat · Memory (the data controls tab is hidden in TARS)
   {
     id: 'referenceSavedMemories',
-    tab: DATA,
+    tab: CHAT,
     section: 'memory',
-    labelKey: 'com_ui_reference_saved_memories',
-    keywords: ['memory', 'personalization'],
-    show: (ctx) => ctx.hasMemoryOptOut,
+    labelKey: 'com_ui_tars_memory_mode',
+    keywords: ['memory', 'manual', 'automatic', 'personalization'],
+    show: (ctx) => ctx.hasMemoryOptOut && ctx.tarsMemoryEnabled === true,
     Component: MemoryToggle,
+  },
+  {
+    id: 'showTarsMemoryRecall',
+    tab: CHAT,
+    section: 'memory',
+    labelKey: 'com_ui_tars_memory_show_recall',
+    keywords: ['memory', 'recall'],
+    show: (ctx) => ctx.tarsMemoryEnabled === true,
+    Component: toggleControl({
+      stateAtom: showTarsMemoryRecallAtom,
+      localizationKey: 'com_ui_tars_memory_show_recall',
+      switchId: 'showTarsMemoryRecall',
+      hoverCardText: 'com_ui_tars_memory_show_recall_hint',
+    }),
   },
   // Data controls · Code execution
   {

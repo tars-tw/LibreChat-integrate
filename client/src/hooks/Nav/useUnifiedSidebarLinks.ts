@@ -55,6 +55,7 @@ export default function useUnifiedSidebarLinks() {
     interfaceConfig,
     endpointsConfig,
     includeHidePanel: false,
+    tarsMemoryEnabled: startupConfig?.tarsMemoryEnabled === true,
   });
 
   const links = useMemo(() => {

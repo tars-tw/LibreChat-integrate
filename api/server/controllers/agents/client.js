@@ -133,6 +133,7 @@ const {
   createAgentEventActorSummary,
   normalizeAgentEventActorSummary,
   getRequestMemories,
+  getTarsMemoryAttachment,
   getMemoryAgentId,
   createMemoryProcessor,
   agentHasInlineMemoryTools,
@@ -5364,6 +5365,13 @@ class AgentClient extends BaseClient {
       }
 
       try {
+        /** TARS: `?.` because upstream specs mock `@librechat/api` without it. */
+        this.artifactPromises?.push(
+          getTarsMemoryAttachment?.(this.options.req, {
+            messageId: this.responseMessageId,
+            conversationId: this.conversationId,
+          }),
+        );
         const attachments = await this.awaitMemoryWithTimeout(memoryPromise);
         if (attachments && attachments.length > 0) {
           this.artifactPromises.push(...attachments);

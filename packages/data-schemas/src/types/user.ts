@@ -84,6 +84,8 @@ export interface IUser extends Document {
   }>;
   personalization?: {
     memories?: boolean;
+    /** Whether the AI may add to and rewrite this user's memory; false keeps it manual. */
+    memoryAutoUpdate?: boolean;
     statefulCodeEnvironment?: StatefulCodeEnvironment;
   };
   favorites?: TUserFavorite[];

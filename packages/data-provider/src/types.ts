@@ -359,6 +359,7 @@ export type TUser = {
   backupCodes?: TBackupCode[];
   personalization?: {
     memories?: boolean;
+    memoryAutoUpdate?: boolean;
     statefulCodeEnvironment?: StatefulCodeEnvironment;
   };
   /** pwc_tars role id (when authenticated via the tars provider) */

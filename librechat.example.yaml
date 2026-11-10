@@ -66,6 +66,14 @@ projects:
 #   reportTimeoutMs: 60000   # summary report
 #   messageTimeoutMs: 15000  # one audited message
 
+# pwc_tars personal memory (Memory Assist). Every field is optional and defaults to the
+# value shown. Do not also configure the native `memory:` block.
+# tars:
+#   memoryAssist:
+#     enabled: true            # false also turns off the panel and /api/tars/memory
+#     contextTimeoutMs: 6000   # how long a turn waits for the recall (500-30000 ms)
+#     panelRefreshMs: 30000    # how often an open panel re-reads the list (0-3600000 ms, 0 = off)
+
 # Langfuse connections are managed through Settings > Langfuse when available.
 # That flow verifies the credentials and stores the secret key encrypted; do not
 # place a plaintext langfuse.secretKey in this file. Environment-managed central
