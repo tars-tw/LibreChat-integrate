@@ -214,6 +214,11 @@ jest.mock('../MemoryArtifacts', () => ({
   default: () => <div data-testid="memory-artifacts" />,
 }));
 
+jest.mock('../TarsMemoryRecall', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
 jest.mock('../WebSearch', () => ({
   __esModule: true,
   default: ({ attachments }: { attachments?: TAttachment[] }) => (
