@@ -13,13 +13,7 @@ import {
   useTarsTokenReportMembersQuery,
   useTarsTokenReportOverviewQuery,
 } from '~/data-provider';
-import {
-  userCeilings,
-  reportTotals,
-  formatTokens,
-  totalDailyUsage,
-  defaultReportRange,
-} from './helpers';
+import { reportTotals, formatTokens, totalDailyUsage, defaultReportRange } from './helpers';
 import { downloadTokenReportCsvs, downloadPersonReportCsvs } from './export';
 import Picker, { type PickerOption } from '../../Audit/Picker';
 import EmbeddingUsage from './EmbeddingUsage';
@@ -85,7 +79,6 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
 
   const totals = useMemo(() => reportTotals(groupRows), [groupRows]);
   const daily = useMemo(() => totalDailyUsage(groupRows), [groupRows]);
-  const userLimits = useMemo(() => userCeilings(quotasQuery.data ?? []), [quotasQuery.data]);
 
   const groupOptions: PickerOption[] = useMemo(
     () => (options?.groups ?? []).map((group) => ({ value: group.id, label: group.name })),
@@ -306,7 +299,7 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
             <Members
               groupName={drilldown.groupName}
               members={membersQuery.data ?? []}
-              ceilings={userLimits}
+              quotas={quotasQuery.data ?? []}
               isLoading={membersQuery.isFetching}
               onSelect={setOpenUser}
               onClear={() => setDrilldown(null)}
