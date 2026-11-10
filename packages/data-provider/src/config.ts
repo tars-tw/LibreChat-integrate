@@ -3823,6 +3823,10 @@ export type TStartupConfig = {
   tarsAuth?: boolean;
   /** Whether pwc_tars is the MCP server source of truth (hides native MCP server management UI) */
   tarsMcpEnabled?: boolean;
+  /** Whether pwc_tars's personal memory (Memory Assist) serves this deployment's memory panel */
+  tarsMemoryEnabled?: boolean;
+  /** How often an open memory panel re-reads the list, in ms; `0` turns it off */
+  tarsMemoryRefreshMs?: number;
   /** pwc_tars SSO status, used to offer the LDAP login option on the login page */
   tarsSso?: {
     enabled: boolean;

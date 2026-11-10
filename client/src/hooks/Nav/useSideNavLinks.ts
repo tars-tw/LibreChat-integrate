@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { AttachmentIcon, OpenAIMinimalIcon } from '@librechat/client';
-import { Bot, NotebookPen, ScrollText, CalendarClock, ArrowRightToLine } from 'lucide-react';
+import { Bot, Brain, NotebookPen, ScrollText, CalendarClock, ArrowRightToLine } from 'lucide-react';
 import {
   Permissions,
   EModelEndpoint,
@@ -12,6 +12,7 @@ import type { NavLink } from '~/common';
 import { useAgentCapabilities, useGetAgentsConfig, useHasAccess } from '~/hooks';
 import AgentPanelSwitch from '~/components/SidePanel/Agents/AgentPanelSwitch';
 import PanelSwitch from '~/components/SidePanel/Builder/PanelSwitch';
+import { TarsMemoryPanel } from '~/components/SidePanel/Memories';
 import { SchedulePanel } from '~/components/SidePanel/Schedules';
 import FilesPanel from '~/components/SidePanel/Files/Panel';
 import { PromptsAccordion } from '~/components/Prompts';
@@ -24,6 +25,7 @@ export default function useSideNavLinks({
   interfaceConfig,
   endpointsConfig,
   includeHidePanel = true,
+  tarsMemoryEnabled = false,
 }: {
   hidePanel?: () => void;
   keyProvided: boolean;
@@ -31,6 +33,7 @@ export default function useSideNavLinks({
   interfaceConfig: Partial<TInterfaceConfig>;
   endpointsConfig: TEndpointsConfig;
   includeHidePanel?: boolean;
+  tarsMemoryEnabled?: boolean;
 }) {
   const hasAccessToPrompts = useHasAccess({
     permissionType: PermissionTypes.PROMPTS,
@@ -51,6 +54,14 @@ export default function useSideNavLinks({
   const hasAccessToSchedules = useHasAccess({
     permissionType: PermissionTypes.SCHEDULES,
     permission: Permissions.USE,
+  });
+  const hasAccessToMemories = useHasAccess({
+    permissionType: PermissionTypes.MEMORIES,
+    permission: Permissions.USE,
+  });
+  const hasAccessToReadMemories = useHasAccess({
+    permissionType: PermissionTypes.MEMORIES,
+    permission: Permissions.READ,
   });
 
   const { agentsConfig } = useGetAgentsConfig({ endpointsConfig });
@@ -141,6 +152,21 @@ export default function useSideNavLinks({
       });
     }
 
+    if (
+      tarsMemoryEnabled &&
+      interfaceConfig.memories !== false &&
+      hasAccessToMemories &&
+      hasAccessToReadMemories
+    ) {
+      links.push({
+        title: 'com_ui_tars_memory_title',
+        label: '',
+        icon: Brain,
+        id: 'memories',
+        Component: TarsMemoryPanel,
+      });
+    }
+
     if (includeHidePanel && hidePanel) {
       links.push({
         title: 'com_sidepanel_hide_panel',
@@ -163,6 +189,10 @@ export default function useSideNavLinks({
     skillsEnabled,
     hasAccessToSchedules,
     interfaceConfig.schedules,
+    interfaceConfig.memories,
+    tarsMemoryEnabled,
+    hasAccessToMemories,
+    hasAccessToReadMemories,
     includeHidePanel,
     hidePanel,
   ]);

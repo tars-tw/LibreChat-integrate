@@ -2575,3 +2575,13 @@ export type TTarsToolStep = {
    */
   answer?: string;
 };
+
+/**
+ * What a reply could refer to, kept on the message. Ids and a count, never the text, so a
+ * memory the user later edits or deletes does not live on in old messages or shared links.
+ */
+export interface TTarsMemoryRecall {
+  ids: string[];
+  /** Memories at recall time: each profile line counts as one. */
+  count: number;
+}

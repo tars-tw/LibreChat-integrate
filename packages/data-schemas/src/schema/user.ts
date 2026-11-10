@@ -207,6 +207,10 @@ const userSchema: Schema<IUser> = new Schema<IUser>(
           type: Boolean,
           default: true,
         },
+        memoryAutoUpdate: {
+          type: Boolean,
+          default: true,
+        },
         statefulCodeEnvironment: {
           type: String,
           enum: STATEFUL_CODE_ENVIRONMENTS,

@@ -3,7 +3,13 @@ jest.mock('@librechat/data-schemas', () => ({
 }));
 
 import { logger } from '@librechat/data-schemas';
-import { ContentTypes, TARS_MESSAGE_STATUS } from 'librechat-data-provider';
+import {
+  Permissions,
+  ContentTypes,
+  RetentionMode,
+  PermissionTypes,
+  TARS_MESSAGE_STATUS,
+} from 'librechat-data-provider';
 import type { TarsChatMirrorDeps, TarsMirrorRequest } from './chat';
 import type { TarsTurnSource } from './mirror';
 import { noteTarsMcpToolCall, noteTarsMcpToolError } from './failure';
@@ -351,5 +357,89 @@ describe('createTarsChatMirror', () => {
       }),
     ).resolves.toBeUndefined();
     expect(logger.error).toHaveBeenCalled();
+  });
+
+  describe('personal memory', () => {
+    const memoryReq = () => makeReq({ user: { id: 'lc-user', tarsId: 'tars-user', role: 'USER' } });
+    const memoryDeps = () =>
+      makeDeps({
+        getRoleByName: jest.fn(async () => ({
+          permissions: { [PermissionTypes.MEMORIES]: { [Permissions.USE]: true } },
+        })) as unknown as TarsChatMirrorDeps['getRoleByName'],
+      });
+    const secret = process.env.TARS_JWT_SECRET;
+    beforeEach(() => {
+      process.env.TARS_JWT_SECRET = 'test-secret';
+    });
+    afterEach(() => {
+      process.env.TARS_JWT_SECRET = secret;
+    });
+
+    it('hands a finished turn to pwc_tars after mirroring it', async () => {
+      const { posted, paths } = mockTars();
+      const conversationId = nextConvo();
+      await createTarsChatMirror(memoryDeps())(memoryReq(), {
+        conversationId,
+        query: 'hi',
+        messageId: 'm-1',
+        turn: answer('hello'),
+      });
+
+      const allPaths = paths();
+      expect(allPaths.indexOf('/api/memory/update')).toBeGreaterThan(
+        allPaths.findIndex((path) => path.endsWith('/create_message')),
+      );
+      const update = posted.find((call) => call.path === '/api/memory/update');
+      expect(update?.body).toMatchObject({
+        conversation_id: conversationId,
+        query: 'hi',
+        response: 'hello',
+        message_id: 'm-1',
+      });
+    });
+
+    it.each([
+      ['a temporary chat the client flagged', { body: { isTemporary: true } }],
+      [
+        'a stored temporary chat continued without the flag',
+        { resolvedConversation: { isTemporary: true } },
+      ],
+      [
+        'a chat the administrator forces temporary',
+        { config: { interfaceConfig: { retentionMode: RetentionMode.EPHEMERAL } } },
+      ],
+      ['a compaction turn', { body: { compact: true } }],
+    ] as const)('does not teach from %s', async (_label, overrides) => {
+      const { paths } = mockTars();
+      const req = memoryReq();
+      const body = { ...req.body, ...('body' in overrides ? overrides.body : {}) };
+      await createTarsChatMirror(memoryDeps())(
+        { ...req, ...overrides, body } as TarsMirrorRequest,
+        { conversationId: nextConvo(), query: 'hi', turn: answer('hello') },
+      );
+      expect(paths()).not.toContain('/api/memory/update');
+    });
+
+    it('does not teach from a message of attachments alone', async () => {
+      const { paths } = mockTars();
+      await createTarsChatMirror(memoryDeps())(memoryReq(), {
+        conversationId: nextConvo(),
+        query: '',
+        turn: { ...answer('hello'), files: [{ file_id: 'f-1', filename: 'a.pdf' }] },
+      });
+      const allPaths = paths();
+      expect(allPaths.some((path) => path.endsWith('/create_message'))).toBe(true);
+      expect(allPaths).not.toContain('/api/memory/update');
+    });
+
+    it('does not teach from a stopped turn', async () => {
+      const { paths } = mockTars();
+      await createTarsChatMirror(memoryDeps())(memoryReq(), {
+        conversationId: nextConvo(),
+        query: 'hi',
+        turn: { ...answer('half an ans'), unfinished: true },
+      });
+      expect(paths()).not.toContain('/api/memory/update');
+    });
   });
 });

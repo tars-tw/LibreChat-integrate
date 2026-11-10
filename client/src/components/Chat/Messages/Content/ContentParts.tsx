@@ -51,6 +51,7 @@ import { selectToolCallUIResources } from '~/utils/mcpApps';
 import PendingSkillCall from './Parts/PendingSkillCall';
 import ActivityPhaseGroup from './ActivityPhaseGroup';
 import { hasPendingApprovalInPart } from '~/utils';
+import TarsMemoryRecall from './TarsMemoryRecall';
 import EditContentParts from './EditContentParts';
 import { EmptyText, AgentUpdate } from './Parts';
 import ApprovalProvider from './ApprovalContext';
@@ -1325,6 +1326,7 @@ const ContentPartsBody = memo(function ContentPartsBody({
   const sequentialContent = (
     <SearchContext.Provider value={{ searchResults }}>
       {!nestedActivityPhase && !continuation && <MemoryArtifacts attachments={attachments} />}
+      {!nestedActivityPhase && !continuation && <TarsMemoryRecall attachments={attachments} />}
       {!nestedActivityPhase && !continuation && renderPendingSkills()}
       {showEmptyCursor && (
         <Container>

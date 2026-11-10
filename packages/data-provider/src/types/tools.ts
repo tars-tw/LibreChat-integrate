@@ -19,6 +19,7 @@ export enum Tools {
   memory = 'memory',
   ui_resources = 'ui_resources',
   tars_trace = 'tars_trace',
+  tars_memory = 'tars_memory',
   skill = 'skill',
   read_file = 'read_file',
   bash_tool = 'bash_tool',

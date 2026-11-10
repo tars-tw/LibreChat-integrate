@@ -908,6 +908,11 @@ export const passkeyRegistrationVerify = () => `${passkeys()}/register/verify`;
 export const passkeyLoginOptions = () => `${passkeys()}/login/options`;
 export const passkeyLoginVerify = () => `${passkeys()}/login/verify`;
 
+/* pwc_tars personal memory */
+export const tarsMemories = () => `${BASE_URL}/api/tars/memory`;
+export const tarsMemoryPreferences = () => `${tarsMemories()}/preferences`;
+export const tarsMemory = (id: string) => `${tarsMemories()}/${encodeURIComponent(id)}`;
+
 /* Memories */
 export const memories = () => `${BASE_URL}/api/memories`;
 export const memory = (key: string, agentId?: string) =>

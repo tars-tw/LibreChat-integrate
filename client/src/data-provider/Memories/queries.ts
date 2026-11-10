@@ -91,8 +91,9 @@ export const useUpdateMemoryPreferencesMutation = (
       dataService.updateMemoryPreferences(preferences),
     {
       ...options,
-      onSuccess: (...params) => {
-        queryClient.invalidateQueries([QueryKeys.user]);
+      /** Awaited so `mutateAsync` settles with the new preference already in the cache. */
+      onSuccess: async (...params) => {
+        await queryClient.invalidateQueries([QueryKeys.user]);
         options?.onSuccess?.(...params);
       },
     },

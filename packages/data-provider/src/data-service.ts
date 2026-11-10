@@ -10,6 +10,7 @@ import type { TInsightsAccessResponse, TInsightsParams, TInsightsResponse } from
 import type { ScheduleMCPConsentView, ConfirmScheduleMCPConsent } from './types/scheduleConsent';
 import type { CodeSetupAttempt, CodeSetupApprovalRequest } from './codeSetup';
 import type { TFileConfig } from './file-config';
+import type { TTarsMemory } from './tars';
 import type * as tl from './types/tools';
 import type * as t from './types';
 import { codeSetupAttemptSchema, codeSetupApprovalRequestSchema } from './codeSetup';
@@ -3010,6 +3011,33 @@ export function deletePasskey({
 }: t.TDeletePasskeyRequest): Promise<{ message: string }> {
   return request.deleteWithOptions(endpoints.passkey(passkeyId), { data: { password } });
 }
+
+/* pwc_tars personal memory */
+export const clearTarsMemories = (): Promise<{ cleared: boolean }> => {
+  return request.delete(endpoints.tarsMemories());
+};
+
+export const getTarsMemories = (): Promise<{ memories: TTarsMemory[]; disabled?: boolean }> => {
+  return request.get(endpoints.tarsMemories());
+};
+
+export const createTarsMemory = (content: string): Promise<{ memory: TTarsMemory }> => {
+  return request.post(endpoints.tarsMemories(), { content });
+};
+
+export const updateTarsMemory = (id: string, content: string): Promise<{ memory: TTarsMemory }> => {
+  return request.put(endpoints.tarsMemory(id), { content });
+};
+
+export const updateTarsMemoryPreferences = (preferences: {
+  memoryAutoUpdate: boolean;
+}): Promise<{ preferences: { memoryAutoUpdate: boolean } }> => {
+  return request.patch(endpoints.tarsMemoryPreferences(), preferences);
+};
+
+export const deleteTarsMemory = (id: string): Promise<{ id: string }> => {
+  return request.delete(endpoints.tarsMemory(id));
+};
 
 /* Memories */
 export const getMemories = (): Promise<q.MemoriesResponse> => {

@@ -35,6 +35,7 @@ export function useSettingsContext(): SettingsContextValue {
   });
 
   const balanceEnabled = startupConfig?.balance?.enabled === true;
+  const tarsMemoryEnabled = startupConfig?.tarsMemoryEnabled === true;
   const langfuseConnectionAccess = startupConfig?.langfuseConnectionAccess === true;
   const langfusePromptSyncAccess = startupConfig?.langfusePromptSyncAccess === true;
   const adminPanelURL = startupConfig?.adminPanelURL ?? '';
@@ -78,6 +79,7 @@ export function useSettingsContext(): SettingsContextValue {
       balanceEnabled,
       hasAnyPersonalizationFeature,
       hasMemoryOptOut,
+      tarsMemoryEnabled,
       hasStatefulCodeSessions,
       hasRemoteAgents: hasRemoteAgentsBool,
       hasUserProvidedEndpoints,
@@ -105,6 +107,7 @@ export function useSettingsContext(): SettingsContextValue {
       balanceEnabled,
       hasAnyPersonalizationFeature,
       hasMemoryOptOut,
+      tarsMemoryEnabled,
       hasStatefulCodeSessions,
       hasRemoteAgentsBool,
       hasUserProvidedEndpoints,

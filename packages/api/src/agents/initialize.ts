@@ -71,6 +71,7 @@ import type { CodeContextEntry } from '~/files/code/priming';
 import type { MCPToolAlias } from '~/tools/classification';
 import type { CodeExecutionContext } from './execution';
 import type { TarsStoredFile } from '~/tars/files/turn';
+import type { TarsMemoryRequest } from '~/tars/memory';
 import type { AgentExecutionContext } from './runtime';
 import {
   injectSkillCatalog,
@@ -124,6 +125,11 @@ import {
   formatChatProjectInstructions,
   hydrateChatProjectContextResources,
 } from '../projects/context';
+import {
+  primeTarsMemoryContext,
+  addTarsMemoryContext,
+  enforceTarsMemoryPolicy,
+} from '~/tars/memory';
 import { assertChatProjectInstructions, ChatProjectResourcesChangedError } from '../projects/turn';
 import { extractAgentContent, extractSkillContent } from '../protection/adapters/submissions';
 import { createConfiguredContentInspector, inspectContent } from '../protection/runtime';
@@ -1266,6 +1272,16 @@ export async function initializeAgent(
   if (!db) {
     throw new Error('initializeAgent requires db methods to be passed');
   }
+
+  /** The user's pwc_tars personal memory for this turn, recalled in parallel with
+   *  the rest of init. Fail-soft: a slow or failed recall leaves the turn without it. */
+  const tarsMemoryPromise = params.req
+    ? primeTarsMemoryContext(params.req as TarsMemoryRequest, {
+        conversationId,
+        config: appConfig?.config?.tars?.memoryAssist,
+        getRoleByName: db.getRoleByName,
+      })
+    : null;
 
   /** The thread's spreadsheets for pwc_tars's data tools, resolved in parallel
    *  with the rest of init. Fail-soft, and skipped unless TARS is configured;
@@ -3003,9 +3019,15 @@ export async function initializeAgent(
 
   /** TARS: the thread's generated links, out of summarization's reach. */
   addTarsGeneratedFilesContext(initializedAgent, tarsFiles?.generatedFilesContext);
+  /** TARS: the user's personal memory, on the same out-of-summarization path. */
+  addTarsMemoryContext(initializedAgent, await tarsMemoryPromise);
   /** TARS: every tool source has registered by here, and the provider is settled. */
   reduceVertexToolSchemas(initializedAgent);
   prepareQueuedCodeFileContext(initializedAgent, [initializedAgent], user?.id);
+  /** TARS: the recalled memory under `filters.memories`; a refused one is dropped, not the turn. */
+  enforceTarsMemoryPolicy(initializedAgent, (memories) =>
+    assertModelBoundContent({ filters: appConfig?.filters, memories }),
+  );
   const queuedFileContext = initializedAgent.dynamicToolContextMap?.queued_code_files;
   if (typeof queuedFileContext === 'string') {
     assertModelBoundContent({
