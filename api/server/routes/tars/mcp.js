@@ -46,6 +46,7 @@ const { resolveAllMcpConfigs } = require('~/server/services/MCP');
 const { loadMCPServerCatalogs } = require('~/server/services/Tools/mcp');
 const tarsMcpGrantEnable = require('~/server/services/tarsMcpGrantEnable');
 const tarsOidcTeardown = require('~/server/services/tarsOidcTeardown');
+require('~/server/services/workflowShareAccess');
 const { getUserById } = require('~/models');
 
 const router = express.Router();

@@ -2,6 +2,8 @@ import { logger } from '@librechat/data-schemas';
 import { Constants, TARS_MCP_SERVER_PREFIX } from 'librechat-data-provider';
 import type { LCTool, LCToolRegistry } from '@librechat/agents';
 import type { MCPOptions } from 'librechat-data-provider';
+import type { WorkflowShareUser } from '~/langflow/access';
+import { canUseWorkflowMcpServer, isPersonalWorkflowServer } from '~/langflow/access';
 import { cachedVisibleTarsEntries } from './user';
 import { tarsMcpDirectEntries } from './names';
 import { isTarsMcpEnabled } from './config';
@@ -11,6 +13,10 @@ import { isTarsMcpEnabled } from './config';
  * so the same assignment and opt-in have to be checked here, at every point a connection is
  * opened, a token is issued or a tool is called. The shared `mcpConfig` lists the entry for
  * every user, so nothing upstream of these checks limits who reaches the server.
+ *
+ * The same points guard personal Workflow projects (`workflow_<project>`): Langflow serves one to
+ * someone other than its owner on LibreChat's word, so whether an agent share reaches it, and
+ * which of its flows, is decided here (`~/langflow/access`).
  */
 
 type TarsIdResolver = (userId: string) => Promise<string | null | undefined>;
@@ -75,13 +81,28 @@ export async function canUseTarsDirectMcpServer(
   return isToolUsable != null && (toolName == null || isToolUsable(toolName));
 }
 
+/** A personal Workflow project: its owner, or someone an agent of the owner's reaches it through. */
+async function canUseWorkflowProject(
+  serverName: string,
+  user: (Partial<WorkflowShareUser> & { tarsId?: string | null }) | undefined,
+  toolName?: string,
+): Promise<boolean> {
+  if (!isPersonalWorkflowServer(serverName)) {
+    return true;
+  }
+  return canUseWorkflowMcpServer(serverName, user, await linkedTarsId(user), toolName);
+}
+
 export async function assertTarsDirectMcpAccess(
   serverName: string,
   config: Pick<MCPOptions, 'oauth'> | null | undefined,
-  user?: { id?: string; tarsId?: string | null },
+  user?: Partial<WorkflowShareUser> & { tarsId?: string | null },
   toolName?: string,
 ): Promise<void> {
-  if (!(await canUseTarsDirectMcpServer(serverName, config, user, toolName))) {
+  if (
+    !(await canUseTarsDirectMcpServer(serverName, config, user, toolName)) ||
+    !(await canUseWorkflowProject(serverName, user, toolName))
+  ) {
     throw new TarsMcpAccessDeniedError(serverName, toolName);
   }
 }
