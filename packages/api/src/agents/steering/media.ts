@@ -15,7 +15,11 @@ import { prependFileContext } from '../client';
 /** The BaseClient encode surface the steer media pipeline reuses. */
 export interface SteerMediaClient {
   /** The turn's view of stored records, which every check and encode below must share. */
-  resolveTurnAttachments(files: IMongoFile[], consumers?: TurnFileConsumers): IMongoFile[];
+  resolveTurnAttachments(
+    files: IMongoFile[],
+    consumers?: TurnFileConsumers,
+    attachedFileIds?: ReadonlySet<string>,
+  ): IMongoFile[];
   addFileContextToMessage(
     message: Record<string, unknown>,
     files: IMongoFile[],
@@ -154,6 +158,7 @@ export async function buildSteerMedia({
   const fileDocs = client.resolveTurnAttachments(
     ids.map((id) => docsById.get(id)).filter((doc): doc is IMongoFile => doc != null),
     fileConsumers,
+    new Set(ids),
   );
   assertFilesAllowed?.(fileDocs);
   return encodeSteerContent({
@@ -262,7 +267,9 @@ export async function stampSteerPartMedia({
       const fileDocs = await getFiles(filter, {}, {});
       if (Array.isArray(fileDocs) && fileDocs.length > 0) {
         resolvedDocsById = new Map(
-          client.resolveTurnAttachments(fileDocs).map((file) => [file.file_id, file]),
+          client
+            .resolveTurnAttachments(fileDocs, undefined, new Set(allIds))
+            .map((file) => [file.file_id, file]),
         );
       }
     }

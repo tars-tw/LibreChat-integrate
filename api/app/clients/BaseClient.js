@@ -10,6 +10,7 @@ const {
   extractFileContext,
   getReferencedQuotes,
   applyTurnDelivery,
+  collectAttachedFileIds,
   encodeAndFormatAudios,
   encodeAndFormatVideos,
   getTransactionsConfig,
@@ -856,6 +857,8 @@ class BaseClient {
       this.modelBoundHistoricalFileIdsOverflowed ||= historicalFileState.overflowed;
       const files = this.resolveTurnAttachments(
         await getOwnerHistoricalFiles(historicalFileState.fileIds, this.options.req?.user),
+        undefined,
+        collectAttachedFileIds(modelBoundStoredMessages),
       );
       this.authorizedHistoricalFiles = new Map(
         files
@@ -1815,10 +1818,15 @@ class BaseClient {
   }
 
   /** The turn's view of stored records, applied before admission at every load. */
-  resolveTurnAttachments(files, fileConsumers = this.options.agent?.fileConsumers) {
+  resolveTurnAttachments(
+    files,
+    fileConsumers = this.options.agent?.fileConsumers,
+    attachedFileIds = undefined,
+  ) {
     return applyTurnDelivery(files, {
       routing: this.options.agent?.deliveryRouting,
       consumers: fileConsumers,
+      attachedFileIds,
     });
   }
 
@@ -1948,6 +1956,8 @@ class BaseClient {
     const authorizedFilesById = new Map();
     const files = this.resolveTurnAttachments(
       await getOwnerHistoricalFiles(historicalFileState.fileIds, this.options.req?.user),
+      undefined,
+      collectAttachedFileIds(_messages),
     );
     const nonSteerReplayFileIds = collectModelBoundHistoricalFileIdState(
       _messages.map((message) => ({

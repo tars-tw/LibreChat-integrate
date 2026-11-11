@@ -154,10 +154,11 @@ describe('buildSteerMedia', () => {
       assertFilesAllowed,
     });
 
-    expect(client.resolveTurnAttachments).toHaveBeenCalledWith([storedCsv], {
-      executeCode: false,
-      fileSearch: false,
-    });
+    expect(client.resolveTurnAttachments).toHaveBeenCalledWith(
+      [storedCsv],
+      { executeCode: false, fileSearch: false },
+      new Set(['csv']),
+    );
     expect(assertFilesAllowed).toHaveBeenCalledWith([turnCsv]);
     expect(client.addFileContextToMessage).toHaveBeenCalledWith(expect.anything(), [turnCsv], {
       executeCode: false,
@@ -289,7 +290,11 @@ describe('stampSteerPartMedia', () => {
 
     await stampSteerPartMedia({ client, user, payload: [message], getFiles });
 
-    expect(client.resolveTurnAttachments).toHaveBeenCalledWith([storedCsv]);
+    expect(client.resolveTurnAttachments).toHaveBeenCalledWith(
+      [storedCsv],
+      undefined,
+      new Set(['csv']),
+    );
     expect(client.processAttachments).toHaveBeenCalledWith(expect.anything(), [turnCsv], undefined);
   });
 
