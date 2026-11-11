@@ -168,6 +168,10 @@ fileConfig:
   # that copy too. Off (upstream default), such files fail with "部分檔案無法刪除".
   # Safe here: one LibreChat instance, and Code Interpreter is always deployed.
   retainedFileCleanup: true
+  # Embedded files are deletable only if embedded after this UTC instant; older ones fail
+  # closed. Set it to when the current rag_api writer went live (here: the local rag_api
+  # first came up). A deployment with older embeddings needs its own cutoff.
+  vectorOwnershipTrackingStart: '2026-11-11T05:59:00Z'
   defaultLLMDeliveryPath:
     overrides:
       text/csv: none
