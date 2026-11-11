@@ -11,6 +11,8 @@ const {
   getTarsSysConfigValue,
   getCloudFrontConfig,
   isTarsMcpEnabled,
+  isTarsMemoryEnabled,
+  getTarsMemoryRefreshMs,
   getAppConfigOptionsFromUser,
   resolveBuildInfo,
   resolveTitleTiming,
@@ -409,6 +411,8 @@ router.get('/', async function (req, res) {
       fileUploadSseEnabled: isEnabled(process.env.FILE_UPLOAD_SSE_ENABLED),
       endpointsDropParamsMap: endpointsDropParamsMap,
       ...(tarsVersion ? { tarsVersion } : {}),
+      tarsMemoryEnabled: isTarsMemoryEnabled(appConfig?.config?.tars),
+      tarsMemoryRefreshMs: getTarsMemoryRefreshMs(appConfig?.config?.tars),
     };
 
     const webSearch = buildWebSearchConfig(appConfig);

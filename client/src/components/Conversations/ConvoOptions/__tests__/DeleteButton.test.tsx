@@ -34,7 +34,10 @@ jest.mock('@librechat/client', () => {
     useToastContext: () => ({ showToast: jest.fn() }),
   };
 });
+let mockTarsMemoryEnabled = false;
+
 jest.mock('~/data-provider', () => ({
+  useGetStartupConfig: () => ({ data: { tarsMemoryEnabled: mockTarsMemoryEnabled } }),
   useDeleteConversationMutation: (options: { onSuccess?: () => void }) => {
     mockDeleteOptions.current = options;
     return { mutate: jest.fn(), isLoading: false };
@@ -61,6 +64,23 @@ describe('DeleteConversationDialog', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRoute.current = 'convo-1';
+    mockTarsMemoryEnabled = false;
+  });
+
+  it('says what deleting does to memory only where memory is on', () => {
+    const { queryByText, rerender } = renderDialog();
+    expect(queryByText('com_ui_tars_memory_delete_convo_notice')).toBeNull();
+
+    mockTarsMemoryEnabled = true;
+    rerender(
+      <DeleteConversationDialog
+        conversationId="convo-1"
+        title="Hello"
+        retainView={jest.fn()}
+        setShowDeleteDialog={jest.fn()}
+      />,
+    );
+    expect(queryByText('com_ui_tars_memory_delete_convo_notice')).not.toBeNull();
   });
 
   it('carries the id its menu item points aria-controls at', () => {

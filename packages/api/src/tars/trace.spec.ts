@@ -38,6 +38,25 @@ const ofType = (records: TarsTraceRecord[], type: string) =>
   records.filter((record) => record.type === type);
 
 describe('buildTarsTraceRecords', () => {
+  it('records what personal memory gave the model, right after the request rows', () => {
+    const memoryContext = {
+      context_available: true,
+      retrieval_ms: 42,
+      records: [{ memory_type: 'profile', score: 0.9, content: '- a', created_at: 'c' }],
+    };
+    const records = build({ memoryContext });
+    const row = records.find((record) => record.type === 'memory_context');
+    expect(row).toMatchObject(memoryContext);
+    expect(row?.started_at).toEqual(expect.any(String));
+    const types = records.map((record) => record.type);
+    expect(types.indexOf('memory_context')).toBeGreaterThan(types.indexOf('provenance'));
+  });
+
+  it('leaves the row out of a turn that never recalled, so it reads as not triggered', () => {
+    const types = build({ memoryContext: null }).map((record) => record.type);
+    expect(types).not.toContain('memory_context');
+  });
+
   it('opens with the request, its switches and the run settings', () => {
     const records = build({
       endpoint: 'agents',

@@ -811,6 +811,42 @@ export const tarsConfigSchema = z.object({
       maxFiles: z.number().int().min(1).max(50).default(10),
     })
     .prefault({}),
+  /** pwc_tars's personal memory (Memory Assist): recalled before each turn, updated after it. */
+  memoryAssist: z
+    .object({
+      enabled: z.boolean().default(true),
+      /** How long a turn waits for the recall before going on without memory. */
+      contextTimeoutMs: z.number().int().min(500).max(30000).default(6000),
+      /** How often an open memory panel re-reads the list, which background updates change.
+       *  `0` turns it off, leaving a re-read on opening the panel and on returning to the tab. */
+      panelRefreshMs: z.number().int().min(0).max(3600000).default(30000),
+    })
+    .prefault({}),
 });
 
+/** pwc_tars's edit limits for a memory record (`record_format.py`). */
+export const TARS_MEMORY_LIMITS = {
+  profileMaxItems: 30,
+  profileMaxItemChars: 200,
+  semanticMaxChars: 500,
+} as const;
+
+export type TTarsMemoryType = 'profile' | 'semantic';
+
+/** One record of a user's pwc_tars personal memory, in the shape it is edited. */
+export interface TTarsMemory {
+  id: string;
+  conversation_id: string | null;
+  memory_type: TTarsMemoryType;
+  /** A profile's stored text, or a semantic record's fact without its metadata. */
+  content: string;
+  /** A profile's lines, one stable preference each; null on a semantic record. */
+  items: string[] | null;
+  category: string | null;
+  reason: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export type TTarsMemoryAssistConfig = z.infer<typeof tarsConfigSchema>['memoryAssist'];
 export type TTarsWorkflowFilesConfig = z.infer<typeof tarsConfigSchema>['workflowFiles'];

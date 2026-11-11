@@ -2035,6 +2035,38 @@ describe('User Methods - Database Tests', () => {
     });
   });
 
+  describe('updateUserMemoryAutoUpdate', () => {
+    it('stores the choice and leaves the memories switch alone', async () => {
+      const user = await User.create({
+        name: 'Test',
+        email: 'memory-upkeep@example.com',
+        provider: 'local',
+        personalization: { memories: false },
+      });
+
+      const updated = await methods.updateUserMemoryAutoUpdate(user._id?.toString() || '', false);
+
+      expect(updated?.personalization?.memoryAutoUpdate).toBe(false);
+      expect(updated?.personalization?.memories).toBe(false);
+    });
+
+    it('defaults to on', async () => {
+      const user = await User.create({
+        name: 'Test',
+        email: 'memory-upkeep-default@example.com',
+        provider: 'local',
+      });
+      expect(user.personalization?.memoryAutoUpdate).toBe(true);
+    });
+
+    it('returns null for an unknown user', async () => {
+      const fakeId = new mongoose.Types.ObjectId();
+      await expect(
+        methods.updateUserMemoryAutoUpdate(fakeId.toString(), false),
+      ).resolves.toBeNull();
+    });
+  });
+
   describe('toggleUserMemories', () => {
     test('should enable memories for user', async () => {
       const user = await User.create({

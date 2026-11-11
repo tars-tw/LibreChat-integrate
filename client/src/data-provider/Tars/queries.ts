@@ -1,6 +1,7 @@
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { QueryKeys, dataService } from 'librechat-data-provider';
 import type {
+  TTarsMemory,
   TTarsDomain,
   TTarsPrompt,
   TTarsChunk,
@@ -1300,5 +1301,21 @@ export const useTarsWebsitesQuery = (
     [QueryKeys.tarsWebsites],
     () => dataService.getTarsWebsites(),
     { ...adminQueryOptions, ...config },
+  );
+};
+
+/** The user's pwc_tars personal memory, newest first; `disabled` when pwc_tars's switch is off. */
+export const useTarsMemoriesQuery = (
+  config?: UseQueryOptions<{ memories: TTarsMemory[]; disabled?: boolean }>,
+) => {
+  return useQuery<{ memories: TTarsMemory[]; disabled?: boolean }>(
+    [QueryKeys.tarsMemories],
+    () => dataService.getTarsMemories(),
+    {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: false,
+      ...config,
+    },
   );
 };

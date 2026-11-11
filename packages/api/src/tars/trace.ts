@@ -7,6 +7,7 @@ import {
   TARS_SWITCH_TOOLS,
 } from 'librechat-data-provider';
 import type { TTarsToolStep, TEphemeralAgent, TMessageContentParts } from 'librechat-data-provider';
+import type { TarsMemoryAudit } from './memory';
 import { isTarsToolFailureOutput, isSdkToolErrorOutput } from './failure';
 
 /**
@@ -175,6 +176,8 @@ export interface TarsTraceInput {
    * pwc_tars's memory area (see `primeTarsTurnFiles`).
    */
   threadFiles?: Partial<Record<TarsThreadFileKind, TarsThreadFile[] | null>> | null;
+  /** What this turn recalled from personal memory; absent when it did not try. */
+  memoryContext?: TarsMemoryAudit | null;
 }
 
 /** An attachment of the message being answered, as the message stores it. */
@@ -781,6 +784,9 @@ function requestRecords(input: TarsTraceInput, at: string): TarsTraceRecord[] {
       ...(imageInputCount && { image_input_count: imageInputCount }),
       ...retrievalProvenance(input),
     },
+    ...(input.memoryContext
+      ? [{ type: TARS_TRACE_EVENT.memoryContext, started_at: at, ...input.memoryContext }]
+      : []),
     ...threadFileRecords(input, at),
   ];
 }

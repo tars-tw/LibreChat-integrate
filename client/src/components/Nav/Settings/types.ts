@@ -41,6 +41,8 @@ export interface SettingsContextValue {
   balanceEnabled: boolean;
   hasAnyPersonalizationFeature: boolean;
   hasMemoryOptOut: boolean;
+  /** Whether pwc_tars's personal memory serves this deployment. */
+  tarsMemoryEnabled?: boolean;
   hasStatefulCodeSessions: boolean;
   hasRemoteAgents: boolean;
   hasUserProvidedEndpoints: boolean;
@@ -130,6 +132,7 @@ export const TABS: TabMeta[] = [
       { id: 'commands', labelKey: 'com_ui_settings_section_commands' },
       { id: 'messages', labelKey: 'com_ui_settings_section_messages' },
       { id: 'conversations', labelKey: 'com_ui_settings_section_conversations' },
+      { id: 'memory', labelKey: 'com_ui_settings_section_memory' },
       { id: 'prompts', labelKey: 'com_ui_settings_section_prompts' },
     ],
   },
@@ -160,7 +163,6 @@ export const TABS: TabMeta[] = [
     labelKey: 'com_ui_settings_tab_data',
     icon: createElement(DataIcon),
     sections: [
-      { id: 'memory', labelKey: 'com_ui_settings_section_memory' },
       { id: 'codeExecution', labelKey: 'com_ui_settings_section_code_execution' },
       { id: 'data', labelKey: 'com_ui_settings_section_data' },
       { id: 'apiKeys', labelKey: 'com_ui_settings_section_api_keys' },

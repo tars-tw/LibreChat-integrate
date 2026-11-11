@@ -12,6 +12,9 @@ jest.mock('@librechat/api', () => {
     createTarsAuditDocumentHandler: () => (req, res) => res.sendStatus(404),
     createWorkflowAccountsHandler: () => (req, res) => res.json({ accounts: [] }),
     createWorkflowTransfer: () => ({ start: () => {}, requestSweep: () => {}, stop: () => {} }),
+    generateCheckAccess: () => (req, res, next) => next(),
+    createTarsMemoryHandlers: () =>
+      new Proxy({}, { get: () => (req, res) => res.json({ memories: [] }) }),
   };
   return new Proxy(stubs, {
     get: (target, key) => {

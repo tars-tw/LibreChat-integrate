@@ -26,6 +26,7 @@ const checkpointNamespace = (id) =>
 jest.mock('@librechat/agents', () => require(MOCKS).agents());
 jest.mock('@librechat/api', () =>
   require(MOCKS).api({
+    deleteTarsConversationMemories: jest.fn(),
     createContentFilter: jest.fn((options) => (req, res, next) => {
       const extracted = [...options.extract(req)];
       if (JSON.stringify(extracted).includes('BLOCK-CONTROL')) {
@@ -508,6 +509,52 @@ describe('Convos Routes', () => {
       expect(response.body).toEqual(error.body);
       const { logger } = require('@librechat/data-schemas');
       expect(logger.error).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('forgetting deleted conversations in pwc_tars memory', () => {
+    const { deleteTarsConversationMemories } = jest.requireMock('@librechat/api');
+
+    beforeEach(() => {
+      deleteTarsConversationMemories.mockClear();
+      deleteToolCalls.mockResolvedValue({ deletedCount: 0 });
+      deleteAllSharedLinksWithCleanup.mockResolvedValue({ deletedCount: 0 });
+      deleteConvos.mockImplementation(async (_userId, _filter, options) => {
+        const conversationIds = ['conv-a', 'fork-of-a'];
+        await options.beforeDelete?.(conversationIds);
+        return { deletedCount: 2, conversationIds };
+      });
+    });
+
+    const forgotten = () => deleteTarsConversationMemories.mock.calls[0]?.[1] ?? [];
+
+    it('clears every conversation one delete removed, cascade included', async () => {
+      const response = await request(app)
+        .delete('/api/convos')
+        .send({ arg: { conversationId: 'conv-a' } });
+      expect(response.status).toBe(201);
+      expect(forgotten()).toEqual(expect.arrayContaining(['conv-a', 'fork-of-a']));
+    });
+
+    it('clears every conversation on delete all', async () => {
+      const response = await request(app).delete('/api/convos/all');
+      expect(response.status).toBe(201);
+      expect(forgotten()).toEqual(['conv-a', 'fork-of-a']);
+    });
+
+    it('clears them on the owner-wide delete with no conversation id', async () => {
+      const response = await request(app)
+        .delete('/api/convos')
+        .send({ arg: { source: 'all' } });
+      expect(response.status).toBe(201);
+      expect(forgotten()).toEqual(expect.arrayContaining(['conv-a', 'fork-of-a']));
+    });
+
+    it('leaves memory alone when the delete fails', async () => {
+      deleteConvos.mockRejectedValue(new Error('db down'));
+      const response = await request(app).delete('/api/convos/all');
+      expect(response.status).toBe(500);
+      expect(deleteTarsConversationMemories).not.toHaveBeenCalled();
     });
   });
 

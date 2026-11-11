@@ -68,7 +68,7 @@ describe('PeoplePickerAdminSettings', () => {
     expect(saveButton.parentElement).toHaveClass('bg-transparent');
     expect(saveButton.parentElement).not.toHaveClass('border-t');
     expect(
-      screen.getByRole('button', { name: 'com_ui_role_select USER' }).parentElement,
+      screen.getByRole('button', { name: 'com_ui_role_select com_ui_user' }).parentElement,
     ).toHaveClass('sm:grid-cols-[minmax(0,1fr)_9rem]');
   });
 });

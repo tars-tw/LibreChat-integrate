@@ -99,6 +99,7 @@ export enum QueryKeys {
   tarsAdWhitelist = 'tarsAdWhitelist',
   tarsMcpServers = 'tarsMcpServers',
   tarsMcpUserSettings = 'tarsMcpUserSettings',
+  tarsMemories = 'tarsMemories',
   tarsMcpChatTools = 'tarsMcpChatTools',
   tarsMcpPermissionPrincipals = 'tarsMcpPermissionPrincipals',
   tarsMcpPermissions = 'tarsMcpPermissions',

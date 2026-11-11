@@ -1,7 +1,7 @@
 import { z } from 'zod';
+import type { TTarsTraceArtifact, TTarsMemoryRecall } from './types/tars';
 import type { TMessageContentParts } from './types/content';
 import type { AgentSubagentGraph } from './types/agents';
-import type { TTarsTraceArtifact } from './types/tars';
 import type { SearchResultData } from './types/web';
 import type { FunctionTool } from './types/tools';
 import type { TFile } from './types/files';
@@ -1135,6 +1135,7 @@ export type TAttachmentMetadata = {
   [Tools.web_search]?: SearchResultData;
   [Tools.file_search]?: SearchResultData;
   [Tools.tars_trace]?: TTarsTraceArtifact;
+  [Tools.tars_memory]?: TTarsMemoryRecall;
 };
 
 export type TAttachment =

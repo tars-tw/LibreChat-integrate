@@ -7,7 +7,9 @@ import {
   Label,
   Button,
   Switch,
+  ESide,
   OGDialog,
+  InfoHoverCard,
   DropdownPopup,
   OGDialogTitle,
   OGDialogHeader,
@@ -26,6 +28,10 @@ type FormValues = Record<Permissions, boolean>;
 export interface PermissionConfig {
   permission: Permissions;
   labelKey: TranslationKeys;
+  /** What the permission does, behind a help icon beside the label */
+  descriptionKey?: TranslationKeys;
+  /** Not offered for ADMIN: turning it off would hide the panel holding this dialog, with no way back */
+  hideForAdmin?: boolean;
 }
 
 export interface AdminSettingsDialogProps {
@@ -33,6 +39,8 @@ export interface AdminSettingsDialogProps {
   permissionType: PermissionTypes;
   /** Localization key for the section name (e.g., 'com_ui_memories', 'com_ui_agents') */
   sectionKey: TranslationKeys;
+  /** What choosing a role means, shown under the role label */
+  roleDescriptionKey?: TranslationKeys;
   /** Array of permission configurations to display */
   permissions: PermissionConfig[];
   /** Unique ID for the role dropdown menu */
@@ -67,6 +75,7 @@ export interface AdminSettingsDialogProps {
 type LabelControllerProps = {
   id: string;
   label: string;
+  description?: string;
   permission: Permissions;
   control: Control<FormValues, unknown, FormValues>;
   onConfirm?: (newValue: boolean, onChange: (value: boolean) => void) => void;
@@ -77,15 +86,19 @@ const LabelController: React.FC<LabelControllerProps> = ({
   control,
   permission,
   label,
+  description,
   onConfirm,
 }) => (
   <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-    <Label
-      htmlFor={id}
-      className="w-auto cursor-pointer text-sm font-medium break-normal select-none"
-    >
-      {label}
-    </Label>
+    <div className="flex items-center gap-2">
+      <Label
+        htmlFor={id}
+        className="w-auto cursor-pointer text-sm font-medium break-normal select-none"
+      >
+        {label}
+      </Label>
+      {description && <InfoHoverCard side={ESide.Top} text={description} />}
+    </div>
     <Controller
       name={permission}
       control={control}
@@ -112,6 +125,7 @@ const LabelController: React.FC<LabelControllerProps> = ({
 const AdminSettingsDialog: React.FC<AdminSettingsDialogProps> = ({
   permissionType,
   sectionKey,
+  roleDescriptionKey,
   permissions,
   menuId,
   mutation,
@@ -182,6 +196,14 @@ const AdminSettingsDialog: React.FC<AdminSettingsDialogProps> = ({
     mutate({ roleName: selectedRole, updates: data });
   };
 
+  /** Custom roles keep their own names. */
+  const roleLabel = (role: string): string => {
+    if (role === SystemRoles.ADMIN) {
+      return localize('com_ui_admin');
+    }
+    return role === SystemRoles.USER ? localize('com_ui_user') : role;
+  };
+
   const defaultTrigger = (
     <Button
       size="sm"
@@ -222,9 +244,14 @@ const AdminSettingsDialog: React.FC<AdminSettingsDialogProps> = ({
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-4 p-4 sm:p-6">
               <div className="border-border-light bg-surface-secondary grid gap-3 rounded-xl border p-4 sm:grid-cols-[minmax(0,1fr)_9rem] sm:items-center">
-                <span id={roleLabelId} className="text-text-primary text-sm font-semibold">
-                  {localize('com_ui_role_select')}
-                </span>
+                <div className="min-w-0 space-y-1">
+                  <span id={roleLabelId} className="text-text-primary text-sm font-semibold">
+                    {localize('com_ui_role_select')}
+                  </span>
+                  {roleDescriptionKey && (
+                    <p className="text-text-secondary text-xs">{localize(roleDescriptionKey)}</p>
+                  )}
+                </div>
                 <DropdownPopup
                   unmountOnHide={true}
                   menuId={menuId}
@@ -236,7 +263,7 @@ const AdminSettingsDialog: React.FC<AdminSettingsDialogProps> = ({
                       className="border-border-medium text-text-primary hover:bg-surface-hover focus-visible:ring-text-primary inline-flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-transparent px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-hidden"
                     >
                       <span id={roleValueId} className="truncate font-medium">
-                        {selectedRole}
+                        {roleLabel(selectedRole)}
                       </span>
                       <ChevronDown
                         className="text-text-secondary size-4 shrink-0"
@@ -244,14 +271,20 @@ const AdminSettingsDialog: React.FC<AdminSettingsDialogProps> = ({
                       />
                     </Ariakit.MenuButton>
                   }
-                  items={roleDropdownItems}
-                  itemClassName="items-center justify-center"
+                  items={roleDropdownItems.map((item) => ({
+                    ...item,
+                    label: roleLabel(item.label),
+                  }))}
+                  itemClassName="items-center justify-start"
                   sameWidth={true}
                 />
               </div>
 
               <div className="divide-border-light border-border-light bg-surface-secondary divide-y overflow-hidden rounded-xl border">
-                {permissions.map(({ permission, labelKey }) => {
+                {permissions.map(({ permission, labelKey, descriptionKey, hideForAdmin }) => {
+                  if (hideForAdmin && selectedRole === SystemRoles.ADMIN) {
+                    return null;
+                  }
                   const label = localize(labelKey);
                   const needsConfirm =
                     selectedRole === SystemRoles.ADMIN &&
@@ -265,6 +298,7 @@ const AdminSettingsDialog: React.FC<AdminSettingsDialogProps> = ({
                         control={control}
                         permission={permission}
                         label={label}
+                        description={descriptionKey ? localize(descriptionKey) : undefined}
                         onConfirm={
                           needsConfirm
                             ? (newValue, onChange) =>
