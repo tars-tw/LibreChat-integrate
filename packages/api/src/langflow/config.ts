@@ -7,6 +7,10 @@ import {
 import type { AppConfig } from '@librechat/data-schemas';
 import { workflowProjectName } from './labels';
 
+/** The header that tells Langflow LibreChat has checked who may reach a personal project. */
+export const WORKFLOW_ACCESS_HEADER = 'x-tars-workflow-access';
+export const WORKFLOW_AGENT_SHARE_ACCESS = 'agent-share';
+
 /** One `mcpServers` entry as librechat.yaml declares it. */
 type McpEntry = NonNullable<AppConfig['mcpConfig']>[string];
 
@@ -57,10 +61,27 @@ const isAggregateTemplate = (entry: McpEntry | undefined): entry is McpEntry & {
   typeof entry.url === 'string' &&
   entry.url.replace(/\/+$/, '').endsWith(AGGREGATE_PATH);
 
+/**
+ * A personal project's entry tells Langflow that LibreChat has checked who may reach it: the
+ * owner, or someone the owner shared an agent built on it with (`./access`, run before every
+ * connection and call). Langflow serves someone else's personal project only on that word.
+ */
+function projectHeaders(
+  template: McpEntry & { url: string },
+  project: WorkflowProject,
+): { headers?: Record<string, string | undefined> } {
+  if (project.owner !== 'personal') {
+    return {};
+  }
+  const headers = 'headers' in template ? template.headers : undefined;
+  return { headers: { ...headers, [WORKFLOW_ACCESS_HEADER]: WORKFLOW_AGENT_SHARE_ACCESS } };
+}
+
 function projectEntry(template: McpEntry & { url: string }, project: WorkflowProject): McpEntry {
   const name = workflowMcpServerName(project.projectId);
   return {
     ...template,
+    ...projectHeaders(template, project),
     url: template.url.replace(/\/+$/, '').replace(AGGREGATE_PATH, projectPath(project.projectId)),
     title: sanitizeMCPTitle(workflowProjectName(project.name, project.owner), name),
     description: project.description || template.description,
@@ -143,6 +164,14 @@ async function listProjects(deps: WorkflowMcpConfigDeps): Promise<WorkflowProjec
     );
     return lastProjects;
   }
+}
+
+/**
+ * The pwc_tars user a registered project server belongs to: null for a shared project, undefined
+ * when `serverName` is not a registered project server.
+ */
+export function workflowProjectOwner(serverName: string): string | null | undefined {
+  return owners.get(serverName);
 }
 
 const isVisible = (owner: string | null | undefined, tarsId?: string | null) =>
