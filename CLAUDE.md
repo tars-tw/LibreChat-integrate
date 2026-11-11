@@ -274,6 +274,14 @@ model id; guarded by the same `tarsStepTiming.spec.js`), `noteTarsFinishReason` 
 same `tarsStepTiming.spec.js`), and on the frontend `TarsPromptsButton` and the
 `useTarsPromptCommands` source in `PromptsCommand.tsx` (the `/` picker lists pwc_tars
 prompts, matched by their `command` or name; `PromptsCommand.spec.tsx` routes it to its fixture).
+Also on the frontend, `getEndpointLabelHeader` in the ephemeral branch of
+`Content/SiblingHeader.tsx` (`labeled?.name ??` ahead of upstream's `displayName`, the
+`displayNote` span after the name, and `useGetEndpointsQuery` feeding it the endpoint's
+`modelDisplayLabel`): a custom endpoint's label (`vLLM`) names every model it serves, so without
+it two of its models compared side by side read the same; with it each reads its model with the
+label noted beside it. `Content/__tests__/SiblingHeader.test.tsx` fails if it is lost. If
+upstream moves the header into `@librechat/chat`, which cannot import the client's
+`Content/tars.ts`, pass the header in from the host instead.
 
 ---
 

@@ -15,7 +15,11 @@ import {
   ChartColumn,
   MessageSquareText,
 } from 'lucide-react';
-import type { TAttachment, TTarsBuiltinTool } from 'librechat-data-provider';
+import type {
+  TAttachment,
+  TTarsBuiltinTool,
+  ParsedEphemeralAgentId,
+} from 'librechat-data-provider';
 import type { LucideIcon } from 'lucide-react';
 import type { TOptions } from 'i18next';
 import type { TranslationKeys } from '~/hooks';
@@ -245,3 +249,28 @@ export function splitTarsAnswer(answer: string): TarsAnswerBlock[] {
   pushMarkdown(answer.slice(cursor));
   return blocks;
 }
+
+/** An ephemeral agent id stores `:` as `__`, so a label comes back with `__` read as `:`. */
+const asDecodedSender = (label: string): string => label.replace(/__/g, ':');
+
+/**
+ * How a compared response is headed when its label belongs to the whole endpoint: by its
+ * model, with the label noted beside it. A custom endpoint's `modelDisplayLabel` (`vLLM`)
+ * names every model it serves, so two of them side by side would read the same, and the
+ * model alone cannot tell a local build from the same model on a cloud provider.
+ *
+ * A label is the endpoint's when it equals the configured `modelDisplayLabel`, or the
+ * endpoint's own name where the endpoints config is not loaded (shared views). Any other
+ * label is a name someone gave that conversation or model spec and is left as the header.
+ */
+export const getEndpointLabelHeader = (
+  { endpoint, model, sender }: ParsedEphemeralAgentId,
+  modelDisplayLabel?: string | null,
+): { name: string; note: string } | undefined => {
+  if (!sender || !model || sender === model) {
+    return undefined;
+  }
+  const isEndpointLabel =
+    sender === endpoint || (!!modelDisplayLabel && sender === asDecodedSender(modelDisplayLabel));
+  return isEndpointLabel ? { name: model, note: sender } : undefined;
+};
