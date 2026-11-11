@@ -1978,6 +1978,7 @@ export async function initializeAgent(
     currentFiles = applyTurnDelivery(currentFiles, {
       routing: deliveryRouting,
       consumers: fileConsumers,
+      attachedFileIds: new Set(requestFileIds),
     });
   }
 
@@ -2873,10 +2874,15 @@ export async function initializeAgent(
     fileConsumers.executeCode !== finalFileConsumers.executeCode ||
     fileConsumers.fileSearch !== finalFileConsumers.fileSearch;
   Object.assign(fileConsumers, finalFileConsumers);
+  const currentRequestFileIds = new Set(requestFileIds);
   const finalizeAttachments = (files: Array<TFile | undefined> | undefined): IMongoFile[] => {
     const hydrated = toMongoFiles(files);
     return consumersChanged
-      ? applyTurnDelivery(hydrated, { routing: deliveryRouting, consumers: fileConsumers })
+      ? applyTurnDelivery(hydrated, {
+          routing: deliveryRouting,
+          consumers: fileConsumers,
+          attachedFileIds: currentRequestFileIds,
+        })
       : hydrated;
   };
   const finalAttachments = finalizeAttachments(primedAttachments);
@@ -2886,6 +2892,7 @@ export async function initializeAgent(
         {
           routing: deliveryRouting,
           consumers: fileConsumers,
+          attachedFileIds: currentRequestFileIds,
         },
       )
     : primedRequestAttachments;
@@ -2910,7 +2917,6 @@ export async function initializeAgent(
       files: [...finalAttachments, ...requestAttachments, ...agentContextAttachments],
     });
   }
-  const currentRequestFileIds = new Set(requestFileIds);
   const currentRequestAttachments: TFile[] = (finalRequestAttachments ?? [])
     .filter((file): file is TFile => file != null && currentRequestFileIds.has(file.file_id))
     .map((file) => ({

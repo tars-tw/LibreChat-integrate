@@ -3107,6 +3107,56 @@ describe('BaseClient', () => {
       TestClient.checkVisionRequest = jest.fn();
     });
 
+    describe('code outputs on a later turn', () => {
+      /** As Run Code stores its outputs: no delivery route and no extracted text. */
+      const codeOutput = (file_id, filename, type) => ({
+        file_id,
+        filename,
+        filepath: `/uploads/${filename}`,
+        source: 'local',
+        type,
+        user: 'user-1',
+        context: 'execute_code',
+      });
+      const report = codeOutput('report-file', 'report.pdf', 'application/pdf');
+      const chart = codeOutput('chart-file', 'trend.png', 'image/png');
+
+      beforeEach(() => {
+        TestClient.options.req.config = { fileConfig: { endpoints: {} } };
+        TestClient.options.agent = {
+          provider: EModelEndpoint.openAI,
+          fileConsumers: { executeCode: false, fileSearch: false },
+        };
+        TestClient.options.agent.deliveryRouting = resolveTurnDeliveryRouting({
+          agent: TestClient.options.agent,
+          config: TestClient.options.req.config,
+        });
+        TestClient.assertHistoricalAttachmentLimits = jest.fn(async (files) => files);
+      });
+
+      test('sends a code output the user attached to the model, but not one only shown on a reply', async () => {
+        /* Reattaching a report from the file library left it to a sandbox the chat does not
+         * run, so the model was asked about a file it never received. */
+        getFiles.mockResolvedValueOnce([report, chart]);
+
+        const [question] = await TestClient.addPreviousAttachments([
+          { messageId: 'msg-ask', text: 'What is in it?', files: [{ file_id: 'report-file' }] },
+          {
+            messageId: 'msg-reply',
+            isCreatedByUser: false,
+            text: 'Here is the chart.',
+            attachments: [{ file_id: 'chart-file' }],
+          },
+        ]);
+        const attached = { ...report, llmDeliveryPath: 'provider' };
+
+        expect(TestClient.assertHistoricalAttachmentLimits).toHaveBeenCalledWith([attached]);
+        expect(TestClient.processAttachments).toHaveBeenCalledWith(question, [attached]);
+        expect(TestClient.authorizedHistoricalFiles.get('chart-file')).toBe(chart);
+        expect(report).not.toHaveProperty('llmDeliveryPath');
+      });
+    });
+
     describe('tool-routed files on a later turn', () => {
       const routedCsv = {
         file_id: 'csv-file',

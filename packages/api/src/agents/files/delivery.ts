@@ -1,4 +1,6 @@
 import {
+  FileContext,
+  ContentTypes,
   mergeFileConfig,
   getEndpointFileConfig,
   resolveUseResponsesApi,
@@ -6,6 +8,7 @@ import {
   isSpeechProviderConfigured,
   resolveTurnLLMDeliveryPath,
   hasInferredLLMDeliveryPath,
+  resolveUploadLLMDeliveryPath,
 } from 'librechat-data-provider';
 import type {
   TurnDeliveryRouting,
@@ -56,27 +59,107 @@ export function resolveTurnDeliveryRouting({
   };
 }
 
-/** Materialize the exact turn route before admission without mutating stored records. */
-export function applyTurnDelivery<T extends TurnDeliveryFile>(
+/** A stored record the turn may have received from a user's message rather than from a tool. */
+export type AttachableTurnFile = TurnDeliveryFile & {
+  file_id?: string;
+  context?: string | null;
+};
+
+/**
+ * Code outputs are stored without a delivery route, which leaves them to the sandbox that wrote
+ * them and keeps them out of the prompt. Once the user attaches one to a message it is theirs,
+ * so it is routed like an upload of its type and, being inferred, re-resolved on every turn.
+ * Outputs only listed on the reply that produced them are not attached and stay the tool's.
+ */
+function routeAttachedCodeOutput<T extends AttachableTurnFile>(
+  file: T,
+  routing: TurnDeliveryRouting | undefined,
+  attachedFileIds: ReadonlySet<string> | undefined,
+): T {
+  if (
+    file.llmDeliveryPath != null ||
+    file.context !== FileContext.execute_code ||
+    file.file_id == null ||
+    attachedFileIds?.has(file.file_id) !== true
+  ) {
+    return file;
+  }
+  const mimeType = file.metadata?.routingMimeType ?? file.type ?? '';
+  return { ...file, llmDeliveryPath: resolveUploadLLMDeliveryPath({ mimeType, ...routing }) };
+}
+
+/**
+ * Materialize the exact turn route before admission without mutating stored records.
+ * `attachedFileIds` names the files a user's message carries, which decides whether a code
+ * output reaches the model (see {@link routeAttachedCodeOutput}).
+ */
+export function applyTurnDelivery<T extends AttachableTurnFile>(
   files: T[],
-  { routing, consumers }: { routing?: TurnDeliveryRouting; consumers?: TurnFileConsumers },
+  {
+    routing,
+    consumers,
+    attachedFileIds,
+  }: {
+    routing?: TurnDeliveryRouting;
+    consumers?: TurnFileConsumers;
+    attachedFileIds?: ReadonlySet<string>;
+  },
 ): T[] {
-  if (routing == null) {
+  if (routing == null && !attachedFileIds?.size) {
     return files;
   }
   let changed = false;
   const result = files.map((file) => {
-    if (!hasInferredLLMDeliveryPath(file)) {
-      return file;
+    const attached = routeAttachedCodeOutput(file, routing, attachedFileIds);
+    changed ||= attached !== file;
+    if (routing == null || !hasInferredLLMDeliveryPath(attached)) {
+      return attached;
     }
-    const llmDeliveryPath = resolveTurnLLMDeliveryPath(routing, file, consumers);
-    if (llmDeliveryPath == null || llmDeliveryPath === file.llmDeliveryPath) {
-      return file;
+    const llmDeliveryPath = resolveTurnLLMDeliveryPath(routing, attached, consumers);
+    if (llmDeliveryPath == null || llmDeliveryPath === attached.llmDeliveryPath) {
+      return attached;
     }
     changed = true;
-    return { ...file, llmDeliveryPath };
+    return { ...attached, llmDeliveryPath };
   });
   return changed ? result : files;
+}
+
+type FileRefs = readonly ({ file_id?: string | null } | null | undefined)[] | null | undefined;
+
+/** A stored message as far as its user-attached files go. */
+export interface AttachingMessage {
+  files?: FileRefs;
+  content?: unknown;
+}
+
+/**
+ * File ids the user attached to these messages: each message's own files and those a steer
+ * sent mid-run, as opposed to the outputs listed on replies.
+ */
+export function collectAttachedFileIds(
+  messages: readonly (AttachingMessage | null | undefined)[],
+): Set<string> {
+  const ids = new Set<string>();
+  const add = (refs: FileRefs) => {
+    for (const ref of Array.isArray(refs) ? refs : []) {
+      if (typeof ref?.file_id === 'string' && ref.file_id.length > 0) {
+        ids.add(ref.file_id);
+      }
+    }
+  };
+  for (const message of messages) {
+    add(message?.files);
+    if (!Array.isArray(message?.content)) {
+      continue;
+    }
+    for (const part of message.content as ({ type?: string; files?: FileRefs } | null)[]) {
+      if (part?.type === ContentTypes.STEER) {
+        add(part.files);
+      }
+    }
+  }
+  return ids;
 }
 
 /**

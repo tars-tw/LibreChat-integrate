@@ -3,7 +3,9 @@ import {
   applyTurnDelivery as materializeTurnDelivery,
   resolveTurnDeliveryRouting,
   resolveScopedTurnAttachments,
+  collectAttachedFileIds,
 } from './delivery';
+import { isModelBoundAttachmentFile } from '../attachments';
 
 function applyTurnDelivery<T extends TurnDeliveryFile>(
   files: T[],
@@ -11,15 +13,18 @@ function applyTurnDelivery<T extends TurnDeliveryFile>(
     agent,
     config,
     consumers,
+    attachedFileIds,
   }: {
     agent?: Parameters<typeof resolveTurnDeliveryRouting>[0]['agent'];
     config?: Parameters<typeof resolveTurnDeliveryRouting>[0]['config'];
     consumers?: TurnFileConsumers;
+    attachedFileIds?: ReadonlySet<string>;
   },
 ) {
   return materializeTurnDelivery(files, {
     routing: agent ? resolveTurnDeliveryRouting({ agent, config }) : undefined,
     consumers,
+    attachedFileIds,
   });
 }
 
@@ -258,6 +263,128 @@ describe('applyTurnDelivery', () => {
     const files = [{ ...csv, metadata: { destinationChosen: true } }];
 
     expect(applyTurnDelivery(files, { agent, config, consumers: noReader })).toBe(files);
+  });
+});
+
+describe('applyTurnDelivery for code outputs the user attaches', () => {
+  type CodeOutput = TurnDeliveryFile & { file_id: string; context: string; source: string };
+  const agent = { provider: 'openAI' };
+  /** As Run Code stores its outputs: no delivery route, no extracted text for binaries. */
+  const codeOutput = (file_id: string, type: string, text?: string): CodeOutput => ({
+    file_id,
+    type,
+    context: 'execute_code',
+    source: 'local',
+    ...(text != null && { text }),
+  });
+  const report = codeOutput('report', 'application/pdf');
+  const chart = codeOutput('chart', 'image/png');
+  const docx = codeOutput(
+    'docx',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'Quarterly summary',
+  );
+  const table = codeOutput('table', 'text/csv', 'region,total\nwest,4');
+
+  it('routes an attached code output like an upload of its type', () => {
+    const files = [report, chart, docx];
+    const result = applyTurnDelivery(files, {
+      agent,
+      config,
+      consumers: noReader,
+      attachedFileIds: new Set(['report', 'chart', 'docx']),
+    });
+
+    expect(result.map((file) => file.llmDeliveryPath)).toEqual(['provider', 'provider', 'text']);
+    expect(result.every(isModelBoundAttachmentFile)).toBe(true);
+    expect(files.map(isModelBoundAttachmentFile)).toEqual([false, false, false]);
+    expect(report).not.toHaveProperty('llmDeliveryPath');
+  });
+
+  it("applies the endpoint's own upload policy to the attached output", () => {
+    /* librechat.yaml keeps spreadsheets out of the prompt for the data tools; an attached
+     * code output must not slip past that. */
+    const [result] = applyTurnDelivery([table], {
+      agent,
+      config: {
+        fileConfig: {
+          endpoints: {
+            openAI: { defaultLLMDeliveryPath: { overrides: { 'text/csv': 'none' as const } } },
+          },
+        },
+      },
+      consumers: noReader,
+      attachedFileIds: new Set(['table']),
+    });
+
+    expect(result.llmDeliveryPath).toBe('none');
+    expect(isModelBoundAttachmentFile(result)).toBe(false);
+  });
+
+  it('leaves outputs that are only listed on the reply that produced them to the sandbox', () => {
+    const files = [report, chart];
+
+    expect(
+      applyTurnDelivery(files, {
+        agent,
+        config,
+        consumers: noReader,
+        attachedFileIds: new Set(['someone-else']),
+      }),
+    ).toBe(files);
+    expect(applyTurnDelivery(files, { agent, config, consumers: noReader })).toBe(files);
+  });
+
+  it('routes an attached output even without an agent to route by', () => {
+    const [result] = applyTurnDelivery([report], { attachedFileIds: new Set(['report']) });
+
+    expect(result.llmDeliveryPath).toBe('provider');
+  });
+
+  it('re-resolves a route an output already stores, as for any upload', () => {
+    const files = [{ ...report, llmDeliveryPath: 'none' as const }];
+
+    expect(
+      applyTurnDelivery(files, {
+        agent,
+        config,
+        consumers: runsCode,
+        attachedFileIds: new Set(['report']),
+      })[0].llmDeliveryPath,
+    ).toBe('provider');
+  });
+
+  it('does not reroute an attached file that is not a code output', () => {
+    const legacy = { file_id: 'legacy', type: 'application/pdf', embedded: true };
+    const files = [legacy];
+
+    expect(
+      applyTurnDelivery(files, {
+        agent,
+        config,
+        consumers: noReader,
+        attachedFileIds: new Set(['legacy']),
+      }),
+    ).toBe(files);
+  });
+});
+
+describe('collectAttachedFileIds', () => {
+  it("reads the messages' own files and steer files, never reply attachments", () => {
+    const ids = collectAttachedFileIds([
+      { files: [{ file_id: 'upload' }, null, { file_id: '' }] },
+      {
+        files: null,
+        content: [
+          { type: 'text', text: 'hi', files: [{ file_id: 'not-steer' }] },
+          { type: 'steer', files: [{ file_id: 'steered' }] },
+        ],
+      },
+      { attachments: [{ file_id: 'chart' }] } as { files?: undefined },
+      null,
+    ]);
+
+    expect([...ids].sort()).toEqual(['steered', 'upload']);
   });
 });
 
