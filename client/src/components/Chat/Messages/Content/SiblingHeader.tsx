@@ -6,7 +6,9 @@ import type { TMessage, Agent } from 'librechat-data-provider';
 import { useMessagePartsHost } from '~/Providers/MessagePartsHostContext';
 import { useBranchMessageMutation } from '~/data-provider/Messages';
 import MessageIcon from '~/components/Share/MessageIcon';
+import { useGetEndpointsQuery } from '~/data-provider';
 import { useAgentsMapContext } from '~/Providers';
+import { getEndpointLabelHeader } from './tars';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 
@@ -35,6 +37,7 @@ export default function SiblingHeader({
   isSubmitting,
 }: SiblingHeaderProps) {
   const agentsMap = useAgentsMapContext();
+  const { data: endpointsConfig } = useGetEndpointsQuery();
   const localize = useLocalize();
   const showToast = useMessagePartsHost().useToast();
 
@@ -60,7 +63,7 @@ export default function SiblingHeader({
     branchMessage.mutate({ messageId, agentId });
   };
 
-  const { displayName, displayEndpoint, displayModel, agent } = useMemo(() => {
+  const { displayName, displayNote, displayEndpoint, displayModel, agent } = useMemo(() => {
     // First, try to look up as a real agent
     if (agentId) {
       // Strip ____N suffix if present (used to distinguish parallel agents with same ID)
@@ -79,8 +82,13 @@ export default function SiblingHeader({
       // Try to parse as ephemeral agent ID (endpoint__model___sender format)
       const parsed = parseEphemeralAgentId(agentId);
       if (parsed) {
+        const labeled = getEndpointLabelHeader(
+          parsed,
+          endpointsConfig?.[parsed.endpoint]?.modelDisplayLabel,
+        );
         return {
-          displayName: parsed.sender || parsed.model || 'AI',
+          displayName: labeled?.name ?? (parsed.sender || parsed.model || 'AI'),
+          displayNote: labeled?.note,
           displayEndpoint: parsed.endpoint,
           displayModel: parsed.model,
           agent: undefined,
@@ -103,7 +111,7 @@ export default function SiblingHeader({
       displayModel: undefined,
       agent: undefined,
     };
-  }, [agentId, agentsMap]);
+  }, [agentId, agentsMap, endpointsConfig]);
 
   return (
     <div className="border-border-light mb-2 flex items-center justify-between gap-2 border-b pb-2">
@@ -121,6 +129,9 @@ export default function SiblingHeader({
           />
         </div>
         <span className="text-text-primary truncate text-sm font-medium">{displayName}</span>
+        {displayNote != null && (
+          <span className="text-text-secondary shrink-0 text-xs">{displayNote}</span>
+        )}
         <MessageTimestamp value={createdAt} />
       </div>
       <button

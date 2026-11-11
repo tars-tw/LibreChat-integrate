@@ -1,10 +1,16 @@
-import { Tools, ContentTypes } from 'librechat-data-provider';
+import {
+  Tools,
+  ContentTypes,
+  parseEphemeralAgentId,
+  encodeEphemeralAgentId,
+} from 'librechat-data-provider';
 import type { TAttachment, TMessageContentParts } from 'librechat-data-provider';
 import {
   splitTarsAnswer,
   getTarsToolLine,
   getTarsPluginAnswer,
   getTarsToolProgress,
+  getEndpointLabelHeader,
 } from '../tars';
 import { getLiveActivity } from '../live';
 
@@ -130,5 +136,56 @@ describe('getTarsPluginAnswer', () => {
     expect(getTarsPluginAnswer(attachments, 'call-1')).toBe('mine');
     expect(getTarsPluginAnswer([stepAttachment('call-1')], 'call-1')).toBeUndefined();
     expect(getTarsPluginAnswer(undefined, 'call-1')).toBeUndefined();
+  });
+});
+
+describe('getEndpointLabelHeader', () => {
+  const header = (agentId: string, modelDisplayLabel?: string | null) => {
+    const parsed = parseEphemeralAgentId(agentId);
+    return parsed ? getEndpointLabelHeader(parsed, modelDisplayLabel) : undefined;
+  };
+
+  it('heads a response by its model and notes the endpoint label', () => {
+    expect(header('vLLM__Qwen3.6-35B-A3B___vLLM', 'vLLM')).toEqual({
+      name: 'Qwen3.6-35B-A3B',
+      note: 'vLLM',
+    });
+    expect(header('vLLM__gemma-4-31B___vLLM____1', 'vLLM')).toEqual({
+      name: 'gemma-4-31B',
+      note: 'vLLM',
+    });
+    expect(header('Ollama__llama3:8b___Local AI', 'Local AI')).toEqual({
+      name: 'llama3:8b',
+      note: 'Local AI',
+    });
+  });
+
+  it('recognizes a label repeating the endpoint name without the endpoints config', () => {
+    expect(header('vLLM__gemma-4-31B___vLLM')).toEqual({ name: 'gemma-4-31B', note: 'vLLM' });
+    expect(header('vLLM__gemma-4-31B___vLLM', null)).toEqual({ name: 'gemma-4-31B', note: 'vLLM' });
+  });
+
+  it('matches a configured label the id stored with its colons encoded', () => {
+    const idFor = (sender: string) =>
+      encodeEphemeralAgentId({ endpoint: 'Ollama', model: 'llama3:8b', sender, index: 1 });
+    expect(header(idFor('Team: Local'), 'Team: Local')).toEqual({
+      name: 'llama3:8b',
+      note: 'Team: Local',
+    });
+    expect(header(idFor('Team__Local'), 'Team__Local')).toEqual({
+      name: 'llama3:8b',
+      note: 'Team:Local',
+    });
+  });
+
+  it('keeps a name given to the conversation or model spec', () => {
+    expect(header('vLLM__gemma-4-31B___My Bot', 'vLLM')).toBeUndefined();
+    expect(header('openAI__gpt-5.4-mini___GPT-5.4')).toBeUndefined();
+  });
+
+  it('adds nothing when the header already reads the model', () => {
+    expect(header('google__gemini-3.6-flash')).toBeUndefined();
+    expect(header('google__gemini-3.6-flash', 'Gemini')).toBeUndefined();
+    expect(header('vLLM__gemma-4-31B___gemma-4-31B', 'gemma-4-31B')).toBeUndefined();
   });
 });
