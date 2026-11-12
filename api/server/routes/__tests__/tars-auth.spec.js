@@ -46,6 +46,10 @@ jest.mock('~/server/services/Config', () => ({ invalidateConfigCaches: jest.fn()
 jest.mock('~/server/services/MCP', () => ({ resolveAllMcpConfigs: jest.fn() }));
 jest.mock('~/server/services/Tools/mcp', () => ({ loadMCPServerCatalogs: jest.fn() }));
 jest.mock('~/server/services/tarsOidcTeardown', () => jest.fn());
+/** Built from `tarsSharing.directory` at load, which the stubbed `createTarsSharing` leaves undefined. */
+jest.mock('~/server/services/tarsMcpGrantEnable', () => ({
+  saveThenEnable: jest.fn((actor, save) => save()),
+}));
 
 jest.mock('~/server/middleware', () => ({
   configMiddleware: jest.fn((req, res, next) => next()),
