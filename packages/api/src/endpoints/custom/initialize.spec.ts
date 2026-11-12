@@ -43,6 +43,12 @@ jest.mock('~/app/config', () => ({
   getCustomEndpointConfig: (...args: unknown[]) => mockGetCustomEndpointConfig(...args),
 }));
 
+const mockResolveTarsLocalModelBaseURL = jest.fn();
+jest.mock('~/tars/models', () => ({
+  ...jest.requireActual('~/tars/models'),
+  resolveTarsLocalModelBaseURL: (...args: unknown[]) => mockResolveTarsLocalModelBaseURL(...args),
+}));
+
 import { getTokenConfigKey, initializeCustom } from './initialize';
 import { SCOPED_TOKEN_CONFIG_KEY_PREFIX } from '../keys';
 
@@ -897,5 +903,47 @@ describe('initializeCustom – pwc_tars sys_config apiKey reference', () => {
       initializeCustom(createParams({ apiKey: '${tars:KEY_OPEN_AI_API}' })),
     ).rejects.toThrow('Missing API Key for test-custom.');
     expect(mockGetOpenAIConfig).not.toHaveBeenCalled();
+  });
+});
+
+describe('initializeCustom – pwc_tars local (vLLM) apiKey', () => {
+  const { invalidateTarsSysConfigCache } = jest.requireActual('~/tars/sysconfig');
+
+  const sysConfig = (value: string) =>
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [{ key: 'VLLM_API_KEY', value, status: 'active' }],
+    } as Response);
+
+  const localParams = () =>
+    createParams({ apiKey: '${tars:VLLM_API_KEY}', baseURL: 'tars://local' });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.TARS_AUTH_URL = 'http://tars.test';
+    invalidateTarsSysConfigCache();
+    mockResolveTarsLocalModelBaseURL.mockResolvedValue('http://vllm.test:8001/v1');
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    delete process.env.TARS_AUTH_URL;
+  });
+
+  it('sends the sys_config vLLM key when one is configured', async () => {
+    sysConfig('vllm-secret');
+    await initializeCustom(localParams());
+    expect(mockGetOpenAIConfig).toHaveBeenCalledWith(
+      'vllm-secret',
+      expect.any(Object),
+      'test-custom',
+    );
+  });
+
+  it('falls back to the placeholder key when the vLLM key is unset', async () => {
+    sysConfig('DEFAULT');
+    await initializeCustom(localParams());
+    expect(mockGetOpenAIConfig).toHaveBeenCalledWith('EMPTY', expect.any(Object), 'test-custom');
   });
 });

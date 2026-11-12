@@ -16,6 +16,7 @@ import type {
 } from '~/types';
 import { isTarsLocalEndpoint, resolveTarsLocalModelBaseURL } from '~/tars/models';
 import { getLLMConfig as getAnthropicLLMConfig } from '~/endpoints/anthropic/llm';
+import { parseTarsConfigRef, resolveTarsConfigValue } from '~/tars/sysconfig';
 import { resolveModelTransportTimeouts } from '~/agents/config';
 import { extractDefaultParams } from '~/endpoints/openai/llm';
 import { isUserProvided, checkUserKeyExpiry } from '~/utils';
@@ -23,7 +24,6 @@ import { withSupportedEffort } from '~/endpoints/reasoning';
 import { getOpenAIConfig } from '~/endpoints/openai/config';
 import { getScopedTokenConfigKey } from '~/endpoints/keys';
 import { resolveCustomEndpointParameters } from './config';
-import { resolveTarsConfigValue } from '~/tars/sysconfig';
 import { getCustomEndpointConfig } from '~/app/config';
 import { resolveEndpointRuntime } from '~/types';
 import { fetchModels } from '~/endpoints/models';
@@ -96,6 +96,9 @@ function toBillingTokenConfig(
   }
   return result;
 }
+
+/** Sent to a pwc_tars local (vLLM) host when no vLLM API key is configured. */
+const TARS_LOCAL_PLACEHOLDER_API_KEY = 'EMPTY';
 
 /**
  * Builds custom options from endpoint configuration
@@ -202,7 +205,7 @@ export async function initializeCustom(
     throw new Error(`Config not found for the ${endpoint} custom endpoint.`);
   }
 
-  const CUSTOM_API_KEY = await resolveTarsConfigValue(configuredEndpoint.apiKey ?? '');
+  let CUSTOM_API_KEY = await resolveTarsConfigValue(configuredEndpoint.apiKey ?? '');
   let CUSTOM_BASE_URL = extractEnvVariable(configuredEndpoint.baseURL ?? '');
 
   /** A pwc_tars local endpoint routes per-model: the requested model's vLLM
@@ -217,6 +220,11 @@ export async function initializeCustom(
       );
     }
     CUSTOM_BASE_URL = resolvedBaseURL;
+    /** vLLM only requires a key when started with --api-key, so an unset
+     *  sys_config key falls back to a placeholder instead of failing. */
+    if (parseTarsConfigRef(CUSTOM_API_KEY)) {
+      CUSTOM_API_KEY = TARS_LOCAL_PLACEHOLDER_API_KEY;
+    }
   }
 
   if (CUSTOM_API_KEY.match(envVarRegex)) {
