@@ -228,6 +228,7 @@ const BATCH_QUOTA_FIELDS = [
   'reset_day',
   'warning_threshold',
   'status',
+  'allow_lower',
 ];
 
 /**
@@ -343,8 +344,11 @@ router.post('/token/report/overview', async (req, res) => {
   if (error != null) {
     return res.status(400).json({ error });
   }
+  const userGroupIds = Array.isArray(req.body?.user_group_ids)
+    ? req.body.user_group_ids.map(String).filter((id) => id !== '')
+    : undefined;
   try {
-    return res.json(await fetchTarsTokenReportOverview(range));
+    return res.json(await fetchTarsTokenReportOverview(range, userGroupIds));
   } catch (err) {
     logger.error('[POST /api/tars/token/report/overview] Failed', err);
     return relayTarsError(res, err, 'Failed to run the token usage report');

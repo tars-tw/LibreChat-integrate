@@ -292,6 +292,7 @@ export interface TarsTokenQuotaBatchInput {
   reset_day?: number;
   warning_threshold?: number;
   status?: string;
+  allow_lower?: boolean;
 }
 
 export interface TarsTokenQuotaBatchResult {
@@ -299,6 +300,7 @@ export interface TarsTokenQuotaBatchResult {
   message?: string;
   created: number;
   updated: number;
+  kept?: number;
   user_count: number;
   missing_user_ids: string[];
   missing_group_ids: string[];

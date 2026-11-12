@@ -52,8 +52,9 @@ async function embeddingRows(
   userId?: string,
 ): Promise<string[][] | null> {
   try {
+    const groupBys = TARS_EMBEDDING_GROUP_BY.filter((group_by) => group_by !== 'domain');
     const reports = await Promise.all(
-      TARS_EMBEDDING_GROUP_BY.map((group_by) =>
+      groupBys.map((group_by) =>
         dataService.getTarsEmbeddingUsageSummary({
           ...range,
           group_by,
@@ -62,7 +63,7 @@ async function embeddingRows(
       ),
     );
     return reports.flatMap((report, index) => {
-      const by = TARS_EMBEDDING_GROUP_BY[index];
+      const by = groupBys[index];
       const dimension =
         by === 'day'
           ? localize('com_ui_tars_embedding_by_day')

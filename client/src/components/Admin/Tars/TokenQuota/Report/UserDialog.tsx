@@ -1,6 +1,9 @@
-import { Spinner, OGDialog, OGDialogTemplate } from '@librechat/client';
+import { useState } from 'react';
+import { Download } from 'lucide-react';
+import { Button, Spinner, OGDialog, OGDialogTemplate, useToastContext } from '@librechat/client';
 import type { TTarsTokenUserUsage } from 'librechat-data-provider';
 import { useTarsTokenReportUserQuery } from '~/data-provider';
+import { downloadPersonReportCsvs } from './export';
 import EmbeddingUsage from './EmbeddingUsage';
 import { formatTokens } from './helpers';
 import { personName } from '../helpers';
@@ -8,11 +11,6 @@ import { useLocalize } from '~/hooks';
 import Trend from './Trend';
 import Stat from './Stat';
 
-/**
- * One person's usage across the queried period: the prompt/completion split the
- * group tables cannot show, their day-by-day series, and the embedding usage
- * their chats and uploads spent.
- */
 export default function UserDialog({
   user,
   range,
@@ -23,6 +21,9 @@ export default function UserDialog({
   onClose: () => void;
 }) {
   const localize = useLocalize();
+  const { showToast } = useToastContext();
+  const [exporting, setExporting] = useState(false);
+
   const userId = user?.user_id == null ? '' : String(user.user_id);
   const usageQuery = useTarsTokenReportUserQuery(
     user == null ? null : { ...range, user_id: userId },
@@ -33,17 +34,74 @@ export default function UserDialog({
     return null;
   }
 
+  const handleExport = async () => {
+    if (exporting) {
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const { embeddingLeftOut } = await downloadPersonReportCsvs(
+        range,
+        {
+          id: userId,
+          username: user.username,
+          display_name: user.display_name,
+          email: user.email,
+        },
+        localize,
+      );
+
+      if (embeddingLeftOut != null) {
+        showToast({
+          message:
+            embeddingLeftOut === 'range'
+              ? localize('com_ui_tars_embedding_export_skipped', {
+                  0: 'TARS_EMBEDDING_MAX_RANGE_DAYS',
+                })
+              : localize('com_ui_tars_embedding_export_failed'),
+          status: 'warning',
+        });
+      }
+    } catch {
+      showToast({
+        message: localize('com_ui_tars_report_export_failed'),
+        status: 'error',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <OGDialog open={true} onOpenChange={(open) => !open && onClose()}>
       <OGDialogTemplate
         title={personName(user)}
+        description={user.email ?? undefined}
         showCloseButton={true}
         className="w-11/12 md:max-w-4xl"
         main={
           <div className="space-y-4">
-            <p className="text-text-secondary text-sm">
-              {`${localize('com_ui_tars_audit_period')}: ${range.start_date} ~ ${range.end_date}`}
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-text-secondary text-sm">
+                {`${localize('com_ui_tars_audit_period')}: ${range.start_date} ~ ${range.end_date}`}
+              </p>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={exporting}
+                onClick={handleExport}
+              >
+                {exporting ? (
+                  <Spinner className="mr-2 size-4" />
+                ) : (
+                  <Download className="mr-2 size-4" aria-hidden />
+                )}
+                {localize('com_ui_tars_report_export')}
+              </Button>
+            </div>
 
             {usageQuery.isFetching && (
               <div className="flex h-40 items-center justify-center">
