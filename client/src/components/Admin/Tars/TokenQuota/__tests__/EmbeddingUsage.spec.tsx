@@ -103,20 +103,38 @@ describe('EmbeddingUsage', () => {
     renderUsage();
     await screen.findByText('1,200');
 
-    await userEvent.selectOptions(screen.getByRole('combobox'), 'domain');
+    await userEvent.selectOptions(screen.getByRole('combobox'), 'knowledge_base');
 
     await waitFor(() =>
-      expect(summary).toHaveBeenCalledWith({ ...RANGE, group_by: 'day', split_by: 'domain' }),
+      expect(summary).toHaveBeenCalledWith({
+        ...RANGE,
+        group_by: 'day',
+        split_by: 'knowledge_base',
+      }),
     );
-    expect(summary).toHaveBeenCalledWith({ ...RANGE, group_by: 'domain' });
-    expect(await screen.findByText(/com_ui_tars_embedding_hint_domain/)).toBeInTheDocument();
+    expect(summary).toHaveBeenCalledWith({ ...RANGE, group_by: 'knowledge_base' });
+    expect(
+      await screen.findByText(/com_ui_tars_embedding_hint_knowledge_base/),
+    ).toBeInTheDocument();
+  });
+
+  it('does not offer the brain dimension', async () => {
+    answering({});
+    renderUsage();
+    await screen.findByText('1,200');
+
+    const values = Array.from(
+      screen.getByRole('combobox').querySelectorAll('option'),
+      (option) => option.value,
+    );
+    expect(values).toEqual(['purpose', 'knowledge_base', 'model']);
   });
 
   it('keeps each part labelled by what it shows while the next view loads', async () => {
     const summary = jest
       .spyOn(dataService, 'getTarsEmbeddingUsageSummary')
       .mockImplementation((query) =>
-        query.group_by === 'domain' || query.split_by === 'domain'
+        query.group_by === 'knowledge_base' || query.split_by === 'knowledge_base'
           ? new Promise(() => undefined)
           : Promise.resolve(
               summaryOf(query, query.group_by === 'purpose' ? [row('kb_query', 700)] : []),
@@ -125,17 +143,19 @@ describe('EmbeddingUsage', () => {
     renderUsage();
     await screen.findByRole('heading', { name: 'com_ui_tars_embedding_group_purpose' });
 
-    await userEvent.selectOptions(screen.getByRole('combobox'), 'domain');
-    await waitFor(() => expect(summary).toHaveBeenCalledWith({ ...RANGE, group_by: 'domain' }));
+    await userEvent.selectOptions(screen.getByRole('combobox'), 'knowledge_base');
+    await waitFor(() =>
+      expect(summary).toHaveBeenCalledWith({ ...RANGE, group_by: 'knowledge_base' }),
+    );
 
     expect(
       screen.getByRole('heading', { name: 'com_ui_tars_embedding_group_purpose' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('heading', { name: 'com_ui_tars_embedding_group_domain' }),
+      screen.queryByRole('heading', { name: 'com_ui_tars_embedding_group_knowledge_base' }),
     ).not.toBeInTheDocument();
     expect(screen.getAllByText('com_ui_tars_embedding_purpose_kb_query').length).toBeGreaterThan(0);
-    expect(screen.queryByText(/com_ui_tars_embedding_hint_domain/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/com_ui_tars_embedding_hint_knowledge_base/)).not.toBeInTheDocument();
   });
 
   it('draws every day of the period, including the ones without usage', async () => {

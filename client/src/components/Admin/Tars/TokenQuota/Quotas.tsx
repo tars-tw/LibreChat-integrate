@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import {
   Button,
   Spinner,
@@ -7,6 +7,7 @@ import {
   OGDialogTemplate,
   useToastContext,
   Checkbox,
+  TooltipAnchor,
 } from '@librechat/client';
 import type { TTarsTokenUserQuota, TTarsTokenPrepareData } from 'librechat-data-provider';
 import type { TokenResetType } from './helpers';
@@ -21,8 +22,10 @@ import {
   formatThreshold,
   isActiveQuota,
   quotaUsageShare,
+  effectiveLimitOf,
   providerBadgeClass,
   personName,
+  isQuotaOverridden,
 } from './helpers';
 import {
   useTarsTokenQuotasQuery,
@@ -344,29 +347,58 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                     </td>
 
                     <td className="text-text-secondary px-3 py-2 text-right tabular-nums">
-                      {capOf(quota.custom_limit) == null ? (
-                        <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs whitespace-nowrap text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
-                          {localize('com_ui_tars_quota_unlimited')}
-                        </span>
-                      ) : (
-                        formatLimit(quota.custom_limit, localize('com_ui_tars_quota_unlimited'))
-                      )}
+                      <div className="flex items-center justify-end gap-1.5">
+                        {isQuotaOverridden(quota) && (
+                          <TooltipAnchor
+                            side="top"
+                            description={localize('com_ui_tars_quota_not_effective', {
+                              0:
+                                capOf(effectiveLimitOf(quota)) == null
+                                  ? localize('com_ui_tars_quota_unlimited')
+                                  : formatLimit(
+                                      effectiveLimitOf(quota),
+                                      localize('com_ui_tars_quota_unlimited'),
+                                    ),
+                            })}
+                            render={
+                              <span
+                                tabIndex={0}
+                                className="text-file-audio dark:text-status-warning-border inline-flex"
+                              >
+                                <AlertTriangle className="size-3.5" aria-hidden />
+                              </span>
+                            }
+                          />
+                        )}
+
+                        {quota.custom_limit == null && '—'}
+
+                        {quota.custom_limit != null && capOf(quota.custom_limit) == null && (
+                          <span className="bg-status-warning-subtle text-syntax-title dark:bg-status-neutral/50 dark:text-status-warning-subtle inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs whitespace-nowrap">
+                            {localize('com_ui_tars_quota_unlimited')}
+                          </span>
+                        )}
+
+                        {quota.custom_limit != null &&
+                          capOf(quota.custom_limit) != null &&
+                          formatLimit(quota.custom_limit, localize('com_ui_tars_quota_unlimited'))}
+                      </div>
                     </td>
 
                     <td className="px-3 py-2">
                       <div className="text-text-secondary flex items-center justify-between gap-2 text-xs tabular-nums">
                         <span>{(quota.used_amount ?? 0).toLocaleString()}</span>
-                        {capOf(quota.custom_limit) != null && (
+                        {capOf(effectiveLimitOf(quota)) != null && (
                           <span>{quotaUsageShare(quota)}%</span>
                         )}
                       </div>
 
                       <div className="bg-surface-tertiary mt-1 h-1.5 overflow-hidden rounded-full">
-                        {capOf(quota.custom_limit) == null ? (
+                        {capOf(effectiveLimitOf(quota)) == null ? (
                           <div className="tars-usage-gradient h-full w-full rounded-full" />
                         ) : (
                           <div
-                            className="bg-brand-primary h-full rounded-full"
+                            className="bg-accent-primary h-full rounded-full"
                             style={{ width: `${quotaUsageShare(quota)}%` }}
                           />
                         )}
@@ -420,9 +452,9 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                           aria-label={localize('com_ui_delete')}
                           title={localize('com_ui_delete')}
                           onClick={() => setDeleting(quota)}
-                          className="text-text-secondary hover:bg-surface-tertiary rounded p-1.5 hover:text-red-500"
+                          className="text-text-secondary hover:bg-surface-tertiary hover:text-status-error-strong rounded p-1.5"
                         >
-                          <Trash2 className="icon-sm text-pwc-danger" />
+                          <Trash2 className="icon-sm text-status-error-strong" />
                         </button>
                       </div>
                     </td>

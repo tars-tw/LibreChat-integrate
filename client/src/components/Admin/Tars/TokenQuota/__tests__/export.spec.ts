@@ -75,11 +75,10 @@ describe('downloadTokenReportCsvs', () => {
     jest.restoreAllMocks();
   });
 
-  it('adds the embedding file, every dimension one under the other', async () => {
+  it('adds the embedding file, every dimension but the brain one under the other', async () => {
     const rowsBy: Record<string, TTarsEmbeddingUsageRow[]> = {
       day: [row('2026-10-01')],
       purpose: [row('kb_query')],
-      domain: [row('7', '產品腦')],
       knowledge_base: [row(null)],
       model: [row('text-embedding-3-small')],
     };
@@ -91,7 +90,8 @@ describe('downloadTokenReportCsvs', () => {
       embeddingLeftOut: null,
     });
 
-    expect(summary).toHaveBeenCalledTimes(5);
+    expect(summary).toHaveBeenCalledTimes(4);
+    expect(summary).not.toHaveBeenCalledWith(expect.objectContaining({ group_by: 'domain' }));
     expect(downloaded().map(({ name }) => name)).toEqual([
       ...CHAT_FILES,
       'TokenReport_Embedding_20261001_20261007.csv',
@@ -105,7 +105,6 @@ describe('downloadTokenReportCsvs', () => {
         '2',
         '3',
       ],
-      ['com_ui_tars_embedding_group_domain', '產品腦', '700', '2', '3'],
       [
         'com_ui_tars_embedding_group_knowledge_base',
         'com_ui_tars_embedding_unattributed',
@@ -130,7 +129,7 @@ describe('downloadTokenReportCsvs', () => {
 
   it('still downloads the chat files when the embedding usage cannot be read', async () => {
     jest.spyOn(dataService, 'getTarsEmbeddingUsageSummary').mockImplementation(async (query) => {
-      if (query.group_by === 'domain') {
+      if (query.group_by === 'knowledge_base') {
         throw new Error('timeout');
       }
       return summaryOf(query, [row('x')]);

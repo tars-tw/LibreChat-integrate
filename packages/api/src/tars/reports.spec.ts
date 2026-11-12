@@ -38,9 +38,22 @@ describe('token report service', () => {
       .spyOn(global, 'fetch')
       .mockResolvedValue(buildResponse(200, { success: true, data: { group_overview: [] } }));
 
-    await fetchTarsTokenReportOverview(RANGE, BASE_URL);
+    await fetchTarsTokenReportOverview(RANGE, undefined, BASE_URL);
 
     expect(urlOf(fetchMock)).toContain('/api/reports/get_group_token_overview');
+    expect(bodyOf(fetchMock)).toEqual(RANGE);
+  });
+
+  it('narrows the overview to the picked groups, and to none when the list is empty', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { success: true, data: {} }));
+
+    await fetchTarsTokenReportOverview(RANGE, ['2', '5'], BASE_URL);
+    expect(bodyOf(fetchMock)).toEqual({ ...RANGE, user_group_ids: ['2', '5'] });
+
+    fetchMock.mockClear();
+    await fetchTarsTokenReportOverview(RANGE, [], BASE_URL);
     expect(bodyOf(fetchMock)).toEqual(RANGE);
   });
 
@@ -48,7 +61,7 @@ describe('token report service', () => {
   it('fills in the collections pwc_tars omits', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { success: true, data: {} }));
 
-    await expect(fetchTarsTokenReportOverview(RANGE, BASE_URL)).resolves.toEqual({
+    await expect(fetchTarsTokenReportOverview(RANGE, undefined, BASE_URL)).resolves.toEqual({
       group_overview: [],
       domain_usage: [],
       model_usage: [],
@@ -58,7 +71,8 @@ describe('token report service', () => {
 
   /**
    * pwc_tars attaches every underlying usage-log id to each member; that is the
-   * largest part of the payload and nothing renders it.
+   * largest part of the payload and nothing renders it. A member pwc_tars sends
+   * without an email or a provider split still reads as null and zeros.
    */
   it('drops the per-member usage log ids', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(
@@ -87,11 +101,40 @@ describe('token report service', () => {
         user_id: 7,
         username: 'ada',
         display_name: 'Ada',
+        email: null,
         user_group_ids: ['2'],
         log_count: 3,
         total_tokens: 900,
+        usage_by_provider: { openai: 0, gemini: 0, anthropic: 0 },
       },
     ]);
+  });
+
+  it('keeps the email and the per-provider split pwc_tars sends', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(200, {
+        success: true,
+        data: {
+          user_usage: [
+            {
+              user_id: 7,
+              username: 'ada',
+              display_name: 'Ada',
+              email: 'ada@example.com',
+              user_group_ids: ['2'],
+              log_count: 3,
+              total_tokens: 900,
+              usage_by_provider: { openai: 600, anthropic: 300 },
+            },
+          ],
+        },
+      }),
+    );
+
+    const [member] = await fetchTarsTokenReportMembers(RANGE, ['2'], BASE_URL);
+
+    expect(member.email).toBe('ada@example.com');
+    expect(member.usage_by_provider).toEqual({ openai: 600, gemini: 0, anthropic: 300 });
   });
 
   it('sends the group ids and the user id with their ranges', async () => {

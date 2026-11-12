@@ -1183,6 +1183,7 @@ export const useTarsTokenQuotasQuery = (
     {
       select: (data) => data.quotas ?? [],
       ...adminQueryOptions,
+      refetchOnMount: 'always',
       ...config,
     },
   );
@@ -1220,8 +1221,9 @@ export const useTarsMyTokenQuotasQuery = (
     () => dataService.getTarsMyTokenQuotas(),
     {
       select: (data) => data.quotas ?? [],
-      staleTime: 30 * 1000,
+      staleTime: 0,
       refetchInterval: 60 * 1000,
+      refetchOnMount: 'always',
       refetchOnWindowFocus: true,
       ...config,
     },
@@ -1235,12 +1237,15 @@ export const useTarsMyTokenQuotasQuery = (
  * it must never fire while the operator is still picking dates.
  */
 export const useTarsTokenReportOverviewQuery = (
-  range: TTarsTokenReportRange | null,
+  range: (TTarsTokenReportRange & { user_group_ids?: string[] }) | null,
   config?: UseQueryOptions<TTarsTokenReportOverview>,
 ): QueryObserverResult<TTarsTokenReportOverview> => {
   return useQuery<TTarsTokenReportOverview>(
     [QueryKeys.tarsTokenReportOverview, range],
-    () => dataService.getTarsTokenReportOverview(range as TTarsTokenReportRange),
+    () =>
+      dataService.getTarsTokenReportOverview(
+        range as TTarsTokenReportRange & { user_group_ids?: string[] },
+      ),
     {
       enabled: range != null,
       keepPreviousData: true,

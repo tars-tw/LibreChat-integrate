@@ -143,7 +143,7 @@ export default function EmbeddingUsage({
               value={dimension}
               onChange={(event) => setDimension(event.target.value as TTarsEmbeddingSplitBy)}
             >
-              {TARS_EMBEDDING_DIMENSIONS.map((item) => (
+              {TARS_EMBEDDING_DIMENSIONS.filter((item) => item !== 'domain').map((item) => (
                 <option key={item} value={item}>
                   {localize(EMBEDDING_DIMENSION_LABEL_KEYS[item])}
                 </option>
