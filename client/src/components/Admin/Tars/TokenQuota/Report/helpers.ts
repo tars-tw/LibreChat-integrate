@@ -172,6 +172,8 @@ export interface ReportTotals {
   users: number;
 }
 
+export const NO_GROUP_ID = '__none__';
+
 /** Headline totals. `users` counts the accounts the groups cover, not the logs. */
 export const reportTotals = (groups: TTarsTokenGroupUsage[]): ReportTotals =>
   groups.reduce<ReportTotals>(

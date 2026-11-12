@@ -2186,6 +2186,9 @@ export type TTarsTokenUserQuota = {
   username?: string;
   display_name?: string;
   email?: string;
+  effective_limit?: number | null;
+  effective_used?: number;
+  effective_source?: 'personal' | 'default' | 'none';
 };
 
 /** A user group with the specialized brains its roles grant. */
@@ -2262,6 +2265,7 @@ export type TTarsTokenQuotaBatchInput = {
   reset_day?: number;
   warning_threshold?: number;
   status?: string;
+  allow_lower?: boolean;
 };
 
 export type TTarsTokenQuotaBatchDeleteInput = { ids: string[] };
@@ -2279,6 +2283,7 @@ export type TTarsTokenQuotaBatchResult = {
   created: number;
   updated: number;
   user_count: number;
+  kept?: number;
   missing_user_ids: string[];
   missing_group_ids: string[];
 };
@@ -2341,6 +2346,12 @@ export type TTarsTokenReportOverview = {
   domain_usage: TTarsTokenDomainUsage[];
   model_usage: TTarsTokenModelUsage[];
   date_range: { start_date: string; end_date: string };
+  overall?: {
+    user_count: number;
+    log_count: number;
+    total_tokens: number;
+    daily_usage: TTarsTokenDailyUsage[];
+  };
 };
 
 /** One member's usage inside the selected groups. */
@@ -2348,9 +2359,15 @@ export type TTarsTokenUserUsage = {
   user_id: string | number | null;
   username: string | null;
   display_name: string | null;
+  email: string | null;
   user_group_ids: string[];
   log_count: number;
   total_tokens: number;
+  usage_by_provider: {
+    openai: number;
+    gemini: number;
+    anthropic: number;
+  };
 };
 
 /** One person's period totals plus the day-by-day series behind them. */

@@ -32,11 +32,19 @@ export interface TarsTokenModelUsage {
   usage_rate: number;
 }
 
+export interface TarsTokenOverallUsage {
+  user_count: number;
+  log_count: number;
+  total_tokens: number;
+  daily_usage: TarsTokenDailyUsage[];
+}
+
 export interface TarsTokenReportOverview {
   group_overview: TarsTokenGroupUsage[];
   domain_usage: TarsTokenDomainUsage[];
   model_usage: TarsTokenModelUsage[];
   date_range: { start_date: string; end_date: string };
+  overall?: TarsTokenOverallUsage;
 }
 
 /** One member's usage inside the selected groups (`cal_user_group_all_users_usage`). */
@@ -47,6 +55,11 @@ export interface TarsTokenUserUsage {
   user_group_ids: string[];
   log_count: number;
   total_tokens: number;
+  usage_by_provider: {
+    openai: number;
+    gemini: number;
+    anthropic: number;
+  };
 }
 
 /** One person's period totals plus the day-by-day series behind them. */
@@ -130,11 +143,14 @@ async function postReport<T>(path: string, body: unknown, baseUrl?: string): Pro
 /** Group totals, plus the specialized-brain and model splits for the period. */
 export async function fetchTarsTokenReportOverview(
   range: TarsTokenReportRange,
+  userGroupIds?: string[],
   baseUrl?: string,
 ): Promise<TarsTokenReportOverview> {
   const data = await postReport<TarsTokenReportOverview>(
     '/get_group_token_overview',
-    range,
+    userGroupIds != null && userGroupIds.length > 0
+      ? { ...range, user_group_ids: userGroupIds }
+      : range,
     baseUrl,
   );
   return {
@@ -142,6 +158,7 @@ export async function fetchTarsTokenReportOverview(
     domain_usage: data?.domain_usage ?? [],
     model_usage: data?.model_usage ?? [],
     date_range: data?.date_range ?? range,
+    overall: data?.overall,
   };
 }
 
@@ -164,9 +181,15 @@ export async function fetchTarsTokenReportMembers(
     user_id: user.user_id,
     username: user.username,
     display_name: user.display_name,
+    email: user.email,
     user_group_ids: user.user_group_ids ?? [],
     log_count: user.log_count,
     total_tokens: user.total_tokens,
+    usage_by_provider: {
+      openai: user.usage_by_provider?.openai ?? 0,
+      gemini: user.usage_by_provider?.gemini ?? 0,
+      anthropic: user.usage_by_provider?.anthropic ?? 0,
+    },
   }));
 }
 

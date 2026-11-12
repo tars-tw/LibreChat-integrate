@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
-import { Button, Spinner } from '@librechat/client';
+import { useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { Button, Spinner, disabledFillClasses } from '@librechat/client';
 import type { TTarsTokenUserQuota, TTarsTokenUserUsage } from 'librechat-data-provider';
-import { capOf, isActiveQuota, personIdentity } from '../helpers';
+import { capOf, effectiveLimitOf, isActiveQuota, personIdentity } from '../helpers';
 import { useTarsTokenDefaultsQuery } from '~/data-provider';
 import { formatTokens } from './helpers';
 import { useLocalize } from '~/hooks';
@@ -43,7 +44,7 @@ function ProviderName({ provider }: { provider: string }) {
  */
 function QuotaLine({ quota, provider }: { quota: TTarsTokenUserQuota; provider: string }) {
   const localize = useLocalize();
-  const limit = capOf(quota.custom_limit);
+  const limit = capOf(effectiveLimitOf(quota));
   const used = quota.used_amount ?? 0;
   const pct = limit == null ? null : Math.min(Math.round((used / limit) * 100), 100);
   const threshold = Math.round((quota.warning_threshold ?? 0.8) * 100);
@@ -70,6 +71,8 @@ function QuotaLine({ quota, provider }: { quota: TTarsTokenUserQuota; provider: 
         {limit == null
           ? `${compact.format(used)} · ${localize('com_ui_tars_quota_unlimited')}`
           : `${compact.format(used)} / ${compact.format(limit)}`}
+        {quota.effective_source === 'default' &&
+          ` · ${localize('com_ui_tars_report_ceiling_system_default')}`}
       </div>
       <div className="bg-surface-tertiary h-1.5 w-30 overflow-hidden rounded-full">
         {pct == null ? (
@@ -82,24 +85,54 @@ function QuotaLine({ quota, provider }: { quota: TTarsTokenUserQuota; provider: 
   );
 }
 
-/** A provider the person holds no personal quota for: the provider's system default applies. */
-function DefaultLine({ provider, limit }: { provider: string; limit: number | null }) {
+/** A provider without a personal quota: show usage against the system default. */
+function DefaultLine({
+  provider,
+  limit,
+  used,
+}: {
+  provider: string;
+  limit: number | null;
+  used: number;
+}) {
   const localize = useLocalize();
+  const pct = limit == null || limit <= 0 ? null : Math.min(Math.round((used / limit) * 100), 100);
+
+  const exceeded = pct != null && pct >= 100;
+  const warning = pct != null && pct >= 80;
+
+  let statusText = 'text-text-secondary';
+  let statusBar = styleOf(provider).swatch;
+
+  if (exceeded) {
+    statusText = EXCEEDED_TEXT;
+    statusBar = EXCEEDED_BAR;
+  } else if (warning) {
+    statusText = WARNING_TEXT;
+    statusBar = WARNING_BAR;
+  }
 
   return (
     <div className="min-w-0 space-y-1">
       <div className="flex items-center gap-1.5 text-xs">
         <ProviderName provider={provider} />
+        {pct != null && <span className={`tabular-nums ${statusText}`}>· {pct}%</span>}
       </div>
 
       <div className="text-text-secondary text-xs tabular-nums">
-        {limit == null ? localize('com_ui_tars_quota_unlimited') : compact.format(limit)}
+        {limit == null
+          ? `${compact.format(used)} · ${localize('com_ui_tars_quota_unlimited')}`
+          : `${compact.format(used)} / ${compact.format(limit)}`}
         {' · '}
         {localize('com_ui_tars_report_ceiling_system_default')}
       </div>
 
       <div className="bg-surface-tertiary h-1.5 w-30 overflow-hidden rounded-full">
-        <div className="tars-usage-gradient h-full w-full rounded-full" />
+        {pct == null ? (
+          <div className="tars-usage-gradient h-full w-full rounded-full" />
+        ) : (
+          <div className={`h-full rounded-full ${statusBar}`} style={{ width: `${pct}%` }} />
+        )}
       </div>
     </div>
   );
@@ -126,7 +159,30 @@ export default function Members({
   onClear: () => void;
 }) {
   const localize = useLocalize();
-  const ranked = [...members].sort((a, b) => b.total_tokens - a.total_tokens);
+  const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  const ranked = useMemo(() => {
+    return [...members]
+      .filter((member) => {
+        const userId = String(member.user_id ?? '');
+        const { primary, secondary } = personIdentity(member, userId);
+        const keyword = search.trim().toLowerCase();
+
+        return (
+          primary.toLowerCase().includes(keyword) ||
+          (secondary ?? '').toLowerCase().includes(keyword) ||
+          (member.email ?? '').toLowerCase().includes(keyword) ||
+          userId.toLowerCase().includes(keyword)
+        );
+      })
+      .sort((a, b) => b.total_tokens - a.total_tokens);
+  }, [members, search]);
+
+  const totalPages = Math.max(1, Math.ceil(ranked.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedRows = ranked.slice((safePage - 1) * pageSize, safePage * pageSize);
   const { data: defaults = [] } = useTarsTokenDefaultsQuery();
 
   /** Each provider's system default ceiling; null means none (unset, inactive or -1). */
@@ -162,9 +218,36 @@ export default function Members({
         <h2 className="text-text-primary text-sm font-medium">
           {localize('com_ui_tars_report_members_of', { 0: groupName })}
         </h2>
-        <Button variant="outline" size="sm" onClick={onClear}>
-          {localize('com_ui_tars_report_clear_drilldown')}
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="border-border-medium bg-surface-primary flex h-8 w-56 items-center gap-2 rounded-md border px-2">
+            <Search className="text-text-secondary size-4 shrink-0" />
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder={localize('com_ui_tars_report_member_search_placeholder')}
+              className="text-text-primary placeholder:text-text-secondary min-w-0 flex-1 bg-transparent text-xs outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setCurrentPage(1);
+                }}
+                className="text-text-secondary hover:text-text-primary"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+
+          <Button variant="outline" size="sm" onClick={onClear}>
+            {localize('com_ui_tars_report_clear_drilldown')}
+          </Button>
+        </div>
       </header>
 
       {isLoading ? (
@@ -194,11 +277,13 @@ export default function Members({
               {ranked.length === 0 && (
                 <tr>
                   <td colSpan={4} className="text-text-secondary px-3 py-6 text-center">
-                    {localize('com_ui_tars_audit_no_data')}
+                    {search
+                      ? localize('com_ui_tars_report_member_search_empty')
+                      : localize('com_ui_tars_audit_no_data')}
                   </td>
                 </tr>
               )}
-              {ranked.map((member) => {
+              {paginatedRows.map((member) => {
                 const userId = String(member.user_id ?? '');
                 const own = quotasByUser.get(userId);
                 const { primary, secondary } = personIdentity(member, userId);
@@ -212,10 +297,16 @@ export default function Members({
                       <span className="text-text-primary block truncate font-medium">
                         {primary}
                       </span>
-                      {secondary != null && (
+                      {member.email ? (
                         <span className="text-text-secondary block truncate text-xs">
-                          {secondary}
+                          {member.email}
                         </span>
+                      ) : (
+                        secondary != null && (
+                          <span className="text-text-secondary block truncate text-xs">
+                            {secondary}
+                          </span>
+                        )
                       )}
                     </td>
                     <td className="text-text-secondary px-3 py-2 tabular-nums">
@@ -235,6 +326,7 @@ export default function Members({
                               key={provider}
                               provider={provider}
                               limit={defaultLimits.get(provider) ?? null}
+                              used={member.usage_by_provider?.[provider] ?? 0}
                             />
                           );
                         })}
@@ -245,6 +337,38 @@ export default function Members({
               })}
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="border-border-light flex items-center justify-between border-t px-4 py-3">
+              <span className="text-text-secondary text-xs">
+                {(currentPage - 1) * pageSize + 1} -{' '}
+                {Math.min(currentPage * pageSize, ranked.length)} / {ranked.length}
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className={`text-text-secondary hover:bg-surface-hover rounded-md p-1.5 disabled:cursor-not-allowed ${disabledFillClasses}`}
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+
+                <span className="text-text-primary text-xs tabular-nums">
+                  {safePage} / {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className={`text-text-secondary hover:bg-surface-hover rounded-md p-1.5 disabled:cursor-not-allowed ${disabledFillClasses}`}
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>

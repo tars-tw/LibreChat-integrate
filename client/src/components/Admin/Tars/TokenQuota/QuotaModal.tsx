@@ -96,14 +96,23 @@ export default function QuotaModal({
   };
 
   const onSuccess = (result: TTarsTokenQuotaBatchResult) => {
+    const kept = result.kept ?? 0;
+
     showToast({
-      message: localize('com_ui_tars_quota_batch_result', {
-        0: String(result.user_count),
-        1: String(result.created),
-        2: String(result.updated),
-      }),
-      status: 'success',
+      message:
+        localize('com_ui_tars_quota_batch_result', {
+          0: String(result.user_count),
+          1: String(result.created),
+          2: String(result.updated),
+        }) +
+        (kept > 0
+          ? localize('com_ui_tars_quota_batch_kept', {
+              0: String(kept),
+            })
+          : ''),
+      status: kept > 0 ? 'warning' : 'success',
     });
+
     onOpenChange(false);
   };
 
@@ -142,6 +151,7 @@ export default function QuotaModal({
       reset_day: usesResetDay(resetType) ? Number(resetDay) : 1,
       warning_threshold: percent / 100,
       status: active ? QUOTA_STATUS_ON : QUOTA_STATUS_OFF,
+      allow_lower: quota != null,
     });
   };
 

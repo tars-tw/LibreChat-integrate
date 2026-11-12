@@ -1229,7 +1229,7 @@ export const deleteTarsTokenQuota = (id: string): Promise<{ success: boolean }> 
 
 /** Admin: group totals plus the brain and model splits for one period. */
 export const getTarsTokenReportOverview = (
-  range: t.TTarsTokenReportRange,
+  range: t.TTarsTokenReportRange & { user_group_ids?: string[] },
 ): Promise<t.TTarsTokenReportOverview> => {
   return request.post(endpoints.tarsTokenReportOverview(), range);
 };

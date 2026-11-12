@@ -13,7 +13,13 @@ import {
   useTarsTokenReportMembersQuery,
   useTarsTokenReportOverviewQuery,
 } from '~/data-provider';
-import { reportTotals, formatTokens, totalDailyUsage, defaultReportRange } from './helpers';
+import {
+  reportTotals,
+  formatTokens,
+  totalDailyUsage,
+  defaultReportRange,
+  NO_GROUP_ID,
+} from './helpers';
 import { downloadTokenReportCsvs, downloadPersonReportCsvs } from './export';
 import Picker, { type PickerOption } from '../../Audit/Picker';
 import EmbeddingUsage from './EmbeddingUsage';
@@ -55,7 +61,11 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
   const [exporting, setExporting] = useState(false);
 
   /** Looking up one person replaces the group view, so the group overview is not fetched then. */
-  const overviewQuery = useTarsTokenReportOverviewQuery(submittedPerson == null ? submitted : null);
+  const overviewQuery = useTarsTokenReportOverviewQuery(
+    submittedPerson == null && submitted != null
+      ? { ...submitted, user_group_ids: submittedGroups }
+      : null,
+  );
   const quotasQuery = useTarsTokenQuotasQuery({});
 
   const membersQuery = useTarsTokenReportMembersQuery(
@@ -77,12 +87,29 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
     return rows.filter((row) => wanted.has(String(row.user_group_id ?? '')));
   }, [overview, submittedGroups]);
 
-  const totals = useMemo(() => reportTotals(groupRows), [groupRows]);
-  const daily = useMemo(() => totalDailyUsage(groupRows), [groupRows]);
+  const totals = useMemo(
+    () =>
+      overview?.overall != null
+        ? {
+            tokens: overview.overall.total_tokens,
+            logs: overview.overall.log_count,
+            users: overview.overall.user_count,
+          }
+        : reportTotals(groupRows),
+    [overview, groupRows],
+  );
+
+  const daily = useMemo(
+    () => overview?.overall?.daily_usage ?? totalDailyUsage(groupRows),
+    [overview, groupRows],
+  );
 
   const groupOptions: PickerOption[] = useMemo(
-    () => (options?.groups ?? []).map((group) => ({ value: group.id, label: group.name })),
-    [options],
+    () => [
+      { value: NO_GROUP_ID, label: localize('com_ui_tars_report_no_group') },
+      ...(options?.groups ?? []).map((group) => ({ value: group.id, label: group.name })),
+    ],
+    [options, localize],
   );
 
   const runSearch = () => {
@@ -175,7 +202,7 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
             options={groupOptions}
             selected={groupIds}
             onChange={setGroupIds}
-            placeholder={localize('com_ui_tars_quota_all_groups')}
+            placeholder={localize('com_ui_tars_report_groups_unfiltered')}
             disabled={person != null}
           />
 

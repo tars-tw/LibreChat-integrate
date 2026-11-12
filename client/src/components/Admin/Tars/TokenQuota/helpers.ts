@@ -68,14 +68,25 @@ export const formatLimit = (
 export const formatThreshold = (value: number | null | undefined): string =>
   value == null ? '—' : `${Math.round(value * 100)}%`;
 
+/** The ceiling actually applied: the higher of the personal quota and the system default */
+export const effectiveLimitOf = (quota: TTarsTokenUserQuota): number | null =>
+  quota.effective_limit !== undefined ? quota.effective_limit : quota.custom_limit;
+
 /** How much of a personal quota is spent, capped so an overrun still renders. */
 export const quotaUsageShare = (quota: TTarsTokenUserQuota): number => {
-  const limit = capOf(quota.custom_limit);
+  const limit = capOf(effectiveLimitOf(quota));
   if (limit == null) {
     return 0;
   }
   return Math.min(Math.round(((quota.used_amount ?? 0) / limit) * 100), 100);
 };
+
+/** The personal limit is set but not what is enforced (below the default, or suspended). */
+export const isQuotaOverridden = (quota: TTarsTokenUserQuota): boolean =>
+  quota.custom_limit != null &&
+  quota.effective_source != null &&
+  quota.effective_source !== 'personal' &&
+  quota.custom_limit !== quota.effective_limit;
 
 /**
  * Rules grouped by user group, the way an administrator reads them: one group's
