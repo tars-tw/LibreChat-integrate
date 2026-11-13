@@ -125,7 +125,8 @@ function MenuNode({
  * is a convenience toggle for everything beneath it and renders indeterminate
  * when its descendants are partly selected. Branches collapse independently so
  * a large menu stays scannable, and each branch's own row keeps showing its
- * selected/total count even while collapsed.
+ * selected/total count even while collapsed. Inside a height-capped flex column
+ * the list takes the remaining space and scrolls on its own.
  */
 export default function MenuTree({
   selected,
@@ -169,7 +170,7 @@ export default function MenuTree({
   const toggleExpandAll = () => setExpanded(isFullyExpanded ? new Set() : new Set(allBranchKeys));
 
   return (
-    <div className="space-y-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <div className="flex items-baseline gap-2">
           <span className="text-text-primary text-sm font-medium">
@@ -200,7 +201,7 @@ export default function MenuTree({
           </button>
         </div>
       </div>
-      <div className="border-border-light max-h-80 overflow-y-auto rounded-lg border p-2">
+      <div className="border-border-light min-h-40 flex-1 overflow-y-auto rounded-lg border p-2">
         {ADMIN_MENU_TREE.map((node) => (
           <MenuNode
             key={node.labelKey}

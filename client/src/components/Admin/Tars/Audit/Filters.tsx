@@ -12,7 +12,6 @@ export interface FilterState {
   end: string;
   userIds: string[];
   knowledgeBaseIds: string[];
-  domainId: string;
   keyword: string;
   feedbackOnly: boolean;
 }
@@ -24,7 +23,6 @@ export const initialFilters = (): FilterState => {
     end,
     userIds: [],
     knowledgeBaseIds: [],
-    domainId: '',
     keyword: '',
     feedbackOnly: false,
   };
@@ -64,7 +62,6 @@ export default function Filters({
     () => (options?.knowledge_bases ?? []).map((kb) => ({ value: kb.id, label: kb.name })),
     [options],
   );
-  const domains = useMemo(() => options?.domains ?? [], [options]);
 
   const rangeInvalid = filters.start === '' || filters.end === '' || filters.start > filters.end;
 
@@ -77,12 +74,6 @@ export default function Filters({
           0: String(filters.userIds.length),
         })}`,
       );
-    }
-    if (filters.domainId !== '') {
-      const name = domains.find((domain) => domain.id === filters.domainId)?.name;
-      if (name != null) {
-        parts.push(name);
-      }
     }
     if (filters.knowledgeBaseIds.length > 0) {
       parts.push(
@@ -98,7 +89,7 @@ export default function Filters({
       parts.push(localize('com_ui_tars_audit_feedback_only'));
     }
     return parts.join(' · ');
-  }, [filters, domains, localize]);
+  }, [filters, localize]);
 
   if (collapsed) {
     return (
@@ -144,7 +135,7 @@ export default function Filters({
       </header>
 
       <form
-        className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-4"
+        className="grid gap-x-4 gap-y-5 p-4 md:grid-cols-2 xl:grid-cols-4"
         onSubmit={(event) => {
           event.preventDefault();
           if (!rangeInvalid) {
@@ -185,21 +176,13 @@ export default function Filters({
         />
 
         <div className="space-y-1.5">
-          <Label htmlFor="tars-audit-domain">{localize('com_ui_tars_audit_col_domain')}</Label>
-          <select
-            id="tars-audit-domain"
-            value={filters.domainId}
-            disabled={optionsLoading}
-            onChange={(event) => set('domainId', event.target.value)}
-            className="border-border-light bg-surface-primary text-text-primary h-10 w-full rounded-md border px-3 text-sm disabled:opacity-50"
-          >
-            <option value="">{localize('com_ui_tars_audit_all_domains')}</option>
-            {domains.map((domain) => (
-              <option key={domain.id} value={domain.id}>
-                {domain.name}
-              </option>
-            ))}
-          </select>
+          <Label htmlFor="tars-audit-keyword">{localize('com_ui_tars_audit_keyword')}</Label>
+          <Input
+            id="tars-audit-keyword"
+            value={filters.keyword}
+            onChange={(event) => set('keyword', event.target.value)}
+            placeholder={localize('com_ui_tars_audit_keyword_placeholder')}
+          />
         </div>
 
         <div className="md:col-span-2">
@@ -214,18 +197,8 @@ export default function Filters({
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="tars-audit-keyword">{localize('com_ui_tars_audit_keyword')}</Label>
-          <Input
-            id="tars-audit-keyword"
-            value={filters.keyword}
-            onChange={(event) => set('keyword', event.target.value)}
-            placeholder={localize('com_ui_tars_audit_keyword_placeholder')}
-          />
-        </div>
-
-        <div className="flex items-end justify-between gap-2">
-          <label className="text-text-primary flex cursor-pointer items-center gap-2 pb-2.5 text-sm">
+        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 md:col-span-2">
+          <label className="text-text-primary h-theme-field flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
               aria-label={localize('com_ui_tars_audit_feedback_only')}
               checked={filters.feedbackOnly}
@@ -233,7 +206,7 @@ export default function Filters({
             />
             {localize('com_ui_tars_audit_feedback_only')}
           </label>
-          <div className="flex items-center gap-2 pb-1">
+          <div className="h-theme-field flex items-center gap-2">
             <Button
               type="button"
               variant="outline"

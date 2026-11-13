@@ -106,16 +106,10 @@ const writeHeader: ReportSection = (w, s) => {
 
 const writeIdentity: ReportSection = (w, s) => {
   const { t } = w;
-  w.section(
-    `${t('com_ui_tars_audit_trace_user')} / ${t('com_ui_tars_audit_trace_assistant')} / ${t('com_ui_tars_audit_trace_model_label')}`,
-  );
+  w.section(`${t('com_ui_tars_audit_trace_user')} / ${t('com_ui_tars_audit_trace_model_label')}`);
   w.field(
     t('com_ui_tars_audit_trace_user'),
     s.user?.username || t('com_ui_tars_audit_trace_user_deleted'),
-  );
-  w.field(
-    t('com_ui_tars_audit_trace_assistant'),
-    s.requestRow?.payload?.domain_name || t('com_ui_tars_audit_trace_general_domain'),
   );
   w.field(t('com_ui_tars_audit_trace_model_label'), s.message.model_name);
   w.field(

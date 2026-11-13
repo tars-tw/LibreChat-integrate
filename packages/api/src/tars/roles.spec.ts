@@ -131,13 +131,21 @@ describe('role mutations', () => {
 
     expect(parseBody(fetchMock, 0)).toMatchObject({
       librechat_menu_keys: '',
-      domain_ids: '',
       updated_by: 'admin',
     });
     expect(fetchMock).toHaveBeenCalledWith(
       `${BASE_URL}/api/role_settings/update_role/1`,
       expect.objectContaining({ method: 'PUT' }),
     );
+  });
+
+  /** The page no longer edits brains, so an update must not clear the stored bindings. */
+  it('omits domain_ids when none are given', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { role }));
+
+    await updateTarsRole('admin', 1, { name: 'Admin' }, BASE_URL);
+
+    expect(parseBody(fetchMock, 0)).not.toHaveProperty('domain_ids');
   });
 
   it('passes the operator as a query param when deleting', async () => {

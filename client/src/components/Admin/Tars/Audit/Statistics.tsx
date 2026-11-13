@@ -1,5 +1,5 @@
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
-import type { TTarsAuditDomainStat, TTarsAuditSummary } from 'librechat-data-provider';
+import type { TTarsAuditSummary } from 'librechat-data-provider';
 import { useLocalize } from '~/hooks';
 
 /** One headline number. */
@@ -13,19 +13,13 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   );
 }
 
-/**
- * The period rollup: headline totals, the like/dislike split, and the per-brain
- * breakdown. The breakdown is sorted by message count so the busiest brain leads
- * — pwc_tars returns it in whatever order the rows happened to group.
- */
+/** The period rollup: headline totals and the like/dislike split. */
 export default function Statistics({
   summary,
-  details,
   likes,
   dislikes,
 }: {
   summary: TTarsAuditSummary | null;
-  details: TTarsAuditDomainStat[];
   likes: number;
   dislikes: number;
 }) {
@@ -39,8 +33,6 @@ export default function Statistics({
     );
   }
 
-  const ranked = [...details].sort((a, b) => b.message_count - a.message_count);
-  const busiest = ranked[0]?.message_count ?? 0;
   const rated = likes + dislikes;
   const likeShare = rated === 0 ? 0 : Math.round((likes / rated) * 100);
 
@@ -52,7 +44,7 @@ export default function Statistics({
         {summary.date_range.start_date} ~ {summary.date_range.end_date}
       </p>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Stat
           label={localize('com_ui_tars_audit_total_messages')}
           value={String(summary.total_messages)}
@@ -60,11 +52,6 @@ export default function Statistics({
         <Stat
           label={localize('com_ui_tars_audit_total_conversations')}
           value={String(summary.total_conversations)}
-        />
-        <Stat
-          label={localize('com_ui_tars_audit_total_domains')}
-          value={String(summary.total_domains)}
-          hint={localize('com_ui_tars_audit_active_domains_hint')}
         />
         <Stat
           label={localize('com_ui_tars_audit_total_feedback')}
@@ -107,51 +94,6 @@ export default function Statistics({
           </div>
         </div>
       )}
-
-      <div className="border-border-light rounded-xl border">
-        <header className="border-border-light border-b px-4 py-2">
-          <h3 className="text-text-primary text-sm font-medium">
-            {localize('com_ui_tars_audit_domain_stats')}
-          </h3>
-        </header>
-        {ranked.length === 0 ? (
-          <p className="text-text-secondary px-4 py-6 text-sm">
-            {localize('com_ui_tars_audit_no_data')}
-          </p>
-        ) : (
-          <ul className="divide-border-light divide-y">
-            {ranked.map((detail) => (
-              <li key={detail.domain_name} className="px-4 py-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-text-primary min-w-0 truncate text-sm">
-                    {detail.domain_name}
-                  </span>
-                  <span className="text-text-secondary shrink-0 text-xs tabular-nums">
-                    {localize('com_ui_tars_audit_domain_counts', {
-                      0: String(detail.message_count),
-                      1: String(detail.conversation_count),
-                    })}
-                  </span>
-                </div>
-                {/* A bar relative to the busiest brain, so the mix reads at a glance. */}
-                <div className="bg-surface-tertiary mt-2 h-1.5 overflow-hidden rounded-full">
-                  <div
-                    className="bg-brand-primary h-full rounded-full"
-                    style={{
-                      width: `${busiest === 0 ? 0 : Math.round((detail.message_count / busiest) * 100)}%`,
-                    }}
-                  />
-                </div>
-                {detail.knowledge_bases.length > 0 && (
-                  <p className="text-text-secondary mt-1.5 truncate text-xs">
-                    {detail.knowledge_bases.map((kb) => kb.name).join(', ')}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
     </div>
   );
 }

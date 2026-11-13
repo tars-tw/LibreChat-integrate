@@ -9,7 +9,6 @@ import {
   Gauge,
   Sheet,
   Image,
-  Brain,
   Wrench,
   History,
   Activity,
@@ -47,7 +46,6 @@ export default function TraceOverview({ summary }: { summary: TraceSummary }) {
     statusCode,
     isAborted,
   } = summary;
-  const request = requestRow?.payload;
   const provenance = provenanceRow?.payload;
   const reasoningEffort = rawPayload.reasoning_effort?.toLowerCase().trim();
   const reasoningOn = !!reasoningEffort && reasoningEffort !== 'off' && reasoningEffort !== 'none';
@@ -91,10 +89,6 @@ export default function TraceOverview({ summary }: { summary: TraceSummary }) {
         <MetaStrip>
           <MetaItem icon={User} label={localize('com_ui_tars_audit_trace_user')}>
             {user?.username || localize('com_ui_tars_audit_trace_user_deleted')}
-          </MetaItem>
-          {/* No domain name means the general brain — a real state, not missing data. */}
-          <MetaItem icon={Brain} label={localize('com_ui_tars_audit_trace_assistant')}>
-            {request?.domain_name || localize('com_ui_tars_audit_trace_general_domain')}
           </MetaItem>
           <MetaItem icon={Box} label={localize('com_ui_tars_audit_trace_model_label')}>
             {message.model_name || '—'}

@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { Star } from 'lucide-react';
 import { OGDialog, OGDialogTemplate } from '@librechat/client';
-import type { TTarsDomain, TTarsRoleDetail } from 'librechat-data-provider';
+import type { TTarsRoleDetail } from 'librechat-data-provider';
 import type { AdminMenuNode } from '~/components/Nav/Tars/AdminMenu';
 import type { RoleUsage } from './helpers';
 import { ADMIN_MENU_TREE, adminMenuNodeKeys } from '~/components/Nav/Tars/AdminMenu';
-import { isRoleEnabled, roleDomainIds, roleMenuKeys } from './helpers';
-import { formatDateTime, toNameMap } from '../Users/helpers';
-import { StatusBadge, NameList } from '../Users/Fields';
+import { isRoleEnabled, roleMenuKeys } from './helpers';
+import { formatDateTime } from '../Users/helpers';
+import { StatusBadge } from '../Users/Fields';
 import { useLocalize } from '~/hooks';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -43,19 +43,16 @@ function GrantedBranch({ node, granted }: { node: AdminMenuNode; granted: Set<st
 
 export default function RoleDetailsModal({
   role,
-  domains,
   usage,
   locale,
   onOpenChange,
 }: {
   role: TTarsRoleDetail;
-  domains: TTarsDomain[];
   usage: RoleUsage;
   locale: string;
   onOpenChange: (open: boolean) => void;
 }) {
   const localize = useLocalize();
-  const domainNames = useMemo(() => toNameMap(domains), [domains]);
   const granted = useMemo(() => new Set(roleMenuKeys(role)), [role]);
 
   return (
@@ -70,14 +67,6 @@ export default function RoleDetailsModal({
               <Field label={localize('com_ui_description')}>{role.description || '—'}</Field>
               <Field label={localize('com_ui_tars_users_status')}>
                 <StatusBadge active={isRoleEnabled(role)} />
-              </Field>
-              <Field label={localize('com_ui_tars_roles_domains')}>
-                <NameList
-                  names={roleDomainIds(role)
-                    .map((id) => domainNames.get(id))
-                    .filter((name): name is string => !!name)}
-                  empty={localize('com_ui_tars_roles_domains_none')}
-                />
               </Field>
               <Field label={localize('com_ui_tars_roles_is_default')}>
                 {role.is_default_role ? (

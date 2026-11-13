@@ -2462,11 +2462,49 @@
               "agent"
             ]
           },
-          "tars_domain_id": {
+          "tars_knowledge_bases": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 64
+                "type": "object",
+                "properties": {
+                  "rag_agent": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "sql_agent": {
+                    "maxItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "chart_agent": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "file_agent": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  }
+                },
+                "additionalProperties": false
               },
               {
                 "type": "null"
@@ -2938,11 +2976,49 @@
               "agent"
             ]
           },
-          "tars_domain_id": {
+          "tars_knowledge_bases": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 64
+                "type": "object",
+                "properties": {
+                  "rag_agent": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "sql_agent": {
+                    "maxItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "chart_agent": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "file_agent": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  }
+                },
+                "additionalProperties": false
               },
               {
                 "type": "null"
@@ -3452,11 +3528,49 @@
               "agent"
             ]
           },
-          "tars_domain_id": {
+          "tars_knowledge_bases": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 64
+                "type": "object",
+                "properties": {
+                  "rag_agent": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "sql_agent": {
+                    "maxItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "chart_agent": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "file_agent": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  }
+                },
+                "additionalProperties": false
               },
               {
                 "type": "null"
