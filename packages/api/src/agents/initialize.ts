@@ -23,6 +23,7 @@ import type {
   TEndpointOption,
   ReasoningResponseKey,
   StatefulCodeEnvironment,
+  TTarsAgentKnowledgeBases,
   TurnDeliveryRouting,
   ImageDetail,
   TFile,
@@ -982,6 +983,8 @@ export interface InitializeAgentParams {
     model: string | null;
     tool_options: AgentToolOptions | undefined;
     tool_resources: AgentToolResources | undefined;
+    /** A saved agent's TARS picks, so the tools context names what its tools reach. */
+    tars_knowledge_bases?: TTarsAgentKnowledgeBases | null;
     requestBody?: RequestBody;
     /** Trusted endpoint/profile resolved for this agent before any code-file priming. */
     codeExecutionContext: CodeExecutionContext;
@@ -2268,6 +2271,7 @@ export async function initializeAgent(
       model: agent.model,
       tool_options: agent.tool_options,
       tool_resources: runtimeToolResources,
+      tars_knowledge_bases: agent.tars_knowledge_bases,
       requestBody,
       codeExecutionContext,
       attachedEnvironmentOptOut,
