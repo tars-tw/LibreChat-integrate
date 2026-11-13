@@ -170,12 +170,13 @@ function createToolLoader(
     provider,
     tool_options,
     tool_resources,
+    tars_knowledge_bases,
     requestBody,
     codeExecutionContext,
     attachedEnvironmentOptOut,
     accessibleMcpServerNames,
   }) {
-    const agent = { id: agentId, tools, provider, model, tool_options };
+    const agent = { id: agentId, tools, provider, model, tool_options, tars_knowledge_bases };
     try {
       return await loadAgentTools({
         req,
