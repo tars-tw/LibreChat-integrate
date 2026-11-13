@@ -1,5 +1,7 @@
+import { TARS_GENERAL_DOMAIN_ID } from 'librechat-data-provider';
 import type {
   TTarsUser,
+  TTarsDomain,
   TTarsRoleDetail,
   TTarsUserGroupWithMembers,
 } from 'librechat-data-provider';
@@ -12,7 +14,14 @@ export const ROLE_DISABLED = 0;
 export const isRoleEnabled = (role: TTarsRoleDetail): boolean =>
   Number(role.status) === ROLE_ENABLED;
 
-export const roleDomainIds = (role: TTarsRoleDetail): string[] => csvToIds(role.domain_ids);
+/**
+ * Brains are no longer picked on this page, but the chat header (通用腦 + My Agents)
+ * only appears for a user whose roles grant the general brain, so a new role binds it.
+ */
+export const newRoleDomainIds = (domains: TTarsDomain[]): string | undefined =>
+  domains.some((domain) => Number(domain.id) === TARS_GENERAL_DOMAIN_ID)
+    ? String(TARS_GENERAL_DOMAIN_ID)
+    : undefined;
 
 /**
  * The LibreChat menu keys a role grants. pwc_tars's login grants nothing for a

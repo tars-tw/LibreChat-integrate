@@ -28,8 +28,8 @@ import {
   EMPTY_USAGE,
   isRoleEnabled,
   roleMenuKeys,
-  roleDomainIds,
   buildRoleUsage,
+  newRoleDomainIds,
   usersForRole,
   groupsForRole,
 } from './helpers';
@@ -39,9 +39,9 @@ import {
   useTarsUserGroupsQuery,
   useDeleteTarsRoleMutation,
 } from '~/data-provider';
-import { toNameMap, toCsvBlob, downloadBlob, previewNames, formatDateTime } from '../Users/helpers';
+import { toCsvBlob, downloadBlob, previewNames, formatDateTime } from '../Users/helpers';
 import { adminMenuLeafKeys } from '~/components/Nav/Tars/AdminMenu';
-import { StatusBadge, NameList } from '../Users/Fields';
+import { StatusBadge } from '../Users/Fields';
 import RoleUsageModal from './UsageModal';
 import RoleDetailsModal from './Details';
 import { useLocalize } from '~/hooks';
@@ -61,8 +61,8 @@ export default function RoleManager() {
   const { showToast } = useToastContext();
 
   /**
-   * Usage counts come from the user and group listings, and brain edits rewrite
-   * a role's brains, so every visit refetches all three.
+   * Usage counts come from the user and group listings, so every visit
+   * refetches all three.
    */
   const { data, isLoading } = useTarsRolesQuery({ refetchOnMount: true });
   const { data: users = [] } = useTarsUsersQuery({ refetchOnMount: true });
@@ -80,8 +80,7 @@ export default function RoleManager() {
   const [viewingId, setViewingId] = useState<string | null>(null);
 
   const roles = useMemo(() => data?.roles ?? [], [data?.roles]);
-  const domains = useMemo(() => data?.domains ?? [], [data?.domains]);
-  const domainNames = useMemo(() => toNameMap(domains), [domains]);
+  const createDomainIds = useMemo(() => newRoleDomainIds(data?.domains ?? []), [data?.domains]);
   const menuTotal = useMemo(() => adminMenuLeafKeys().length, []);
 
   const [usageView, setUsageView] = useState<{
@@ -163,7 +162,6 @@ export default function RoleManager() {
     const headers = [
       localize('com_ui_tars_roles_name'),
       localize('com_ui_description'),
-      localize('com_ui_tars_roles_domains'),
       localize('com_ui_tars_roles_menus'),
       localize('com_ui_tars_users_status'),
       localize('com_ui_tars_roles_is_default'),
@@ -176,10 +174,6 @@ export default function RoleManager() {
       return [
         role.name,
         role.description ?? '',
-        roleDomainIds(role)
-          .map((id) => domainNames.get(id))
-          .filter(Boolean)
-          .join(' / '),
         menuSummary(role),
         isRoleEnabled(role)
           ? localize('com_ui_tars_users_enabled')
@@ -258,12 +252,11 @@ export default function RoleManager() {
       {!isLoading && filtered.length > 0 && (
         <>
           <div className="border-border-light overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[60rem] text-sm">
+            <table className="w-full min-w-[52rem] text-sm">
               <thead className="bg-surface-secondary text-text-secondary text-left">
                 <tr>
                   {sortableHeader('name', 'com_ui_tars_roles_name')}
                   {sortableHeader('description', 'com_ui_description')}
-                  <th className="px-3 py-2 font-medium">{localize('com_ui_tars_roles_domains')}</th>
                   <th className="px-3 py-2 font-medium">{localize('com_ui_tars_roles_menus')}</th>
                   {sortableHeader('status', 'com_ui_tars_users_status')}
                   <th className="px-3 py-2 font-medium">
@@ -283,14 +276,6 @@ export default function RoleManager() {
                     >
                       <td className="text-text-primary px-3 py-2">{role.name}</td>
                       <td className="text-text-secondary px-3 py-2">{role.description || '—'}</td>
-                      <td className="text-text-secondary px-3 py-2">
-                        <NameList
-                          names={roleDomainIds(role)
-                            .map((id) => domainNames.get(id))
-                            .filter((name): name is string => !!name)}
-                          empty={localize('com_ui_tars_roles_domains_none')}
-                        />
-                      </td>
                       <td className="text-text-secondary px-3 py-2">{menuSummary(role)}</td>
                       <td className="px-3 py-2">
                         <StatusBadge active={isRoleEnabled(role)} />
@@ -415,7 +400,7 @@ export default function RoleManager() {
           key={editing?.id ?? 'create'}
           open={true}
           role={editing ?? undefined}
-          domains={domains}
+          createDomainIds={createDomainIds}
           onOpenChange={(open) => {
             if (!open) {
               setCreating(false);
@@ -442,7 +427,6 @@ export default function RoleManager() {
       {viewing != null && (
         <RoleDetailsModal
           role={viewing}
-          domains={domains}
           usage={usage.get(String(viewing.id)) ?? EMPTY_USAGE}
           locale={i18n.language}
           onOpenChange={(open) => !open && setViewingId(null)}

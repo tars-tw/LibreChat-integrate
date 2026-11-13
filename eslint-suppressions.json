@@ -1,7 +1,7 @@
 {
   "client/src/components/Admin/Tars/About/Files.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 2
+      "count": 1
     }
   },
   "client/src/components/Admin/Tars/About/History.tsx": {
@@ -13,9 +13,6 @@
     }
   },
   "client/src/components/Admin/Tars/Audit/Filters.tsx": {
-    "design/disabled-recipe": {
-      "count": 1
-    },
     "shadcn/no-raw-colors": {
       "count": 1
     }
@@ -43,7 +40,7 @@
   },
   "client/src/components/Admin/Tars/Audit/Statistics.tsx": {
     "shadcn/no-raw-colors": {
-      "count": 3
+      "count": 2
     }
   },
   "client/src/components/Admin/Tars/Audit/Table.tsx": {
@@ -492,16 +489,6 @@
   "client/src/components/Admin/Tars/TokenQuota/QuotaModal.tsx": {
     "design/disabled-recipe": {
       "count": 1
-    }
-  },
-  "client/src/components/Admin/Tars/TokenQuota/Quotas.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 7
-    }
-  },
-  "client/src/components/Admin/Tars/TokenQuota/Report/Members.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 4
     }
   },
   "client/src/components/Admin/Tars/TokenQuota/Report/Ranked.tsx": {

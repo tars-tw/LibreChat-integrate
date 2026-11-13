@@ -232,7 +232,7 @@ describe('TraceDialog', () => {
   it('renders the run summary, the question and the stored answer', () => {
     renderDialog();
     expect(screen.getByText('ada')).toBeInTheDocument();
-    expect(screen.getByText('Finance brain')).toBeInTheDocument();
+    expect(screen.queryByText('Finance brain')).not.toBeInTheDocument();
     expect(
       screen.getByText('com_ui_tars_audit_trace_unapplied_regenerate_count:1'),
     ).toBeInTheDocument();

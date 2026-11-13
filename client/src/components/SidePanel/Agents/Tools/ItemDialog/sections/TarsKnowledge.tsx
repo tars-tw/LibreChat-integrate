@@ -80,7 +80,7 @@ export default function TarsKnowledgeConfig({ toolSwitch }: { toolSwitch: TTarsT
           selected={selected}
           onChange={onChange}
           placeholder={localize(
-            single ? 'com_agents_tars_kb_select_one' : 'com_agents_tars_kb_select_many',
+            single ? 'com_agents_tars_kb_select_single' : 'com_agents_tars_kb_select_multiple',
           )}
           single={single}
           chips

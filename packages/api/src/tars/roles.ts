@@ -64,12 +64,14 @@ export async function fetchTarsRolePrepareData(baseUrl?: string): Promise<TarsRo
 /**
  * pwc_tars only overwrites `librechat_menu_keys` when the key is present in the
  * body, so an empty selection must be sent as `''` (grant nothing) rather than
- * being omitted, which would silently keep the previous set.
+ * being omitted, which would silently keep the previous set. `domain_ids` is the
+ * opposite: the page no longer edits brains, so it is sent only when given and an
+ * update leaves the stored bindings (the general brain the chat runs on) alone.
  */
 const toRoleBody = (input: TarsRoleInput): Record<string, unknown> => ({
   name: input.name,
   description: input.description ?? '',
-  domain_ids: input.domainIds ?? '',
+  ...(input.domainIds != null && { domain_ids: input.domainIds }),
   librechat_menu_keys: input.librechatMenuKeys ?? '',
   is_enabled: (input.isEnabled ?? true) ? 1 : 0,
   is_default_role: input.isDefaultRole ?? false,

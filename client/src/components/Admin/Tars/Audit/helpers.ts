@@ -18,7 +18,6 @@ export interface AuditColumn {
  */
 export const REPORT_COLUMNS: AuditColumn[] = [
   { field: 'username', labelKey: 'com_ui_tars_audit_col_user', locked: true },
-  { field: 'domain_name', labelKey: 'com_ui_tars_audit_col_domain' },
   { field: 'user_query', labelKey: 'com_ui_tars_audit_col_query', locked: true },
   { field: 'response', labelKey: 'com_ui_tars_audit_col_response', locked: true, kind: 'response' },
   { field: 'is_deleted', labelKey: 'com_ui_tars_audit_col_deleted', kind: 'deleted' },
@@ -36,7 +35,6 @@ export const REPORT_COLUMNS: AuditColumn[] = [
 
 export const FEEDBACK_COLUMNS: AuditColumn[] = [
   { field: 'username', labelKey: 'com_ui_tars_audit_col_user', locked: true },
-  { field: 'domain_name', labelKey: 'com_ui_tars_audit_col_domain' },
   { field: 'user_query', labelKey: 'com_ui_tars_audit_col_query', locked: true },
   { field: 'response', labelKey: 'com_ui_tars_audit_col_response', locked: true, kind: 'response' },
   { field: 'comments', labelKey: 'com_ui_tars_audit_col_comments', locked: true, kind: 'comments' },
@@ -53,8 +51,8 @@ export const FEEDBACK_COLUMNS: AuditColumn[] = [
 const defaults = (columns: AuditColumn[], extra: string[]): string[] =>
   columns.filter((c) => c.locked === true || extra.includes(c.field)).map((c) => c.field);
 
-export const DEFAULT_REPORT_COLUMNS = defaults(REPORT_COLUMNS, ['domain_name', 'is_deleted']);
-export const DEFAULT_FEEDBACK_COLUMNS = defaults(FEEDBACK_COLUMNS, ['domain_name']);
+export const DEFAULT_REPORT_COLUMNS = defaults(REPORT_COLUMNS, ['is_deleted']);
+export const DEFAULT_FEEDBACK_COLUMNS = defaults(FEEDBACK_COLUMNS, []);
 
 export const PAGE_SIZES = [10, 20, 50, 100];
 /** `Dropdown` renders string options, so the sizes are pre-stringified once. */

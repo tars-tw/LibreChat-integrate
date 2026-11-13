@@ -28,7 +28,6 @@ const toQuery = (filters: FilterState): TTarsAuditQuery => ({
   end_date: filters.end,
   filter_user_ids: filters.userIds,
   knowledge_base_ids: filters.knowledgeBaseIds,
-  domain_id: filters.domainId,
   query_filter: filters.keyword.trim(),
 });
 
@@ -161,7 +160,6 @@ export default function AuditManager() {
           {hasRun ? (
             <Statistics
               summary={report?.summary ?? null}
-              details={report?.details ?? []}
               likes={totals.likes}
               dislikes={totals.dislikes}
             />
