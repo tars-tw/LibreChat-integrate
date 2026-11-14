@@ -46,7 +46,10 @@ endpoints:
     capabilities:
       - tools
       - actions
-      - file_search
+      # Temporarily disabled: file search embeds uploads through rag_api, which needs pgvector.
+      # Off, the attach menu offers only local upload and the agent builder hides 檔案搜尋.
+      # Uncomment to re-enable.
+      # - file_search
       - artifacts
       - execute_code  # Disabled for now; uncomment to enable code execution capability for agents.
       - web_search
