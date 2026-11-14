@@ -19,6 +19,7 @@
 | Node.js **24.16.0** | `nvm use` 讀 `.nvmrc`;沒裝先 `nvm install 24.16.0` | `node -v` |
 | Docker | 只用來跑依賴服務(MongoDB + Meilisearch),**不跑官方 api image** | `docker info` |
 | **pwc_tars** (`:5000`) | 登入/知識庫/工具的真正後端,由 pwc_tars 專案自己啟動 | `curl localhost:5000/api/auth/sso/status` |
+| rag_api (`:8000`) + pgvector (`:5433`) | 代理的「檔案搜尋」(LibreChat 原生 file_search)才需要,見 [§1.7](#17-代理檔案搜尋rag_api)。不架時其他功能不受影響,只有檔案搜尋上傳會失敗 | `curl -s 127.0.0.1:8000/health` |
 | Langflow (`:7860`) | 用 Langflow 整合才需要;須為 TARS 版 `langflow_tars` `187d365173`(`feat/langflow-sso`)之後的版本,舊版沒有 `/api/v1/tars/*`,Workflow 頁與從對話執行 flow 都會 404。建議比 LibreChat 先啟動 | `curl localhost:7860/health`;版本:`curl -s -o /dev/null -w '%{http_code}' localhost:7860/api/v1/tars/flows` 回 `403` 為新版、`404` 為舊版 |
 
 ### 1.2 初始化指令(只做一次)
@@ -223,6 +224,59 @@ npm run backend      # Express 在 :3080 同時 serve 打包好的前端 + API
 - `:3080` 吐的是「上次 build 的靜態前端」——改了 `client/` 沒重跑 `npm run frontend`(或 `cd client && npm run build`)就永遠是舊畫面。
 - 對外部署時把網域指到 `:3080`,並改 `.env`:`VITE_LANGFLOW_URL` 設為對外 Langflow 網址(**要用主站同網域的子網域**,否則 iframe 被第三方 cookie 政策擋)、重新產生 `JWT_*`/`CREDS_*`、確認 `TARS_LANGFLOW_SSO_SECRET` 與 Langflow 端相同(沿用範例檔預設值即可;若有更換,兩邊一起換並都重啟)、`LLM_GATEWAY_ALLOW_UNAUTHENTICATED` 改為 `LLM_GATEWAY_SERVICE_KEY`。改任何 `VITE_*` 都要重跑 `npm run frontend`。
 
+### 1.7 代理「檔案搜尋」(rag_api)
+
+代理建構器的「檔案搜尋」是 LibreChat 原生的 file_search,與 pwc_tars 知識庫、Langflow 無關:上傳的檔案由 LibreChat 自己的 RAG API(rag_api,Python 服務)切塊、embedding,存進 pgvector。上傳時呼叫 `${RAG_API_URL}/embed`,**`.env` 沒設 `RAG_API_URL` 就回 500「Error processing file」**。官方 `docker-compose.yml` / `deploy-compose.yml` 內建 rag_api 並自動設好 `RAG_API_URL`;本文件的部署是 `npm run backend`,要自己另外起。
+
+**(1) 填 `.env`**:`.env.example` 最下面的「Local RAG API (rag.lite.yml)」區塊解註解 `RAG_API_URL`、`RAG_PORT`,上方原本的 RAG 區塊解註解 `EMBEDDINGS_*`(原本那行 `RAG_API_URL=http://rag_api:8000` 是 Docker 部署用的,`RAG_OPENAI_API_KEY` 也不用填,都維持註解)。合起來是:
+
+```
+RAG_API_URL=http://127.0.0.1:8000
+RAG_PORT=8000
+EMBEDDINGS_PROVIDER=openai
+EMBEDDINGS_MODEL=text-embedding-3-small
+```
+
+`RAG_API_URL` 給 LibreChat 用,其餘給 rag_api 用。rag_api 也讀同一份 `.env`,所以 `JWT_SECRET` 兩邊自動一致(rag_api 用它驗 LibreChat 送來的 token)。embedding 模型沿用 pwc_tars 知識庫的 `text-embedding-3-small`。
+
+**OpenAI key 不寫在 `.env`**:rag_api 只在程式啟動時讀一次 `RAG_OPENAI_API_KEY`,讀不到 LibreChat 的 `${tars:KEY}`。所以 `rag.lite.yml` 用 [`scripts/rag/entrypoint.py`](../scripts/rag/entrypoint.py) 包住原本的 `python main.py`:每次 container 啟動先向 pwc_tars `GET /api/settings/get_sys_config?key=KEY_OPEN_AI_API` 取 key,放進環境變數再啟動 rag_api,key 只存在 pwc_tars。pwc_tars 的位址取自 `.env` 的 `TARS_AUTH_URL`,其中 `localhost` / `127.0.0.1` 自動換成 `host.docker.internal`(container 內的 localhost 是它自己);pwc_tars 在別台主機時照實填即可,或另設 `RAG_TARS_URL` 覆寫。
+
+- **pwc_tars 要先啟動**:腳本每 5 秒重試、最多約 2 分鐘,仍連不到 pwc_tars,或 `KEY_OPEN_AI_API` 不存在、是空值、已停用,rag_api 就不啟動(log 有 `[rag-entrypoint]` 開頭的原因)。
+- 不要讓 rag_api 退回讀 `OPENAI_API_KEY`:LibreChat `.env` 裡那個是 `user_provided`,拿它打 OpenAI 一定失敗,所以腳本一定會設 `RAG_OPENAI_API_KEY`。若 `.env` 有填 `RAG_OPENAI_API_KEY`,腳本會改用 `.env` 的值,不去讀 pwc_tars。
+
+**(2) 起 rag_api + pgvector**:repo 根目錄的 [`rag.lite.yml`](../rag.lite.yml) 以官方 `rag.yml` 為底,改用 lite image(只做雲端 embedding,不含本機 HuggingFace 模型與 torch)、port 只綁 `127.0.0.1`(vectordb `5433`、rag_api `8000`)、固定 project 名稱 `librechat-rag`:
+
+```bash
+docker compose -f rag.lite.yml pull
+docker compose -f rag.lite.yml up -d
+curl -s http://127.0.0.1:8000/health      # {"status":"UP"}
+```
+
+rag_api 的 log(`docker compose -f rag.lite.yml logs rag_api`)應依序出現 `[rag-entrypoint] using pwc_tars KEY_OPEN_AI_API from http://host.docker.internal:5000`、`Initialized embeddings of type: OpenAIEmbeddings` 與 `Application startup complete`。
+
+**(3) 重啟 LibreChat 後端**:`.env` 只在啟動時讀取。重啟後在代理的「檔案搜尋」上傳檔案,回應帶 `embedded: true` 即接通。
+
+**(4) 允許刪除已 embedding 的檔案**:upstream 預設不讓刪,`DELETE /api/files` 回 200 但檔案列在 `failedFileIds`,後端 log 依序是 `Retained file cleanup requires upgraded readers`、`Vector ownership predates the safe writer rollout`。`librechat.yaml` 的 `fileConfig` 要加:
+
+```yaml
+fileConfig:
+  retainedFileCleanup: true
+  vectorOwnershipTrackingStart: '2026-11-11T05:59:00Z'
+```
+
+`vectorOwnershipTrackingStart` 是 UTC 截止時間,只有在它之後 embedding 的檔案能刪(之前的一律刪不掉,不會誤刪)。**設成這個環境的 rag_api 第一次啟動的時間**;上面的值是開發機的,其他環境照自己的時間改。多個 LibreChat 副本時,所有副本都升級到這個版本後才開 `retainedFileCleanup`。
+
+**日常啟動**:container 與向量資料(volume `librechat-rag_pgdata2`)都保留著,開 Docker 後:
+
+```bash
+docker compose -f rag.lite.yml start
+```
+
+- 沒有設 restart policy,Docker 重開後要手動 start;要跟著 Docker 自動起來改 `docker update --restart unless-stopped librechat-rag-vectordb-1 librechat-rag-rag_api-1`。
+- pwc_tars 換了 `KEY_OPEN_AI_API`:`docker compose -f rag.lite.yml restart rag_api` 即可,啟動腳本會重讀。
+- 改了 `.env` 的 RAG 值要用 `up -d` 重建 container,`start` / `restart` 不會重讀 `env_file`。
+- `docker compose -f rag.lite.yml down -v` 會連向量一起刪除,不要用。
+
 ---
 
 ## 2. Commit 更新後如何更新
@@ -262,6 +316,7 @@ npm run build
 
 | 日期 | 檔案 | 變更內容 | 相關 commit |
 |---|---|---|---|
+| 2026-11-11 | `.env`、`librechat.yaml`(只影響代理「檔案搜尋」) | 本機架 rag_api,代理的「檔案搜尋」上傳不再回「Error processing file」,步驟見 [§1.7](#17-代理檔案搜尋rag_api)。`.env` 解註解 RAG 區塊:`RAG_API_URL=http://127.0.0.1:8000`、`RAG_PORT=8000`、`EMBEDDINGS_PROVIDER=openai`、`EMBEDDINGS_MODEL=text-embedding-3-small`;再以 repo 根目錄新增的 `rag.lite.yml` 起 rag_api + pgvector。OpenAI key 不寫進 `.env`,由 `scripts/rag/entrypoint.py` 在 container 啟動時讀 pwc_tars sys_config `KEY_OPEN_AI_API`,所以 pwc_tars 要比 rag_api 先啟動。`librechat.yaml` 的 `fileConfig` 新增 `retainedFileCleanup: true` 與 `vectorOwnershipTrackingStart`(設成該環境 rag_api 第一次啟動的 UTC 時間),否則已 embedding 的檔案刪不掉。不用檔案搜尋的環境可以都不設。 | `feature/rag-retained-file-cleanup`(待 commit) |
 | 2026-11-09 | `librechat.yaml`(視部署而定) | 新增個人記憶(Memory Assist):側邊欄「個人記憶」可新增、檢視、編輯、刪除記憶,使用者可在該面板與設定 → 對話 → 記憶選擇「記憶模式」(自動更新／僅手動更新／關閉)。pwc_tars 須包含分支 `feat/refactor_memory_assist_to_api`,且 `.env` 須設定 `TARS_JWT_SECRET`。記憶抽取由 pwc_tars 以自身的模型金鑰執行,不經 LLM 閘道。可選的 `tars.memoryAssist.enabled`(預設 `true`)、`tars.memoryAssist.contextTimeoutMs`(預設 `6000`)與 `tars.memoryAssist.panelRefreshMs`(預設 `30000`,`0` 為關閉);`enabled` 設為 `false` 時,面板與 `/api/tars/memory` 一併關閉。記憶內容套用 `filters.memories` 的過濾規則,遭過濾的記憶不帶入該次對話。不要同時啟用 LibreChat 原生的 `memory:` 設定。 | `feat/personal_memory`(待 commit) |
 | 2026-11-05 | 資料庫(`.env`、`librechat.yaml` 無異動) | pwc_tars `display_name` 為空時,登入與 Token 配額、報表頁面改以 `username` 作為顯示名稱。先前已存成空名稱的帳號,更新後執行一次 `node config/migrate-tars-display-names.js`(可先加 `--dry-run` 查看筆數;可重複執行,服務運行中也可執行)。未執行時,這些帳號要到下次登入才會修正。 | `fix/update_display_name_logics`(待 commit) |
 | 2026-11-02 | `librechat.yaml`(視部署而定) | 支援 OIDC 驗證的 MCP 伺服器(於 MCP 工具設定 → 伺服器管理,外部 MCP + Streamable HTTP,驗證方式選 OIDC)。pwc_tars 須包含分支 `feat/support_oidc_auth_mcp_server`(`user-settings` 回傳 `tool_config`,否則使用者在「我的工具」的 OIDC 工具開關不生效)。`.env` 無新增值,但所有 instance 的 `CREDS_KEY` 必須相同(Client Secret 以此加密)。可選的 `tars.directToolCatalogTimeoutMs`(預設 `10000`)控制每台伺服器讀取工具清單的等待上限。刪除伺服器,或變更其 URL、Issuer、Client ID、代碼,會撤銷並清除所有使用者的 Token,使用者須重新登入。OIDC 提供者或 MCP 伺服器位於內網、或使用 http 時,需把 `host:port` 加入 `mcpSettings.allowedAddresses`;若已設定 `mcpSettings.allowedDomains`,`allowedAddresses` 不適用,改為把該主機列入 `allowedDomains`。Redirect URI 為 `{DOMAIN_SERVER}/api/mcp/tars_<代碼>/oauth/callback`,需在提供者端註冊。 | `feat/support_oidc_auth`(待 commit) |

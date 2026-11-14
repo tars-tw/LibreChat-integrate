@@ -126,6 +126,14 @@ webSearch:
 # download them from LibreChat per call. `none` stores the bytes only, so the whole sheet is
 # never extracted into the prompt as text as well.
 fileConfig:
+  # Without it, deleting an embedded file (agent 檔案搜尋) or a code-env file fails with
+  # "Retained file cleanup requires upgraded readers". Turn on only once every replica runs
+  # a build that reads retained file destinations.
+  retainedFileCleanup: true
+  # Embedded files are deletable only if embedded after this UTC instant; older ones fail
+  # closed. Set it to when the current rag_api writer went live (here: the local rag_api
+  # first came up). A deployment with older embeddings needs its own cutoff.
+  vectorOwnershipTrackingStart: '2026-11-11T05:59:00Z'
   defaultLLMDeliveryPath:
     overrides:
       text/csv: none

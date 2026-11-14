@@ -1,0 +1,50 @@
+# Local RAG API for agent file search (檔案搜尋), for a backend run with `npm run backend`.
+# Docker deployments (docker-compose.yml / deploy-compose.yml) already bundle rag_api.
+#
+# Differs from rag.yml: the lite image (cloud embeddings only, no torch) and ports bound to
+# 127.0.0.1. Settings come from LibreChat's .env: JWT_SECRET (rag_api verifies LibreChat's
+# tokens with it) and EMBEDDINGS_*. LibreChat itself needs RAG_API_URL=http://127.0.0.1:8000
+# there. The OpenAI embeddings key is not in .env: scripts/rag/entrypoint.py reads pwc_tars
+# sys_config KEY_OPEN_AI_API (at TARS_AUTH_URL, loopback mapped to host.docker.internal) on
+# every container start, so pwc_tars must be up first and a rotated key needs a restart.
+#
+#   docker compose -f rag.lite.yml up -d      # create / recreate
+#   docker compose -f rag.lite.yml start      # start existing containers
+#   curl -s http://127.0.0.1:8000/health      # {"status":"UP"}
+#
+# Vectors live in the `librechat-rag_pgdata2` volume and survive stop / down (not `down -v`).
+name: librechat-rag
+services:
+  vectordb:
+    image: pgvector/pgvector:0.8.0-pg15-trixie
+    environment:
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    volumes:
+      - pgdata2:/var/lib/postgresql/data
+    ports:
+      - '127.0.0.1:5433:5432'
+  rag_api:
+    image: registry.librechat.ai/librechat-ai/librechat-rag-api-dev-lite:latest
+    env_file:
+      - .env
+    entrypoint: ['python', '/tars/entrypoint.py']
+    command: ['python', 'main.py']
+    volumes:
+      - ./scripts/rag/entrypoint.py:/tars/entrypoint.py:ro
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    environment:
+      - DB_HOST=vectordb
+      - DB_PORT=5432
+      - POSTGRES_DB=mydatabase
+      - POSTGRES_USER=myuser
+      - POSTGRES_PASSWORD=mypassword
+      - RAG_PORT=8000
+    ports:
+      - '127.0.0.1:8000:8000'
+    depends_on:
+      - vectordb
+volumes:
+  pgdata2:
