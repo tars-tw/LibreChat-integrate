@@ -295,6 +295,7 @@ describe('executeTarsMcpTool', () => {
       tool_name: 'create_issue',
       arguments: { title: 'bug' },
       user_id: USER_ID,
+      relay_files: true,
     });
   });
 

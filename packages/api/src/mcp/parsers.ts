@@ -10,6 +10,13 @@ import {
 } from 'librechat-data-provider';
 import type { UIResource, TMCPAppsPolicy } from 'librechat-data-provider';
 import type * as t from './types';
+import {
+  MCP_FILES_ARTIFACT_KEY,
+  describeMCPFile,
+  toTextFileArtifact,
+  toAudioFileArtifact,
+  toResourceFileArtifact,
+} from './files/artifact';
 
 export const DEFAULT_MCP_IMAGE_DATA_MAX_BYTES: number = 10 * 1024 * 1024;
 
@@ -360,6 +367,8 @@ export function formatToolContent(
 
   const imageUrls: t.FormattedContent[] = [];
   const uiResources: UIResource[] = [];
+  /** TARS: files the tool returned, saved as the reply's attachments (see `mcp/files`). */
+  const files: t.MCPFileArtifact[] = [];
   let placementMarkerCount = 0;
   // Assistants submits only this string; keep its bounded conversion independent from host UI data.
   let currentTextBlock = isRecognizedProvider ? '' : parseAsString(result);
@@ -382,6 +391,7 @@ export function formatToolContent(
   const contentHandlers: {
     text: (item: Extract<t.ToolContentPart, { type: 'text' }>) => void;
     image: (item: t.ToolContentPart) => void;
+    audio: (item: t.AudioContent) => void;
     resource: (item: Extract<t.ToolContentPart, { type: 'resource' }>) => void;
     resource_link: (item: t.ResourceLink) => void;
   } = {
@@ -396,6 +406,17 @@ export function formatToolContent(
         return;
       }
       collectImage(item);
+    },
+
+    audio: (item) => {
+      if (!isRecognizedProvider) {
+        return;
+      }
+      const file = toAudioFileArtifact(item);
+      if (file) {
+        files.push(file);
+        appendTextBlock(describeMCPFile(file));
+      }
     },
 
     resource: (item) => {
@@ -458,10 +479,19 @@ export function formatToolContent(
         const body = readResourceBody(item.resource);
         if (body.text) {
           resourceText.push(`Resource Text: ${body.text}`);
+          const file = toTextFileArtifact(item.resource, body.text);
+          if (file) {
+            files.push(file);
+          }
         } else if (body.image) {
           collectImage(body.image);
         } else if (body.binaryBytes != null) {
           resourceText.push(describeBinaryResource(body.binaryBytes));
+          const file = toResourceFileArtifact(item.resource);
+          if (file) {
+            files.push(file);
+            resourceText.push(describeMCPFile(file));
+          }
         }
       }
 
@@ -593,6 +623,10 @@ UI Resource Markers Available:
       ...artifacts,
       [Tools.ui_resources]: { data: uiResources },
     };
+  }
+
+  if (files.length > 0) {
+    artifacts = { ...artifacts, [MCP_FILES_ARTIFACT_KEY]: files };
   }
 
   return [currentTextBlock || (artifacts !== undefined ? '' : '(No response)'), artifacts];

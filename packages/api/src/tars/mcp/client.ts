@@ -58,6 +58,8 @@ export interface TarsMcpToolEntry {
 export interface TarsMcpExecuteResult {
   result: unknown;
   durationMs?: number;
+  /** MCP content parts pwc_tars kept out of `result` (images, files); unvalidated. */
+  content?: unknown[];
 }
 
 /** Tool entries scoped to one lookup namespace (the aggregate gateway or a single server). */
@@ -335,15 +337,25 @@ export async function executeTarsMcpTool(
   if (!entry) {
     throw new Error(`Unknown TARS MCP tool: ${name}`);
   }
-  const data = await tarsMcpFetch<{ result?: unknown; duration_ms?: number }>('/api/mcp/execute', {
+  const data = await tarsMcpFetch<{
+    result?: unknown;
+    duration_ms?: number;
+    content?: unknown;
+  }>('/api/mcp/execute', {
     method: 'POST',
     body: {
       server_id: entry.serverId,
       tool_name: entry.toolName,
       arguments: toolArguments ?? {},
       user_id: tarsUserId,
+      /** Text files (CSV, attachments) come back as parts too, for `mcpFiles` to save. */
+      relay_files: true,
     },
     timeoutMs: executeTimeoutMs(),
   });
-  return { result: data?.result, durationMs: data?.duration_ms };
+  return {
+    result: data?.result,
+    durationMs: data?.duration_ms,
+    content: Array.isArray(data?.content) ? data.content : undefined,
+  };
 }

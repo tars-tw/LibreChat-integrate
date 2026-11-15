@@ -84,6 +84,22 @@ export type ToolContentPart =
   | ResourceLink
   | AudioContent;
 export type ResourceContents = EmbeddedResource['resource'];
+/** A file an MCP tool returned (resource `blob` or `audio`), carried to the reply's attachments. */
+export interface MCPFileArtifact {
+  filename: string;
+  mimeType: string;
+  /** Base64 bytes. */
+  data: string;
+  bytes: number;
+  /** Text read from a document, stored on the saved file for later turns. */
+  text?: string;
+  /** A text body offered as a file: saved only if its type is in `tars.mcpFiles.textTypes` or
+   *  `attachment` is set, and never by `saveMCPToolFiles` while still a candidate. */
+  candidate?: boolean;
+  /** The server marked it as a file (`MCP_ATTACHMENT_META_KEY` in the resource `_meta`). */
+  attachment?: boolean;
+}
+
 export type ResourceBody = {
   text?: string;
   image?: ImageContent;
@@ -159,6 +175,7 @@ export type Artifacts =
         fileCitations?: boolean;
       };
       [Tools.web_search]?: SearchResultData;
+      mcp_files?: MCPFileArtifact[];
       files?: Array<{ id: string; name: string }>;
       session_id?: string;
       file_ids?: string[];

@@ -1941,6 +1941,7 @@
   "com_ui_mcp_servers_allow_use": "允許使用者使用 MCP 伺服器",
   "com_ui_mcp_title_invalid": "標題只能包含英文字母、數字及空格",
   "com_ui_mcp_tool_options": "工具選項",
+  "com_ui_mcp_tool_output": "MCP 工具產出",
   "com_ui_mcp_transport": "傳輸方式",
   "com_ui_mcp_type_sse": "SSE",
   "com_ui_mcp_type_streamable_http": "可串流 HTTPS",

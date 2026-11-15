@@ -115,7 +115,52 @@ describe('createTarsMcpServer', () => {
       tool_name: 'create_issue',
       arguments: { title: 'bug' },
       user_id: USER_ID,
+      relay_files: true,
     });
+    await client.close();
+  });
+
+  it('relays the images, files and text files pwc_tars returned beside the text result', async () => {
+    const pdf = {
+      type: 'resource',
+      resource: { uri: 'file:///report.pdf', mimeType: 'application/pdf', blob: 'JVBERi0=' },
+    };
+    const image = { type: 'image', data: 'aGVsbG8=', mimeType: 'image/png' };
+    const csv = {
+      type: 'resource',
+      resource: { uri: 'file:///a.csv', mimeType: 'text/csv', text: 'a,b\n1,2\n' },
+    };
+    mockTarsBackend({
+      status: 200,
+      body: envelope({
+        result: { result: 'done\n[檔案: report.pdf (application/pdf, 5 bytes)]' },
+        duration_ms: 3,
+        content: [
+          { type: 'text', text: 'done' },
+          pdf,
+          csv,
+          image,
+          { type: 'image', mimeType: 'image/png' },
+          { type: 'mystery' },
+        ],
+      }),
+    });
+    const client = await connectClient(USER_ID);
+
+    const result = (await client.callTool({
+      name: 'issues__create_issue',
+      arguments: { title: 'bug' },
+    })) as CallToolResult;
+
+    expect(result.content).toEqual([
+      {
+        type: 'text',
+        text: JSON.stringify({ result: 'done\n[檔案: report.pdf (application/pdf, 5 bytes)]' }),
+      },
+      pdf,
+      csv,
+      image,
+    ]);
     await client.close();
   });
 

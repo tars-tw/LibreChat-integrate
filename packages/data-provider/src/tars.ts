@@ -854,6 +854,34 @@ export const tarsConfigSchema = z.object({
       maxFiles: z.number().int().min(1).max(50).default(10),
     })
     .prefault({}),
+  /** Files an MCP tool returns (a binary resource `blob`, `audio`, or a text file of a type in
+   *  `textTypes`): saved as attachments of the reply, and documents also read into the tool result
+   *  so the model can use them in the same turn. */
+  mcpFiles: z
+    .object({
+      enabled: z.boolean().default(true),
+      /** Largest file saved; a larger one is described to the model and dropped. The MCP
+       *  transport caps a reply first, base64 included: 16MB over HTTP
+       *  (`MCP_STREAMABLE_HTTP_MAX_RESPONSE_BYTES`, about a 12MB file) and 10MB over stdio
+       *  (about 7.5MB). Raising this alone lets nothing larger through; pwc_tars caps its relay
+       *  at `MCP_FILE_CONTENT_MAX_BYTES` (default 10MB). */
+      maxBytes: z
+        .number()
+        .int()
+        .min(1)
+        .max(512 * 1024 * 1024)
+        .default(10 * 1024 * 1024),
+      /** Characters of a document's text added to the tool result; `0` saves the file only. */
+      maxTextChars: z.number().int().min(0).max(1_000_000).default(30_000),
+      /** Text content saved as a file too, by MIME type; other text (plain, Markdown, code) stays
+       *  text only, so a tool that reads files does not leave an attachment per read. A resource
+       *  whose `_meta` sets `tars/attachment` is saved whatever its type. pwc_tars relays HTTP text
+       *  as a file only for its `MCP_TEXT_FILE_TYPES` (CSV, TSV) or an attachment response. */
+      textTypes: z
+        .array(z.string().trim().toLowerCase().min(1))
+        .default(['text/csv', 'application/csv', 'text/tab-separated-values']),
+    })
+    .prefault({}),
   /** pwc_tars's personal memory (Memory Assist): recalled before each turn, updated after it. */
   memoryAssist: z
     .object({
@@ -893,3 +921,8 @@ export interface TTarsMemory {
 
 export type TTarsMemoryAssistConfig = z.infer<typeof tarsConfigSchema>['memoryAssist'];
 export type TTarsWorkflowFilesConfig = z.infer<typeof tarsConfigSchema>['workflowFiles'];
+export type TTarsMcpFilesConfig = z.infer<typeof tarsConfigSchema>['mcpFiles'];
+
+/** Resource `_meta` key an MCP server (pwc_tars for attachment responses) sets on a part it sends
+ *  as a file, so it is saved whatever `tars.mcpFiles.textTypes` lists. */
+export const MCP_ATTACHMENT_META_KEY = 'tars/attachment';

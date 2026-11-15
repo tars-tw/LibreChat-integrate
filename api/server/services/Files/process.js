@@ -1753,6 +1753,56 @@ async function saveBase64Image(
 }
 
 /**
+ * Stores a tool-produced file under the document strategy and creates its record. Storage
+ * mechanics only; which files are saved and how they are named is `saveMCPToolFiles`.
+ *
+ * @param {object} params
+ * @param {ServerRequest} params.req
+ * @param {Buffer} params.buffer
+ * @param {import('@librechat/api').MCPToolFileRecord} params.record
+ * @returns {Promise<MongoFile>}
+ */
+async function saveToolFileBuffer({ req, buffer, record }) {
+  const retentionExpiryPromise = getRetentionExpiry(req);
+  const source = getFileStrategy(req.config, { context: record.context });
+  const { saveBuffer } = getStrategyFunctions(source);
+  const filepath = await saveBuffer({
+    userId: req.user.id,
+    fileName: `${record.file_id}-${record.filename}`,
+    buffer,
+    basePath: 'uploads',
+    tenantId: req.user.tenantId,
+  });
+  const storageMetadata = getStorageMetadata({ filepath, source });
+  return await withStoredUploadCleanup(
+    {
+      req,
+      logger,
+      recordExists: fileRecordExists,
+      resolveDeleteFile: () => getStrategyFunctions(source).deleteFile,
+      stored: { file_id: record.file_id, filepath, source, ...storageMetadata },
+      trackWrite: true,
+    },
+    async (beginWrite) => {
+      const retentionExpiry = await retentionExpiryPromise;
+      beginWrite();
+      return db.createFile(
+        {
+          ...record,
+          source,
+          filepath,
+          ...storageMetadata,
+          user: req.user.id,
+          ...retentionExpiry,
+          tenantId: req.user.tenantId,
+        },
+        true,
+      );
+    },
+  );
+}
+
+/**
  * Filters a file based on its size and the endpoint origin.
  *
  * @param {Object} params - The parameters for the function.
@@ -1858,6 +1908,7 @@ module.exports = {
   filterFile,
   processFileURL,
   saveBase64Image,
+  saveToolFileBuffer,
   processImageFile,
   uploadImageBuffer,
   sweepExpiredFiles,

@@ -32,6 +32,7 @@ export * from './mcp/MCPManager';
 export * from './mcp/connection';
 export * from './mcp/toolsChanged';
 export * from './mcp/defer';
+export * from './mcp/files';
 export * from './mcp/oauth';
 export * from './mcp/auth';
 export * from './mcp/zod';
