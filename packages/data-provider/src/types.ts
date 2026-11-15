@@ -129,6 +129,8 @@ export type TEphemeralAgent = {
    */
   mcp_tools?: Record<string, string[]>;
   web_search?: boolean;
+  /** Country OpenAI's own web search runs in (`OPENAI_WEB_SEARCH_COUNTRIES`); unset = OpenAI's default. */
+  web_search_country?: string;
   /** pwc_tars SQL agent (資料庫查詢). */
   sql_agent?: boolean;
   /** pwc_tars RAG agent (知識庫檢索). */

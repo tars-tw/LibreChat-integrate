@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 import { useSetRecoilState } from 'recoil';
-import { Tools, Constants, LocalStorageKeys, AgentCapabilities } from 'librechat-data-provider';
+import {
+  Tools,
+  Constants,
+  EModelEndpoint,
+  LocalStorageKeys,
+  AgentCapabilities,
+} from 'librechat-data-provider';
 import type { TAgentsEndpoint, TEphemeralAgent } from 'librechat-data-provider';
 import {
   useMCPServerManager,
@@ -21,6 +27,10 @@ interface BadgeRowContextType {
   skills: ReturnType<typeof useToolToggle>;
   memory: ReturnType<typeof useToolToggle>;
   webSearch: ReturnType<typeof useToolToggle>;
+  /** Web search runs on OpenAI's own tool for this chat, so the search provider's key is not needed. */
+  nativeWebSearch: boolean;
+  /** The country OpenAI's own web search runs in (`OPENAI_WEB_SEARCH_COUNTRIES`). */
+  webSearchCountry: ReturnType<typeof useToolToggle>;
   sqlAgent: ReturnType<typeof useToolToggle>;
   ragAgent: ReturnType<typeof useToolToggle>;
   chartAgent: ReturnType<typeof useToolToggle>;
@@ -45,6 +55,8 @@ interface BadgeRowProviderProps {
   isSubmitting?: boolean;
   conversationId?: string | null;
   specName?: string | null;
+  /** The chat's endpoint, which decides whether OpenAI's own web search applies. */
+  endpoint?: string | null;
   observeToolAuthorization?: boolean;
 }
 
@@ -53,6 +65,7 @@ export default function BadgeRowProvider({
   isSubmitting,
   conversationId,
   specName,
+  endpoint,
   observeToolAuthorization = false,
 }: BadgeRowProviderProps) {
   const lastContextKeyRef = useRef<string>('');
@@ -108,6 +121,7 @@ export default function BadgeRowProvider({
 
       const codeToggleKey = `${LocalStorageKeys.LAST_CODE_TOGGLE_}${storageSuffix}`;
       const webSearchToggleKey = `${LocalStorageKeys.LAST_WEB_SEARCH_TOGGLE_}${storageSuffix}`;
+      const webSearchCountryKey = `${LocalStorageKeys.LAST_WEB_SEARCH_COUNTRY_}${storageSuffix}`;
       const fileSearchToggleKey = `${LocalStorageKeys.LAST_FILE_SEARCH_TOGGLE_}${storageSuffix}`;
       const artifactsToggleKey = `${LocalStorageKeys.LAST_ARTIFACTS_TOGGLE_}${storageSuffix}`;
       const skillsToggleKey = `${LocalStorageKeys.LAST_SKILLS_TOGGLE_}${storageSuffix}`;
@@ -119,6 +133,7 @@ export default function BadgeRowProvider({
 
       const codeToggleValue = getTimestampedValue(codeToggleKey);
       const webSearchToggleValue = getTimestampedValue(webSearchToggleKey);
+      const webSearchCountryValue = getTimestampedValue(webSearchCountryKey);
       const fileSearchToggleValue = getTimestampedValue(fileSearchToggleKey);
       const artifactsToggleValue = getTimestampedValue(artifactsToggleKey);
       const skillsToggleValue = getTimestampedValue(skillsToggleKey);
@@ -143,6 +158,14 @@ export default function BadgeRowProvider({
           initialValues[Tools.web_search] = JSON.parse(webSearchToggleValue);
         } catch (e) {
           console.error('Failed to parse web search toggle value:', e);
+        }
+      }
+
+      if (webSearchCountryValue !== null) {
+        try {
+          initialValues.web_search_country = JSON.parse(webSearchCountryValue);
+        } catch (e) {
+          console.error('Failed to parse web search country value:', e);
         }
       }
 
@@ -272,11 +295,17 @@ export default function BadgeRowProvider({
   const searchApiKeyForm = useSearchApiKeyForm({});
   const { setIsDialogOpen: setWebSearchDialogOpen } = searchApiKeyForm;
 
+  /** `endpoints.openAI.nativeWebSearch`: OpenAI models search with OpenAI's own tool, so the
+   *  switch works there without the search provider's key. No other endpoint gets the exception. */
+  const openAINativeWebSearch = startupConfig?.openAINativeWebSearch === true;
+  const nativeWebSearch = openAINativeWebSearch && endpoint === EModelEndpoint.openAI;
+
   const webSearch = useToolToggle({
     conversationId,
     storageContextKey,
     toolKey: Tools.web_search,
     localStorageKey: LocalStorageKeys.LAST_WEB_SEARCH_TOGGLE_,
+    isAuthenticated: nativeWebSearch ? true : undefined,
     setIsDialogOpen: setWebSearchDialogOpen,
     authConfig: {
       toolId: Tools.web_search,
@@ -284,14 +313,42 @@ export default function BadgeRowProvider({
     },
   });
 
-  /** TARS: while the admin's key is missing, web search cannot run, so it leaves the bar. */
+  const webSearchCountry = useToolToggle({
+    conversationId,
+    storageContextKey,
+    toolKey: 'web_search_country',
+    localStorageKey: LocalStorageKeys.LAST_WEB_SEARCH_COUNTRY_,
+    isAuthenticated: true,
+  });
+
+  /** TARS: while the admin's key is missing, web search cannot run, so it leaves the bar —
+   *  unless OpenAI models can still search on their own tool. */
   const webSearchMissingKey = webSearch.authData?.missingKeyProvider != null;
   const { isPinned: webSearchPinned, setIsPinned: setWebSearchPinned } = webSearch;
   useEffect(() => {
-    if (webSearchMissingKey && webSearchPinned) {
+    if (webSearchMissingKey && !openAINativeWebSearch && webSearchPinned) {
       setWebSearchPinned(false);
     }
-  }, [webSearchMissingKey, webSearchPinned, setWebSearchPinned]);
+  }, [webSearchMissingKey, openAINativeWebSearch, webSearchPinned, setWebSearchPinned]);
+
+  /** Search switched on for an OpenAI model is switched off once the chat moves to an endpoint
+   *  that needs the missing key, so the request never asks for a search that cannot run. */
+  const webSearchOn = webSearch.toggleState === true;
+  useEffect(() => {
+    if (!openAINativeWebSearch || nativeWebSearch || endpoint == null) {
+      return;
+    }
+    if (webSearchMissingKey && webSearchOn) {
+      setEphemeralAgent((prev) => ({ ...(prev || {}), [Tools.web_search]: false }));
+    }
+  }, [
+    openAINativeWebSearch,
+    nativeWebSearch,
+    endpoint,
+    webSearchMissingKey,
+    webSearchOn,
+    setEphemeralAgent,
+  ]);
 
   /** FileSearch hook */
   /** pwc_tars SQL agent (資料庫查詢) — a plain capability toggle like web search. */
@@ -385,6 +442,8 @@ export default function BadgeRowProvider({
       skills,
       memory,
       webSearch,
+      nativeWebSearch,
+      webSearchCountry,
       artifacts,
       fileSearch,
       agentsConfig,
@@ -404,6 +463,8 @@ export default function BadgeRowProvider({
       skills,
       memory,
       webSearch,
+      nativeWebSearch,
+      webSearchCountry,
       artifacts,
       fileSearch,
       agentsConfig,

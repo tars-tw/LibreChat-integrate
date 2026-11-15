@@ -4,6 +4,7 @@ import type {
   CodeWorkspaceSelection,
   TFile,
   TEndpointOption,
+  TEphemeralAgent,
   TReasoningOverride,
   Agents,
 } from 'librechat-data-provider';
@@ -35,6 +36,8 @@ export type RequestBody = {
   codeApprovalMode?: CodeApprovalMode;
   codeEnvironmentMode?: CodeEnvironmentMode;
   codeWorkspaces?: CodeWorkspaceSelection[];
+  /** The chat's tool switches; read here for what initialization needs beyond the tool list. */
+  ephemeralAgent?: TEphemeralAgent | null;
 };
 
 export type ServerRequest = Request<unknown, unknown, RequestBody> & {

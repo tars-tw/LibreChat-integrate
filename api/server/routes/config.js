@@ -33,6 +33,7 @@ const {
   resolvePullRequestCapabilities,
   resolvePreLoginAppConfig,
   withSafePolicyLinks,
+  isOpenAINativeWebSearchEnabled,
 } = require('@librechat/api');
 const {
   DEFAULT_MCP_APP_CSP_LIMITS,
@@ -413,6 +414,7 @@ router.get('/', async function (req, res) {
       ...(tarsVersion ? { tarsVersion } : {}),
       tarsMemoryEnabled: isTarsMemoryEnabled(appConfig?.config?.tars),
       tarsMemoryRefreshMs: getTarsMemoryRefreshMs(appConfig?.config?.tars),
+      openAINativeWebSearch: isOpenAINativeWebSearchEnabled(appConfig),
     };
 
     const webSearch = buildWebSearchConfig(appConfig);

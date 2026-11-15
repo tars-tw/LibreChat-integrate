@@ -135,6 +135,7 @@ import { assertChatProjectInstructions, ChatProjectResourcesChangedError } from 
 import { extractAgentContent, extractSkillContent } from '../protection/adapters/submissions';
 import { createConfiguredContentInspector, inspectContent } from '../protection/runtime';
 import { assertAgentAttachmentLimits, isModelBoundAttachmentFile } from './attachments';
+import { swapNativeWebSearch, locateNativeWebSearch } from '~/endpoints/openai/search';
 import { primeTarsTurnFiles, buildTarsDataFilesContext } from '~/tars/files/turn';
 import { assertModelBoundContent } from '../middleware/modelBoundContent';
 import { resolveAttachedWorkspaceReadFileLines } from '~/code/workspace';
@@ -1569,6 +1570,11 @@ export async function initializeAgent(
     agent.tools = withTarsSpreadsheetTools(agent.tools ?? []);
   }
 
+  const nativeWebSearch = swapNativeWebSearch(agent.provider, agent.tools ?? [], appConfig);
+  if (nativeWebSearch.native) {
+    agent.tools = nativeWebSearch.tools;
+  }
+
   let currentFiles: Array<IMongoFile | TFile> | undefined;
   const baseToolNames = agent.tools ?? [];
   /**
@@ -1617,6 +1623,10 @@ export async function initializeAgent(
     }
   }
 
+  const skillWebSearch = swapNativeWebSearch(agent.provider, extraAllowedToolNames, appConfig);
+  extraAllowedToolNames = skillWebSearch.tools;
+  const usesNativeWebSearch = nativeWebSearch.native || skillWebSearch.native;
+
   const effectiveToolNames =
     extraAllowedToolNames.length > 0 ? [...baseToolNames, ...extraAllowedToolNames] : baseToolNames;
   const requestedToolNames = effectiveToolNames;
@@ -1639,6 +1649,7 @@ export async function initializeAgent(
     parameters: {
       ...agent.model_parameters,
       ...(isInitialAgent === true ? endpointOption?.model_parameters : undefined),
+      ...(usesNativeWebSearch ? { web_search: true } : undefined),
     },
     ...getAgentInferencePolicy(provider, appConfig, customEndpointConfig),
     model: agent.model ?? '',
@@ -1659,6 +1670,13 @@ export async function initializeAgent(
     inferenceParameters: inference.customParameters,
     db,
   });
+
+  if (usesNativeWebSearch) {
+    options.tools = locateNativeWebSearch(
+      options.tools,
+      runtime.requestBody.ephemeralAgent?.web_search_country,
+    );
+  }
 
   const llmConfig = options.llmConfig as Record<string, unknown>;
   const webSearchDenied =

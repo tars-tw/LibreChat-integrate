@@ -6,6 +6,7 @@ import type { AgentForm, ExtendedFile } from '~/common';
 import type { BuiltinId } from '../../items/types';
 import OrchestrationHub from '../../../Advanced/OrchestrationHub';
 import { useVerifyAgentToolAuth } from '~/data-provider';
+import { useAgentNativeWebSearch } from '../../hooks';
 import CodeBackground from '../../../Code/Background';
 import { isTarsSwitchId } from '../../items/tars';
 import CodeSettings from '../../../Code/Settings';
@@ -140,6 +141,12 @@ function MemoryConfig({ value, onChange }: MemoryConfigProps) {
 function WebSearchConfig() {
   const localize = useLocalize();
   const { data } = useVerifyAgentToolAuth({ toolId: Tools.web_search }, { retry: 1 });
+  const nativeWebSearch = useAgentNativeWebSearch();
+  if (nativeWebSearch) {
+    return (
+      <p className="text-text-secondary text-sm">{localize('com_ui_web_search_openai_native')}</p>
+    );
+  }
   if (data?.missingKeyProvider != null) {
     return (
       <p className="text-status-error text-sm">

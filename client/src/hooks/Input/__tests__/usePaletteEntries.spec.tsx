@@ -327,6 +327,60 @@ describe('usePaletteEntries', () => {
       expect(webSearch.debouncedChange).not.toHaveBeenCalled();
     });
 
+    it('keeps web search usable on OpenAI models while its admin-managed key is missing', () => {
+      const webSearch = { ...toggle(true, true), authData: { missingKeyProvider: 'Tavily' } };
+      mockContext = {
+        ...fullContext(),
+        webSearch,
+        nativeWebSearch: true,
+        webSearchCountry: toggle(''),
+      };
+      const row = entries().result.current.find((item) => item.key === 'builtin:web_search');
+      expect(row?.unavailableReason).toBeUndefined();
+      expect(row?.active).toBe(true);
+      expect(row?.pinned).toBe(true);
+      act(() => row?.onSelect());
+      expect(webSearch.debouncedChange).toHaveBeenCalledWith({ value: false });
+    });
+
+    it('offers the countries OpenAI search can run in once it is on', () => {
+      const webSearchCountry = toggle('TW');
+      mockContext = {
+        ...fullContext(),
+        webSearch: toggle(true),
+        nativeWebSearch: true,
+        webSearchCountry,
+      };
+      const modes = entries().result.current.find(
+        (item) => item.key === 'builtin:web_search',
+      )?.modes;
+      expect(modes?.map((mode) => [mode.id, mode.label, mode.active])).toEqual([
+        ['country_TW', 'com_ui_web_search_country_tw', true],
+        ['country_JP', 'com_ui_web_search_country_jp', false],
+        ['country_US', 'com_ui_web_search_country_us', false],
+      ]);
+      act(() => modes?.find((mode) => mode.id === 'country_JP')?.onSelect());
+      expect(webSearchCountry.debouncedChange).toHaveBeenCalledWith({ value: 'JP' });
+      act(() => modes?.find((mode) => mode.id === 'country_TW')?.onSelect());
+      expect(webSearchCountry.debouncedChange).toHaveBeenCalledWith({ value: '' });
+    });
+
+    it('offers no countries while search is off or runs on the search provider', () => {
+      const country = toggle('');
+      mockContext = {
+        ...fullContext(),
+        webSearch: toggle(false),
+        nativeWebSearch: true,
+        webSearchCountry: country,
+      };
+      const off = entries().result.current.find((item) => item.key === 'builtin:web_search');
+      expect(off?.modes).toBeUndefined();
+
+      mockContext = { ...fullContext(), webSearch: toggle(true), webSearchCountry: country };
+      const provider = entries().result.current.find((item) => item.key === 'builtin:web_search');
+      expect(provider?.modes?.some((mode) => mode.id.startsWith('country_'))).not.toBe(true);
+    });
+
     it('returns a mode pill to the default when it is already the stored mode', () => {
       const context = { ...fullContext(), artifacts: toggle(ArtifactModes.SHADCNUI) };
       mockContext = context;

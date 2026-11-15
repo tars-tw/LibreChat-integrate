@@ -27,9 +27,11 @@ jest.mock('~/hooks', () => ({
   useAgentCapabilities: () => ({ backgroundToolsEnabled: false }),
 }));
 let mockWebSearchAuth: { authenticated: boolean; missingKeyProvider?: string } | undefined;
+let mockStartupConfig: { openAINativeWebSearch?: boolean } | undefined;
 
 jest.mock('~/data-provider', () => ({
   useVerifyAgentToolAuth: () => ({ data: mockWebSearchAuth }),
+  useGetStartupConfig: () => ({ data: mockStartupConfig }),
   useCodeEnvironmentStatusQueries: () => [],
   useTarsChatKnowledgeBasesQuery: () => ({
     data: mockChatKnowledgeBasesLoading ? undefined : mockChatKnowledgeBases,
@@ -264,5 +266,35 @@ describe('BuiltinSection web search', () => {
     mockWebSearchAuth = { authenticated: true };
     renderSection('web_search');
     expect(screen.queryByText(/com_ui_tools_missing_api_key/)).not.toBeInTheDocument();
+  });
+
+  describe('with endpoints.openAI.nativeWebSearch', () => {
+    beforeEach(() => {
+      mockStartupConfig = { openAINativeWebSearch: true };
+      mockWebSearchAuth = { authenticated: false, missingKeyProvider: 'Tavily' };
+    });
+
+    afterEach(() => {
+      mockStartupConfig = undefined;
+    });
+
+    test('tells an OpenAI agent it needs no search provider key', () => {
+      renderSection('web_search', { provider: 'openAI' } as Partial<AgentForm>);
+      expect(screen.getByText('com_ui_web_search_openai_native')).toBeInTheDocument();
+      expect(screen.queryByText(/com_ui_tools_missing_api_key/)).not.toBeInTheDocument();
+    });
+
+    test('reads the provider from a picked option as well', () => {
+      renderSection('web_search', {
+        provider: { label: 'OpenAI', value: 'openAI' },
+      } as Partial<AgentForm>);
+      expect(screen.getByText('com_ui_web_search_openai_native')).toBeInTheDocument();
+    });
+
+    test('keeps the missing key notice for every other provider', () => {
+      renderSection('web_search', { provider: 'google' } as Partial<AgentForm>);
+      expect(screen.getByText(/com_ui_tools_missing_api_key/)).toBeInTheDocument();
+      expect(screen.queryByText('com_ui_web_search_openai_native')).not.toBeInTheDocument();
+    });
   });
 });

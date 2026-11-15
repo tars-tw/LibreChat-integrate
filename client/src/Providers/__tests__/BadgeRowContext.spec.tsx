@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { RecoilRoot } from 'recoil';
 import { useForm } from 'react-hook-form';
 import { render, act } from '@testing-library/react';
-import { LocalStorageKeys } from 'librechat-data-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Tools, EModelEndpoint, LocalStorageKeys } from 'librechat-data-provider';
 import type { ExtendedFile, ChatFormValues } from '~/common';
 import { getFilesDraft, getComposerDraftId, getAskAnswerDraftId } from '~/utils/drafts';
 import { beginFileSearchUpload, completeFileSearchUpload } from '~/hooks/Files/search';
@@ -40,6 +40,7 @@ const mockToolAuth: { authenticated: boolean; missingKeyProvider?: string } = {
   authenticated: false,
 };
 let mockCachedFiles: object[] = [];
+let mockStartupConfig: { openAINativeWebSearch?: boolean } | undefined;
 jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
   useTranslation: () => ({ t: mockTranslate, i18n: { changeLanguage: jest.fn() } }),
@@ -51,7 +52,7 @@ jest.mock('react-i18next', () => ({
 jest.mock('~/data-provider', () => ({
   ...jest.requireActual('~/data-provider'),
   useGetEndpointsQuery: () => ({ data: undefined }),
-  useGetStartupConfig: () => ({ data: undefined }),
+  useGetStartupConfig: () => ({ data: mockStartupConfig }),
   useMCPServersQuery: () => ({ data: undefined, isLoading: false }),
   useVerifyAgentToolAuth: () => ({ data: mockToolAuth }),
   useGetFiles: () => ({ data: mockCachedFiles }),
@@ -107,7 +108,7 @@ function renderProvider(initialId = 'convo-badge-row', restoreDraft = false, ini
           if (initiallyOff) set(ephemeralAgentByConvoId(initialId), { file_search: false });
         }}
       >
-        <BadgeRowProvider conversationId={id}>
+        <BadgeRowProvider conversationId={id} endpoint={endpoint}>
           {/* Re-rendered along with the provider, the way `Bar` is. */}
           <span>{marker}</span>
           <Consumer />
@@ -117,10 +118,15 @@ function renderProvider(initialId = 'convo-badge-row', restoreDraft = false, ini
     </QueryClientProvider>
   );
   let id = initialId;
+  let endpoint: string | undefined;
   const { rerender, unmount } = render(<Tree marker={0} id={id} />);
   return {
     getValue: () => value,
     unmount,
+    switchEndpoint: (next: string) => {
+      endpoint = next;
+      rerender(<Tree marker={0} id={id} />);
+    },
     retype: (marker: number) => rerender(<Tree marker={marker} id={id} />),
     navigate: (next: string, nextScope: DraftScope = {}) => {
       id = next;
@@ -347,5 +353,84 @@ describe('BadgeRowProvider', () => {
       delete mockToolAuth.missingKeyProvider;
       localStorage.clear();
     }
+  });
+});
+
+/**
+ * `endpoints.openAI.nativeWebSearch` lets OpenAI models search on OpenAI's own tool, so the
+ * switch works there while the search provider's admin-managed key is missing. No other
+ * endpoint gets the exception.
+ */
+describe('BadgeRowProvider — OpenAI native web search', () => {
+  beforeEach(() => {
+    mockStartupConfig = { openAINativeWebSearch: true };
+    mockToolAuth.missingKeyProvider = 'Tavily';
+  });
+
+  afterEach(() => {
+    mockStartupConfig = undefined;
+    delete mockToolAuth.missingKeyProvider;
+    localStorage.clear();
+  });
+
+  const switchOn = (view: ReturnType<typeof renderProvider>) =>
+    act(() => {
+      view.getValue()?.webSearch.handleChange({ value: true });
+    });
+
+  it('switches web search on for an OpenAI model without the missing key', () => {
+    const view = renderProvider('convo-native-openai');
+    view.switchEndpoint(EModelEndpoint.openAI);
+    switchOn(view);
+
+    expect(view.getValue()?.nativeWebSearch).toBe(true);
+    expect(view.getValue()?.webSearch.toggleState).toBe(true);
+  });
+
+  it('keeps every other endpoint locked', () => {
+    const view = renderProvider('convo-native-google');
+    view.switchEndpoint(EModelEndpoint.google);
+    switchOn(view);
+
+    expect(view.getValue()?.nativeWebSearch).toBe(false);
+    expect(view.getValue()?.webSearch.toggleState).toBe(false);
+  });
+
+  it('keeps OpenAI locked while the switch is off in librechat.yaml', () => {
+    mockStartupConfig = undefined;
+    const view = renderProvider('convo-native-off');
+    view.switchEndpoint(EModelEndpoint.openAI);
+    switchOn(view);
+
+    expect(view.getValue()?.nativeWebSearch).toBe(false);
+    expect(view.getValue()?.webSearch.toggleState).toBe(false);
+  });
+
+  it('switches search off when the chat moves from OpenAI to an endpoint that needs the key', () => {
+    const view = renderProvider('convo-native-move');
+    view.switchEndpoint(EModelEndpoint.openAI);
+    switchOn(view);
+    view.switchEndpoint(EModelEndpoint.google);
+
+    expect(view.getValue()?.webSearch.ephemeralAgent?.[Tools.web_search]).toBe(false);
+  });
+
+  it('restores the last chosen search country into the chat', () => {
+    localStorage.setItem(
+      `${LocalStorageKeys.LAST_WEB_SEARCH_COUNTRY_}convo-native-country`,
+      '"JP"',
+    );
+    const view = renderProvider('convo-native-country');
+
+    expect(view.getValue()?.webSearchCountry.toggleState).toBe('JP');
+    expect(view.getValue()?.webSearch.ephemeralAgent?.web_search_country).toBe('JP');
+  });
+
+  it('keeps the web search pin while OpenAI models can still search', () => {
+    const pinKey = `${LocalStorageKeys.LAST_WEB_SEARCH_TOGGLE_}pinned`;
+    localStorage.setItem(pinKey, 'true');
+    const view = renderProvider('convo-native-pin');
+
+    expect(view.getValue()?.webSearch.isPinned).toBe(true);
   });
 });
