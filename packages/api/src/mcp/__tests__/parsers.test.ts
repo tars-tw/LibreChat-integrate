@@ -683,7 +683,17 @@ describe('formatToolContent', () => {
           'Resource URI: file://document.pdf\n' +
           'Resource MIME Type: application/pdf',
       );
-      expect(artifacts).toBeUndefined();
+      // A typed text body is only a file candidate; `processMCPFileOutput` keeps listed types.
+      expect(artifacts).toEqual({
+        mcp_files: [
+          expect.objectContaining({
+            filename: 'document.pdf',
+            mimeType: 'application/pdf',
+            text: 'Document content',
+            candidate: true,
+          }),
+        ],
+      });
     });
 
     it('should handle resources with partial data', () => {
@@ -918,7 +928,9 @@ describe('formatToolContent', () => {
           'Resource MIME Type: text/plain',
         ].join('\n'),
       );
-      expect(artifacts).toBeUndefined();
+      expect(artifacts?.mcp_files).toEqual([
+        expect.objectContaining({ filename: 'IMyServiceCheck.cs', candidate: true }),
+      ]);
     });
 
     it('should decode a blob whose mime type does not advertise text', () => {
@@ -1021,12 +1033,51 @@ describe('formatToolContent', () => {
       expect(content).toBe(
         [
           'Resource Content: 5 bytes of binary data (omitted; not UTF-8 text)',
+          'Resource File: report.pdf (application/pdf, 5 bytes)',
           'Resource URI: file:///report.pdf',
           'Resource MIME Type: application/pdf',
         ].join('\n'),
       );
       expect(content).not.toContain(binary);
-      expect(artifacts).toBeUndefined();
+      expect(artifacts).toEqual({
+        mcp_files: [
+          { filename: 'report.pdf', mimeType: 'application/pdf', data: binary, bytes: 5 },
+        ],
+      });
+    });
+
+    it('should carry audio as a file instead of stringifying its base64', () => {
+      const audio = Buffer.from('ID3 audio bytes').toString('base64');
+      const result: t.MCPToolCallResponse = {
+        content: [{ type: 'audio', data: audio, mimeType: 'audio/mpeg' }],
+      };
+
+      const [content, artifacts] = formatToolContent(result, 'openai');
+
+      expect(content).toBe('Resource File: mcp-audio.mp3 (audio/mpeg, 15 bytes)');
+      expect(artifacts?.mcp_files).toEqual([
+        { filename: 'mcp-audio.mp3', mimeType: 'audio/mpeg', data: audio, bytes: 15 },
+      ]);
+    });
+
+    it('should name a binary blob from its URI and type when the URI has no extension', () => {
+      const binary = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00]).toString('base64');
+      const result: t.MCPToolCallResponse = {
+        content: [
+          {
+            type: 'resource',
+            resource: {
+              uri: 'https://files.example.com/exports/%E5%A0%B1%E8%A1%A8?token=abc',
+              mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              blob: binary,
+            },
+          },
+        ],
+      };
+
+      const [, artifacts] = formatToolContent(result, 'openai');
+
+      expect(artifacts?.mcp_files?.[0]?.filename).toBe('報表.xlsx');
     });
   });
 

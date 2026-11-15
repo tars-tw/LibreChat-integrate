@@ -21,6 +21,7 @@ const contextMap: Record<any, TranslationKeys> = {
   [FileContext.unknown]: 'com_ui_unknown',
   [FileContext.assistants]: 'com_ui_assistants',
   [FileContext.image_generation]: 'com_ui_image_gen',
+  [FileContext.mcp_tool]: 'com_ui_mcp_tool_output',
   [FileContext.assistants_output]: 'com_ui_assistants_output',
   [FileContext.message_attachment]: 'com_ui_attachment',
   [FileContext.run_artifact]: 'com_ui_published_file',

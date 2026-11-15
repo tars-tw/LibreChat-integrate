@@ -1,8 +1,16 @@
 import { logger } from '@librechat/data-schemas';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import type { CallToolResult, ListToolsResult } from '@modelcontextprotocol/sdk/types.js';
+import {
+  ContentBlockSchema,
+  ListToolsRequestSchema,
+  CallToolRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
+import type {
+  ContentBlock,
+  CallToolResult,
+  ListToolsResult,
+} from '@modelcontextprotocol/sdk/types.js';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { TARS_NOT_LINKED, tarsToolFailureText } from '~/tars/failure';
 import { listTarsMcpTools, executeTarsMcpTool } from './client';
@@ -15,6 +23,28 @@ function formatResult(result: unknown): string {
     return result;
   }
   return JSON.stringify(result ?? null);
+}
+
+/**
+ * The images and files pwc_tars relayed beside its text result. Its `result` already holds
+ * the text parts and a placeholder per file, so text parts are not repeated; a text file
+ * (CSV, an attachment) arrives as a text resource whose body only this part carries. A part
+ * the MCP schema rejects is dropped rather than failing the call.
+ */
+function relayedFileParts(content: unknown[] | undefined): ContentBlock[] {
+  const parts: ContentBlock[] = [];
+  for (const item of content ?? []) {
+    const parsed = ContentBlockSchema.safeParse(item);
+    if (!parsed.success) {
+      continue;
+    }
+    const part = parsed.data;
+    if (part.type === 'text') {
+      continue;
+    }
+    parts.push(part);
+  }
+  return parts;
 }
 
 function toErrorMessage(error: unknown): string {
@@ -59,8 +89,15 @@ export function createTarsMcpServer(tarsUserId: string | null, serverId?: string
       };
     }
     try {
-      const { result } = await executeTarsMcpTool(tarsUserId, name, toolArguments, serverId);
-      return { content: [{ type: 'text', text: formatResult(result) }] };
+      const { result, content } = await executeTarsMcpTool(
+        tarsUserId,
+        name,
+        toolArguments,
+        serverId,
+      );
+      return {
+        content: [{ type: 'text', text: formatResult(result) }, ...relayedFileParts(content)],
+      };
     } catch (error) {
       logger.warn(
         `[tars-mcp] Tool "${name}" failed for pwc_tars user ${tarsUserId}: ${toErrorMessage(error)}`,

@@ -29,6 +29,8 @@ export enum FileContext {
   assistants = 'assistants',
   execute_code = 'execute_code',
   image_generation = 'image_generation',
+  /** A file an MCP tool returned, saved as an attachment of the reply. */
+  mcp_tool = 'mcp_tool',
   assistants_output = 'assistants_output',
   message_attachment = 'message_attachment',
   run_artifact = 'run_artifact',

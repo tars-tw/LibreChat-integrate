@@ -38,6 +38,7 @@ const {
   loadTarsToolAuthValues,
   getTarsTurnFiles,
   attachWorkflowFiles,
+  attachMCPFileOutputs,
   ASK_USER_QUESTION_TOOL_NAME,
   resolveWebSearchSSRFAgents,
   buildWebSearchDynamicContext,
@@ -788,6 +789,8 @@ const loadTools = async ({
     userId: user,
     config: options.req?.config?.config?.tars?.workflowFiles,
   });
+  /** TARS: caps, reads and saves the files MCP tools return; keep as its own statement. */
+  attachMCPFileOutputs(loadedTools, { config: options.req?.config?.config?.tars?.mcpFiles });
   return { loadedTools, toolContextMap, dynamicToolContextMap, primedCodeFiles };
 };
 
