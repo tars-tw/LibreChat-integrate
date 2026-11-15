@@ -6063,6 +6063,133 @@ describe('initializeAgent — provider-native web search role gate', () => {
   });
 });
 
+/**
+ * `endpoints.openAI.nativeWebSearch` hands the web search switch to OpenAI's own
+ * tool: LibreChat's `web_search` never reaches `loadTools`, and the provider is
+ * asked for its search through the `web_search` model parameter.
+ */
+describe('initializeAgent — OpenAI native web search switch', () => {
+  const NATIVE = { endpoints: { openAI: { nativeWebSearch: true } } };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const run = async ({
+    config,
+    tools = [Tools.web_search, 'calculator'],
+    provider = Providers.OPENAI,
+    overrideProvider,
+    providerTools,
+    body,
+  }: {
+    config: object;
+    tools?: string[];
+    provider?: string;
+    overrideProvider?: string;
+    providerTools?: unknown[];
+    body?: object;
+  }) => {
+    const { agent, req, res, loadTools, db } = createMocks({
+      provider,
+      overrideProvider,
+      providerTools,
+    });
+    agent.tools = tools;
+    (req as unknown as { config: object }).config = config;
+    if (body != null) {
+      (req as unknown as { body: object }).body = body;
+    }
+    const result = await initializeAgent(
+      {
+        req,
+        res,
+        agent,
+        loadTools,
+        endpointOption: { endpoint: EModelEndpoint.agents },
+        allowedProviders: new Set([provider]),
+        isInitialAgent: true,
+      },
+      db,
+    );
+    const [parameters] = mockExtractLibreChatParams.mock.calls[0] as [Record<string, unknown>];
+    return {
+      loadedTools: loadTools.mock.calls[0]?.[0]?.tools as string[],
+      parameters,
+      providerTools: result.tools,
+    };
+  };
+
+  it('loads no LibreChat web_search and asks OpenAI for its own search', async () => {
+    const { loadedTools, parameters } = await run({ config: NATIVE });
+
+    expect(loadedTools).toEqual(['calculator']);
+    expect(parameters.web_search).toBe(true);
+  });
+
+  it('keeps LibreChat web_search when the switch is off', async () => {
+    const { loadedTools, parameters } = await run({ config: {} });
+
+    expect(loadedTools).toEqual([Tools.web_search, 'calculator']);
+    expect(parameters.web_search).toBeUndefined();
+  });
+
+  it('keeps LibreChat web_search on a custom endpoint backed by the OpenAI client', async () => {
+    const { loadedTools, parameters } = await run({
+      config: NATIVE,
+      provider: 'vLLM',
+      overrideProvider: Providers.OPENAI,
+    });
+
+    expect(loadedTools).toEqual([Tools.web_search, 'calculator']);
+    expect(parameters.web_search).toBeUndefined();
+  });
+
+  it('keeps LibreChat web_search when the web_search capability is off', async () => {
+    const { loadedTools, parameters } = await run({
+      config: {
+        endpoints: {
+          ...NATIVE.endpoints,
+          agents: { capabilities: [AgentCapabilities.tools] },
+        },
+      },
+    });
+
+    expect(loadedTools).toEqual([Tools.web_search, 'calculator']);
+    expect(parameters.web_search).toBeUndefined();
+  });
+
+  it('turns no search on when the chat did not ask for one', async () => {
+    const { loadedTools, parameters } = await run({ config: NATIVE, tools: ['calculator'] });
+
+    expect(loadedTools).toEqual(['calculator']);
+    expect(parameters.web_search).toBeUndefined();
+  });
+
+  it('places the search in the country the chat picked', async () => {
+    const { providerTools } = await run({
+      config: NATIVE,
+      providerTools: [{ type: 'web_search' }],
+      body: { ephemeralAgent: { web_search: true, web_search_country: 'JP' } },
+    });
+
+    expect(providerTools).toContainEqual({
+      type: 'web_search',
+      user_location: { type: 'approximate', country: 'JP' },
+    });
+  });
+
+  it('leaves the location to OpenAI for a country that is not offered', async () => {
+    const { providerTools } = await run({
+      config: NATIVE,
+      providerTools: [{ type: 'web_search' }],
+      body: { ephemeralAgent: { web_search: true, web_search_country: 'FR' } },
+    });
+
+    expect(providerTools).toContainEqual({ type: 'web_search' });
+  });
+});
+
 describe('initializeAgent — linked instructions', () => {
   const link: AgentInstructionsPrompt = {
     source: 'native',

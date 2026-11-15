@@ -1,6 +1,7 @@
 import type {
   TEndpoint,
   FileStorage,
+  TOpenAIEndpoint,
   TFileConfig,
   TAzureConfig,
   TCustomConfig,
@@ -149,7 +150,7 @@ export interface AppConfig {
     /** How long the admin config catalog reuses a scope's model lists, in milliseconds */
     catalogModelsTtlMs?: number;
     /** OpenAI endpoint configuration */
-    openAI?: Partial<TEndpoint>;
+    openAI?: Partial<TEndpoint> & Pick<TOpenAIEndpoint, 'nativeWebSearch'>;
     /** Google endpoint configuration */
     google?: Partial<TEndpoint>;
     /** Bedrock endpoint configuration */

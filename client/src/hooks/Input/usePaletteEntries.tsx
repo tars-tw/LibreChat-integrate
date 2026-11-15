@@ -31,8 +31,13 @@ import {
   isEphemeralAgentId,
   defaultAgentCapabilities,
   resolveAgentSkillsScope,
+  OPENAI_WEB_SEARCH_COUNTRIES,
 } from 'librechat-data-provider';
-import type { TSkillSummary, TToolFavoriteType } from 'librechat-data-provider';
+import type {
+  TSkillSummary,
+  TToolFavoriteType,
+  OpenAIWebSearchCountry,
+} from 'librechat-data-provider';
 import type { ItemStatus } from '~/components/SidePanel/Agents/Tools/items/types';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import {
@@ -51,6 +56,12 @@ import { favoriteKey } from './useToolFavorites';
 import useLocalize from '~/hooks/useLocalize';
 
 export type PaletteSection = 'tool' | 'skill' | 'mcp';
+
+const WEB_SEARCH_COUNTRY_LABELS: Record<OpenAIWebSearchCountry, TranslationKeys> = {
+  TW: 'com_ui_web_search_country_tw',
+  JP: 'com_ui_web_search_country_jp',
+  US: 'com_ui_web_search_country_us',
+};
 
 /**
  * One selectable row in the composer palette. Tools, skills and MCP servers are
@@ -306,6 +317,8 @@ export default function usePaletteEntries({
 
     const {
       webSearch,
+      nativeWebSearch,
+      webSearchCountry,
       codeInterpreter,
       fileSearch,
       skills,
@@ -357,19 +370,38 @@ export default function usePaletteEntries({
       const searchConfigurable =
         authTypes.length === 0 ||
         !authTypes.every(([, authType]) => authType === AuthType.SYSTEM_DEFINED);
-      const missingKeyProvider = webSearch.authData?.missingKeyProvider;
+      const missingKeyProvider = nativeWebSearch
+        ? undefined
+        : webSearch.authData?.missingKeyProvider;
       const searchUnavailable = missingKeyProvider != null;
+      const searchOn = !searchUnavailable && webSearch.toggleState === true;
+      /* OpenAI's own search takes the country it searches from; picking the chosen one
+         again hands it back to OpenAI to infer. */
+      const countryModes =
+        nativeWebSearch && searchOn
+          ? OPENAI_WEB_SEARCH_COUNTRIES.map(
+              (country): PaletteMode => ({
+                id: `country_${country}`,
+                label: localize(WEB_SEARCH_COUNTRY_LABELS[country]),
+                active: webSearchCountry.toggleState === country,
+                onSelect: () =>
+                  webSearchCountry.debouncedChange({
+                    value: webSearchCountry.toggleState === country ? '' : country,
+                  }),
+              }),
+            )
+          : undefined;
       pushTool(
         'web_search',
         localize('com_ui_web_search'),
         <Globe className="icon-md" aria-hidden="true" />,
-        !searchUnavailable && webSearch.toggleState === true,
+        searchOn,
         !searchUnavailable && webSearch.isPinned === true,
         searchUnavailable
           ? () => undefined
           : () => webSearch.debouncedChange({ value: !webSearch.toggleState }),
         () => webSearch.setIsPinned(false),
-        !searchUnavailable && searchConfigurable && searchApiKeyForm != null
+        !searchUnavailable && !nativeWebSearch && searchConfigurable && searchApiKeyForm != null
           ? [
               {
                 id: 'configure',
@@ -379,7 +411,7 @@ export default function usePaletteEntries({
                 onSelect: () => searchApiKeyForm.setIsDialogOpen(true),
               },
             ]
-          : undefined,
+          : countryModes,
         searchUnavailable
           ? localize('com_ui_tools_missing_api_key', { provider: missingKeyProvider })
           : undefined,

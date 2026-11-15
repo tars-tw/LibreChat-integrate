@@ -2554,6 +2554,32 @@ export const modelListEndpointSchema = baseEndpointSchema.merge(
   }),
 );
 
+export const openAIEndpointSchema = modelListEndpointSchema.merge(
+  z.object({
+    /**
+     * Runs the chat's web search switch on OpenAI's own `web_search` tool (Responses API)
+     * instead of LibreChat's `web_search` tool, for the built-in OpenAI endpoint only.
+     * Still gated by `WEB_SEARCH.USE`. Default: false (LibreChat's search provider).
+     */
+    nativeWebSearch: z.boolean().optional(),
+  }),
+);
+
+export type TOpenAIEndpoint = z.infer<typeof openAIEndpointSchema>;
+
+/**
+ * Countries a chat may locate OpenAI's own web search in (`user_location.country`,
+ * ISO 3166-1 alpha-2). Add a code here, with its `com_ui_web_search_country_*` label,
+ * to offer another one.
+ */
+export const OPENAI_WEB_SEARCH_COUNTRIES = ['TW', 'JP', 'US'] as const;
+
+export type OpenAIWebSearchCountry = (typeof OPENAI_WEB_SEARCH_COUNTRIES)[number];
+
+export function isOpenAIWebSearchCountry(value: unknown): value is OpenAIWebSearchCountry {
+  return (OPENAI_WEB_SEARCH_COUNTRIES as readonly unknown[]).includes(value);
+}
+
 export const anthropicEndpointSchema = baseEndpointSchema.merge(
   z.object({
     /** Vertex AI configuration for running Anthropic models on Google Cloud */
@@ -3827,6 +3853,8 @@ export type TStartupConfig = {
   tarsMemoryEnabled?: boolean;
   /** How often an open memory panel re-reads the list, in ms; `0` turns it off */
   tarsMemoryRefreshMs?: number;
+  /** Whether OpenAI models run the web search switch on OpenAI's own tool (`endpoints.openAI.nativeWebSearch`) */
+  openAINativeWebSearch?: boolean;
   /** pwc_tars SSO status, used to offer the LDAP login option on the login page */
   tarsSso?: {
     enabled: boolean;
@@ -4860,7 +4888,7 @@ export const configSchema = z.object({
        * endpoint > a custom endpoint's own config.
        */
       all: baseEndpointSchema.omit({ baseURL: true }).optional(),
-      [EModelEndpoint.openAI]: modelListEndpointSchema.optional(),
+      [EModelEndpoint.openAI]: openAIEndpointSchema.optional(),
       [EModelEndpoint.google]: modelListEndpointSchema.optional(),
       [EModelEndpoint.anthropic]: anthropicEndpointSchema.optional(),
       [EModelEndpoint.azureOpenAI]: azureEndpointSchema.optional(),
@@ -6188,6 +6216,8 @@ export enum LocalStorageKeys {
   LAST_CODE_TOGGLE_ = 'LAST_CODE_TOGGLE_',
   /** Last checked toggle for Web Search per conversation ID */
   LAST_WEB_SEARCH_TOGGLE_ = 'LAST_WEB_SEARCH_TOGGLE_',
+  /** Last chosen OpenAI web search country per conversation ID */
+  LAST_WEB_SEARCH_COUNTRY_ = 'LAST_WEB_SEARCH_COUNTRY_',
   LAST_SQL_AGENT_TOGGLE_ = 'LAST_SQL_AGENT_TOGGLE_',
   LAST_RAG_AGENT_TOGGLE_ = 'LAST_RAG_AGENT_TOGGLE_',
   LAST_CHART_AGENT_TOGGLE_ = 'LAST_CHART_AGENT_TOGGLE_',

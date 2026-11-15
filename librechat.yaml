@@ -82,6 +82,13 @@ endpoints:
     # LLM gateway (/api/agents/v1m), whose caller builds the whole prompt. Default: true.
     injectCurrentDate: true
 
+  # OpenAI models run the chat's 網頁搜尋 switch on OpenAI's own web_search tool (Responses
+  # API, billed on the OpenAI key) instead of Tavily; every other endpoint keeps Tavily.
+  # Still gated by the web_search capability above and the WEB_SEARCH.USE role permission.
+  # The switch works on OpenAI models even while KEY_TAVILY is unset; other endpoints still need it.
+  openAI:
+    nativeWebSearch: true
+
   custom:
     # Local (地端) models served by vLLM. This endpoint is fully auto-discovered
     # from the pwc_tars model registry — the special baseURL `tars://local` tells

@@ -26,7 +26,8 @@ export const loadEndpoints = (
 ): {
   allowedAddresses?: string[];
   catalogModelsTtlMs?: number;
-  openAI?: Partial<import('librechat-data-provider').TEndpoint>;
+  openAI?: Partial<import('librechat-data-provider').TEndpoint> &
+    Pick<import('librechat-data-provider').TOpenAIEndpoint, 'nativeWebSearch'>;
   google?: Partial<import('librechat-data-provider').TEndpoint>;
   bedrock?: Partial<import('librechat-data-provider').TEndpoint>;
   anthropic?: Partial<TAnthropicEndpoint> & {

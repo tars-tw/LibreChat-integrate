@@ -9,6 +9,7 @@ import {
   QueryKeys,
   Permissions,
   dataService,
+  EModelEndpoint,
   PermissionTypes,
   AgentCapabilities,
 } from 'librechat-data-provider';
@@ -65,12 +66,28 @@ export function useWebSearchUserProvided(): boolean {
 }
 
 /**
+ * `endpoints.openAI.nativeWebSearch`: an agent on the OpenAI endpoint searches with
+ * OpenAI's own tool, so the search provider's key does not apply to it.
+ */
+export function useAgentNativeWebSearch(): boolean {
+  const providerOption = useWatch<AgentForm>({ name: 'provider' });
+  const { data: startupConfig } = useGetStartupConfig();
+  const provider =
+    typeof providerOption === 'string'
+      ? providerOption
+      : (providerOption as { value?: string } | undefined)?.value;
+  return startupConfig?.openAINativeWebSearch === true && provider === EModelEndpoint.openAI;
+}
+
+/**
  * TARS: the provider whose 系統參數設定 key `web_search` lacks, so no user is asked
  * for it. Shares the `useBuiltinAuthMap` React Query key, so it adds no request.
+ * None for an OpenAI agent searching with OpenAI's own tool.
  */
 export function useWebSearchMissingKeyProvider(): string | undefined {
   const { data } = useVerifyAgentToolAuth({ toolId: Tools.web_search }, { retry: 1 });
-  return data?.missingKeyProvider;
+  const nativeWebSearch = useAgentNativeWebSearch();
+  return nativeWebSearch ? undefined : data?.missingKeyProvider;
 }
 
 /**
