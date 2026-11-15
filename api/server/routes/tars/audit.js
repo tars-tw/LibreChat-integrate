@@ -14,6 +14,11 @@ const { relayTarsError } = require('./relay');
 
 const router = express.Router();
 
+/** The audit report names agents from LibreChat's own store; pwc_tars holds only their ids. */
+const agentDirectory = {
+  findAgents: (ids) => db.getAgents(ids ? { id: { $in: ids } } : {}, 'id name'),
+};
+
 /** Only string ids survive; pwc_tars builds SQL `IN` clauses from these. */
 const toIdList = (value) =>
   Array.isArray(value) ? value.filter((id) => id != null && id !== '').map(String) : [];
@@ -25,12 +30,12 @@ router.use('/audit/memory-documents', requireJwtAuth);
 
 /**
  * @route GET /api/tars/audit/messages/options
- * @desc Users, specialized brains and knowledge bases for the audit filter bar.
+ * @desc Users, agents and knowledge bases for the audit filter bar.
  * @access Admin (pwc_tars)
  */
 router.get('/audit/messages/options', requireTarsAdmin, async (req, res) => {
   try {
-    const options = await fetchTarsAuditFilterOptions(req.user.tarsId);
+    const options = await fetchTarsAuditFilterOptions(req.user.tarsId, agentDirectory);
     return res.json(options);
   } catch (error) {
     logger.error('[GET /api/tars/audit/messages/options] Failed', error);
@@ -41,7 +46,7 @@ router.get('/audit/messages/options', requireTarsAdmin, async (req, res) => {
 /**
  * @route POST /api/tars/audit/messages
  * @desc Message audit report for a date range. POST because the filter set —
- *       multi-select user and knowledge-base ids plus a free-text keyword — does
+ *       multi-select user, agent and knowledge-base ids plus a free-text keyword — does
  *       not fit a query string, matching the pwc_tars endpoint it fronts.
  * @access Admin (pwc_tars)
  */
@@ -57,14 +62,18 @@ router.post('/audit/messages', requireTarsAdmin, async (req, res) => {
   }
 
   try {
-    const report = await fetchTarsAuditReport(req.user.tarsId, {
-      start_date: startDate,
-      end_date: endDate,
-      filter_user_ids: toIdList(req.body?.filter_user_ids),
-      knowledge_base_ids: toIdList(req.body?.knowledge_base_ids),
-      domain_id: req.body?.domain_id ?? '',
-      query_filter: (req.body?.query_filter ?? '').trim(),
-    });
+    const report = await fetchTarsAuditReport(
+      req.user.tarsId,
+      {
+        start_date: startDate,
+        end_date: endDate,
+        filter_user_ids: toIdList(req.body?.filter_user_ids),
+        knowledge_base_ids: toIdList(req.body?.knowledge_base_ids),
+        agent_ids: toIdList(req.body?.agent_ids),
+        query_filter: (req.body?.query_filter ?? '').trim(),
+      },
+      agentDirectory,
+    );
     return res.json(report);
   } catch (error) {
     logger.error('[POST /api/tars/audit/messages] Failed', error);

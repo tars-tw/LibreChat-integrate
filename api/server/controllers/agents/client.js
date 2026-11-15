@@ -71,6 +71,7 @@ const {
   resolveAttachedCodeApprovalMode,
   resolvePersistedCodeApprovalMode,
   getCodeApprovalPreservedFields,
+  TARS_PRESERVED_CONVERSATION_FIELDS,
   markNativeCodeToolApprovalRequests,
   markToolApprovalAllowAlways,
   resolveRunToolApprovalAllows,
@@ -2033,10 +2034,13 @@ class AgentClient extends BaseClient {
     const topLevelAgents = [options.agent, ...(this.agentConfigs?.values() ?? [])];
     return {
       ...super.getTurnConversationFields(options, conversationId, endpointOptions, context),
-      preservedFields: getCodeApprovalPreservedFields(
-        collectAttachedCodeApprovalPolicies(topLevelAgents),
-        options.req?.config?.endpoints?.[EModelEndpoint.agents]?.toolApproval?.enabled !== false,
-      ),
+      preservedFields: [
+        ...getCodeApprovalPreservedFields(
+          collectAttachedCodeApprovalPolicies(topLevelAgents),
+          options.req?.config?.endpoints?.[EModelEndpoint.agents]?.toolApproval?.enabled !== false,
+        ),
+        ...TARS_PRESERVED_CONVERSATION_FIELDS,
+      ],
     };
   }
 

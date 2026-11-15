@@ -98,6 +98,15 @@ export interface TarsChatMirrorDeps {
 }
 
 /**
+ * Conversation fields a turn save must keep although the turn's options do not
+ * carry them. Each save unsets every stored field its options leave out, and the
+ * pwc_tars link is not an option: when that save landed after the mirror
+ * re-asserted the link, the conversation lost it, so its next turn opened a
+ * second pwc_tars conversation and deleting it no longer reached pwc_tars.
+ */
+export const TARS_PRESERVED_CONVERSATION_FIELDS: readonly string[] = ['tarsConversationId'];
+
+/**
  * Best-effort, one-way mirror of a finished, stopped or failed LibreChat chat turn into
  * the pwc_tars DB (LibreChat → pwc_tars). Lazily creates the linked pwc_tars conversation
  * on the first turn and stores the mapping (`tarsConversationId`) on the LibreChat

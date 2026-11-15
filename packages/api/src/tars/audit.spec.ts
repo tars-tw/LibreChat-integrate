@@ -11,7 +11,7 @@ import jwt from 'jsonwebtoken';
 import { validateHeaderValue } from 'http';
 import { Readable, Writable } from 'stream';
 import { finished } from 'stream/promises';
-import { FileSources } from 'librechat-data-provider';
+import { FileSources, TARS_AUDIT_NO_AGENT } from 'librechat-data-provider';
 import type { Response as ExpressResponse } from 'express';
 import type { TTarsMessageTrace } from 'librechat-data-provider';
 import type { JwtPayload } from 'jsonwebtoken';
@@ -65,6 +65,15 @@ const actingUserOf = (fetchMock: jest.SpyInstance): string => {
   ).user_id;
 };
 
+/** An in-memory agent store with a spy, standing in for LibreChat's `getAgents`. */
+const directoryOf = (agents: { id: string; name?: string | null }[]) => ({
+  findAgents: jest.fn(async (ids?: string[]) =>
+    ids ? agents.filter((agent) => ids.includes(agent.id)) : agents,
+  ),
+});
+
+const NO_AGENTS = directoryOf([]);
+
 /** pwc_tars gates both audit routes behind `@admin_required`. */
 describe('audit requests carry the acting admin', () => {
   afterEach(() => {
@@ -75,7 +84,7 @@ describe('audit requests carry the acting admin', () => {
     const fetchMock = jest
       .spyOn(global, 'fetch')
       .mockResolvedValue(buildResponse(200, { success: true, data: {} }));
-    await fetchTarsAuditFilterOptions(ADMIN, BASE_URL);
+    await fetchTarsAuditFilterOptions(ADMIN, NO_AGENTS, BASE_URL);
     expect(actingUserOf(fetchMock)).toBe(ADMIN);
   });
 
@@ -86,6 +95,7 @@ describe('audit requests carry the acting admin', () => {
     await fetchTarsAuditReport(
       ADMIN,
       { start_date: '2026-08-01', end_date: '2026-08-08' },
+      NO_AGENTS,
       BASE_URL,
     );
     expect(actingUserOf(fetchMock)).toBe(ADMIN);
@@ -98,7 +108,7 @@ describe('fetchTarsAuditFilterOptions', () => {
   });
 
   /** pwc_tars sends numeric ids; every picker in the filter bar compares strings. */
-  it('stringifies the ids of all three pickers', async () => {
+  it('stringifies the pwc_tars ids and lists LibreChat agents by name', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(
       buildResponse(200, {
         success: true,
@@ -109,18 +119,26 @@ describe('fetchTarsAuditFilterOptions', () => {
         },
       }),
     );
-    await expect(fetchTarsAuditFilterOptions(ADMIN, BASE_URL)).resolves.toEqual({
+    const directory = directoryOf([
+      { id: 'agent_b', name: 'Tax helper' },
+      { id: 'agent_a', name: 'Invoice bot' },
+    ]);
+    await expect(fetchTarsAuditFilterOptions(ADMIN, directory, BASE_URL)).resolves.toEqual({
       users: [{ id: '3', username: 'ada' }],
-      domains: [{ id: '8', name: 'Finance' }],
+      agents: [
+        { id: 'agent_a', name: 'Invoice bot' },
+        { id: 'agent_b', name: 'Tax helper' },
+      ],
       knowledge_bases: [{ id: '21', name: 'Tax rules' }],
     });
+    expect(directory.findAgents).toHaveBeenCalledWith();
   });
 
-  it('returns empty pickers when pwc_tars omits them', async () => {
+  it('returns empty pickers when nothing is there', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { success: true, data: {} }));
-    await expect(fetchTarsAuditFilterOptions(ADMIN, BASE_URL)).resolves.toEqual({
+    await expect(fetchTarsAuditFilterOptions(ADMIN, NO_AGENTS, BASE_URL)).resolves.toEqual({
       users: [],
-      domains: [],
+      agents: [],
       knowledge_bases: [],
     });
   });
@@ -130,12 +148,49 @@ describe('fetchTarsAuditFilterOptions', () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(
       buildResponse(200, {
         success: true,
-        data: { domains: [{ name: 'orphan' }, { id: 1, name: 'Finance' }] },
+        data: { knowledge_bases: [{ name: 'orphan' }, { id: 1, name: 'Finance' }] },
       }),
     );
-    const options = await fetchTarsAuditFilterOptions(ADMIN, BASE_URL);
-    expect(options.domains).toEqual([{ id: '1', name: 'Finance' }]);
+    const options = await fetchTarsAuditFilterOptions(ADMIN, NO_AGENTS, BASE_URL);
+    expect(options.knowledge_bases).toEqual([{ id: '1', name: 'Finance' }]);
   });
+
+  it('names an unnamed agent by its id', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { success: true, data: {} }));
+    const options = await fetchTarsAuditFilterOptions(
+      ADMIN,
+      directoryOf([{ id: 'agent_x', name: ' ' }]),
+      BASE_URL,
+    );
+    expect(options.agents).toEqual([{ id: 'agent_x', name: 'agent_x' }]);
+  });
+});
+
+const row = (overrides: Record<string, unknown>) => ({
+  message_id: 'm-1',
+  user_id: '3',
+  username: 'ada',
+  domain_name: 'Finance',
+  user_query: 'q',
+  model_response: 'a',
+  conversation_id: 'c-1',
+  conversation_name: 'Invoices',
+  knowledge_base_name: null,
+  model_name: 'gemma',
+  created_at: '2026-08-02T01:00:00Z',
+  upload_files: null,
+  memory_document: null,
+  memory_website: null,
+  is_web_search: false,
+  is_sql_agent: false,
+  ip_address: null,
+  like_counts: 0,
+  dislike_counts: 0,
+  comments: '',
+  is_deleted: false,
+  conversation_is_deleted: false,
+  agent_id: null,
+  ...overrides,
 });
 
 describe('fetchTarsAuditReport', () => {
@@ -145,11 +200,17 @@ describe('fetchTarsAuditReport', () => {
 
   const query = { start_date: '2026-08-01', end_date: '2026-08-08' };
 
-  it('sends every filter, defaulting the optional ones', async () => {
-    const fetchMock = jest
+  const respondWith = (rows: Record<string, unknown>[], feedback: unknown[] = []) =>
+    jest
       .spyOn(global, 'fetch')
-      .mockResolvedValue(buildResponse(200, { success: true, data: { data: [] } }));
-    await fetchTarsAuditReport('7', query, BASE_URL);
+      .mockResolvedValue(
+        buildResponse(200, { success: true, data: { data: rows, feedback_data: feedback } }),
+      );
+
+  /** pwc_tars's own chats belong to its own report, so only the mirrored ones are asked for. */
+  it('sends every filter pwc_tars knows, defaulting the optional ones', async () => {
+    const fetchMock = respondWith([]);
+    await fetchTarsAuditReport('7', query, NO_AGENTS, BASE_URL);
 
     expect((fetchMock.mock.calls[0][1] as RequestInit).method).toBe('POST');
     expect(bodyOf(fetchMock)).toEqual({
@@ -157,87 +218,134 @@ describe('fetchTarsAuditReport', () => {
       filter_user_ids: [],
       start_date: '2026-08-01',
       end_date: '2026-08-08',
-      domain_id: '',
       knowledge_base_ids: [],
       query_filter: '',
+      source: 'librechat',
     });
   });
 
-  /** pwc_tars treats a null `domain_id` as "no filter" only when it arrives blank. */
-  it('sends a blank domain_id rather than null', async () => {
-    const fetchMock = jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValue(buildResponse(200, { success: true, data: { data: [] } }));
-    await fetchTarsAuditReport('7', { ...query, domain_id: null }, BASE_URL);
-    expect(bodyOf(fetchMock).domain_id).toBe('');
-  });
-
-  it('forwards the selected users, knowledge bases and keyword', async () => {
-    const fetchMock = jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValue(buildResponse(200, { success: true, data: { data: [] } }));
+  /** pwc_tars holds agent ids, not agents, so the agent filter never goes upstream. */
+  it('forwards users, knowledge bases and keyword but keeps the agent filter', async () => {
+    const fetchMock = respondWith([]);
     await fetchTarsAuditReport(
       '7',
       {
         ...query,
         filter_user_ids: ['3', '4'],
         knowledge_base_ids: ['21'],
-        domain_id: '8',
+        agent_ids: ['agent_a'],
         query_filter: 'invoice',
       },
+      NO_AGENTS,
       BASE_URL,
     );
-    expect(bodyOf(fetchMock)).toMatchObject({
+    const body = bodyOf(fetchMock);
+    expect(body).toMatchObject({
       filter_user_ids: ['3', '4'],
       knowledge_base_ids: ['21'],
-      domain_id: '8',
       query_filter: 'invoice',
     });
+    expect(body).not.toHaveProperty('agent_ids');
   });
 
-  /** The plotting arrays only restate `details`, so only summary/details survive. */
-  it('flattens chart_data down to the summary and the per-brain rollup', async () => {
-    jest.spyOn(global, 'fetch').mockResolvedValue(
-      buildResponse(200, {
-        success: true,
-        data: {
-          total_count: 1,
-          data: [{ message_id: 'm-1' }],
-          feedback_data: [{ message_id: 'm-1', like_count: 1 }],
-          chart_data: {
-            bar_chart: { labels: ['Finance'], conversation_data: [2], message_data: [5] },
-            pie_chart: { labels: ['Finance'], data: [5] },
-            summary: {
-              total_domains: 1,
-              total_conversations: 2,
-              total_messages: 5,
-              date_range: { start_date: '2026-08-01', end_date: '2026-08-08' },
-            },
-            details: [
-              {
-                domain_name: 'Finance',
-                conversation_count: 2,
-                message_count: 5,
-                knowledge_bases: [{ id: 21, name: 'Tax rules' }],
-                conversations: [{ conversation_id: 'c-1', messages: [{ message_id: 'm-1' }] }],
-              },
-            ],
-          },
-        },
-      }),
-    );
-
-    const report = await fetchTarsAuditReport('7', query, BASE_URL);
-    expect(report.summary?.total_messages).toBe(5);
-    expect(report.details).toEqual([
-      {
-        domain_name: 'Finance',
-        conversation_count: 2,
-        message_count: 5,
-        knowledge_bases: [{ id: 21, name: 'Tax rules' }],
-      },
+  it('names each row by its saved agent and drops the brain', async () => {
+    respondWith([
+      row({ message_id: 'm-1', agent_id: 'agent_a' }),
+      row({ message_id: 'm-2', agent_id: 'agent_a____1' }),
+      row({ message_id: 'm-3', agent_id: 'ephemeral' }),
+      row({ message_id: 'm-4', agent_id: 'agent_gone' }),
+      row({ message_id: 'm-5', agent_id: undefined }),
     ]);
-    expect(report.feedback_data).toHaveLength(1);
+    const directory = directoryOf([{ id: 'agent_a', name: 'Invoice bot' }]);
+    const report = await fetchTarsAuditReport('7', query, directory, BASE_URL);
+
+    expect(directory.findAgents).toHaveBeenCalledWith(['agent_a', 'agent_gone']);
+    expect(report.data.map((r) => [r.message_id, r.agent_id, r.agent_name])).toEqual([
+      ['m-1', 'agent_a', 'Invoice bot'],
+      ['m-2', 'agent_a', 'Invoice bot'],
+      ['m-3', null, null],
+      ['m-4', 'agent_gone', null],
+      ['m-5', null, null],
+    ]);
+    expect(report.data[0]).not.toHaveProperty('domain_name');
+  });
+
+  /** LibreChat allows an unnamed agent; it exists, so it must not read as deleted. */
+  it('names an existing but unnamed agent by its id', async () => {
+    respondWith([row({ message_id: 'm-1', agent_id: 'agent_x' })]);
+    const report = await fetchTarsAuditReport(
+      '7',
+      query,
+      directoryOf([{ id: 'agent_x', name: '  ' }]),
+      BASE_URL,
+    );
+    expect(report.data[0].agent_name).toBe('agent_x');
+    expect(report.details[0].agent_name).toBe('agent_x');
+  });
+
+  it('skips the agent lookup when no row ran a saved agent', async () => {
+    respondWith([row({ agent_id: null })]);
+    const directory = directoryOf([]);
+    await fetchTarsAuditReport('7', query, directory, BASE_URL);
+    expect(directory.findAgents).not.toHaveBeenCalled();
+  });
+
+  it('filters by agent, with the no-agent value selecting chats that ran none', async () => {
+    respondWith(
+      [
+        row({ message_id: 'm-1', agent_id: 'agent_a' }),
+        row({ message_id: 'm-2', agent_id: 'agent_b' }),
+        row({ message_id: 'm-3', agent_id: null }),
+      ],
+      [
+        { message_id: 'm-1', like_count: 1 },
+        { message_id: 'm-2', like_count: 1 },
+      ],
+    );
+    const report = await fetchTarsAuditReport(
+      '7',
+      { ...query, agent_ids: ['agent_a', TARS_AUDIT_NO_AGENT] },
+      NO_AGENTS,
+      BASE_URL,
+    );
+    expect(report.data.map((r) => r.message_id)).toEqual(['m-1', 'm-3']);
+    expect(report.total_count).toBe(2);
+    expect(report.feedback_data.map((entry) => entry.message_id)).toEqual(['m-1']);
+  });
+
+  /** An older pwc_tars sends no conversation flag; the message's own status stands in. */
+  it('falls back to the message status for the conversation deleted flag', async () => {
+    respondWith([
+      row({ message_id: 'm-1', is_deleted: true, conversation_is_deleted: undefined }),
+      row({ message_id: 'm-2', is_deleted: false, conversation_is_deleted: true }),
+    ]);
+    const report = await fetchTarsAuditReport('7', query, NO_AGENTS, BASE_URL);
+    expect(report.data.map((r) => r.conversation_is_deleted)).toEqual([true, true]);
+  });
+
+  it('rebuilds the statistics per agent from the rows it returns', async () => {
+    respondWith([
+      row({ message_id: 'm-1', conversation_id: 'c-1', agent_id: 'agent_a' }),
+      row({ message_id: 'm-2', conversation_id: 'c-1', agent_id: 'agent_a' }),
+      row({ message_id: 'm-3', conversation_id: 'c-2', agent_id: 'agent_a' }),
+      row({ message_id: 'm-4', conversation_id: 'c-3', agent_id: null }),
+    ]);
+    const report = await fetchTarsAuditReport(
+      '7',
+      query,
+      directoryOf([{ id: 'agent_a', name: 'Invoice bot' }]),
+      BASE_URL,
+    );
+    expect(report.summary).toEqual({
+      total_agents: 1,
+      total_conversations: 3,
+      total_messages: 4,
+      date_range: { start_date: '2026-08-01', end_date: '2026-08-08' },
+    });
+    expect(report.details).toEqual([
+      { agent_id: 'agent_a', agent_name: 'Invoice bot', conversation_count: 2, message_count: 3 },
+      { agent_id: null, agent_name: null, conversation_count: 1, message_count: 1 },
+    ]);
   });
 
   /**
@@ -248,11 +356,16 @@ describe('fetchTarsAuditReport', () => {
     jest
       .spyOn(global, 'fetch')
       .mockResolvedValue(buildResponse(200, { success: true, data: { total_count: 0, data: [] } }));
-    await expect(fetchTarsAuditReport('7', query, BASE_URL)).resolves.toEqual({
+    await expect(fetchTarsAuditReport('7', query, NO_AGENTS, BASE_URL)).resolves.toEqual({
       total_count: 0,
       data: [],
       feedback_data: [],
-      summary: null,
+      summary: {
+        total_agents: 0,
+        total_conversations: 0,
+        total_messages: 0,
+        date_range: { start_date: '2026-08-01', end_date: '2026-08-08' },
+      },
       details: [],
     });
   });
@@ -261,7 +374,7 @@ describe('fetchTarsAuditReport', () => {
     jest
       .spyOn(global, 'fetch')
       .mockResolvedValue(buildResponse(400, { message: '起始日期不能晚於結束日期' }));
-    await expect(fetchTarsAuditReport('7', query, BASE_URL)).rejects.toMatchObject({
+    await expect(fetchTarsAuditReport('7', query, NO_AGENTS, BASE_URL)).rejects.toMatchObject({
       status: 400,
       serverMessage: '起始日期不能晚於結束日期',
     });
@@ -284,13 +397,12 @@ describe('fetchTarsAuditFilterOptions blank names', () => {
             { id: 7, name: '', username: '' },
             { id: 8, name: null, username: 'amy' },
           ],
-          domains: [],
           knowledge_bases: [],
         },
       }),
     );
 
-    const options = await fetchTarsAuditFilterOptions(ADMIN, BASE_URL);
+    const options = await fetchTarsAuditFilterOptions(ADMIN, NO_AGENTS, BASE_URL);
 
     expect(options.users).toEqual([
       { id: '7', username: '7' },

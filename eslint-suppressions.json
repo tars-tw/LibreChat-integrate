@@ -43,14 +43,6 @@
       "count": 2
     }
   },
-  "client/src/components/Admin/Tars/Audit/Table.tsx": {
-    "shadcn/no-arbitrary-values": {
-      "count": 1
-    },
-    "shadcn/no-raw-colors": {
-      "count": 2
-    }
-  },
   "client/src/components/Admin/Tars/Databases/Manager.tsx": {
     "shadcn/no-restyle": {
       "count": 2

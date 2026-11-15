@@ -72,8 +72,18 @@ export const formatDateTime = (value: string | null | undefined, locale: string)
 /** Byte-order mark: without it Excel reads the CJK columns as mojibake. */
 const BOM = '\uFEFF';
 
-const escapeCsvCell = (value: string): string =>
-  /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+/**
+ * A cell Excel would read as a formula. Exports carry what users typed, so a
+ * question starting with `=` must stay text rather than run (CWE-1236).
+ */
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+/** A signed number is data, not a formula; quoting it would turn it into text. */
+const SIGNED_NUMBER = /^[+-]?\d+(\.\d+)?$/;
+
+const escapeCsvCell = (raw: string): string => {
+  const value = FORMULA_TRIGGER.test(raw) && !SIGNED_NUMBER.test(raw) ? `'${raw}` : raw;
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+};
 
 /**
  * Builds a UTF-8 CSV with a BOM so Excel opens the CJK columns correctly —

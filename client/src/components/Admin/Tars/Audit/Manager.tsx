@@ -5,15 +5,18 @@ import type { TTarsAuditQuery } from 'librechat-data-provider';
 import type { ResponsePair } from './ResponseDialog';
 import type { FilterState } from './Filters';
 import {
-  DEFAULT_FEEDBACK_COLUMNS,
-  DEFAULT_REPORT_COLUMNS,
-  FEEDBACK_COLUMNS,
-  REPORT_COLUMNS,
+  agentLabel,
+  MESSAGE_COLUMNS,
   feedbackTotals,
+  FEEDBACK_COLUMNS,
+  groupConversations,
   latestFeedbackRows,
+  DEFAULT_MESSAGE_COLUMNS,
+  DEFAULT_FEEDBACK_COLUMNS,
 } from './helpers';
 import { useTarsAuditOptionsQuery, useTarsAuditReportQuery } from '~/data-provider';
 import Filters, { initialFilters } from './Filters';
+import ConversationTable from './Conversations';
 import ResponseDialog from './ResponseDialog';
 import { TraceDialog } from './Trace';
 import Statistics from './Statistics';
@@ -22,11 +25,18 @@ import AuditTable from './Table';
 
 /** `TabsContent` ships with `mt-2 p-6`; each panel owns its own spacing instead. */
 const TAB_PANEL = 'mt-3 p-0';
+/**
+ * The table panels stay mounted, so their expanded rows and pages survive a look at
+ * another tab; only a new result set resets them. Radix never sets `hidden` on a
+ * force-mounted panel, so the inactive state hides it here.
+ */
+const KEPT_TAB_PANEL = `${TAB_PANEL} data-[state=inactive]:hidden`;
 
 const toQuery = (filters: FilterState): TTarsAuditQuery => ({
   start_date: filters.start,
   end_date: filters.end,
   filter_user_ids: filters.userIds,
+  agent_ids: filters.agentIds,
   knowledge_base_ids: filters.knowledgeBaseIds,
   query_filter: filters.keyword.trim(),
 });
@@ -43,7 +53,7 @@ export default function AuditManager() {
   const [feedbackOnly, setFeedbackOnly] = useState(false);
   const [pair, setPair] = useState<ResponsePair | null>(null);
   const [traceMessageId, setTraceMessageId] = useState<string | null>(null);
-  const [reportColumns, setReportColumns] = useState<string[]>(DEFAULT_REPORT_COLUMNS);
+  const [messageColumns, setMessageColumns] = useState<string[]>(DEFAULT_MESSAGE_COLUMNS);
   const [feedbackColumns, setFeedbackColumns] = useState<string[]>(DEFAULT_FEEDBACK_COLUMNS);
 
   const optionsQuery = useTarsAuditOptionsQuery();
@@ -69,32 +79,47 @@ export default function AuditManager() {
 
   const report = reportQuery.data;
 
-  const feedbackRows = useMemo(
-    () => latestFeedbackRows(report?.data ?? [], report?.feedback_data ?? []),
-    [report],
-  );
+  const feedbackRows = useMemo(() => latestFeedbackRows(report?.data ?? []), [report]);
 
   /**
    * The feedback filter is applied here rather than upstream: pwc_tars has no
-   * such parameter, and the rows it needs are already in the response.
+   * such parameter, and the rows it needs are already in the response. Messages
+   * are filtered before grouping, so a conversation with no rated message drops out.
    */
-  const reportRows = useMemo(() => {
+  const conversations = useMemo(() => {
     const rows = report?.data ?? [];
     if (!feedbackOnly) {
-      return rows;
+      return groupConversations(rows);
     }
     const rated = new Set(feedbackRows.map((row) => row.message_id));
-    return rows.filter((row) => rated.has(row.message_id));
+    return groupConversations(rows.filter((row) => rated.has(row.message_id)));
   }, [report, feedbackOnly, feedbackRows]);
 
   const totals = useMemo(() => feedbackTotals(feedbackRows), [feedbackRows]);
   const isLoading = reportQuery.isFetching;
   const hasRun = submitted != null;
 
+  /** Searching again with the same filters must still read the latest records. */
   const runSearch = () => {
+    const query = toQuery(filters);
     setFeedbackOnly(filters.feedbackOnly);
-    setSubmitted(toQuery(filters));
+    if (submitted != null && JSON.stringify(query) === JSON.stringify(submitted)) {
+      reportQuery.refetch();
+      return;
+    }
+    setSubmitted(query);
   };
+
+  /** Deleted agents keep their history; the picker offers the ones this result named. */
+  const missingAgents = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const row of report?.data ?? []) {
+      if (row.agent_id != null && row.agent_name == null && !seen.has(row.agent_id)) {
+        seen.set(row.agent_id, agentLabel(row, localize));
+      }
+    }
+    return [...seen].map(([id, label]) => ({ id, label }));
+  }, [report, localize]);
 
   const emptyHint = hasRun
     ? localize('com_ui_tars_audit_no_data')
@@ -109,13 +134,14 @@ export default function AuditManager() {
         isLoading={isLoading}
         options={optionsQuery.data}
         optionsLoading={optionsQuery.isFetching}
+        missingAgents={missingAgents}
       />
 
       <Tabs defaultValue="report">
         <TabsList variant="underline">
           <TabsTrigger value="report" variant="underline">
             {localize('com_ui_tars_audit_tab_report')}
-            {hasRun ? ` (${reportRows.length})` : ''}
+            {hasRun ? ` (${conversations.length})` : ''}
           </TabsTrigger>
           <TabsTrigger value="feedback" variant="underline">
             {localize('com_ui_tars_audit_tab_feedback')}
@@ -126,12 +152,12 @@ export default function AuditManager() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="report" className={TAB_PANEL}>
-          <AuditTable
-            rows={reportRows}
-            columns={REPORT_COLUMNS}
-            visible={reportColumns}
-            onVisibleChange={setReportColumns}
+        <TabsContent value="report" className={KEPT_TAB_PANEL} forceMount>
+          <ConversationTable
+            conversations={conversations}
+            columns={MESSAGE_COLUMNS}
+            visible={messageColumns}
+            onVisibleChange={setMessageColumns}
             isLoading={isLoading}
             locale={i18n.language}
             onViewResponse={setPair}
@@ -141,7 +167,7 @@ export default function AuditManager() {
           />
         </TabsContent>
 
-        <TabsContent value="feedback" className={TAB_PANEL}>
+        <TabsContent value="feedback" className={KEPT_TAB_PANEL} forceMount>
           <AuditTable
             rows={feedbackRows}
             columns={FEEDBACK_COLUMNS}
@@ -160,6 +186,7 @@ export default function AuditManager() {
           {hasRun ? (
             <Statistics
               summary={report?.summary ?? null}
+              details={report?.details ?? []}
               likes={totals.likes}
               dislikes={totals.dislikes}
             />

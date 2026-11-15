@@ -1,29 +1,16 @@
-import { useEffect, useId, useMemo, useState } from 'react';
-import { Button, Dropdown, Spinner } from '@librechat/client';
-import {
-  Eye,
-  Check,
-  Globe,
-  Inbox,
-  Database,
-  Download,
-  ChartGantt,
-  SlidersHorizontal,
-} from 'lucide-react';
-import type { AuditColumn, AuditRow } from './helpers';
+import { useMemo, useState } from 'react';
+import { Inbox } from 'lucide-react';
+import { Spinner } from '@librechat/client';
+import type { AuditColumn, AuditRow, CellFormat } from './helpers';
 import type { ResponsePair } from './ResponseDialog';
-import { cellText, commentLines, PAGE_SIZE_OPTIONS, PAGE_SIZES } from './helpers';
 import { downloadBlob, formatDateTime, toCsvBlob } from '../Users/helpers';
-import ColumnPicker from './ColumnPicker';
+import { agentLabel, cellText, PAGE_SIZES } from './helpers';
 import { useLocalize } from '~/hooks';
+import Toolbar from './Toolbar';
+import AuditCell from './Cell';
+import Pager from './Pager';
 
-/**
- * One audit table: toolbar, rows, pager.
- *
- * Both tabs share it because they differ only in which columns they declare —
- * the cell rendering, the column picker, the CSV export and the paging are
- * identical, and duplicating them would let the two drift apart.
- */
+/** A flat, one-row-per-message audit table: toolbar, rows, pager. */
 export default function AuditTable({
   rows,
   columns,
@@ -50,14 +37,13 @@ export default function AuditTable({
   const localize = useLocalize();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[1]);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  /** Both tabs render a table, so the size label needs an id unique to this one. */
-  const pageSizeLabelId = useId();
+  const [shownRows, setShownRows] = useState(rows);
 
-  /** A new result set invalidates the current page number. */
-  useEffect(() => {
+  /** A new result set invalidates the current page number, before it paints. */
+  if (shownRows !== rows) {
+    setShownRows(rows);
     setPage(1);
-  }, [rows]);
+  }
 
   const shown = useMemo(
     () => columns.filter((column) => column.locked === true || visible.includes(column.field)),
@@ -71,126 +57,29 @@ export default function AuditTable({
     [rows, currentPage, pageSize],
   );
 
-  const formatDate = (value: string | null | undefined) => formatDateTime(value, locale);
+  const format: CellFormat = {
+    date: (value) => formatDateTime(value, locale),
+    agent: (row) => agentLabel(row, localize),
+    deletedUser: localize('com_ui_tars_audit_trace_user_deleted'),
+  };
 
   /** Exports every row and every column, not just what is on screen. */
   const exportCsv = () => {
     const headers = columns.map((column) => localize(column.labelKey));
-    const body = rows.map((row) => columns.map((column) => cellText(row, column, formatDate)));
+    const body = rows.map((row) => columns.map((column) => cellText(row, column, format)));
     const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     downloadBlob(toCsvBlob(headers, body), `${exportName}_${stamp}.csv`);
   };
 
-  const renderCell = (row: AuditRow, column: AuditColumn) => {
-    if (column.kind === 'response') {
-      const viewResponse = (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          onClick={() =>
-            onViewResponse({
-              messageId: row.message_id,
-              query: row.user_query,
-              response: row.model_response,
-            })
-          }
-          aria-label={localize('com_ui_tars_audit_view_response')}
-          title={localize('com_ui_tars_audit_view_response')}
-        >
-          <Eye className="size-4 text-[rgb(var(--pwc-info))]" aria-hidden />
-        </Button>
-      );
-      if (!onViewTrace) {
-        return viewResponse;
-      }
-      return (
-        <div className="flex gap-1">
-          {viewResponse}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => onViewTrace(row.message_id)}
-            aria-label={localize('com_ui_tars_audit_trace_view_button')}
-            title={localize('com_ui_tars_audit_trace_view_button')}
-          >
-            <ChartGantt className="text-text-secondary size-4" aria-hidden />
-          </Button>
-        </div>
-      );
-    }
-
-    if (column.kind === 'boolean') {
-      const on = row[column.field as 'is_web_search' | 'is_sql_agent'] === true;
-      if (!on) {
-        return <span className="text-text-secondary">—</span>;
-      }
-      const Icon = column.field === 'is_web_search' ? Globe : Database;
-      return <Icon className="text-brand-primary size-4" aria-label={localize(column.labelKey)} />;
-    }
-
-    if (column.kind === 'deleted') {
-      return row.is_deleted ? (
-        <Check
-          className="text-pwc-danger mt-1.5 size-4"
-          aria-label={localize('com_ui_tars_audit_col_deleted')}
-        />
-      ) : null;
-    }
-
-    if (column.kind === 'comments') {
-      const lines = commentLines(row.comments);
-      if (lines.length === 0) {
-        return null;
-      }
-      return (
-        <ul className="w-[18rem] list-disc space-y-0.5 pl-4">
-          {lines.map((line, index) => (
-            <li key={index} className="break-words whitespace-normal">
-              {line}
-            </li>
-          ))}
-        </ul>
-      );
-    }
-
-    const text = cellText(row, column, formatDate);
-    if (column.kind === 'number') {
-      return <span className="tabular-nums">{text}</span>;
-    }
-    return (
-      <span className="block max-w-[22rem] truncate" title={text === '' ? undefined : text}>
-        {text}
-      </span>
-    );
-  };
-
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-end gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setPickerOpen(true)}
-          aria-label={localize('com_ui_tars_audit_columns')}
-          title={localize('com_ui_tars_audit_columns')}
-        >
-          <SlidersHorizontal className="text-text-primary size-4 dark:text-white" aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={exportCsv}
-          disabled={rows.length === 0}
-          aria-label={localize('com_ui_tars_audit_export')}
-          title={localize('com_ui_tars_audit_export')}
-        >
-          <Download className="text-text-primary size-4 dark:text-white" aria-hidden />
-        </Button>
-      </div>
+      <Toolbar
+        columns={columns}
+        visible={visible}
+        onVisibleChange={onVisibleChange}
+        onExport={exportCsv}
+        canExport={rows.length > 0}
+      />
 
       {/* Bounded so the horizontal scrollbar rides at the bottom of a box that is
           always on screen. Left to grow with the page, it sits below a full page of
@@ -235,7 +124,13 @@ export default function AuditTable({
                 >
                   {shown.map((column) => (
                     <td key={column.field} className="text-text-primary px-3 py-1.5">
-                      {renderCell(row, column)}
+                      <AuditCell
+                        row={row}
+                        column={column}
+                        format={format}
+                        onViewResponse={onViewResponse}
+                        onViewTrace={onViewTrace}
+                      />
                     </td>
                   ))}
                 </tr>
@@ -246,53 +141,22 @@ export default function AuditTable({
       </div>
 
       {rows.length > 0 && (
-        <footer className="text-text-secondary flex flex-wrap items-center justify-between gap-3 text-sm">
-          <div className="flex items-center gap-2">
-            <span id={pageSizeLabelId}>{localize('com_ui_tars_audit_rows_per_page')}</span>
-            <Dropdown
-              value={String(pageSize)}
-              onChange={(value) => {
-                setPageSize(Number(value));
-                setPage(1);
-              }}
-              options={PAGE_SIZE_OPTIONS}
-              aria-labelledby={pageSizeLabelId}
-              sizeClasses="min-w-[5rem]"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span>
-              {localize('com_ui_tars_audit_page_indicator', {
-                0: String(currentPage),
-                1: String(totalPages),
-                2: String(rows.length),
-              })}
-            </span>
-            <Button
-              variant="outline"
-              onClick={() => setPage(currentPage - 1)}
-              disabled={currentPage <= 1}
-            >
-              {localize('com_ui_tars_users_prev_page')}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setPage(currentPage + 1)}
-              disabled={currentPage >= totalPages}
-            >
-              {localize('com_ui_tars_users_next_page')}
-            </Button>
-          </div>
-        </footer>
+        <Pager
+          page={currentPage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+          indicator={localize('com_ui_tars_audit_page_indicator', {
+            0: String(currentPage),
+            1: String(totalPages),
+            2: String(rows.length),
+          })}
+        />
       )}
-
-      <ColumnPicker
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        columns={columns}
-        visible={visible}
-        onChange={onVisibleChange}
-      />
     </div>
   );
 }
