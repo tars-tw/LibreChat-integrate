@@ -1,5 +1,6 @@
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
-import type { TTarsAuditSummary } from 'librechat-data-provider';
+import type { TTarsAuditAgentStat, TTarsAuditSummary } from 'librechat-data-provider';
+import { agentLabel, distinctLabels } from './helpers';
 import { useLocalize } from '~/hooks';
 
 /** One headline number. */
@@ -13,13 +14,18 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   );
 }
 
-/** The period rollup: headline totals and the like/dislike split. */
+/**
+ * The period rollup: headline totals, the like/dislike split, and the per-agent
+ * breakdown, which the server already sorts busiest first.
+ */
 export default function Statistics({
   summary,
+  details,
   likes,
   dislikes,
 }: {
   summary: TTarsAuditSummary | null;
+  details: TTarsAuditAgentStat[];
   likes: number;
   dislikes: number;
 }) {
@@ -33,6 +39,12 @@ export default function Statistics({
     );
   }
 
+  const busiest = details[0]?.message_count ?? 0;
+  const labels = new Map(
+    distinctLabels(
+      details.map((detail) => ({ id: detail.agent_id ?? '', label: agentLabel(detail, localize) })),
+    ).map((item) => [item.id, item.label]),
+  );
   const rated = likes + dislikes;
   const likeShare = rated === 0 ? 0 : Math.round((likes / rated) * 100);
 
@@ -44,7 +56,7 @@ export default function Statistics({
         {summary.date_range.start_date} ~ {summary.date_range.end_date}
       </p>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat
           label={localize('com_ui_tars_audit_total_messages')}
           value={String(summary.total_messages)}
@@ -52,6 +64,10 @@ export default function Statistics({
         <Stat
           label={localize('com_ui_tars_audit_total_conversations')}
           value={String(summary.total_conversations)}
+        />
+        <Stat
+          label={localize('com_ui_tars_audit_total_agents')}
+          value={String(summary.total_agents)}
         />
         <Stat
           label={localize('com_ui_tars_audit_total_feedback')}
@@ -94,6 +110,50 @@ export default function Statistics({
           </div>
         </div>
       )}
+
+      <div className="border-border-light rounded-xl border">
+        <header className="border-border-light border-b px-4 py-2">
+          <h3 className="text-text-primary text-sm font-medium">
+            {localize('com_ui_tars_audit_agent_stats')}
+          </h3>
+        </header>
+        {details.length === 0 ? (
+          <p className="text-text-secondary px-4 py-6 text-sm">
+            {localize('com_ui_tars_audit_no_data')}
+          </p>
+        ) : (
+          <ul className="divide-border-light divide-y">
+            {details.map((detail) => (
+              <li key={detail.agent_id ?? ''} className="px-4 py-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span
+                    className={`min-w-0 truncate text-sm ${
+                      detail.agent_name == null ? 'text-text-secondary' : 'text-text-primary'
+                    }`}
+                  >
+                    {labels.get(detail.agent_id ?? '')}
+                  </span>
+                  <span className="text-text-secondary shrink-0 text-xs tabular-nums">
+                    {localize('com_ui_tars_audit_agent_counts', {
+                      0: String(detail.message_count),
+                      1: String(detail.conversation_count),
+                    })}
+                  </span>
+                </div>
+                {/* A bar relative to the busiest agent, so the mix reads at a glance. */}
+                <div className="bg-surface-tertiary mt-2 h-1.5 overflow-hidden rounded-full">
+                  <div
+                    className="bg-accent-primary h-full rounded-full"
+                    style={{
+                      width: `${busiest === 0 ? 0 : Math.round((detail.message_count / busiest) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

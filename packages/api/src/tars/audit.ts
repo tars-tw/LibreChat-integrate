@@ -1,10 +1,23 @@
 import { Readable } from 'stream';
 import { logger } from '@librechat/data-schemas';
-import { FileSources, normalizeTarsMessageTrace } from 'librechat-data-provider';
+import {
+  FileSources,
+  stripAgentIdSuffix,
+  isEphemeralAgentId,
+  TARS_AUDIT_NO_AGENT,
+  normalizeTarsMessageTrace,
+} from 'librechat-data-provider';
 import type {
+  TTarsAuditQuery,
+  TTarsAuditReport,
+  TTarsAuditMessage,
   TTarsMessageTrace,
+  TTarsAuditSummary,
+  TTarsAuditFeedback,
+  TTarsAuditAgentStat,
   TTarsAuditErrorBody,
   TTarsAuditErrorCode,
+  TTarsAuditOptionsResponse,
 } from 'librechat-data-provider';
 import type { Request, Response } from 'express';
 import type { StoredFileRef } from '~/storage/path';
@@ -19,90 +32,37 @@ import {
 } from './client';
 import { pipeTarsDownload, sendTarsFileStream, tarsAttachmentDisposition } from './files/route';
 import { resolveDownloadPath } from '~/storage/path';
+import { TARS_MIRROR_SOURCE } from './trace';
 
 /**
- * A message audit row (`POST /api/settings/query_message_reports` → `data[]`).
- * pwc_tars assembles it by joining `message`, `conversation`, `sys_user` and the
- * long-term memory tables, then folds in the feedback counted for the period.
+ * A message audit row as pwc_tars sends it (`POST /api/settings/query_message_reports`
+ * → `data[]`). pwc_tars joins `message`, `conversation`, `sys_user` and the
+ * long-term memory tables, folds in the period's feedback, and reads `agent_id`
+ * off the mirrored trace; the agent's name lives only in LibreChat.
  */
-export interface TarsAuditMessage {
-  message_id: string;
-  user_id: string | null;
-  username: string | null;
-  domain_name: string | null;
-  user_query: string | null;
-  model_response: string | null;
-  conversation_id: string | null;
-  conversation_name: string | null;
-  knowledge_base_name: string | null;
-  model_name: string | null;
-  created_at: string | null;
-  upload_files: string | null;
-  memory_document: string | null;
-  memory_website: string | null;
-  is_web_search: boolean | null;
-  is_sql_agent: boolean | null;
-  ip_address: string | null;
-  like_counts: number;
-  dislike_counts: number;
-  comments: string | null;
-  is_deleted: boolean;
-}
-
-/** One raw feedback record (`MessageFeedback.to_dict()`), sorted newest first. */
-export interface TarsAuditFeedback {
-  id?: string;
-  message_id: string;
-  like_count?: number;
-  dislike_count?: number;
-  feedback?: string | null;
-  created_at?: string | null;
-  created_by?: string | null;
-}
-
-/** Per-specialized-brain rollup used by the statistics tab. */
-export interface TarsAuditDomainStat {
-  domain_name: string;
-  conversation_count: number;
-  message_count: number;
-  knowledge_bases: { id?: string | number; name: string }[];
-}
-
-/** Totals for the queried period. */
-export interface TarsAuditSummary {
-  total_domains: number;
-  total_conversations: number;
-  total_messages: number;
-  date_range: { start_date: string; end_date: string };
-}
-
-/**
- * The whole report. pwc_tars has no server-side paging — it returns every row in
- * the period, response text included — so the client pages what it already has.
- */
-export interface TarsAuditReport {
-  total_count: number;
-  data: TarsAuditMessage[];
-  feedback_data: TarsAuditFeedback[];
-  summary: TarsAuditSummary | null;
-  details: TarsAuditDomainStat[];
-}
+type RawAuditMessage = Omit<
+  TTarsAuditMessage,
+  'agent_id' | 'agent_name' | 'conversation_is_deleted'
+> & {
+  agent_id?: string | null;
+  /** Sent by a pwc_tars without the agent column; the conversation flag then falls back to it. */
+  conversation_is_deleted?: boolean | null;
+  domain_name?: string | null;
+};
 
 /** Filters the operator submits. Dates are `YYYY-MM-DD` in Asia/Taipei. */
-export interface TarsAuditQuery {
-  start_date: string;
-  end_date: string;
-  filter_user_ids?: string[];
-  knowledge_base_ids?: string[];
-  domain_id?: string | null;
-  query_filter?: string;
+export type TarsAuditQuery = TTarsAuditQuery;
+
+/** A saved agent as the audit report names it. */
+export interface TarsAuditAgentRef {
+  id: string;
+  name?: string | null;
 }
 
-/** The pickers that drive the filter bar (`GET /api/settings/prepare_audit_data`). */
-export interface TarsAuditFilterOptions {
-  users: { id: string; username: string }[];
-  domains: { id: string; name: string }[];
-  knowledge_bases: { id: string; name: string }[];
+/** Where the report looks agents up; LibreChat's agent store, supplied by the route. */
+export interface TarsAuditAgentDirectory {
+  /** The agents with these logical ids, or every agent when `ids` is omitted. */
+  findAgents: (ids?: string[]) => Promise<TarsAuditAgentRef[]>;
 }
 
 interface TarsAuditEnvelope<T> {
@@ -112,13 +72,8 @@ interface TarsAuditEnvelope<T> {
 
 interface RawReport {
   total_count?: number;
-  data?: TarsAuditMessage[];
-  feedback_data?: TarsAuditFeedback[];
-  chart_data?: {
-    summary?: TarsAuditSummary;
-    /** `conversations` nests every message again; present but never read. */
-    details?: TarsAuditDomainStat[];
-  };
+  data?: RawAuditMessage[];
+  feedback_data?: TTarsAuditFeedback[];
 }
 
 /** pwc_tars sends numeric ids and, for a few rows, no id at all. */
@@ -130,7 +85,6 @@ interface RawOption {
 
 interface RawFilterOptions {
   users?: RawOption[];
-  domains?: RawOption[];
   knowledge_bases?: RawOption[];
 }
 
@@ -157,35 +111,118 @@ const toOptions = (rows: RawOption[] | undefined): { id: string; label: string }
       return { id: String(row.id), label: label ?? '' };
     });
 
+const byName = (a: { name: string }, b: { name: string }): number => a.name.localeCompare(b.name);
+
 /**
- * The users, specialized brains and knowledge bases the filter bar offers.
- * pwc_tars returns every user regardless of status but only enabled brains and
- * knowledge bases, which matches auditing: a disabled account's past messages
- * still need to be findable.
+ * The users, agents and knowledge bases the filter bar offers. pwc_tars returns
+ * every user regardless of status but only enabled knowledge bases, which
+ * matches auditing: a disabled account's past messages still need to be
+ * findable. Agents come from LibreChat, read alongside.
  *
  * pwc_tars gates the route behind `@admin_required`, so it is called as the
  * acting admin.
  */
 export async function fetchTarsAuditFilterOptions(
   tarsId: string,
+  directory: TarsAuditAgentDirectory,
   baseUrl?: string,
-): Promise<TarsAuditFilterOptions> {
-  const response = await tarsFetch<TarsAuditEnvelope<RawFilterOptions>>(
-    '/api/settings/prepare_audit_data',
-    { baseUrl, asUser: tarsId },
-  );
+): Promise<TTarsAuditOptionsResponse> {
+  const [response, agents] = await Promise.all([
+    tarsFetch<TarsAuditEnvelope<RawFilterOptions>>('/api/settings/prepare_audit_data', {
+      baseUrl,
+      asUser: tarsId,
+    }),
+    directory.findAgents(),
+  ]);
   const data = response?.data ?? {};
   return {
     users: toOptions(data.users).map(({ id, label }) => ({ id, username: label })),
-    domains: toOptions(data.domains).map(({ id, label }) => ({ id, name: label })),
+    agents: agents
+      .filter((agent) => typeof agent.id === 'string' && agent.id !== '')
+      .map((agent) => ({ id: agent.id, name: agent.name?.trim() || agent.id }))
+      .sort(byName),
     knowledge_bases: toOptions(data.knowledge_bases).map(({ id, label }) => ({ id, name: label })),
   };
 }
 
+/** The saved agent a trace names; ephemeral ids and blanks mean none. */
+const savedAgentId = (agentId: string | null | undefined): string | null => {
+  if (typeof agentId !== 'string' || isEphemeralAgentId(agentId)) {
+    return null;
+  }
+  return stripAgentIdSuffix(agentId);
+};
+
+const toAuditMessage = (
+  { domain_name: _domain, ...row }: RawAuditMessage,
+  names: Map<string, string>,
+): TTarsAuditMessage => {
+  const agentId = savedAgentId(row.agent_id);
+  return {
+    ...row,
+    agent_id: agentId,
+    agent_name: agentId == null ? null : (names.get(agentId) ?? null),
+    conversation_is_deleted: row.conversation_is_deleted ?? row.is_deleted === true,
+  };
+};
+
+/** Keeps the rows whose agent was picked; `TARS_AUDIT_NO_AGENT` stands for none. */
+const filterByAgents = (rows: TTarsAuditMessage[], agentIds: string[]): TTarsAuditMessage[] => {
+  if (agentIds.length === 0) {
+    return rows;
+  }
+  const picked = new Set(agentIds);
+  return rows.filter((row) => picked.has(row.agent_id ?? TARS_AUDIT_NO_AGENT));
+};
+
 /**
- * Runs the audit query. `chart_data` is flattened to the two parts the UI shows
- * — the period summary and the per-brain rollup — and its `bar_chart`/`pie_chart`
- * arrays are dropped, since they only restate `details` in plotting order.
+ * The period totals and the per-agent rollup, in one pass over the rows the
+ * report returns, so the statistics always describe exactly what the tables
+ * list. The busiest agent leads.
+ */
+export function summarizeTarsAudit(
+  rows: TTarsAuditMessage[],
+  query: Pick<TTarsAuditQuery, 'start_date' | 'end_date'>,
+): { summary: TTarsAuditSummary; details: TTarsAuditAgentStat[] } {
+  const conversations = new Set<string>();
+  const agents = new Map<string, TTarsAuditAgentStat & { conversations: Set<string> }>();
+  for (const row of rows) {
+    const conversationId = row.conversation_id ?? row.message_id;
+    conversations.add(conversationId);
+    const key = row.agent_id ?? TARS_AUDIT_NO_AGENT;
+    const stat = agents.get(key) ?? {
+      agent_id: row.agent_id,
+      agent_name: row.agent_name,
+      conversation_count: 0,
+      message_count: 0,
+      conversations: new Set<string>(),
+    };
+    stat.message_count += 1;
+    stat.conversations.add(conversationId);
+    agents.set(key, stat);
+  }
+  const details = [...agents.values()]
+    .map(({ conversations: seen, ...stat }) => ({ ...stat, conversation_count: seen.size }))
+    .sort((a, b) => b.message_count - a.message_count);
+  return {
+    summary: {
+      total_agents: details.filter((detail) => detail.agent_id != null).length,
+      total_conversations: conversations.size,
+      total_messages: rows.length,
+      date_range: { start_date: query.start_date, end_date: query.end_date },
+    },
+    details,
+  };
+}
+
+/**
+ * Runs the audit query, names each row's agent and applies the agent filter,
+ * which pwc_tars cannot: it holds agent ids but not agents. The statistics are
+ * then rebuilt from the filtered rows, so pwc_tars's own `chart_data` (grouped
+ * by specialized brain) is not read.
+ *
+ * Only the conversations LibreChat mirrored are audited here; pwc_tars's own
+ * chats belong to pwc_tars's report, so `source` asks for the mirror's rows.
  *
  * `user_id` records who ran the query; it never narrows the result. pwc_tars
  * gates the route behind `@admin_required`, so it is called as that admin.
@@ -193,8 +230,9 @@ export async function fetchTarsAuditFilterOptions(
 export async function fetchTarsAuditReport(
   tarsId: string,
   query: TarsAuditQuery,
+  directory: TarsAuditAgentDirectory,
   baseUrl?: string,
-): Promise<TarsAuditReport> {
+): Promise<TTarsAuditReport> {
   const response = await tarsFetch<TarsAuditEnvelope<RawReport>>(
     '/api/settings/query_message_reports',
     {
@@ -207,27 +245,36 @@ export async function fetchTarsAuditReport(
         filter_user_ids: query.filter_user_ids ?? [],
         start_date: query.start_date,
         end_date: query.end_date,
-        domain_id: query.domain_id ?? '',
         knowledge_base_ids: query.knowledge_base_ids ?? [],
         query_filter: query.query_filter ?? '',
+        source: TARS_MIRROR_SOURCE,
       },
     },
   );
 
-  const data = response?.data ?? {};
-  const rows = data.data ?? [];
+  const rawRows = response?.data?.data ?? [];
+  const agentIds = [
+    ...new Set(
+      rawRows.map((row) => savedAgentId(row.agent_id)).filter((id): id is string => id != null),
+    ),
+  ];
+  const agents = agentIds.length > 0 ? await directory.findAgents(agentIds) : [];
+  /** An agent that exists but was never named reads by its id, as the picker lists it. */
+  const names = new Map(agents.map((agent) => [agent.id, agent.name?.trim() || agent.id]));
+  const rows = filterByAgents(
+    rawRows.map((row) => toAuditMessage(row, names)),
+    query.agent_ids ?? [],
+  );
+  const kept = new Set(rows.map((row) => row.message_id));
+  const { summary, details } = summarizeTarsAudit(rows, query);
   return {
-    total_count: data.total_count ?? rows.length,
+    total_count: rows.length,
     data: rows,
-    feedback_data: data.feedback_data ?? [],
-    summary: data.chart_data?.summary ?? null,
-    /** `conversations` nests every message again; dropped so the payload stays sane. */
-    details: (data.chart_data?.details ?? []).map((detail) => ({
-      domain_name: detail.domain_name,
-      conversation_count: detail.conversation_count,
-      message_count: detail.message_count,
-      knowledge_bases: detail.knowledge_bases ?? [],
-    })),
+    feedback_data: (response?.data?.feedback_data ?? []).filter((entry) =>
+      kept.has(entry.message_id),
+    ),
+    summary,
+    details,
   };
 }
 

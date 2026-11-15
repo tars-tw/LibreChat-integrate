@@ -276,6 +276,9 @@ the `mcp_files` branch ahead of the image branch in both `createToolEndCallback`
 `createResponsesToolEndCallback` (`agents/callbacks.js`; the image branch returns, so it must stay
 first; `agents/__tests__/callbacks.mcpFiles.spec.js` fails if either is lost),
 `mirrorChatToTars` in `agents/request.js`,
+`TARS_PRESERVED_CONVERSATION_FIELDS` spread into `preservedFields` in `AgentClient.getTurnConversationFields`
+(`controllers/agents/client.js`; without it a turn save `$unset`s `tarsConversationId`, the next turn opens a
+second pwc_tars conversation and a delete no longer reaches the audit report; `client.test.js` fails if it is lost),
 `withTarsMcpConfig` in `api/server/services/Config/app.js` (and `withWorkflowMcpConfig` wrapped around it, which splits the YAML `workflow` entry into one `workflow_<project>` MCP server per Langflow project; `langflow/config.spec.ts`. A personal project's entry also carries `x-tars-workflow-access: agent-share`, and Langflow serves someone else's personal project only on that header from the system key; who may actually reach it is decided by `canUseWorkflowMcpServer` (`langflow/access.ts`, reads wired in `api/server/services/workflowShareAccess.js`), called from `assertTarsDirectMcpAccess` at the same three seams as the OIDC check: the owner, or someone who may view an agent the owner authored that binds the flow (direct, group or public share; whole-server binding = every flow; remote-agent shares do not count), checked per tool on every call; the tool library still hides the project from them (`filterVisibleWorkflowMcpConfigs`); `langflow/access.spec.ts`), `stampTarsStepTiming`
 in the `ON_RUN_STEP_CLOSED` handler of `agents/callbacks.js` and in the
 `on_run_step_closed` replay of `RedisJobStore.ts` (one standalone line after

@@ -13,12 +13,15 @@ export default function ColumnPicker({
   columns,
   visible,
   onChange,
+  hint,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   columns: AuditColumn[];
   visible: string[];
   onChange: (fields: string[]) => void;
+  /** Overrides the default explanation, e.g. to say which table the columns belong to. */
+  hint?: string;
 }) {
   const localize = useLocalize();
 
@@ -34,7 +37,7 @@ export default function ColumnPicker({
         main={
           <div className="space-y-3">
             <p className="text-text-secondary text-sm">
-              {localize('com_ui_tars_audit_columns_hint')}
+              {hint ?? localize('com_ui_tars_audit_columns_hint')}
             </p>
             <ul className="max-h-[55vh] space-y-1 overflow-y-auto">
               {columns.map((column) => {

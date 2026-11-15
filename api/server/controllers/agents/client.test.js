@@ -141,7 +141,7 @@ describe('AgentClient code approval persistence', () => {
     (requested) => {
       const write = turnWrite(noWorkspaceClient({ requested, stored: 'acceptEdits' }));
       expect(write.endpointOptions).not.toHaveProperty('codeApprovalMode');
-      expect(write.preservedFields).toEqual(['codeApprovalMode']);
+      expect(write.preservedFields).toEqual(['codeApprovalMode', 'tarsConversationId']);
     },
   );
 
@@ -158,7 +158,15 @@ describe('AgentClient code approval persistence', () => {
     };
     const write = turnWrite(noWorkspaceClient({ requested: 'acceptEdits', agent }));
     expect(write.endpointOptions).toMatchObject({ codeApprovalMode: 'acceptEdits' });
-    expect(write.preservedFields).toEqual([]);
+    expect(write.preservedFields).toEqual(['tarsConversationId']);
+  });
+
+  /** The pwc_tars link is no turn option; unset by a turn save, the next turn would open a
+   *  second pwc_tars conversation and a delete would no longer reach the audit report. */
+  it('keeps the pwc_tars conversation link through every turn save', () => {
+    const write = turnWrite(noWorkspaceClient({ requested: undefined }));
+    expect(write.endpointOptions).not.toHaveProperty('tarsConversationId');
+    expect(write.preservedFields).toContain('tarsConversationId');
   });
 
   it('still rejects a value that is not an approval mode without a workspace', () => {

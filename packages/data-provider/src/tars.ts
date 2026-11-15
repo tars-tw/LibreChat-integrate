@@ -895,6 +895,9 @@ export const tarsConfigSchema = z.object({
     .prefault({}),
 });
 
+/** The audit report's agent filter value for chats that ran no saved agent. */
+export const TARS_AUDIT_NO_AGENT = '__no_agent__';
+
 /** pwc_tars's edit limits for a memory record (`record_format.py`). */
 export const TARS_MEMORY_LIMITS = {
   profileMaxItems: 30,

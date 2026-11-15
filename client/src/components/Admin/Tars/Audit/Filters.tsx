@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
+import { TARS_AUDIT_NO_AGENT } from 'librechat-data-provider';
 import { ChevronDown, ChevronUp, RotateCcw, Search } from 'lucide-react';
 import { Button, Checkbox, Input, Label, Spinner } from '@librechat/client';
 import type { TTarsAuditOptionsResponse } from 'librechat-data-provider';
+import { defaultDateRange, distinctLabels } from './helpers';
 import Picker, { type PickerOption } from './Picker';
-import { defaultDateRange } from './helpers';
 import { useLocalize } from '~/hooks';
 
 /** Everything the operator can narrow the report by. */
@@ -11,6 +12,7 @@ export interface FilterState {
   start: string;
   end: string;
   userIds: string[];
+  agentIds: string[];
   knowledgeBaseIds: string[];
   keyword: string;
   feedbackOnly: boolean;
@@ -22,6 +24,7 @@ export const initialFilters = (): FilterState => {
     start,
     end,
     userIds: [],
+    agentIds: [],
     knowledgeBaseIds: [],
     keyword: '',
     feedbackOnly: false,
@@ -40,6 +43,7 @@ export default function Filters({
   isLoading,
   options,
   optionsLoading,
+  missingAgents = [],
 }: {
   filters: FilterState;
   onChange: (next: FilterState) => void;
@@ -47,6 +51,8 @@ export default function Filters({
   isLoading: boolean;
   options: TTarsAuditOptionsResponse | undefined;
   optionsLoading: boolean;
+  /** Agents a past result named that no longer exist, so their history can still be filtered. */
+  missingAgents?: { id: string; label: string }[];
 }) {
   const localize = useLocalize();
   const [collapsed, setCollapsed] = useState(false);
@@ -58,6 +64,19 @@ export default function Filters({
     () => (options?.users ?? []).map((user) => ({ value: user.id, label: user.username })),
     [options],
   );
+  /** Chats run without a saved agent are auditable too, so they get an entry of their own. */
+  const agentOptions: PickerOption[] = useMemo(() => {
+    const live = (options?.agents ?? []).map((agent) => ({ id: agent.id, label: agent.name }));
+    const known = new Set(live.map((agent) => agent.id));
+    const agents = distinctLabels([
+      ...live,
+      ...missingAgents.filter((agent) => !known.has(agent.id)),
+    ]);
+    return [
+      { value: TARS_AUDIT_NO_AGENT, label: localize('com_ui_tars_audit_no_agent') },
+      ...agents.map((agent) => ({ value: agent.id, label: agent.label })),
+    ];
+  }, [options, missingAgents, localize]);
   const kbOptions: PickerOption[] = useMemo(
     () => (options?.knowledge_bases ?? []).map((kb) => ({ value: kb.id, label: kb.name })),
     [options],
@@ -72,6 +91,13 @@ export default function Filters({
       parts.push(
         `${localize('com_ui_tars_audit_col_user')} ${localize('com_ui_tars_audit_selected_count', {
           0: String(filters.userIds.length),
+        })}`,
+      );
+    }
+    if (filters.agentIds.length > 0) {
+      parts.push(
+        `${localize('com_ui_tars_audit_col_agent')} ${localize('com_ui_tars_audit_selected_count', {
+          0: String(filters.agentIds.length),
         })}`,
       );
     }
@@ -175,6 +201,16 @@ export default function Filters({
           disabled={optionsLoading}
         />
 
+        <Picker
+          id="tars-audit-agents"
+          label={localize('com_ui_tars_audit_col_agent')}
+          options={agentOptions}
+          selected={filters.agentIds}
+          onChange={(values) => set('agentIds', values)}
+          placeholder={localize('com_ui_tars_audit_all_agents')}
+          disabled={optionsLoading}
+        />
+
         <div className="space-y-1.5">
           <Label htmlFor="tars-audit-keyword">{localize('com_ui_tars_audit_keyword')}</Label>
           <Input
@@ -185,17 +221,15 @@ export default function Filters({
           />
         </div>
 
-        <div className="md:col-span-2">
-          <Picker
-            id="tars-audit-kbs"
-            label={localize('com_ui_tars_audit_col_kb')}
-            options={kbOptions}
-            selected={filters.knowledgeBaseIds}
-            onChange={(values) => set('knowledgeBaseIds', values)}
-            placeholder={localize('com_ui_tars_audit_all_kbs')}
-            disabled={optionsLoading}
-          />
-        </div>
+        <Picker
+          id="tars-audit-kbs"
+          label={localize('com_ui_tars_audit_col_kb')}
+          options={kbOptions}
+          selected={filters.knowledgeBaseIds}
+          onChange={(values) => set('knowledgeBaseIds', values)}
+          placeholder={localize('com_ui_tars_audit_all_kbs')}
+          disabled={optionsLoading}
+        />
 
         <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 md:col-span-2">
           <label className="text-text-primary h-theme-field flex cursor-pointer items-center gap-2 text-sm">

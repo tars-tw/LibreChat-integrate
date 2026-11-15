@@ -1698,7 +1698,10 @@ export type TTarsAuditMessage = {
   message_id: string;
   user_id: string | null;
   username: string | null;
-  domain_name: string | null;
+  /** The saved agent the turn ran; null for an ephemeral chat or a pwc_tars-native one. */
+  agent_id: string | null;
+  /** That agent's current name; null when there is no agent or it has since been deleted. */
+  agent_name: string | null;
   user_query: string | null;
   model_response: string | null;
   conversation_id: string | null;
@@ -1715,7 +1718,10 @@ export type TTarsAuditMessage = {
   like_counts: number;
   dislike_counts: number;
   comments: string | null;
+  /** The message's own status. */
   is_deleted: boolean;
+  /** Whether the conversation was deleted (pwc_tars `conversation.is_deleted`). */
+  conversation_is_deleted: boolean;
 };
 
 /** A raw feedback record, kept so a rating outside the message's own window still counts. */
@@ -1729,16 +1735,17 @@ export type TTarsAuditFeedback = {
   created_by?: string | null;
 };
 
-/** Per-specialized-brain rollup for the statistics tab. */
-export type TTarsAuditDomainStat = {
-  domain_name: string;
+/** Per-agent rollup for the statistics tab; `agent_id` null groups the chats run without one. */
+export type TTarsAuditAgentStat = {
+  agent_id: string | null;
+  agent_name: string | null;
   conversation_count: number;
   message_count: number;
-  knowledge_bases: { id?: string | number; name: string }[];
 };
 
 export type TTarsAuditSummary = {
-  total_domains: number;
+  /** Distinct saved agents the period's messages ran. */
+  total_agents: number;
   total_conversations: number;
   total_messages: number;
   date_range: { start_date: string; end_date: string };
@@ -1750,7 +1757,7 @@ export type TTarsAuditReport = {
   data: TTarsAuditMessage[];
   feedback_data: TTarsAuditFeedback[];
   summary: TTarsAuditSummary | null;
-  details: TTarsAuditDomainStat[];
+  details: TTarsAuditAgentStat[];
 };
 
 /** Filters the operator submits. Dates are `YYYY-MM-DD`, interpreted in Asia/Taipei. */
@@ -1759,14 +1766,16 @@ export type TTarsAuditQuery = {
   end_date: string;
   filter_user_ids?: string[];
   knowledge_base_ids?: string[];
-  domain_id?: string | null;
+  /** Saved agent ids; `TARS_AUDIT_NO_AGENT` selects the chats run without one. */
+  agent_ids?: string[];
+  /** Matches the query, the response and the conversation name. */
   query_filter?: string;
 };
 
 /** The three pickers that drive the audit filter bar. */
 export type TTarsAuditOptionsResponse = {
   users: { id: string; username: string }[];
-  domains: { id: string; name: string }[];
+  agents: { id: string; name: string }[];
   knowledge_bases: { id: string; name: string }[];
 };
 
