@@ -9,9 +9,10 @@ const SHARED_PROJECT_PREFIX = '共用流程 - ';
 const BRAND_PATTERN = /\blangflow\b/gi;
 
 /**
- * A project's display name, as its MCP server and agent are titled. A shared project is marked:
- * Langflow names every user's default project like the shared account's ("Starter Project"), and
- * the tool library offers a personal project to its owner alone, who knows it as their own.
+ * A project's name as its mirrored agent is titled. A shared project is marked in text: Langflow
+ * names every user's default project like the shared account's ("Starter Project"), and an agent
+ * name has no room for the icon the agent builder marks a shared project's MCP server with
+ * (`tarsWorkflowShared`). The tool library offers a personal project to its owner alone.
  */
 export function workflowProjectName(name: string, owner: 'system' | 'personal'): string {
   return owner === 'system' ? `${SHARED_PROJECT_PREFIX}${name}` : name;

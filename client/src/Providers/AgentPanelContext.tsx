@@ -149,6 +149,7 @@ export function AgentPanelProvider({
           requestScoped: serverConfig?.requestScoped,
           metadata,
           consumeOnly: serverConfig?.consumeOnly,
+          tarsWorkflowShared: serverConfig?.tarsWorkflowShared,
         });
       }
     }
@@ -186,6 +187,7 @@ export function AgentPanelProvider({
         ),
         requestScoped: serverConfig?.requestScoped,
         consumeOnly: serverConfig?.consumeOnly,
+        tarsWorkflowShared: serverConfig?.tarsWorkflowShared,
       });
     }
 

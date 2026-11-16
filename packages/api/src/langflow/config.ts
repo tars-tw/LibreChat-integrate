@@ -5,7 +5,6 @@ import {
   TARS_WORKFLOW_MCP_SERVER_NAME,
 } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
-import { workflowProjectName } from './labels';
 
 /** The header that tells Langflow LibreChat has checked who may reach a personal project. */
 export const WORKFLOW_ACCESS_HEADER = 'x-tars-workflow-access';
@@ -83,7 +82,10 @@ function projectEntry(template: McpEntry & { url: string }, project: WorkflowPro
     ...template,
     ...projectHeaders(template, project),
     url: template.url.replace(/\/+$/, '').replace(AGGREGATE_PATH, projectPath(project.projectId)),
-    title: sanitizeMCPTitle(workflowProjectName(project.name, project.owner), name),
+    title: sanitizeMCPTitle(project.name, name),
+    /** Langflow names every user's default project like the shared account's ("Starter
+     *  Project"), so the agent builder marks a shared one with an icon. */
+    ...(project.owner === 'system' && { tarsWorkflowShared: true }),
     description: project.description || template.description,
     /** One boot probe per project buys nothing: the headers name the chatting user, so every
      *  connection is per-user anyway. */

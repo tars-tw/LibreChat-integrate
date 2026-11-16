@@ -156,6 +156,8 @@ export interface MCPServerInfo {
   /** True when tools can only be discovered with live chat request fields. */
   requestScoped?: boolean;
   consumeOnly?: boolean;
+  /** A Workflow project the system account shares with everyone (marked with an icon). */
+  tarsWorkflowShared?: boolean;
   metadata: t.TPlugin;
 }
 

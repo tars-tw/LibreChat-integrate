@@ -4,7 +4,9 @@ import { Info, Settings, X } from 'lucide-react';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import type { AgentItem } from './items/types';
 import { hasConfigurableSettings } from './items/configurable';
+import SharedWorkflowIcon from './SharedWorkflowIcon';
 import { getMissingKeyProvider } from './items/auth';
+import { isSharedWorkflow } from './items/sections';
 import { getIconForItem } from './items/icons';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
@@ -66,6 +68,7 @@ function ToolRowImpl({ item, onInfo, onRemove }: Props) {
         <div className="flex min-w-0 flex-col">
           <span className="text-text-primary flex min-w-0 items-center gap-1 truncate text-sm">
             <span className="truncate font-medium">{displayName}</span>
+            {isSharedWorkflow(item) && <SharedWorkflowIcon />}
             {suffix && <span className="text-text-secondary">{suffix}</span>}
           </span>
           {missingKeyProvider != null && (

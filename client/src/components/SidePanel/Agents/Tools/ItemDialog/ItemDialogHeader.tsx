@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { OGDialogHeader, OGDialogTitle, OGDialogDescription } from '@librechat/client';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import type { AgentItem } from '../items/types';
-import { SECTION_LABEL_KEYS, itemSection } from '../items/sections';
+import { SECTION_LABEL_KEYS, itemSection, isSharedWorkflow } from '../items/sections';
+import SharedWorkflowIcon from '../SharedWorkflowIcon';
 import { getIconForItem } from '../items/icons';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
@@ -47,7 +48,10 @@ export default function ItemDialogHeader({ item }: { item: AgentItem }) {
     <OGDialogHeader className="flex flex-row items-center gap-3 space-y-0 px-6 pt-5 pb-4 text-start">
       <HeaderIcon item={item} />
       <div className="min-w-0 flex-1">
-        <OGDialogTitle className="truncate text-base font-semibold">{displayName}</OGDialogTitle>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <OGDialogTitle className="truncate text-base font-semibold">{displayName}</OGDialogTitle>
+          {isSharedWorkflow(item) && <SharedWorkflowIcon />}
+        </div>
         <OGDialogDescription className="text-2xs m-0 tracking-wide uppercase">
           {kindLabel}
         </OGDialogDescription>

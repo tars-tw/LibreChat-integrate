@@ -10,6 +10,7 @@ jest.mock('~/hooks', () => ({
 }));
 
 jest.mock('@librechat/client', () => ({
+  TooltipAnchor: ({ render }: { render: React.ReactElement }) => render,
   Button: ({
     children,
     variant: _variant,
@@ -45,6 +46,22 @@ describe('ToolRow', () => {
     expect(screen.getByRole('button', { name: 'com_ui_tools_remove' })).toHaveClass(
       'hover:text-text-secondary',
     );
+  });
+
+  test('a shared Workflow project carries the shared icon beside its name', () => {
+    const shared: McpItem = {
+      ...item,
+      id: 'workflow_1a2b3c4d',
+      name: 'Starter Project',
+      server: { ...item.server, serverName: 'workflow_1a2b3c4d', tarsWorkflowShared: true },
+    };
+    const { rerender } = render(<ToolRow item={shared} onInfo={jest.fn()} onRemove={jest.fn()} />);
+    expect(screen.getByRole('img', { name: 'com_ui_tools_shared_workflow' })).toBeInTheDocument();
+
+    rerender(<ToolRow item={item} onInfo={jest.fn()} onRemove={jest.fn()} />);
+    expect(
+      screen.queryByRole('img', { name: 'com_ui_tools_shared_workflow' }),
+    ).not.toBeInTheDocument();
   });
 
   test('a tool missing its 模型金鑰管理 key shows the notice under its name', () => {

@@ -3,8 +3,9 @@ import { VerifiedIcon } from '@librechat/client';
 import { Check, Globe, Info, Settings, Star, User } from 'lucide-react';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import type { AgentItem, ItemStatus } from './items/types';
-import { SECTION_LABEL_KEYS, itemSection } from './items/sections';
+import { SECTION_LABEL_KEYS, itemSection, isSharedWorkflow } from './items/sections';
 import { hasConfigurableSettings } from './items/configurable';
+import SharedWorkflowIcon from './SharedWorkflowIcon';
 import { useLocalize, useAuthContext } from '~/hooks';
 import { getMissingKeyProvider } from './items/auth';
 import { getIconForItem } from './items/icons';
@@ -158,6 +159,7 @@ function ToolCardImpl({
             <div className="flex items-start gap-1.5">
               <p className="text-text-primary flex min-w-0 flex-1 items-center gap-1 text-sm font-semibold">
                 <span className="truncate">{name}</span>
+                {isSharedWorkflow(item) && <SharedWorkflowIcon />}
                 {isNative && (
                   <span className="text-status-verified shrink-0">
                     <VerifiedIcon

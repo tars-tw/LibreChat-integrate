@@ -61,13 +61,15 @@ describe('withWorkflowMcpConfig', () => {
     expect(mcpConfig?.workflow_1a2b3c4d).toEqual({
       ...template,
       url: `${LANGFLOW}/api/v1/tars/mcp/project/${STARTER}/streamable`,
-      title: '共用流程 - Starter Project',
+      title: 'Starter Project',
+      tarsWorkflowShared: true,
       startup: false,
     });
     expect(mcpConfig?.workflow_abcdef01).toMatchObject({
       title: '高雄小導遊',
       description: template.description,
     });
+    expect(mcpConfig?.workflow_abcdef01).not.toHaveProperty('tarsWorkflowShared');
     expect(workflowMcpInjectionFailed()).toBe(false);
   });
 
