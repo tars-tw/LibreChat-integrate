@@ -27,6 +27,7 @@ const profile = (type: string | null): TTarsModelProfile => ({
 describe('collectModelTypes', () => {
   it('offers every selectable type plus any legacy one still in use', () => {
     expect(collectModelTypes([profile('OPEN_AI'), profile(' VLLM '), profile(null)])).toEqual([
+      'AZURE_OPENAI',
       'CLOUD',
       'GOOGLE_VERTEX',
       'OPEN_AI',

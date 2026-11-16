@@ -32,6 +32,10 @@ export const MODEL_KEY_GROUPS: ModelKeyGroup[] = [
     ],
   },
   {
+    title: 'Azure OpenAI',
+    fields: [{ key: 'KEY_AZURE_OPENAI_API', hintKey: 'com_ui_tars_keys_azure_hint' }],
+  },
+  {
     title: 'Google Gemini',
     fields: [{ key: 'KEY_GEMINI_API', hintKey: 'com_ui_tars_keys_gemini_hint' }],
   },

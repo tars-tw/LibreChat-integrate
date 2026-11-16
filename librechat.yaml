@@ -121,6 +121,26 @@ endpoints:
       # supports `stream_options.include_usage`, which this re-enables.
       addParams:
         streamUsage: true
+    # Azure OpenAI deployments, beside OpenAI itself. Uncomment for a customer that
+    # has one. The key is pwc_tars sys_config KEY_AZURE_OPENAI_API (模型金鑰管理 →
+    # Azure OpenAI), read live, so native OpenAI keeps KEY_OPEN_AI_API and both work.
+    # Each model id MUST be the Azure deployment name (= pwc_tars model_profile.name,
+    # type AZURE_OPENAI), because pwc_tars routes gateway calls here as
+    # `Azure/<deployment>` — keep `name: 'Azure'` as is (case-sensitive).
+    #   - tokenConfig: deployment names match no built-in model, so without it the
+    #     context window falls back to 32k.
+    #   - dropParams temperature: only for deployments that accept no custom value
+    #     (model_profile supports_temperature=false).
+    # - name: 'Azure'
+    #   apiKey: '${tars:KEY_AZURE_OPENAI_API}'
+    #   baseURL: 'https://<resource>.openai.azure.com/openai/v1'
+    #   models:
+    #     default: ['<deployment>']
+    #   tokenConfig:
+    #     <deployment>: { prompt: 0, completion: 0, context: 400000 }
+    #   titleConvo: true
+    #   titleModel: 'current_model'
+    #   modelDisplayLabel: 'Azure OpenAI'
 
 # Web search runs on Tavily alone (search + page extract, no reranker), so no other
 # provider's key is ever consulted and users get no key/provider dialog. The key is

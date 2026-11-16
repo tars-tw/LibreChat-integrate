@@ -94,6 +94,7 @@ describe('ModelProfileModal type and endpoint', () => {
       'com_ui_tars_models_type_cloud',
       'com_ui_tars_models_type_vllm',
       'com_ui_tars_models_type_google_vertex',
+      'com_ui_tars_models_type_azure_openai',
     ]);
   });
 

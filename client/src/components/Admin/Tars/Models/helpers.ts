@@ -15,12 +15,13 @@ export const displayModelType = (type: string): string => TYPE_DISPLAY[type] ?? 
 
 /**
  * Badge colors by how common a type is: CLOUD fills most of the list, so it gets the
- * calmest tint; the rarer VLLM and GOOGLE_VERTEX get hues that stand out from it.
+ * calmest tint; the rarer VLLM, GOOGLE_VERTEX and AZURE_OPENAI get hues that stand out.
  */
 const TYPE_BADGE: Partial<Record<string, string>> = {
   CLOUD: 'bg-series-2/10 text-series-2',
   VLLM: 'bg-series-5/15 text-series-5',
   GOOGLE_VERTEX: 'bg-series-3/20 text-series-3',
+  AZURE_OPENAI: 'bg-series-4/15 text-series-4',
 };
 
 /** Badge colors for a stored model type; a legacy type keeps the neutral surface. */
