@@ -64,6 +64,8 @@ function EndpointModelItemComponent({
     endpoint.assistantNames?.[modelId]
   ) {
     modelName = endpoint.assistantNames[modelId];
+  } else if (modelId && endpoint.modelNames?.[modelId]) {
+    modelName = endpoint.modelNames[modelId];
   }
 
   const handleFavoriteClick = (e: React.MouseEvent) => {

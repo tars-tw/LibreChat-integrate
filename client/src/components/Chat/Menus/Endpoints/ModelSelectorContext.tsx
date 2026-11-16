@@ -12,12 +12,14 @@ import type { Endpoint, SelectedValues } from '~/common';
 import {
   useGetEndpointsQuery,
   useListAgentsQuery,
+  useTarsModelLabelsQuery,
   useTarsAllowedModelsQuery,
 } from '~/data-provider';
 import { useAgentsMapContext, useAssistantsMapContext, useLiveAnnouncer } from '~/Providers';
 import { useSelectorEffects, useKeyDialog, useEndpoints, useLocalize } from '~/hooks';
 import { useModelSelectorChatContext } from './ModelSelectorChatContext';
 import useSelectMention from '~/hooks/Input/useSelectMention';
+import { pickModelNames } from './labels';
 import { filterItems } from './utils';
 
 type ModelSelectorContextType = {
@@ -116,6 +118,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   });
 
   const { data: tarsAllowedModels } = useTarsAllowedModelsQuery();
+  const { data: tarsModelLabels } = useTarsModelLabelsQuery();
   const tarsAllowedSet = useMemo(() => {
     if (!tarsAllowedModels) {
       return null;
@@ -150,9 +153,11 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
         return endpoint;
       }
       const models = endpoint.models.filter((item) => tarsAllowedSet.has(item.name.toLowerCase()));
-      return models.length ? { ...endpoint, models } : [];
+      return models.length
+        ? { ...endpoint, models, modelNames: pickModelNames(models, tarsModelLabels) }
+        : [];
     });
-  }, [rawEndpoints, tarsAllowedSet]);
+  }, [rawEndpoints, tarsAllowedSet, tarsModelLabels]);
 
   /** The agents endpoint is rendered by the brain picker, not the model picker. */
   const agentsEndpoint = useMemo(
@@ -190,7 +195,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
         return endpoint.assistantNames?.[model] ?? model;
       }
 
-      return model;
+      return endpoint.modelNames?.[model] ?? model;
     },
     [agentsMap],
   );

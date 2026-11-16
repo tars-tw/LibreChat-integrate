@@ -40,10 +40,10 @@ import {
 } from './boundValues';
 import { errorMessage } from '~/components/Admin/Tars/Models/helpers';
 import McpOpenapiFixedValues from './McpOpenapiFixedValues';
+import FieldLabel from '~/components/Tars/FieldLabel';
 import McpCustomApiTools from './McpCustomApiTools';
 import McpStaticHeaders from './McpStaticHeaders';
 import McpParsedTools from './McpParsedTools';
-import McpFieldLabel from './McpFieldLabel';
 import { useLocalize } from '~/hooks';
 
 type AuthType = 'none' | 'bearer' | 'api_key' | 'basic' | 'login' | 'oidc';
@@ -560,7 +560,7 @@ export default function McpServerModal({
             </p>
           )}
           <div>
-            <McpFieldLabel
+            <FieldLabel
               htmlFor="tars-mcp-oidc-issuer"
               label={localize('com_ui_tars_mcp_oidc_issuer')}
               help={localize('com_ui_tars_mcp_oidc_issuer_help')}
@@ -587,7 +587,7 @@ export default function McpServerModal({
               />
             </div>
             <div>
-              <McpFieldLabel
+              <FieldLabel
                 htmlFor="tars-mcp-oidc-client-secret"
                 label={localize('com_ui_tars_mcp_oidc_client_secret')}
                 help={localize('com_ui_tars_mcp_oidc_client_secret_help')}
@@ -608,7 +608,7 @@ export default function McpServerModal({
               />
             </div>
             <div>
-              <McpFieldLabel
+              <FieldLabel
                 htmlFor="tars-mcp-oidc-scope"
                 label={localize('com_ui_tars_mcp_oidc_scope')}
                 help={localize('com_ui_tars_mcp_oidc_scope_help')}
@@ -623,7 +623,7 @@ export default function McpServerModal({
               />
             </div>
             <div>
-              <McpFieldLabel
+              <FieldLabel
                 htmlFor="tars-mcp-oidc-audience"
                 label={localize('com_ui_tars_mcp_oidc_audience')}
                 help={localize('com_ui_tars_mcp_oidc_audience_help')}

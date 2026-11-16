@@ -99,6 +99,9 @@ export type TTarsModelType = (typeof TARS_MODEL_TYPES)[number];
 export const isTarsModelType = (value: unknown): value is TTarsModelType =>
   TARS_MODEL_TYPES.includes(value as TTarsModelType);
 
+/** Longest display name a model may be given; pwc_tars stores up to 255 characters. */
+export const TARS_MODEL_DISPLAY_NAME_MAX = 100;
+
 /** pwc_tars calls a model's endpoint as an OpenAI-compatible base URL, so it must be absolute http(s). */
 export const isTarsModelEndpoint = (value: string | null | undefined): boolean => {
   try {

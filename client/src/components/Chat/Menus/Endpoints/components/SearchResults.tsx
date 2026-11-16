@@ -12,6 +12,7 @@ import VirtualizedModelList from './VirtualizedModelList';
 import { shouldRenderEndpointOption } from '../utils';
 import { cn, getSpecAgentAvatarURL } from '~/utils';
 import SpecDescription from './SpecDescription';
+import { matchesModelName } from '../labels';
 import { useFavorites } from '~/hooks';
 import SpecIcon from './SpecIcon';
 
@@ -75,7 +76,10 @@ function prepareSearchResults(
           ) {
             modelName = endpoint.assistantNames[model.name];
           }
-          return modelName.toLowerCase().includes(lowerQuery);
+          return (
+            modelName.toLowerCase().includes(lowerQuery) ||
+            matchesModelName(endpoint, model.name, lowerQuery)
+          );
         });
 
     if (!filteredModels.length && !showMarketplace) {

@@ -22,7 +22,7 @@ import {
 import type { TarsModelProfile } from './modelProfiles';
 import {
   getTarsModelProfileNames,
-  getTarsUserModelProfileNames,
+  getTarsUserModelList,
   invalidateTarsModelProfilesCache,
 } from './models';
 import * as sysconfig from './sysconfig';
@@ -101,6 +101,7 @@ describe('createTarsModelProfile', () => {
       name: 'gpt-5.4',
       type: 'CLOUD',
       endpoint: 'https://api.openai.com/v1',
+      display_name: null,
       version: null,
       description: null,
       config: '{"max_token": 8192}',
@@ -220,6 +221,44 @@ describe('input guard', () => {
       updateTarsModelProfile('admin-1', 'b1c2', { type: 'OPEN_AI' }, BASE_URL),
     ).rejects.toMatchObject({ status: 400 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('display name', () => {
+  it('maps displayName onto display_name, trimmed, and clears it with an empty string', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, profile));
+
+    await updateTarsModelProfile('admin-1', 'b1c2', { displayName: ' 快速模型 ' }, BASE_URL);
+    await updateTarsModelProfile('admin-1', 'b1c2', { displayName: '' }, BASE_URL);
+
+    expect(parseBody(fetchMock)).toMatchObject({ display_name: '快速模型' });
+    expect(JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body))).toMatchObject({
+      display_name: '',
+    });
+  });
+
+  it('refuses one over the limit without calling pwc_tars', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+    await expect(
+      updateTarsModelProfile('admin-1', 'b1c2', { displayName: 'x'.repeat(101) }, BASE_URL),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses a display name that is not a string with a 400, on create and update', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+    const displayName = 5 as unknown as string;
+    await expect(
+      updateTarsModelProfile('admin-1', 'b1c2', { displayName }, BASE_URL),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      createTarsModelProfile(
+        'admin-1',
+        { name: 'gpt-5.4', type: 'CLOUD', endpoint: 'https://api.openai.com/v1', displayName },
+        BASE_URL,
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
@@ -430,9 +469,9 @@ describe('model permission admin proxy', () => {
       .mockResolvedValueOnce(buildResponse(200, envelope({ model_profile_id: '1' })))
       .mockResolvedValueOnce(buildResponse(200, []));
 
-    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual(['gpt-5.4']);
+    await expect(getTarsUserModelList('u1')).resolves.toMatchObject({ models: ['gpt-5.4'] });
     await saveTarsModelAssignees('admin-1', '1', { principals: [] });
-    await expect(getTarsUserModelProfileNames('u1')).resolves.toEqual([]);
+    await expect(getTarsUserModelList('u1')).resolves.toMatchObject({ models: [] });
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 

@@ -25,6 +25,7 @@ const profiles: TTarsModelProfile[] = [
   {
     id: 'p-1',
     name: 'gpt-5.4',
+    display_name: '快速模型',
     version: null,
     type: 'CLOUD',
     description: 'Cloud model',
@@ -138,6 +139,22 @@ describe('ModelProfileManager', () => {
     expect(within(gpt).getByText('com_ui_tars_models_api_version 2024-10-21')).toBeInTheDocument();
     expect(within(gpt).queryByText(/^com_ui_tars_models_version /)).not.toBeInTheDocument();
     expect(within(qwen).queryByText(/^com_ui_tars_models_api_version /)).not.toBeInTheDocument();
+  });
+
+  it('shows a display name under the model name, and none for a model without one', () => {
+    render(<ModelProfileManager />);
+    const [gpt, qwen] = bodyRows();
+    expect(within(gpt).getByText('gpt-5.4')).toBeInTheDocument();
+    expect(within(gpt).getByText('com_ui_tars_models_display_name 快速模型')).toBeInTheDocument();
+    expect(within(qwen).queryByText(/^com_ui_tars_models_display_name /)).not.toBeInTheDocument();
+  });
+
+  it('finds a model by its display name', async () => {
+    const user = userEvent.setup();
+    render(<ModelProfileManager />);
+    await user.type(screen.getByRole('textbox', { name: 'com_ui_tars_models_search' }), '快速');
+    expect(bodyRows()).toHaveLength(1);
+    expect(screen.getByText('gpt-5.4')).toBeInTheDocument();
   });
 
   it('marks a model nobody is assigned to as open to everyone and counts the rest', () => {

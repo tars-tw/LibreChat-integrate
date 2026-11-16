@@ -8,6 +8,7 @@ jest.mock('@librechat/data-schemas', () => ({
 }));
 
 import {
+  fetchTarsModelOptions,
   fetchTarsKnowledgeBaseOverview,
   fetchTarsKnowledgeBaseModelBindings,
   updateTarsKnowledgeBaseModel,
@@ -358,6 +359,25 @@ describe('fetchTarsKnowledgeBaseOverview', () => {
   });
 });
 
+describe('fetchTarsModelOptions', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('lists LLMs by model name, not the display name meant for the chat page', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path === '/api/model/get_model_list') {
+        return buildResponse(200, [{ model_name: 'gpt-5.4-mini', display_name: '快速模型' }]);
+      }
+      return buildResponse(200, [{ id: 'bge-m3', display_name: 'BGE-M3' }]);
+    });
+
+    const options = await fetchTarsModelOptions(BASE_URL);
+
+    expect(options.llm).toEqual([{ id: 'gpt-5.4-mini', name: 'gpt-5.4-mini' }]);
+    expect(options.embedding).toEqual([{ id: 'bge-m3', name: 'BGE-M3' }]);
+  });
+});
+
 describe('fetchTarsKnowledgeBaseModelBindings', () => {
   afterEach(() => jest.restoreAllMocks());
 
@@ -376,6 +396,34 @@ describe('fetchTarsKnowledgeBaseModelBindings', () => {
     expect(url.pathname).toBe('/api/knowledge_detail/get_models_by_knowledge');
     expect(url.searchParams.get('knowledge_base_id')).toBe('kb-1');
     expect(bindings.llm.selected_id).toBe('gpt');
+  });
+
+  it('labels LLM options by model name, not the display name pwc_tars sends', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(200, {
+        embedding: { selected_id: 'e-1', options: [{ id: 'e-1', name: 'BGE-M3' }] },
+        llm: {
+          selected_id: 'gpt-5.4-mini',
+          options: [
+            { id: 'gpt-5.4-mini', name: '快速模型', note: 'cloud' },
+            { id: '', name: 'Unknown' },
+            null,
+          ],
+        },
+      }),
+    );
+
+    const bindings = await fetchTarsKnowledgeBaseModelBindings('user-1', 'kb-1', BASE_URL);
+
+    expect(bindings.llm).toEqual({
+      selected_id: 'gpt-5.4-mini',
+      options: [
+        { id: 'gpt-5.4-mini', name: 'gpt-5.4-mini', note: 'cloud' },
+        { id: '', name: 'Unknown' },
+        null,
+      ],
+    });
+    expect(bindings.embedding.options[0].name).toBe('BGE-M3');
   });
 
   it('returns empty option lists when pwc_tars omits a model kind', async () => {

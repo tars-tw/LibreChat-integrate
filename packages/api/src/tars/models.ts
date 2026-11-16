@@ -1,5 +1,5 @@
 import { logger } from '@librechat/data-schemas';
-import { tarsFetch, isTarsConfigured } from './client';
+import { tarsFetch, isTarsConfigured, TarsRequestError } from './client';
 
 /**
  * Sentinel `baseURL` for a custom endpoint whose models and per-model host
@@ -123,6 +123,17 @@ export async function resolveTarsLocalModelBaseURL(model: string): Promise<strin
 /** One entry of pwc_tars `GET /api/model/get_model_list`. */
 interface TarsModelListEntry {
   model_name?: string | null;
+  /** The admin's screen-only label; absent on a pwc_tars without the column. */
+  display_name?: string | null;
+}
+
+/** Model name → display name, holding only the models an admin gave one. */
+export type TarsModelLabels = Record<string, string>;
+
+/** The model names a list reply holds, with the display names given to them. */
+export interface TarsModelList {
+  names: string[];
+  labels: TarsModelLabels;
 }
 
 /** One row of pwc_tars `GET /api/model/get_model_profiles`. */
@@ -132,8 +143,11 @@ interface TarsModelProfileEntry {
 }
 
 const PROFILE_CACHE_TTL_MS = 60_000;
+const MODEL_LIST_PATH = '/api/model/get_model_list';
+const USER_MODEL_LIST_PATH = '/api/model/get_user_model_list';
 
 let cachedProfileNames: string[] | null = null;
+let cachedProfileLabels: TarsModelLabels = {};
 let profileCachedAt = 0;
 let profileInflight: Promise<string[] | null> | null = null;
 
@@ -147,8 +161,8 @@ let endpointsInflight: Promise<void> | null = null;
 let endpointsGeneration = 0;
 
 /** pwc_tars user id → the model_profile names that user may pick, and when they were read. */
-const userProfileCache = new Map<string, { names: string[]; at: number }>();
-const userProfileInflight = new Map<string, Promise<string[]>>();
+const userProfileCache = new Map<string, TarsModelList & { at: number }>();
+const userProfileInflight = new Map<string, Promise<TarsModelList>>();
 /** Bumped on every drop, so a fetch already in flight cannot store a pre-drop answer. */
 let userProfileGeneration = 0;
 
@@ -168,6 +182,7 @@ export function invalidateTarsUserModelsCache(): void {
  */
 export function invalidateTarsModelProfilesCache(): void {
   cachedProfileNames = null;
+  cachedProfileLabels = {};
   profileCachedAt = 0;
   profileInflight = null;
   cachedProfileEndpoints = null;
@@ -178,24 +193,43 @@ export function invalidateTarsModelProfilesCache(): void {
   invalidateTarsUserModelsCache();
 }
 
-/** Trimmed, deduplicated model names of a pwc_tars model-list reply. */
-function toModelNames(rows: TarsModelListEntry[] | null | undefined): string[] {
+/** A trimmed string field of a pwc_tars reply; anything else reads as absent. */
+const trimmedText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+/**
+ * Trimmed, deduplicated model names of a pwc_tars model-list reply, and the display
+ * name of each model that has one of its own (a label equal to the name says nothing).
+ * A malformed row is skipped; a reply that is not a list throws, so each caller keeps
+ * its own failure handling instead of reading it as "no models".
+ */
+function toModelList(path: string, rows: TarsModelListEntry[] | null | undefined): TarsModelList {
+  if (rows != null && !Array.isArray(rows)) {
+    throw new TarsRequestError(502, path, 'model list reply is not a list');
+  }
   const names = new Set<string>();
+  const labels: TarsModelLabels = {};
   for (const row of rows ?? []) {
-    const name = row?.model_name?.trim();
-    if (name) {
-      names.add(name);
+    const name = trimmedText(row?.model_name);
+    if (!name) {
+      continue;
+    }
+    names.add(name);
+    const label = trimmedText(row.display_name);
+    if (label && label !== name) {
+      labels[name] = label;
     }
   }
-  return [...names];
+  return { names: [...names], labels };
 }
 
 async function refreshProfileNames(): Promise<string[] | null> {
   try {
-    const rows = await tarsFetch<TarsModelListEntry[]>('/api/model/get_model_list', {
+    const rows = await tarsFetch<TarsModelListEntry[]>(MODEL_LIST_PATH, {
       timeoutMs: FETCH_TIMEOUT_MS,
     });
-    cachedProfileNames = toModelNames(rows);
+    const list = toModelList(MODEL_LIST_PATH, rows);
+    cachedProfileNames = list.names;
+    cachedProfileLabels = list.labels;
   } catch (error) {
     logger.warn(
       `[TarsModelProfiles] Failed to refresh model_profile list; ${
@@ -297,17 +331,17 @@ export async function getTarsModelProfileEndpoint(
   return cachedProfileEndpoints?.has(name) ? cachedProfileEndpoints.get(name) || undefined : null;
 }
 
-async function fetchUserProfileNames(tarsId: string): Promise<string[]> {
+async function fetchUserModelList(tarsId: string): Promise<TarsModelList> {
   const generation = userProfileGeneration;
-  const rows = await tarsFetch<TarsModelListEntry[]>('/api/model/get_user_model_list', {
+  const rows = await tarsFetch<TarsModelListEntry[]>(USER_MODEL_LIST_PATH, {
     query: { user_id: tarsId },
     timeoutMs: FETCH_TIMEOUT_MS,
   });
-  const names = toModelNames(rows);
+  const list = toModelList(USER_MODEL_LIST_PATH, rows);
   if (generation === userProfileGeneration) {
-    userProfileCache.set(tarsId, { names, at: Date.now() });
+    userProfileCache.set(tarsId, { ...list, at: Date.now() });
   }
-  return names;
+  return list;
 }
 
 /**
@@ -318,25 +352,32 @@ async function fetchUserProfileNames(tarsId: string): Promise<string[]> {
  * An account with no pwc_tars link keeps the global list, and null still means "no
  * restriction" when TARS is unconfigured. A failed fetch throws — pwc_tars being down
  * already locks users out of logging in, so there is no stale list to fall back on.
+ * `labels` carries the display names of those models, for the selectors to show.
  */
-export async function getTarsUserModelProfileNames(
+export async function getTarsUserModelList(
   tarsId: string | null | undefined,
-): Promise<string[] | null> {
+): Promise<{ models: string[] | null; labels: TarsModelLabels }> {
   if (!isTarsConfigured()) {
-    return null;
+    return { models: null, labels: {} };
   }
   if (!tarsId) {
-    return getTarsModelProfileNames();
+    const models = await getTarsModelProfileNames();
+    return { models, labels: cachedProfileLabels };
   }
+  const { names, labels } = await readUserModelList(tarsId);
+  return { models: names, labels };
+}
+
+function readUserModelList(tarsId: string): Promise<TarsModelList> {
   const cached = userProfileCache.get(tarsId);
   if (cached && Date.now() - cached.at < PROFILE_CACHE_TTL_MS) {
-    return cached.names;
+    return Promise.resolve(cached);
   }
   const inflight = userProfileInflight.get(tarsId);
   if (inflight) {
     return inflight;
   }
-  const request = fetchUserProfileNames(tarsId).finally(() => {
+  const request = fetchUserModelList(tarsId).finally(() => {
     if (userProfileInflight.get(tarsId) === request) {
       userProfileInflight.delete(tarsId);
     }

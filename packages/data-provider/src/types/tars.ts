@@ -170,12 +170,16 @@ export type TTarsModelOptions = {
 /** pwc_tars model_profile whitelist; `models: null` means no restriction. */
 export type TTarsModelsResponse = {
   models: string[] | null;
+  /** Model name → the display name an admin gave it; a model without one is left out. */
+  labels?: Record<string, string>;
 };
 
 /** A pwc_tars `model_profile` row on the model admin page (模型管理). */
 export type TTarsModelProfile = {
   id: string;
   name: string;
+  /** Shown in place of `name` on screen only; absent on a pwc_tars without the column. */
+  display_name?: string | null;
   version: string | null;
   type: string | null;
   /** Plain text, or a JSON object keyed by locale (`{"zh-TW": …, "en-US": …}`). */
@@ -199,6 +203,7 @@ export type TTarsModelProfilesResponse = {
 /** Create/update payload. On update an omitted field is kept and '' clears it. */
 export type TTarsModelProfileInput = {
   name?: string;
+  displayName?: string;
   version?: string;
   type?: string;
   description?: string;

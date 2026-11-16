@@ -198,6 +198,7 @@ export default function ModelProfileManager() {
       }
       return [
         profile.name,
+        profile.display_name,
         profile.type && displayModelType(profile.type),
         profile.version,
         profile.endpoint,
@@ -402,6 +403,10 @@ export default function ModelProfileManager() {
                     >
                       <td className="text-text-primary px-3 py-2 font-medium">
                         <Truncated value={profile.name} />
+                        <SubLine
+                          label={localize('com_ui_tars_models_display_name')}
+                          value={profile.display_name ?? null}
+                        />
                         <SubLine
                           label={localize('com_ui_tars_models_version')}
                           value={profile.version}
