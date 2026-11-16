@@ -4,16 +4,18 @@ const PRODUCT_LABEL = 'workflow';
 const AGENT_NAME_PREFIX = 'Workflow · ';
 
 /** Uses `-` rather than `·`: the name is also an MCP server title, which allows no other punctuation. */
-const PERSONAL_PROJECT_PREFIX = '我的 - ';
+const SHARED_PROJECT_PREFIX = '共用流程 - ';
 
 const BRAND_PATTERN = /\blangflow\b/gi;
 
 /**
- * A project's display name, as its MCP server and agent are titled. A personal project is marked:
- * Langflow names every user's default project like the shared account's ("Starter Project").
+ * A project's name as its mirrored agent is titled. A shared project is marked in text: Langflow
+ * names every user's default project like the shared account's ("Starter Project"), and an agent
+ * name has no room for the icon the agent builder marks a shared project's MCP server with
+ * (`tarsWorkflowShared`). The tool library offers a personal project to its owner alone.
  */
 export function workflowProjectName(name: string, owner: 'system' | 'personal'): string {
-  return owner === 'personal' ? `${PERSONAL_PROJECT_PREFIX}${name}` : name;
+  return owner === 'system' ? `${SHARED_PROJECT_PREFIX}${name}` : name;
 }
 
 /** Display name of the shared agent a flow is mirrored into. */

@@ -13,9 +13,9 @@ describe('flowAgentName', () => {
 });
 
 describe('workflowProjectName', () => {
-  it("marks a personal project, which Langflow names like the shared account's", () => {
-    expect(workflowProjectName('Starter Project', 'system')).toBe('Starter Project');
-    expect(workflowProjectName('Starter Project', 'personal')).toBe('我的 - Starter Project');
+  it("marks a shared project, which Langflow names like each user's own", () => {
+    expect(workflowProjectName('Starter Project', 'system')).toBe('共用流程 - Starter Project');
+    expect(workflowProjectName('Starter Project', 'personal')).toBe('Starter Project');
   });
 });
 

@@ -57,6 +57,42 @@ describe('ToolCard', () => {
     expect(screen.getByLabelText('com_ui_tools_native')).toBeInTheDocument();
   });
 
+  test('marks a shared Workflow project with an icon that explains it', () => {
+    const shared: AgentItem = {
+      kind: 'mcp',
+      id: 'workflow_1a2b3c4d',
+      name: 'Starter Project',
+      description: '',
+      iconKey: 'mcp',
+      server: {
+        serverName: 'workflow_1a2b3c4d',
+        isConfigured: true,
+        tools: [],
+        tarsWorkflowShared: true,
+      } as never,
+      toolCount: 1,
+    };
+    render(<ToolCard item={shared} selected={false} onToggle={jest.fn()} />);
+    expect(screen.getByText('Starter Project')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'com_ui_tools_shared_workflow' })).toBeInTheDocument();
+  });
+
+  test("leaves the user's own Workflow project unmarked", () => {
+    const own: AgentItem = {
+      kind: 'mcp',
+      id: 'workflow_5e6f7a8b',
+      name: 'Starter Project',
+      description: '',
+      iconKey: 'mcp',
+      server: { serverName: 'workflow_5e6f7a8b', isConfigured: true, tools: [] } as never,
+      toolCount: 1,
+    };
+    render(<ToolCard item={own} selected={false} onToggle={jest.fn()} />);
+    expect(
+      screen.queryByRole('img', { name: 'com_ui_tools_shared_workflow' }),
+    ).not.toBeInTheDocument();
+  });
+
   test('does not render the tool-count pill for MCP cards', () => {
     const mcp: AgentItem = {
       kind: 'mcp',

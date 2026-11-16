@@ -322,6 +322,12 @@ const BaseOptionsSchema = z.object({
    */
   chatMenu: z.boolean().optional(),
   /**
+   * TARS: a Workflow (Langflow) project the system account publishes to everyone. Set by
+   * LibreChat when it registers the project's server; the agent builder marks such a server with
+   * an icon rather than its title, which stays the project's own name.
+   */
+  tarsWorkflowShared: z.boolean().optional(),
+  /**
    * Controls server instruction behavior:
    * - undefined/not set: No instructions included (default)
    * - true: Use server-provided instructions

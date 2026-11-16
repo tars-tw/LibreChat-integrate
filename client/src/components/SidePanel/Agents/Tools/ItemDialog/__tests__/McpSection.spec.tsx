@@ -1,8 +1,17 @@
 import '@testing-library/jest-dom/extend-expect';
+import { QueryKeys } from 'librechat-data-provider';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { McpItem } from '../../items/types';
+import { mcpServerToken } from '../../items/selectors';
 import McpSection from '../sections/McpSection';
+
+const mockQueryClient = { invalidateQueries: jest.fn() };
+
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: () => mockQueryClient,
+}));
 
 const mockSetValue = jest.fn();
 const mockGetValues = jest.fn((): string[] => []);
@@ -217,6 +226,7 @@ describe('McpSection', () => {
     mockCapabilities.programmaticToolsEnabled = false;
     mockCapabilities.backgroundToolsEnabled = false;
     mockCapabilities.toolIntentsEnabled = false;
+    mockQueryClient.invalidateQueries.mockClear();
   });
 
   test('renders one row per tool', () => {
@@ -293,13 +303,14 @@ describe('McpSection', () => {
 
   test('renders an inline Connect button when the server is not connected', () => {
     render(<McpSection item={item} />);
-    expect(screen.getByText('com_nav_mcp_connect_server')).toBeInTheDocument();
+    const connect = screen.getByRole('button', { name: 'com_nav_mcp_connect_server' });
+    expect(connect).toHaveTextContent('com_nav_mcp_connect');
   });
 
   test('clicking Connect initializes the server without auto-opening OAuth', () => {
     mockInitializeServer.mockResolvedValue({ success: true });
     render(<McpSection item={item} />);
-    fireEvent.click(screen.getByText('com_nav_mcp_connect_server'));
+    fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
     expect(mockInitializeServer).toHaveBeenCalledWith('srv', false);
   });
 
@@ -310,7 +321,7 @@ describe('McpSection', () => {
       oauthUrl: 'https://oauth.example/authorize?x=1',
     });
     render(<McpSection item={item} />);
-    fireEvent.click(screen.getByText('com_nav_mcp_connect_server'));
+    fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
     expect(await screen.findByTestId('oauth-dialog')).toHaveTextContent(
       'https://oauth.example/authorize?x=1',
     );
@@ -519,7 +530,7 @@ describe('McpSection', () => {
       oauthUrl: 'https://oauth.example/authorize',
     });
     const { rerender } = render(<McpSection item={empty} />);
-    fireEvent.click(screen.getByText('com_nav_mcp_connect_server'));
+    fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
     expect(await screen.findByTestId('oauth-dialog')).toBeInTheDocument();
     expect(mockSetValue).not.toHaveBeenCalled();
 
@@ -585,7 +596,7 @@ describe('McpSection', () => {
       toolCount: 0,
     };
     render(<McpSection item={empty} />);
-    fireEvent.click(screen.getByText('com_nav_mcp_connect_server'));
+    fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
     await waitFor(() =>
       expect(mockSetValue).toHaveBeenCalledWith(
         'tools',
@@ -605,7 +616,7 @@ describe('McpSection', () => {
       toolCount: 0,
     };
     render(<McpSection item={empty} />);
-    fireEvent.click(screen.getByText('com_nav_mcp_connect_server'));
+    fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
     await waitFor(() => expect(mockInitializeServer).toHaveBeenCalled());
     expect(mockSetValue).not.toHaveBeenCalled();
   });
@@ -841,5 +852,103 @@ describe('McpSection', () => {
     };
     render(<McpSection item={empty} />);
     expect(screen.getByText('com_ui_tools_mcp_runtime_tools')).toBeInTheDocument();
+  });
+
+  describe('Workflow project servers', () => {
+    const WORKFLOW = 'workflow_1a2b3c4d';
+    const workflowItem: McpItem = {
+      ...item,
+      id: WORKFLOW,
+      name: 'Starter Project',
+      server: {
+        ...item.server,
+        serverName: WORKFLOW,
+        tools: [{ tool_id: `milk_mcp_${WORKFLOW}`, name: 'Milk的簡單流程' }],
+      } as never,
+      toolCount: 1,
+    };
+    const connected = () =>
+      mockGetServerStatusIconProps.mockReturnValue({
+        serverStatus: { connectionState: 'connected' },
+        isInitializing: false,
+        canCancel: false,
+      });
+    const refreshButton = () =>
+      screen.queryByRole('button', { name: 'com_ui_tools_mcp_refresh_tools' });
+
+    test('names the server by its title, never by its key', () => {
+      mockGetServerStatusIconProps.mockReturnValue({
+        serverStatus: { connectionState: 'connecting' },
+        isInitializing: false,
+        canCancel: false,
+      });
+      render(<McpSection item={workflowItem} />);
+
+      expect(screen.getByText('Starter Project - Connecting')).toBeInTheDocument();
+      expect(mockLocalize).toHaveBeenCalledWith('com_nav_mcp_connect_server', {
+        0: 'Starter Project',
+      });
+      expect(mockLocalize).not.toHaveBeenCalledWith(expect.anything(), { 0: WORKFLOW });
+    });
+
+    test('asks for the current catalogue when a Workflow project opens', () => {
+      render(<McpSection item={workflowItem} />);
+      expect(mockQueryClient.invalidateQueries).toHaveBeenCalledTimes(1);
+      expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith([QueryKeys.mcpTools]);
+    });
+
+    test('leaves the catalogue of any other server as it is', () => {
+      render(<McpSection item={item} />);
+      expect(mockQueryClient.invalidateQueries).not.toHaveBeenCalled();
+    });
+
+    test('Refresh tools re-reads a connected Workflow project without touching the selection', () => {
+      connected();
+      mockInitializeServer.mockResolvedValue({ success: true });
+      render(<McpSection item={workflowItem} />);
+
+      fireEvent.click(refreshButton() as HTMLElement);
+
+      expect(mockInitializeServer).toHaveBeenCalledWith(WORKFLOW, false);
+      expect(mockSetValue).not.toHaveBeenCalled();
+    });
+
+    test('offers Refresh tools only on a connected Workflow project', () => {
+      const { rerender } = render(<McpSection item={workflowItem} />);
+      expect(refreshButton()).not.toBeInTheDocument();
+
+      connected();
+      rerender(<McpSection item={item} />);
+      expect(refreshButton()).not.toBeInTheDocument();
+    });
+
+    test('reconnecting a Workflow project the agent already carries keeps its selection', async () => {
+      mockGetValues.mockReturnValue([mcpServerToken(WORKFLOW)]);
+      mockInitializeServer.mockResolvedValue({ success: true });
+      const { rerender } = render(<McpSection item={workflowItem} />);
+      fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
+      await waitFor(() => expect(mockInitializeServer).toHaveBeenCalledWith(WORKFLOW, false));
+
+      connected();
+      rerender(<McpSection item={workflowItem} />);
+
+      expect(mockSetValue).not.toHaveBeenCalled();
+    });
+
+    test('connecting a Workflow project for the first time still selects its tools', async () => {
+      mockInitializeServer.mockResolvedValue({ success: true });
+      const { rerender } = render(<McpSection item={workflowItem} />);
+      fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
+      await waitFor(() => expect(mockInitializeServer).toHaveBeenCalledWith(WORKFLOW, false));
+
+      connected();
+      rerender(<McpSection item={workflowItem} />);
+
+      expect(mockSetValue).toHaveBeenCalledWith(
+        'tools',
+        [mcpServerToken(WORKFLOW), `milk_mcp_${WORKFLOW}`],
+        { shouldDirty: true },
+      );
+    });
   });
 });

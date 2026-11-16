@@ -14,6 +14,11 @@ export function itemSection(item: AgentItem): MarketplaceSection {
   return item.kind;
 }
 
+/** Whether an item is a Workflow project the system account shares with everyone. */
+export function isSharedWorkflow(item: AgentItem): boolean {
+  return item.kind === 'mcp' && item.server.tarsWorkflowShared === true;
+}
+
 export const SECTION_LABEL_KEYS: Record<MarketplaceSection, TranslationKeys> = {
   builtin: 'com_ui_tools_kind_official',
   tool: 'com_ui_tools_kind_tools',

@@ -1,6 +1,6 @@
 import { workflowMcpServerName } from 'librechat-data-provider';
 import type { AgentItem } from '../types';
-import { SECTION_LABEL_KEYS, countBySection, itemSection } from '../sections';
+import { SECTION_LABEL_KEYS, countBySection, itemSection, isSharedWorkflow } from '../sections';
 import { makeMcpServer, makePlugin } from 'test/itemFactories';
 import { applyFilter } from '../filtering';
 import { getIconForItem } from '../icons';
@@ -71,5 +71,22 @@ describe('workflow presentation', () => {
     const workflow = items[1];
     expect(SECTION_LABEL_KEYS[itemSection(workflow)]).toBe('com_ui_tools_kind_workflow');
     expect(getIconForItem(workflow).Icon).not.toBe(getIconForItem(items[0]).Icon);
+  });
+});
+
+describe('isSharedWorkflow', () => {
+  it('is true only for an MCP server marked as a shared Workflow project', () => {
+    const shared: AgentItem = {
+      kind: 'mcp',
+      id: workflowId,
+      name: 'Starter Project',
+      description: '',
+      iconKey: 'mcp',
+      server: makeMcpServer({ serverName: workflowId, tarsWorkflowShared: true }),
+      toolCount: 1,
+    };
+    expect(isSharedWorkflow(shared)).toBe(true);
+    expect(isSharedWorkflow(mcpItem(workflowId, 'Starter Project'))).toBe(false);
+    expect(isSharedWorkflow(items[3])).toBe(false);
   });
 });

@@ -7,8 +7,9 @@ import {
   workflowMcpServerName,
   TARS_LANGFLOW_AGENT_ID_PREFIX,
 } from 'librechat-data-provider';
+import type { LCAvailableTools, ParsedServerConfig } from '~/mcp/types';
 import type { WorkflowAgent, WorkflowFlow } from './types';
-import type { LCAvailableTools } from '~/mcp/types';
+import type { WorkflowToolRenameDeps } from './renames';
 import {
   flowAgentName,
   workflowProjectName,
@@ -16,6 +17,8 @@ import {
   projectAgentInstructions,
 } from './labels';
 import { migrateAggregateWorkflowTools } from './legacy';
+import { followWorkflowToolRenames } from './renames';
+import { getMCPToolTitle } from '~/mcp/utils';
 import { findModelEndpoint } from './models';
 
 export type { WorkflowAgent, WorkflowFlow } from './types';
@@ -45,6 +48,9 @@ interface Orchestration {
 
 type AgentFields = Partial<Omit<WorkflowAgent, '_id'>>;
 
+/** Loads the user's resolved MCP config map (`resolveAllMcpConfigs`), by server name. */
+type ServerConfigsLoader = () => Promise<Record<string, ParsedServerConfig>>;
+
 export interface WorkflowAgentSyncDeps {
   /** The chatting user's tools; null while Langflow is not configured. Throws when unreachable. */
   fetchFlows: (tarsId: string | undefined) => Promise<WorkflowFlow[] | null>;
@@ -69,15 +75,27 @@ export interface WorkflowAgentSyncDeps {
   /**
    * The user's cached catalogue of an MCP server, and dropping it. Langflow names a tool after its
    * flow and never announces `tools/list_changed`, so a renamed flow leaves the old name cached:
-   * the agent builder offers it and Langflow refuses the call. Both or neither.
+   * the agent builder offers it and Langflow refuses the call. Both or neither. The catalogue is
+   * keyed by the server's config, which a project server registered after boot has only in the
+   * user's resolved config map, so `serverConfig` is the entry from that map.
    */
-  getCachedTools?: (userId: string, serverName: string) => Promise<LCAvailableTools | null>;
+  getCachedTools?: (
+    userId: string,
+    serverName: string,
+    serverConfig?: ParsedServerConfig,
+  ) => Promise<LCAvailableTools | null>;
   invalidateCachedTools?: (userId: string, serverName: string) => Promise<unknown>;
   /**
    * Re-registers the per-project MCP servers when the ones the user is offered (`serverNames`) no
    * longer match the registered set, so an agent mirrored from a new project has its server.
    */
   refreshServers?: (serverNames: string[], tarsId: string | undefined) => Promise<unknown>;
+  /**
+   * The tool names a project server last listed, by flow id, kept across restarts, so a renamed
+   * flow's agents follow it to its new tool name (`followWorkflowToolRenames`). Both or neither.
+   */
+  getToolNames?: WorkflowToolRenameDeps['getToolNames'];
+  setToolNames?: WorkflowToolRenameDeps['setToolNames'];
   debounceMs?: number;
 }
 
@@ -180,21 +198,52 @@ function driftedFields(agent: WorkflowAgent, desired: AgentFields): AgentFields 
   return Object.fromEntries(drifted.map((key) => [key, desired[key]])) as AgentFields;
 }
 
-/** The upstream tool names in a project server's cached catalogue. */
-function cachedToolNames(tools: LCAvailableTools, serverName: string): Set<string> {
+/** What the agent builder shows for one tool: its title, else its name, and its description. */
+interface ToolListing {
+  title?: string;
+  description: string;
+}
+
+/** Langflow's description for a flow that has none names the tool, as each server names it. */
+const UNDESCRIBED_FLOW = 'Tool generated from flow: ';
+
+/** A project server's cached catalogue, by upstream tool name. */
+function cachedListings(tools: LCAvailableTools, serverName: string): Map<string, ToolListing> {
   const suffix = `${MCP_DELIMITER}${serverName}`;
-  return new Set(
-    Object.entries(tools).map(
-      ([key, entry]) =>
-        entry.serverToolName ?? (key.endsWith(suffix) ? key.slice(0, -suffix.length) : key),
-    ),
+  return new Map(
+    Object.entries(tools).map(([key, entry]) => [
+      entry.serverToolName ?? (key.endsWith(suffix) ? key.slice(0, -suffix.length) : key),
+      { title: entry.title, description: entry.function?.description ?? '' },
+    ]),
   );
 }
 
-function sameNames(cached: Set<string>, project: WorkflowProjectGroup): boolean {
+/**
+ * How the project server lists a flow. The title is the flow's name, which a rename can change
+ * while the ASCII tool name stays put ("Milk" and "Milk的簡單流程" are both `milk`). The flows list
+ * names an undescribed flow's stand-in after the aggregate server's tool, the project server after
+ * its own.
+ */
+function publishedListing(flow: WorkflowProjectGroup['flows'][number]): ToolListing {
+  const description =
+    flow.description === `${UNDESCRIBED_FLOW}${flow.toolName}`
+      ? `${UNDESCRIBED_FLOW}${flow.projectToolName}`
+      : flow.description;
+  return { title: getMCPToolTitle({ name: flow.projectToolName, title: flow.name }), description };
+}
+
+function sameListings(cached: Map<string, ToolListing>, project: WorkflowProjectGroup): boolean {
   return (
     cached.size === project.flows.length &&
-    project.flows.every((flow) => cached.has(flow.projectToolName))
+    project.flows.every((flow) => {
+      const listing = cached.get(flow.projectToolName);
+      const published = publishedListing(flow);
+      return (
+        listing != null &&
+        listing.title === published.title &&
+        listing.description === published.description
+      );
+    })
   );
 }
 
@@ -298,20 +347,45 @@ export function createWorkflowAgentSync(deps: WorkflowAgentSyncDeps) {
     }
   };
 
-  /** Drops the user's cached catalogue of each project server that no longer names what Langflow
-   *  publishes there, so the next listing re-reads `tools/list`. Never throws. */
+  /** The user's resolved MCP config map, or null when it cannot be read (the catalogue is then
+   *  looked up without a config, as before). Never throws. */
+  const readServerConfigs = async (
+    serverConfigs?: ServerConfigsLoader,
+  ): Promise<Record<string, ParsedServerConfig> | null> => {
+    if (!serverConfigs) {
+      return null;
+    }
+    try {
+      return await serverConfigs();
+    } catch (error) {
+      logger.warn(
+        `[langflow/sync] Could not resolve the MCP server configs: ${(error as Error).message}`,
+      );
+      return null;
+    }
+  };
+
+  /** Drops the user's cached catalogue of each project server that no longer lists what Langflow
+   *  publishes there (tool names, titles, descriptions), so the next listing re-reads
+   *  `tools/list`. Never throws. */
   const refreshStaleCatalogs = async (
     userId: string,
     projects: Map<string, WorkflowProjectGroup>,
+    serverConfigs?: ServerConfigsLoader,
   ) => {
     const { getCachedTools, invalidateCachedTools } = deps;
-    if (!getCachedTools || !invalidateCachedTools) {
+    if (!getCachedTools || !invalidateCachedTools || projects.size === 0) {
       return;
     }
+    const configs = await readServerConfigs(serverConfigs);
     for (const project of projects.values()) {
       try {
-        const cached = await getCachedTools(userId, project.serverName);
-        if (!cached || sameNames(cachedToolNames(cached, project.serverName), project)) {
+        const cached = await getCachedTools(
+          userId,
+          project.serverName,
+          configs?.[project.serverName],
+        );
+        if (!cached || sameListings(cachedListings(cached, project.serverName), project)) {
           continue;
         }
         await invalidateCachedTools(userId, project.serverName);
@@ -398,6 +472,7 @@ export function createWorkflowAgentSync(deps: WorkflowAgentSyncDeps) {
   const run = async (
     user: WorkflowSyncUser,
     modelsConfig: () => Promise<Record<string, string[] | undefined>>,
+    serverConfigs?: ServerConfigsLoader,
   ) => {
     const now = Date.now();
     const dueShared = now - lastShared >= debounceMs;
@@ -438,7 +513,18 @@ export function createWorkflowAgentSync(deps: WorkflowAgentSyncDeps) {
         `[langflow/sync] Could not re-register the Workflow servers: ${(error as Error).message}`,
       );
     }
-    await refreshStaleCatalogs(user.id, projects);
+    await refreshStaleCatalogs(user.id, projects, serverConfigs);
+    if (deps.getToolNames && deps.setToolNames) {
+      await followWorkflowToolRenames(
+        {
+          getToolNames: deps.getToolNames,
+          setToolNames: deps.setToolNames,
+          getAgents: deps.getAgents,
+          updateAgent: deps.updateAgent,
+        },
+        projects.values(),
+      );
+    }
 
     let catalogue: Promise<Record<string, string[] | undefined>> | null = null;
     const cachedModels = () => {
@@ -465,17 +551,20 @@ export function createWorkflowAgentSync(deps: WorkflowAgentSyncDeps) {
    * @param user The user whose agent list is being served.
    * @param modelsConfig Loads this instance's model catalogue, consulted only when a flow names a
    *   model; it answers "which endpoint serves this model", which does not vary by user.
+   * @param serverConfigs Loads the user's resolved MCP config map, consulted only when a cached
+   *   catalogue is checked, so each project server's catalogue is read under its own config.
    */
   return async function syncWorkflowAgents(
     user: WorkflowSyncUser,
     modelsConfig: () => Promise<Record<string, string[] | undefined>>,
+    serverConfigs?: ServerConfigsLoader,
   ): Promise<void> {
     const key = user.id;
     const pending = inFlight.get(key);
     if (pending) {
       return pending;
     }
-    const pass = run(user, modelsConfig)
+    const pass = run(user, modelsConfig, serverConfigs)
       .catch((error: unknown) => {
         logger.error('[langflow/sync] Workflow agent sync failed:', error);
       })

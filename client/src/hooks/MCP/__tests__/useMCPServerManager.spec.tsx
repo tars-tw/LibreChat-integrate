@@ -10,6 +10,8 @@ const mockOpenInNewTab = jest.fn();
 jest.mock('~/utils', () => ({ openInNewTab: (...args: unknown[]) => mockOpenInNewTab(...args) }));
 
 const mockShowToast = jest.fn();
+const mockLocalize = jest.fn((key: string, _values?: Record<number, string>) => key);
+let mockLoadedServers: Record<string, { title?: string }> = {};
 const mockSetMCPValues = jest.fn();
 const mockReinitialize = jest.fn();
 const mockUseMCPToolsQuery = jest.fn((_options?: unknown): { data?: MCPServersResponse } => ({
@@ -22,7 +24,7 @@ jest.mock('@librechat/client', () => ({
 }));
 
 jest.mock('~/hooks', () => ({
-  useLocalize: () => (key: string) => key,
+  useLocalize: () => mockLocalize,
   useHasAccess: () => true,
   useCatalogReady: () => true,
   useMCPSelect: () => ({ mcpValues: [], setMCPValues: mockSetMCPValues }),
@@ -31,7 +33,7 @@ jest.mock('~/hooks', () => ({
 
 jest.mock('~/data-provider', () => ({
   useGetStartupConfig: () => ({ data: {} }),
-  useMCPServersQuery: () => ({ data: {}, isLoading: false }),
+  useMCPServersQuery: () => ({ data: mockLoadedServers, isLoading: false }),
   useMCPToolsQuery: (options: unknown) => mockUseMCPToolsQuery(options),
   useTarsMcpUserSettingsQuery: () => ({ data: undefined, isError: false }),
 }));
@@ -58,6 +60,40 @@ function deferred<T>() {
 }
 
 describe('useMCPServerManager initialization', () => {
+  it('names a server by its title in the connection toasts, never by its key', async () => {
+    mockReinitialize.mockReset();
+    mockLocalize.mockClear();
+    mockLoadedServers = { workflow_1a2b3c4d: { title: '共用流程 - Starter Project' } };
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <Provider>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </Provider>
+    );
+    const { result, unmount } = renderHook(() => useMCPServerManager(), { wrapper });
+    try {
+      mockReinitialize.mockResolvedValueOnce({
+        success: true,
+        serverName: 'workflow_1a2b3c4d',
+        oauthRequired: false,
+      });
+      await act(async () => {
+        await result.current.initializeServer('workflow_1a2b3c4d');
+      });
+
+      expect(mockLocalize).toHaveBeenCalledWith('com_ui_mcp_initialized_success', {
+        0: '共用流程 - Starter Project',
+      });
+      expect(mockLocalize).not.toHaveBeenCalledWith(expect.anything(), {
+        0: 'workflow_1a2b3c4d',
+      });
+    } finally {
+      mockLoadedServers = {};
+      unmount();
+      queryClient.clear();
+    }
+  });
+
   it.each(['response', 'http'] as const)(
     'clears the spinner after a transient %s failure and lets retry succeed without OAuth',
     async (failure) => {

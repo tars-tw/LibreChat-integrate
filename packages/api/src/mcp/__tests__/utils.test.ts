@@ -407,6 +407,7 @@ describe('redactServerSecrets', () => {
       description: 'A test server',
       iconPath: '/icons/test.png',
       chatMenu: true,
+      tarsWorkflowShared: true,
       requiresOAuth: false,
       capabilities: '{"tools":{}}',
       tools: 'tool_a, tool_b',
@@ -421,6 +422,7 @@ describe('redactServerSecrets', () => {
     expect(redacted.description).toBe('A test server');
     expect(redacted.iconPath).toBe('/icons/test.png');
     expect(redacted.chatMenu).toBe(true);
+    expect(redacted.tarsWorkflowShared).toBe(true);
     expect(redacted.requiresOAuth).toBe(false);
     expect(redacted.capabilities).toBe('{"tools":{}}');
     expect(redacted.tools).toBe('tool_a, tool_b');
