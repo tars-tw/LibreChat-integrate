@@ -48,6 +48,7 @@ const TYPE_LABELS: Record<TTarsModelType, TranslationKeys> = {
   CLOUD: 'com_ui_tars_models_type_cloud',
   VLLM: 'com_ui_tars_models_type_vllm',
   GOOGLE_VERTEX: 'com_ui_tars_models_type_google_vertex',
+  AZURE_OPENAI: 'com_ui_tars_models_type_azure_openai',
 };
 
 type FormState = {

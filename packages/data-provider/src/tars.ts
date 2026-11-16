@@ -89,10 +89,12 @@ export const tarsProtocolUsesHostName = (protocol: string | null | undefined): b
  * The `model_profile.type` values the model admin page offers. pwc_tars has
  * normalised every row to CLOUD (provider-hosted) or VLLM (on-premises) — see
  * its `fix_model_profile.sql` — and seeds GOOGLE_VERTEX, which it hides while no
- * Vertex AI key is configured. Older type names still classify there, so a row
- * carrying one keeps it until an admin picks one of these.
+ * Vertex AI key is configured. AZURE_OPENAI marks an Azure OpenAI deployment, which
+ * authenticates with `KEY_AZURE_OPENAI_API` instead of the OpenAI key. Older type
+ * names still classify there, so a row carrying one keeps it until an admin picks
+ * one of these.
  */
-export const TARS_MODEL_TYPES = ['CLOUD', 'VLLM', 'GOOGLE_VERTEX'] as const;
+export const TARS_MODEL_TYPES = ['CLOUD', 'VLLM', 'GOOGLE_VERTEX', 'AZURE_OPENAI'] as const;
 
 export type TTarsModelType = (typeof TARS_MODEL_TYPES)[number];
 
