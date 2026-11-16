@@ -25,4 +25,4 @@
 
 - 中英文兩份目錄**各自獨立**（文字與圖片都會不同），請分別更新，不要共用 `media/`。
 - 手冊以「開新分頁」開啟，沒有可回上一頁的瀏覽歷史。pandoc 樣板產出的左側「返回」按鈕（`.manual-back-strip` / `.manual-back-btn`，呼叫 `history.back()`）在此情境下無作用，已從 `index.html` 與轉換樣板移除。
-- 產生方式：在 pwc_tars 執行 `bash scripts/word_to_html/update_manual.sh <手冊.docx>`，會直接輸出到本目錄（檔名以 `_en.docx` 結尾 → `manual_en/`，其餘 → `manual_zh-Hant/`），詳見 `pwc_tars/scripts/word_to_html/README.md`。
+- 產生方式：在 pwc_tars 執行 `bash scripts/word_to_html/update_manual.sh <手冊.docx>`，會直接輸出到本目錄（檔名含 `_en` → `manual_en/`，其餘 → `manual_zh-Hant/`），詳見 `pwc_tars/scripts/word_to_html/README.md`。
