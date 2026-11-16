@@ -121,6 +121,9 @@ export default function McpSection({ item }: Props) {
   const serverToken = mcpServerToken(serverName);
   const serverAllToken = mcpAllToken(serverName);
   const isWorkflowServer = isWorkflowMcpServerName(serverName);
+  /** The dialog names the server as its header does: a `workflow_<id>` / `tars_<code>` key means
+   *  nothing to the people reading it. */
+  const serverDisplayName = item.name || serverName;
 
   /** Langflow never announces a changed flow list, so a Workflow project's dialog asks for the
    *  current catalogue when it opens; the server drops a cached one Langflow has since changed. */
@@ -481,7 +484,7 @@ export default function McpSection({ item }: Props) {
               aria-hidden="true"
             />
             <span className="text-text-primary text-sm font-medium">
-              {localize(statusDisplay.labelKey, { 0: serverName })}
+              {localize(statusDisplay.labelKey, { 0: serverDisplayName })}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -532,11 +535,14 @@ export default function McpSection({ item }: Props) {
               tabIndex={isReadyForAgent ? -1 : undefined}
               aria-hidden={isReadyForAgent || undefined}
               onClick={canCancel ? handleCancel : handleConnect}
+              aria-label={
+                canCancel
+                  ? undefined
+                  : localize('com_nav_mcp_connect_server', { 0: serverDisplayName })
+              }
             >
               {isBusy && !canCancel && <Spinner className="size-4" />}
-              {canCancel
-                ? localize('com_ui_cancel')
-                : localize('com_nav_mcp_connect_server', { 0: serverName })}
+              {canCancel ? localize('com_ui_cancel') : localize('com_nav_mcp_connect')}
             </Button>
           </div>
         </div>

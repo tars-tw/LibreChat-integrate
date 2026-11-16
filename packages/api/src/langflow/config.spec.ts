@@ -61,11 +61,11 @@ describe('withWorkflowMcpConfig', () => {
     expect(mcpConfig?.workflow_1a2b3c4d).toEqual({
       ...template,
       url: `${LANGFLOW}/api/v1/tars/mcp/project/${STARTER}/streamable`,
-      title: 'Starter Project',
+      title: '共用流程 - Starter Project',
       startup: false,
     });
     expect(mcpConfig?.workflow_abcdef01).toMatchObject({
-      title: '我的 - 高雄小導遊',
+      title: '高雄小導遊',
       description: template.description,
     });
     expect(workflowMcpInjectionFailed()).toBe(false);

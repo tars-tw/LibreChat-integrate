@@ -123,8 +123,8 @@ describe('reconcileLangflowAgents', () => {
     ]);
 
     expect(await agentNames()).toEqual([
-      `${sharedId(STARTER_SERVER)}|Workflow · Starter Project`,
-      `${sharedId(CLAIMS_SERVER)}|Workflow · Expense_Claim_Test`,
+      `${sharedId(STARTER_SERVER)}|Workflow · 共用流程 - Starter Project`,
+      `${sharedId(CLAIMS_SERVER)}|Workflow · 共用流程 - Expense_Claim_Test`,
     ]);
     const starter = await getAgent(sharedId(STARTER_SERVER));
     expect(starter.tools).toEqual([`tars_tool_mcp_${STARTER_SERVER}`, `_1_mcp_${STARTER_SERVER}`]);
@@ -149,9 +149,9 @@ describe('reconcileLangflowAgents', () => {
 
     const after = await db.getAgents({ id: sharedId(STARTER_SERVER) });
     expect(after).toHaveLength(1);
-    expect(after[0].name).toBe('Workflow · Renamed');
+    expect(after[0].name).toBe('Workflow · 共用流程 - Renamed');
     expect(after[0]._id.toString()).toBe(before._id.toString());
-    expect(after[0].instructions).toContain('"Renamed" workflow project');
+    expect(after[0].instructions).toContain('"共用流程 - Renamed" workflow project');
   });
 
   it('follows a flow joining and leaving the project', async () => {
@@ -178,7 +178,9 @@ describe('reconcileLangflowAgents', () => {
 
     await reconcile([flow('TARS_RAG', 'tars_rag')]);
 
-    expect(await agentNames()).toEqual([`${sharedId(STARTER_SERVER)}|Workflow · Starter Project`]);
+    expect(await agentNames()).toEqual([
+      `${sharedId(STARTER_SERVER)}|Workflow · 共用流程 - Starter Project`,
+    ]);
   });
 
   it('removes duplicate rows a create-only pass left behind', async () => {
@@ -192,7 +194,7 @@ describe('reconcileLangflowAgents', () => {
 
     const rows = await db.getAgents({ id: sharedId(STARTER_SERVER) });
     expect(rows).toHaveLength(1);
-    expect(rows[0].name).toBe('Workflow · Starter Project');
+    expect(rows[0].name).toBe('Workflow · 共用流程 - Starter Project');
   });
 
   it("rewrites the brand in a project's description", async () => {
@@ -213,7 +215,9 @@ describe('reconcileLangflowAgents', () => {
       flow('Claims', 'claims', { project: CLAIMS }),
     ]);
     await reconcile([flow('TARS_tool', 'tars_tool')]);
-    expect(await agentNames()).toEqual([`${sharedId(STARTER_SERVER)}|Workflow · Starter Project`]);
+    expect(await agentNames()).toEqual([
+      `${sharedId(STARTER_SERVER)}|Workflow · 共用流程 - Starter Project`,
+    ]);
   });
 
   it('leaves everything alone when Langflow is unreachable', async () => {
@@ -225,7 +229,9 @@ describe('reconcileLangflowAgents', () => {
     clock += 60_000;
     await reconcileLangflowAgents({ user: { id: 'req-user' } });
 
-    expect(await agentNames()).toEqual([`${sharedId(STARTER_SERVER)}|Workflow · Starter Project`]);
+    expect(await agentNames()).toEqual([
+      `${sharedId(STARTER_SERVER)}|Workflow · 共用流程 - Starter Project`,
+    ]);
   });
 
   it('leaves everything alone when Langflow predates per-project servers', async () => {
@@ -338,7 +344,7 @@ describe('reconcileLangflowAgents', () => {
       });
 
       const agent = await getAgent(personalId(alice));
-      expect(agent.name).toBe('Workflow · 我的 - My Project');
+      expect(agent.name).toBe('Workflow · My Project');
       expect(agent.author.toString()).toBe(alice._id.toString());
       expect(agent.tools).toEqual([`notes_mcp_${MINE_SERVER}`]);
       expect(grantPermission).toHaveBeenCalledWith(
@@ -350,7 +356,7 @@ describe('reconcileLangflowAgents', () => {
         }),
       );
       expect(await agentNames()).toEqual([
-        `${sharedId(STARTER_SERVER)}|Workflow · Starter Project`,
+        `${sharedId(STARTER_SERVER)}|Workflow · 共用流程 - Starter Project`,
       ]);
     });
 

@@ -303,13 +303,14 @@ describe('McpSection', () => {
 
   test('renders an inline Connect button when the server is not connected', () => {
     render(<McpSection item={item} />);
-    expect(screen.getByText('com_nav_mcp_connect_server')).toBeInTheDocument();
+    const connect = screen.getByRole('button', { name: 'com_nav_mcp_connect_server' });
+    expect(connect).toHaveTextContent('com_nav_mcp_connect');
   });
 
   test('clicking Connect initializes the server without auto-opening OAuth', () => {
     mockInitializeServer.mockResolvedValue({ success: true });
     render(<McpSection item={item} />);
-    fireEvent.click(screen.getByText('com_nav_mcp_connect_server'));
+    fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
     expect(mockInitializeServer).toHaveBeenCalledWith('srv', false);
   });
 
@@ -320,7 +321,7 @@ describe('McpSection', () => {
       oauthUrl: 'https://oauth.example/authorize?x=1',
     });
     render(<McpSection item={item} />);
-    fireEvent.click(screen.getByText('com_nav_mcp_connect_server'));
+    fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
     expect(await screen.findByTestId('oauth-dialog')).toHaveTextContent(
       'https://oauth.example/authorize?x=1',
     );
@@ -529,7 +530,7 @@ describe('McpSection', () => {
       oauthUrl: 'https://oauth.example/authorize',
     });
     const { rerender } = render(<McpSection item={empty} />);
-    fireEvent.click(screen.getByText('com_nav_mcp_connect_server'));
+    fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
     expect(await screen.findByTestId('oauth-dialog')).toBeInTheDocument();
     expect(mockSetValue).not.toHaveBeenCalled();
 
@@ -595,7 +596,7 @@ describe('McpSection', () => {
       toolCount: 0,
     };
     render(<McpSection item={empty} />);
-    fireEvent.click(screen.getByText('com_nav_mcp_connect_server'));
+    fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
     await waitFor(() =>
       expect(mockSetValue).toHaveBeenCalledWith(
         'tools',
@@ -615,7 +616,7 @@ describe('McpSection', () => {
       toolCount: 0,
     };
     render(<McpSection item={empty} />);
-    fireEvent.click(screen.getByText('com_nav_mcp_connect_server'));
+    fireEvent.click(screen.getByRole('button', { name: 'com_nav_mcp_connect_server' }));
     await waitFor(() => expect(mockInitializeServer).toHaveBeenCalled());
     expect(mockSetValue).not.toHaveBeenCalled();
   });
@@ -874,6 +875,21 @@ describe('McpSection', () => {
       });
     const refreshButton = () =>
       screen.queryByRole('button', { name: 'com_ui_tools_mcp_refresh_tools' });
+
+    test('names the server by its title, never by its key', () => {
+      mockGetServerStatusIconProps.mockReturnValue({
+        serverStatus: { connectionState: 'connecting' },
+        isInitializing: false,
+        canCancel: false,
+      });
+      render(<McpSection item={workflowItem} />);
+
+      expect(screen.getByText('Starter Project - Connecting')).toBeInTheDocument();
+      expect(mockLocalize).toHaveBeenCalledWith('com_nav_mcp_connect_server', {
+        0: 'Starter Project',
+      });
+      expect(mockLocalize).not.toHaveBeenCalledWith(expect.anything(), { 0: WORKFLOW });
+    });
 
     test('asks for the current catalogue when a Workflow project opens', () => {
       render(<McpSection item={workflowItem} />);
