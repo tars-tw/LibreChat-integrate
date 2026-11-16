@@ -1,3 +1,5 @@
+import { normalizeLocale } from '~/locales/i18n';
+
 /**
  * Static user-manual bundles shipped under `client/public/`. Vite copies them into
  * `client/dist/` at build time, so the backend's `staticCache(paths.dist)` serves them
@@ -20,8 +22,12 @@ function resolveFromBase(path: string): string {
   return new URL(path, document.baseURI).href;
 }
 
+/**
+ * Picks the edition by the locale the UI actually renders (`normalizeLocale`, as
+ * `LanguageSync` does), so a stored `zh-TW` / `zh-HK` or `auto` opens the Chinese manual.
+ */
 export function getUserManualURL(lang?: string): string {
-  const manual = lang?.startsWith('zh-Hant') === true ? MANUAL_PATHS['zh-Hant'] : MANUAL_PATHS.en;
+  const manual = normalizeLocale(lang) === 'zh-Hant' ? MANUAL_PATHS['zh-Hant'] : MANUAL_PATHS.en;
   return resolveFromBase(manual);
 }
 
