@@ -668,6 +668,30 @@ export const useTarsMcpChatToolsQuery = (
   );
 };
 
+/** Both hooks below observe the one `tarsModels` entry, so they fetch it the same way. */
+const fetchTarsModels = () => dataService.getTarsModels();
+const tarsModelsQueryOptions = {
+  staleTime: 5 * 60 * 1000,
+  retry: false,
+  ...adminQueryOptions,
+} as const;
+
+const selectTarsModelLabels = (data: TTarsModelsResponse): Map<string, string> =>
+  new Map(Object.entries(data.labels ?? {}).map(([name, label]) => [name.toLowerCase(), label]));
+
+/**
+ * The display names admins gave pwc_tars models, keyed by lower-cased model name.
+ * Reads the same cache entry as {@link useTarsAllowedModelsQuery}, so it adds no request.
+ */
+export const useTarsModelLabelsQuery = (): QueryObserverResult<Map<string, string>> => {
+  const tarsEnabled = useTarsEnabled();
+  return useQuery<TTarsModelsResponse, unknown, Map<string, string>>(
+    [QueryKeys.tarsModels],
+    fetchTarsModels,
+    { select: selectTarsModelLabels, ...tarsModelsQueryOptions, enabled: tarsEnabled },
+  );
+};
+
 /**
  * The pwc_tars model_profile whitelist for the model selector. `null` means no
  * restriction (TARS unconfigured, unreachable, or the request failed).
@@ -678,12 +702,10 @@ export const useTarsAllowedModelsQuery = (
   const tarsEnabled = useTarsEnabled();
   return useQuery<TTarsModelsResponse, unknown, string[] | null>(
     [QueryKeys.tarsModels],
-    () => dataService.getTarsModels(),
+    fetchTarsModels,
     {
       select: (data) => data.models ?? null,
-      staleTime: 5 * 60 * 1000,
-      retry: false,
-      ...adminQueryOptions,
+      ...tarsModelsQueryOptions,
       ...config,
       enabled: tarsEnabled && (config?.enabled ?? true),
     },

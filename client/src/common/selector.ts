@@ -9,6 +9,8 @@ export interface Endpoint {
   icon: React.ReactNode;
   agentNames?: Record<string, string>;
   assistantNames?: Record<string, string>;
+  /** Model name → the display name an admin gave it in pwc_tars; other models read by name. */
+  modelNames?: Record<string, string>;
   modelIcons?: Record<string, string | undefined>;
   showMarketplace?: boolean;
   searchAliases?: string[];

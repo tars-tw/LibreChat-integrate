@@ -1,4 +1,9 @@
-import { isTarsModelEndpoint, isTarsModelType, TARS_MODEL_TYPES } from 'librechat-data-provider';
+import {
+  isTarsModelType,
+  TARS_MODEL_TYPES,
+  isTarsModelEndpoint,
+  TARS_MODEL_DISPLAY_NAME_MAX,
+} from 'librechat-data-provider';
 import type {
   TTarsPrincipalInfo,
   TTarsModelPermission,
@@ -17,6 +22,8 @@ import { tarsFetch, TarsRequestError } from './client';
 export interface TarsModelProfile {
   id: string;
   name: string;
+  /** Shown in place of `name` on screen only; absent on a pwc_tars without the column. */
+  display_name?: string | null;
   version: string | null;
   type: string | null;
   /** Plain text, or a JSON object keyed by locale (`{"zh-TW": …, "en-US": …}`). */
@@ -48,6 +55,8 @@ export interface TarsModelProfileSync {
 /** Create/update payload. On update an omitted field is left as is and '' clears it. */
 export interface TarsModelProfileInput {
   name?: string;
+  /** Screen-only label; '' clears it, so the model reads by its name again. */
+  displayName?: string;
   version?: string;
   type?: string;
   description?: string;
@@ -101,6 +110,7 @@ const blankToNull = (value: string | undefined): string | null => {
 /** pwc_tars `update_model_profile` body fields; a missing/null field is kept as is. */
 interface TarsModelProfileUpdateBody {
   name?: string;
+  display_name?: string;
   version?: string;
   type?: string;
   description?: string;
@@ -112,6 +122,7 @@ interface TarsModelProfileUpdateBody {
 
 const toUpdateBody = (input: TarsModelProfileInput): TarsModelProfileUpdateBody => ({
   name: input.name?.trim(),
+  display_name: input.displayName?.trim(),
   version: input.version?.trim(),
   type: input.type?.trim(),
   description: input.description,
@@ -138,6 +149,16 @@ const assertValidInput = (path: string, input: TarsModelProfileInput, creating: 
   }
   if ((creating || input.endpoint !== undefined) && !isTarsModelEndpoint(input.endpoint)) {
     throw new TarsRequestError(400, path, 'endpoint must be an http:// or https:// URL');
+  }
+  if (input.displayName != null && typeof input.displayName !== 'string') {
+    throw new TarsRequestError(400, path, 'display name must be a string');
+  }
+  if ((input.displayName?.trim().length ?? 0) > TARS_MODEL_DISPLAY_NAME_MAX) {
+    throw new TarsRequestError(
+      400,
+      path,
+      `display name must be at most ${TARS_MODEL_DISPLAY_NAME_MAX} characters`,
+    );
   }
 };
 
@@ -181,6 +202,7 @@ export async function createTarsModelProfile(
       name: input.name?.trim() ?? '',
       type: input.type?.trim() ?? '',
       endpoint: input.endpoint?.trim() ?? '',
+      display_name: blankToNull(input.displayName),
       version: blankToNull(input.version),
       description: blankToNull(input.description),
       config: blankToNull(input.config),

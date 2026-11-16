@@ -315,6 +315,21 @@ it two of its models compared side by side read the same; with it each reads its
 label noted beside it. `Content/__tests__/SiblingHeader.test.tsx` fails if it is lost. If
 upstream moves the header into `@librechat/chat`, which cannot import the client's
 `Content/tars.ts`, pass the header in from the host instead.
+The chat model picker shows the display names admins give models in 模型管理
+(`model_profile.display_name`, returned as `labels` by `GET /api/tars/models`). That picker
+appears only on 通用腦 with no agent (`useModelSelectorVisible`, `Endpoints/__tests__/visibility.test.ts`),
+and by design no other chat or picker surface reads the labels: pinned models, the agent builder
+and the knowledge-base model pickers keep the model name (`fetchTarsModelOptions` maps
+`model_name`; `fetchTarsKnowledgeBaseModelBindings` relabels each LLM option by its id, since
+pwc_tars `get_models_by_knowledge` labels it with the display name). 模型管理 lists the display name under the name for admins.
+`pickModelNames` sets `endpoint.modelNames` inside the TARS whitelist filter of
+`ModelSelectorContext.tsx`, which also reads it in `getModelDisplayName` for the live announcer
+(no spec guards these two), and it is read by one standalone branch
+each in `EndpointModelItem.tsx` (row label), `SearchResults.tsx` (search) and
+`Endpoints/utils.ts` (`filterItems`, `filterModels`, `getDisplayValue`), plus the `modelNames`
+field on `Endpoint` in `common/selector.ts`. Keep those branches when resolving; the selection
+itself must keep sending the model name. `Endpoints/__tests__/labels.test.tsx` fails if any
+read is lost.
 
 ---
 

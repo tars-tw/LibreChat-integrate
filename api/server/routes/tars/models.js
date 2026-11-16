@@ -6,7 +6,7 @@ const {
   createTarsModelProfile,
   updateTarsModelProfile,
   deleteTarsModelProfile,
-  getTarsUserModelProfileNames,
+  getTarsUserModelList,
   saveTarsModelAssignees,
   fetchTarsModelAssignees,
   fetchTarsModelPermissions,
@@ -26,13 +26,13 @@ router.use('/model-permissions', requireJwtAuth);
  *       chat and agent model selectors filter by. pwc_tars applies
  *       sys_model_permission per user (admins get every model); an account with
  *       no pwc_tars link gets the global list. `models: null` means no
- *       restriction (TARS unconfigured).
+ *       restriction (TARS unconfigured). `labels` maps a model name to the
+ *       display name an admin gave it, for the selectors to show.
  * @access Authenticated
  */
 router.get('/models', async (req, res) => {
   try {
-    const models = await getTarsUserModelProfileNames(req.user?.tarsId);
-    return res.json({ models });
+    return res.json(await getTarsUserModelList(req.user?.tarsId));
   } catch (error) {
     logger.error('[GET /api/tars/models] Failed', error);
     return relayTarsError(res, error, 'Failed to fetch pwc_tars model profiles');

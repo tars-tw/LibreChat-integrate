@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { isTarsModelType, TARS_MODEL_TYPES, isTarsModelEndpoint } from 'librechat-data-provider';
 import {
   Input,
   Label,
@@ -10,6 +9,12 @@ import {
   OGDialog,
   OGDialogTemplate,
 } from '@librechat/client';
+import {
+  isTarsModelType,
+  TARS_MODEL_TYPES,
+  isTarsModelEndpoint,
+  TARS_MODEL_DISPLAY_NAME_MAX,
+} from 'librechat-data-provider';
 import type {
   TTarsModelType,
   TTarsModelProfile,
@@ -24,6 +29,7 @@ import {
   useUpdateTarsModelProfileMutation,
 } from '~/data-provider';
 import { formatConfig, isValidConfig, joinDescription, splitDescription } from './helpers';
+import FieldLabel from '~/components/Tars/FieldLabel';
 import useFeedback from './useFeedback';
 import { useLocalize } from '~/hooks';
 
@@ -46,6 +52,8 @@ const TYPE_LABELS: Record<TTarsModelType, TranslationKeys> = {
 
 type FormState = {
   name: string;
+  /** Shown instead of the name on screen; blank leaves the name showing. */
+  displayName: string;
   type: string;
   version: string;
   endpoint: string;
@@ -81,6 +89,7 @@ const toFormState = (profile?: TTarsModelProfile): FormState => {
   const description = splitDescription(profile?.description);
   return {
     name: profile?.name ?? '',
+    displayName: profile?.display_name ?? '',
     type: profile?.type ?? '',
     version: profile?.version ?? '',
     endpoint: profile?.endpoint ?? '',
@@ -96,6 +105,7 @@ const toFormState = (profile?: TTarsModelProfile): FormState => {
 /** The fields saved as typed; the description is handled on its own. */
 const toFields = (state: FormState) => ({
   name: state.name.trim(),
+  displayName: state.displayName.trim(),
   type: state.type.trim(),
   version: state.version.trim(),
   endpoint: state.endpoint.trim(),
@@ -130,6 +140,8 @@ export default function ModelProfileModal({
   const [form, setForm] = useState<FormState>(initial);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [copySource, setCopySource] = useState(NO_SOURCE);
+  /** Hosts the help tooltips, which the form's own scroll area would otherwise cut off. */
+  const [dialogElement, setDialogElement] = useState<HTMLDivElement | null>(null);
   const showConfig = form.type === CONFIG_EDITABLE_TYPE;
 
   /**
@@ -367,6 +379,7 @@ export default function ModelProfileModal({
   return (
     <OGDialog open={true} onOpenChange={onOpenChange}>
       <OGDialogTemplate
+        ref={setDialogElement}
         title={isEdit ? localize('com_ui_tars_models_edit') : localize('com_ui_tars_models_add')}
         showCloseButton={true}
         className="w-11/12 md:max-w-3xl"
@@ -381,7 +394,13 @@ export default function ModelProfileModal({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label htmlFor="tars-model-name">{localize('com_ui_tars_models_name')} *</Label>
+                <FieldLabel
+                  htmlFor="tars-model-name"
+                  label={localize('com_ui_tars_models_name')}
+                  help={localize('com_ui_tars_models_name_help')}
+                  required={true}
+                  portalElement={dialogElement}
+                />
                 <Input
                   id="tars-model-name"
                   className="placeholder:text-text-muted mt-1"
@@ -397,6 +416,23 @@ export default function ModelProfileModal({
                     {localize('com_ui_tars_models_rename_hint')}
                   </p>
                 )}
+              </div>
+              <div>
+                <FieldLabel
+                  htmlFor="tars-model-display-name"
+                  label={localize('com_ui_tars_models_display_name')}
+                  help={localize('com_ui_tars_models_display_name_help')}
+                  portalElement={dialogElement}
+                />
+                <Input
+                  id="tars-model-display-name"
+                  className="mt-1"
+                  value={form.displayName}
+                  autoComplete="off"
+                  maxLength={TARS_MODEL_DISPLAY_NAME_MAX}
+                  placeholder={form.name.trim() || localize('com_ui_tars_models_name_placeholder')}
+                  onChange={(e) => update('displayName', e.target.value)}
+                />
               </div>
               <div>
                 <Label id="tars-model-type-label">{localize('com_ui_tars_models_type')} *</Label>
@@ -421,22 +457,6 @@ export default function ModelProfileModal({
                   onChange={(e) => update('version', e.target.value)}
                 />
               </div>
-              <div>
-                <Label htmlFor="tars-model-api-version">
-                  {localize('com_ui_tars_models_api_version')}
-                </Label>
-                <Input
-                  id="tars-model-api-version"
-                  className="placeholder:text-text-muted mt-1 font-mono"
-                  value={form.apiVersion}
-                  autoComplete="off"
-                  placeholder={localize('com_ui_tars_models_api_version_placeholder')}
-                  onChange={(e) => update('apiVersion', e.target.value)}
-                />
-                <p className="text-text-secondary mt-1 text-xs">
-                  {localize('com_ui_tars_models_api_version_hint')}
-                </p>
-              </div>
               <div className="md:col-span-2">
                 <Label htmlFor="tars-model-endpoint">
                   {localize('com_ui_tars_models_endpoint')} *
@@ -453,6 +473,22 @@ export default function ModelProfileModal({
                   onChange={(e) => update('endpoint', e.target.value)}
                 />
                 <FieldError messageKey={errors.endpoint} />
+              </div>
+              <div>
+                <Label htmlFor="tars-model-api-version">
+                  {localize('com_ui_tars_models_api_version')}
+                </Label>
+                <Input
+                  id="tars-model-api-version"
+                  className="placeholder:text-text-muted mt-1 font-mono"
+                  value={form.apiVersion}
+                  autoComplete="off"
+                  placeholder={localize('com_ui_tars_models_api_version_placeholder')}
+                  onChange={(e) => update('apiVersion', e.target.value)}
+                />
+                <p className="text-text-secondary mt-1 text-xs">
+                  {localize('com_ui_tars_models_api_version_hint')}
+                </p>
               </div>
             </div>
 

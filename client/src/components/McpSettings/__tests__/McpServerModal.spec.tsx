@@ -127,7 +127,7 @@ describe('McpServerModal OIDC', () => {
     renderModal();
 
     expect(screen.getByLabelText(label)).toBeInTheDocument();
-    const button = screen.getByRole('button', { name: `com_ui_tars_mcp_oidc_field_help:${label}` });
+    const button = screen.getByRole('button', { name: `com_ui_tars_field_help:${label}` });
     expect(button).toHaveAttribute('type', 'button');
     /** Ariakit ignores a move without a position change unless NODE_ENV is `test`; CI runs `development`. */
     pointerX += 1;
@@ -142,7 +142,7 @@ describe('McpServerModal OIDC', () => {
 
     expect(
       screen.queryByRole('button', {
-        name: 'com_ui_tars_mcp_oidc_field_help:com_ui_tars_mcp_oidc_client_id',
+        name: 'com_ui_tars_field_help:com_ui_tars_mcp_oidc_client_id',
       }),
     ).not.toBeInTheDocument();
   });

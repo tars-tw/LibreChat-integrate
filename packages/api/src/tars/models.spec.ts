@@ -9,11 +9,11 @@ jest.mock('@librechat/data-schemas', () => ({
 
 import {
   isTarsLocalEndpoint,
+  getTarsUserModelList,
   getTarsLocalModelNames,
   getTarsModelProfileNames,
   getTarsModelProfileEndpoint,
   resolveTarsLocalModelBaseURL,
-  getTarsUserModelProfileNames,
   invalidateTarsUserModelsCache,
   reorderTarsWhitelistedModels,
   invalidateTarsLocalModelsCache,
@@ -521,8 +521,111 @@ describe('getTarsModelProfileEndpoint', () => {
   });
 });
 
-describe('getTarsUserModelProfileNames', () => {
+describe('getTarsUserModelList', () => {
   const modelList = (names: Array<string | null>) => names.map((model_name) => ({ model_name }));
+  const getTarsUserModelProfileNames = async (tarsId: string | undefined) =>
+    (await getTarsUserModelList(tarsId)).models;
+
+  it('maps each model to the display name an admin gave it', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        buildResponse(200, [
+          { model_name: 'gpt-4o', display_name: ' GPT-4o 標準版 ' },
+          { model_name: 'o3', display_name: null },
+          { model_name: 'o4', display_name: '   ' },
+          { model_name: 'same', display_name: 'same' },
+          { model_name: 'lora-a' },
+        ]),
+      );
+
+    await expect(getTarsUserModelList('u1')).resolves.toEqual({
+      models: ['gpt-4o', 'o3', 'o4', 'same', 'lora-a'],
+      labels: { 'gpt-4o': 'GPT-4o 標準版' },
+    });
+  });
+
+  it('ignores a display name or model name that is not a string', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(200, [
+        { model_name: 'gpt-4o', display_name: 42 },
+        { model_name: 7, display_name: 'ghost' },
+        { model_name: 'o3', display_name: { 'zh-TW': 'x' } },
+      ]),
+    );
+
+    await expect(getTarsUserModelList('u1')).resolves.toEqual({
+      models: ['gpt-4o', 'o3'],
+      labels: {},
+    });
+  });
+
+  it('fails a user read whose reply is not a list rather than reading it as no models', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(buildResponse(200, { error: 'boom' }))
+      .mockResolvedValueOnce(buildResponse(200, [{ model_name: 'gpt-4o', display_name: 'Fast' }]));
+
+    await expect(getTarsUserModelList('u1')).rejects.toMatchObject({ status: 502 });
+    await expect(getTarsUserModelList('u1')).resolves.toEqual({
+      models: ['gpt-4o'],
+      labels: { 'gpt-4o': 'Fast' },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the stale global list and its names when a refresh reply is not a list', async () => {
+    jest.useFakeTimers();
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(buildResponse(200, [{ model_name: 'gpt-4o', display_name: 'Fast' }]))
+      .mockResolvedValueOnce(buildResponse(200, { error: 'boom' }));
+
+    await getTarsUserModelList(undefined);
+    jest.advanceTimersByTime(61_000);
+    await expect(getTarsUserModelList(undefined)).resolves.toEqual({
+      models: ['gpt-4o'],
+      labels: { 'gpt-4o': 'Fast' },
+    });
+  });
+
+  it('serves the display names from the per-user cache too', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, [{ model_name: 'gpt-4o', display_name: 'Fast' }]));
+
+    await getTarsUserModelList('u1');
+    await expect(getTarsUserModelList('u1')).resolves.toEqual({
+      models: ['gpt-4o'],
+      labels: { 'gpt-4o': 'Fast' },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops the global display names with the rest of the profile cache', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(buildResponse(200, [{ model_name: 'gpt-4o', display_name: 'Old' }]))
+      .mockResolvedValueOnce(buildResponse(200, [{ model_name: 'gpt-4o' }]));
+
+    await expect(getTarsUserModelList(undefined)).resolves.toMatchObject({
+      labels: { 'gpt-4o': 'Old' },
+    });
+    invalidateTarsModelProfilesCache();
+    await expect(getTarsUserModelList(undefined)).resolves.toMatchObject({ labels: {} });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('carries the global display names for an account with no pwc_tars link', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, [{ model_name: 'gpt-4o', display_name: 'Fast' }]));
+
+    await expect(getTarsUserModelList(undefined)).resolves.toEqual({
+      models: ['gpt-4o'],
+      labels: { 'gpt-4o': 'Fast' },
+    });
+  });
   const requestedUrl = (fetchMock: jest.SpyInstance, call = 0) =>
     new URL(String(fetchMock.mock.calls[call][0]));
 

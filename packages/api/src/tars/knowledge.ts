@@ -302,10 +302,17 @@ export async function fetchTarsKnowledgeBaseModelBindings(
     { query: { user_id: tarsId, knowledge_base_id: knowledgeBaseId }, baseUrl },
   );
   const empty = { selected_id: null, options: [] };
+  const llm = data?.llm ?? empty;
   return {
     embedding: data?.embedding ?? empty,
     rerank: data?.rerank ?? empty,
-    llm: data?.llm ?? empty,
+    /** An LLM option's id is its model name; pwc_tars labels it with the display name, which is for the 通用腦 chat picker only. */
+    llm: {
+      ...llm,
+      options: (llm.options ?? []).map((option) =>
+        option ? { ...option, name: option.id || option.name } : option,
+      ),
+    },
   };
 }
 

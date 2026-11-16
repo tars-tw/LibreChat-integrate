@@ -13,6 +13,7 @@ import { resolveProviderIcon } from '~/hooks/Endpoint/useProviderIcon';
 import { createEndpointIcon } from '~/hooks/Endpoint/useEndpoints';
 import { Endpoint, SelectedValues } from '~/common';
 import { getSpecAgentAvatarURL } from '~/utils';
+import { matchesModelName } from './labels';
 
 export function filterItems<
   T extends {
@@ -21,6 +22,7 @@ export function filterItems<
     value?: string;
     hasModels?: boolean;
     models?: Array<{ name: string; isGlobal?: boolean }>;
+    modelNames?: Record<string, string>;
     searchAliases?: string[];
     showMarketplace?: boolean;
   },
@@ -76,7 +78,7 @@ export function filterItems<
           return false;
         }
 
-        return false;
+        return matchesModelName(item, modelId.name, searchTermLower);
       });
     }
 
@@ -118,7 +120,10 @@ export function filterModels(
         typeof assistant.name === 'string' && assistant.name ? (assistant.name as string) : modelId;
     }
 
-    return modelName.toLowerCase().includes(searchTermLower);
+    return (
+      modelName.toLowerCase().includes(searchTermLower) ||
+      matchesModelName(endpoint, modelId, searchTermLower)
+    );
   });
 }
 
@@ -237,7 +242,7 @@ export const getDisplayValue = ({
       return endpoint.assistantNames[selectedValues.model];
     }
 
-    return selectedValues.model;
+    return endpoint.modelNames?.[selectedValues.model] ?? selectedValues.model;
   }
 
   if (selectedValues.endpoint) {

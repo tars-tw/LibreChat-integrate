@@ -3,7 +3,11 @@ import { dataService } from 'librechat-data-provider';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { TStartupConfig } from 'librechat-data-provider';
-import { useTarsDomainsQuery, useTarsAllowedModelsQuery } from '../queries';
+import {
+  useTarsDomainsQuery,
+  useTarsModelLabelsQuery,
+  useTarsAllowedModelsQuery,
+} from '../queries';
 import { useGetStartupConfig } from '../../Endpoints';
 
 jest.mock('librechat-data-provider', () => {
@@ -48,11 +52,38 @@ describe('chat-shell TARS queries', () => {
 
     const domains = renderHook(() => useTarsDomainsQuery(), { wrapper });
     const models = renderHook(() => useTarsAllowedModelsQuery(), { wrapper });
+    const labels = renderHook(() => useTarsModelLabelsQuery(), { wrapper });
 
     await waitFor(() => expect(domains.result.current.fetchStatus).toBe('idle'));
     expect(models.result.current.fetchStatus).toBe('idle');
+    expect(labels.result.current.fetchStatus).toBe('idle');
     expect(getTarsDomains).not.toHaveBeenCalled();
     expect(getTarsModels).not.toHaveBeenCalled();
+  });
+
+  it('keys the display names by lower-cased model name off the whitelist request', async () => {
+    mockStartupConfig({ tarsAuth: true });
+    getTarsModels.mockResolvedValue({
+      models: ['GPT-5.4-mini', 'o3'],
+      labels: { 'GPT-5.4-mini': '快速模型' },
+    });
+    const wrapper = createWrapper();
+
+    const models = renderHook(() => useTarsAllowedModelsQuery(), { wrapper });
+    const labels = renderHook(() => useTarsModelLabelsQuery(), { wrapper });
+
+    await waitFor(() => expect(labels.result.current.isSuccess).toBe(true));
+    expect(labels.result.current.data).toEqual(new Map([['gpt-5.4-mini', '快速模型']]));
+    expect(models.result.current.data).toEqual(['GPT-5.4-mini', 'o3']);
+    expect(getTarsModels).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives no display names when pwc_tars sends none', async () => {
+    mockStartupConfig({ tarsAuth: true });
+    const { result } = renderHook(() => useTarsModelLabelsQuery(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.size).toBe(0);
   });
 
   it('fetches once pwc_tars is configured', async () => {

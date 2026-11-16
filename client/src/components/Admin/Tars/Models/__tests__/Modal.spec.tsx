@@ -130,6 +130,79 @@ describe('ModelProfileModal type and endpoint', () => {
   });
 });
 
+describe('ModelProfileModal display name', () => {
+  const displayNameBox = () =>
+    screen.getByLabelText('com_ui_tars_models_display_name') as HTMLInputElement;
+
+  it('saves a display name on its own, leaving the model name out of the update', async () => {
+    const user = userEvent.setup();
+    renderModal(profile);
+    expect(displayNameBox().value).toBe('');
+
+    await user.type(displayNameBox(), ' 快速模型 ');
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockUpdate).toHaveBeenCalledWith({ id: 'p-1', data: { displayName: '快速模型' } });
+  });
+
+  it("clears a stored display name with ''", async () => {
+    const user = userEvent.setup();
+    renderModal({ ...profile, display_name: '快速模型' });
+    expect(displayNameBox().value).toBe('快速模型');
+
+    await user.clear(displayNameBox());
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockUpdate).toHaveBeenCalledWith({ id: 'p-1', data: { displayName: '' } });
+  });
+
+  it('sends a trimmed display name on create, with the model name as its placeholder', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    renderModal();
+    await user.type(screen.getByLabelText(/^com_ui_tars_models_name/), 'qwen-local');
+    expect(displayNameBox()).toHaveAttribute('placeholder', 'qwen-local');
+    await user.type(displayNameBox(), ' 地端模型 ');
+    await user.click(screen.getByRole('combobox', { name: /com_ui_tars_models_type/ }));
+    await user.click(
+      screen.getByRole('option', { name: 'com_ui_tars_models_type_vllm', hidden: true }),
+    );
+    await user.type(screen.getByLabelText(/com_ui_tars_models_endpoint/), 'http://10.0.0.5:8000');
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'qwen-local', displayName: '地端模型' }),
+    );
+  });
+
+  it('caps the display name at the shared limit', () => {
+    renderModal(profile);
+    expect(displayNameBox()).toHaveAttribute('maxLength', '100');
+  });
+
+  it('closes without a request when only whitespace was added to the display name', async () => {
+    const onOpenChange = jest.fn();
+    const user = userEvent.setup();
+    render(
+      <ModelProfileModal profile={profile} profiles={[profile]} onOpenChange={onOpenChange} />,
+    );
+    await user.type(displayNameBox(), '   ');
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('explains the name and the display name behind a help button each', () => {
+    renderModal(profile);
+    expect(
+      screen.getByRole('button', {
+        name: 'com_ui_tars_field_help:com_ui_tars_models_name',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'com_ui_tars_field_help:com_ui_tars_models_display_name',
+      }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('ModelProfileModal config visibility', () => {
   it('shows the config only once the type is VLLM', async () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
@@ -161,7 +234,7 @@ describe('ModelProfileModal config visibility', () => {
   it('creates a non-VLLM model without a config', async () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     renderModal();
-    await user.type(screen.getByLabelText(/com_ui_tars_models_name/), 'gpt-6');
+    await user.type(screen.getByLabelText(/^com_ui_tars_models_name/), 'gpt-6');
     await user.click(screen.getByRole('combobox', { name: /com_ui_tars_models_type/ }));
     await user.click(
       screen.getByRole('option', { name: 'com_ui_tars_models_type_cloud', hidden: true }),
@@ -180,7 +253,7 @@ describe('ModelProfileModal config visibility', () => {
 
 describe('ModelProfileModal cloud API key', () => {
   const fillBasics = async (user: ReturnType<typeof userEvent.setup>, typeKey: string) => {
-    await user.type(screen.getByLabelText(/com_ui_tars_models_name/), 'new-model');
+    await user.type(screen.getByLabelText(/^com_ui_tars_models_name/), 'new-model');
     await user.click(screen.getByRole('combobox', { name: /com_ui_tars_models_type/ }));
     await user.click(screen.getByRole('option', { name: typeKey, hidden: true }));
     await user.type(screen.getByLabelText(/com_ui_tars_models_endpoint/), 'https://h/v1');
