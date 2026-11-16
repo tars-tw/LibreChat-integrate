@@ -477,24 +477,6 @@ const agentToolDefinitions: Record<string, ToolRegistryDefinition> = {
     toolType: 'builtin',
     responseFormat: 'content_and_artifact',
   },
-  [TarsChartToolDefinition.name]: {
-    name: TarsChartToolDefinition.name,
-    description: TarsChartToolDefinition.description,
-    schema: TarsChartToolDefinition.schema as unknown as ExtendedJsonSchema,
-    toolType: 'builtin',
-  },
-  [TarsDataToolDefinition.name]: {
-    name: TarsDataToolDefinition.name,
-    description: TarsDataToolDefinition.description,
-    schema: TarsDataToolDefinition.schema as unknown as ExtendedJsonSchema,
-    toolType: 'builtin',
-  },
-  [TarsTableToolDefinition.name]: {
-    name: TarsTableToolDefinition.name,
-    description: TarsTableToolDefinition.description,
-    schema: TarsTableToolDefinition.schema as unknown as ExtendedJsonSchema,
-    toolType: 'builtin',
-  },
 };
 
 /**
