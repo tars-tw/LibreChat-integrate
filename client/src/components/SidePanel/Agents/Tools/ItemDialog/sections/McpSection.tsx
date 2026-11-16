@@ -1,15 +1,18 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Clock, Code2, Captions, Zap } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { Button, Spinner, Checkbox, Skeleton } from '@librechat/client';
+import { Clock, Code2, Captions, Zap, RefreshCw } from 'lucide-react';
+import { Button, Spinner, Checkbox, Skeleton, TooltipAnchor } from '@librechat/client';
 import {
   AgentCapabilities,
   getToolApprovalConstraint,
   Constants,
+  QueryKeys,
   splitMCPToolKey,
   normalizeServerName,
   buildServerNameAliases,
   stripServerNamePrefix,
+  isWorkflowMcpServerName,
 } from 'librechat-data-provider';
 import type { MCPServerStatus } from 'librechat-data-provider';
 import type { MouseEvent } from 'react';
@@ -113,9 +116,19 @@ export default function McpSection({ item }: Props) {
     setToolApprovalMode,
   } = useMCPToolOptions();
 
+  const queryClient = useQueryClient();
   const serverName = item.server.serverName;
   const serverToken = mcpServerToken(serverName);
   const serverAllToken = mcpAllToken(serverName);
+  const isWorkflowServer = isWorkflowMcpServerName(serverName);
+
+  /** Langflow never announces a changed flow list, so a Workflow project's dialog asks for the
+   *  current catalogue when it opens; the server drops a cached one Langflow has since changed. */
+  useEffect(() => {
+    if (isWorkflowServer) {
+      void queryClient.invalidateQueries([QueryKeys.mcpTools]);
+    }
+  }, [isWorkflowServer, queryClient]);
   /** Live server data — `item.server` is a snapshot from card click and goes stale once
    * the MCP query refetches (e.g., after a server connects), so read from the live map. */
   const liveServer = mcpServersMap.get(serverName) ?? item.server;
@@ -413,7 +426,9 @@ export default function McpSection({ item }: Props) {
    * connect directly. `autoOpenOAuth=false` surfaces the URL in our OAuth dialog
    * (continue / copy / QR) instead of the browser silently opening a tab. */
   const handleConnect = async (e: MouseEvent) => {
-    setAutoSelectPending(true);
+    /** A Workflow project drops its connection when Langflow changes its flows; reconnecting one
+     *  the agent already carries keeps the tools the user picked. */
+    setAutoSelectPending(!(isWorkflowServer && formTools.includes(serverToken)));
     if (statusIconProps != null && statusIconProps.hasCustomUserVars) {
       /** A stale deferred flag from an earlier attempt must not fire the
        * auto-attach effect while the config dialog is open — only this
@@ -436,6 +451,11 @@ export default function McpSection({ item }: Props) {
     } catch {
       setAutoSelectPending(false);
     }
+  };
+
+  /** Re-reads a connected Workflow project's flows from Langflow, keeping the tool selection. */
+  const handleRefresh = () => {
+    void initializeServer(serverName, false);
   };
 
   const handleCancel = (e: MouseEvent) => {
@@ -464,7 +484,34 @@ export default function McpSection({ item }: Props) {
               {localize(statusDisplay.labelKey, { 0: serverName })}
             </span>
           </div>
-          {isReadyForAgent && statusIconProps && <MCPServerStatusIcon {...statusIconProps} />}
+          <div className="flex items-center gap-1">
+            {isWorkflowServer && isReadyForAgent && (
+              <TooltipAnchor
+                description={localize('com_ui_tools_mcp_refresh_tools')}
+                side="top"
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={isBusy}
+                    onClick={handleRefresh}
+                    aria-label={localize('com_ui_tools_mcp_refresh_tools')}
+                    className="size-6"
+                  >
+                    <RefreshCw
+                      className={cn(
+                        'text-text-secondary size-4',
+                        isBusy && 'animate-spin motion-reduce:animate-none',
+                      )}
+                      aria-hidden="true"
+                    />
+                  </Button>
+                }
+              />
+            )}
+            {isReadyForAgent && statusIconProps && <MCPServerStatusIcon {...statusIconProps} />}
+          </div>
         </div>
 
         {/* Connect collapses smoothly once ready. Its top spacing lives inside

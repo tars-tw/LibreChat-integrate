@@ -214,6 +214,11 @@ jest.mock('~/server/services/Tools/mcp', () => ({
   loadMCPServerCatalogs: (...args) => mockLoadMCPServerCatalogs(...args),
 }));
 
+const mockReconcileLangflowAgents = jest.fn(async () => undefined);
+jest.mock('~/server/services/langflow/reconcile', () => ({
+  reconcileLangflowAgents: (...args) => mockReconcileLangflowAgents(...args),
+}));
+
 const mockOAuthCompletion = (tokens) => {
   const { MCPOAuthHandler } = require('@librechat/api');
   MCPOAuthHandler.completeOAuthFlow.mockImplementation(
@@ -4076,6 +4081,26 @@ describe('MCP Routes', () => {
         recoveryPolicy,
         mcpApps: defaultMCPAppsPolicy,
       });
+    });
+
+    it('checks the Workflow catalogues against Langflow before loading the catalogs', async () => {
+      mockResolveAllMcpConfigs.mockResolvedValueOnce({
+        workflow_1a2b3c4d: { type: 'streamable-http', url: 'http://langflow:7860/mcp' },
+      });
+      mockLoadMCPServerCatalogs.mockResolvedValueOnce({
+        serverTools: new Map(),
+        serversWithoutTools: ['workflow_1a2b3c4d'],
+      });
+
+      const response = await request(app).get('/api/mcp/tools');
+
+      expect(response.status).toBe(200);
+      expect(mockReconcileLangflowAgents).toHaveBeenCalledWith(
+        expect.objectContaining({ user: expect.objectContaining({ id: 'test-user-id' }) }),
+      );
+      expect(mockReconcileLangflowAgents.mock.invocationCallOrder.at(-1)).toBeLessThan(
+        mockLoadMCPServerCatalogs.mock.invocationCallOrder.at(-1),
+      );
     });
 
     it('leaves out the tools the TARS filter refuses, by their upstream name', async () => {

@@ -45,6 +45,7 @@ const {
 } = require('~/server/services/MCP');
 const { loadMCPServerCatalogs } = require('~/server/services/Tools/mcp');
 const { createOpenIDSessionTokenProvider } = require('~/server/services/OpenIDSessionRefresh');
+const { reconcileLangflowAgents } = require('~/server/services/langflow/reconcile');
 const {
   cacheMCPServerTools,
   getMCPServerTools,
@@ -141,6 +142,10 @@ const getMCPTools = async (req, res) => {
       logger.warn('[getMCPTools] User ID not found in request');
       return res.status(401).json({ message: 'Unauthorized' });
     }
+
+    /** Drops a Workflow project's cached catalogue Langflow has since changed, so this listing
+     *  re-reads it. Debounced per user, shared with the agent list, never throws. */
+    await reconcileLangflowAgents(req);
 
     const mcpConfig = await filterVisibleTarsMcpConfigs(
       await resolveAllMcpConfigs(userId, req.user),

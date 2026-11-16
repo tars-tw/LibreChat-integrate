@@ -2,6 +2,7 @@
  * The shapes the Workflow agent sync and the aggregate-server migration share, kept apart from
  * both so neither module imports the other's types.
  */
+import type { AgentToolOptions } from 'librechat-data-provider';
 
 /** One tool Langflow publishes to the chatting user (`GET /api/v1/tars/flows`). */
 export interface WorkflowFlow {
@@ -31,6 +32,8 @@ export interface WorkflowAgent {
   description?: string;
   instructions?: string;
   tools?: string[];
+  /** Per-tool options, keyed by the same tool keys as `tools`. */
+  tool_options?: AgentToolOptions;
   mcpServerNames?: string[];
   provider?: string;
   model?: string;

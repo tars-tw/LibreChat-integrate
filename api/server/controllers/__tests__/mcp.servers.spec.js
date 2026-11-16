@@ -52,6 +52,10 @@ jest.mock('~/server/services/Config', () => ({
   invalidateCachedTools: jest.fn(),
 }));
 
+jest.mock('~/server/services/langflow/reconcile', () => ({
+  reconcileLangflowAgents: jest.fn(),
+}));
+
 const mockMaybeUninstallOAuthMCP = jest.fn();
 const {
   getMCPServersList,

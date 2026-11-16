@@ -4608,6 +4608,7 @@
   "com_ui_tools_marketplace_search": "搜尋工具…",
   "com_ui_tools_mcp_deselect_all": "全部取消選取",
   "com_ui_tools_mcp_no_tools": "此伺服器尚未提供任何工具。",
+  "com_ui_tools_mcp_refresh_tools": "重新整理工具",
   "com_ui_tools_mcp_runtime_tools": "此伺服器的所有工具都已附加，並會在對話期間於執行階段解析。",
   "com_ui_tools_mcp_select_all": "全部選取",
   "com_ui_tools_mcp_status_unconfigured": "需要設定",

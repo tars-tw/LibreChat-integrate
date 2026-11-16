@@ -1,5 +1,7 @@
+const { Keyv } = require('keyv');
 const { SystemRoles, EModelEndpoint } = require('librechat-data-provider');
 const {
+  keyvMongo,
   fetchWorkflowFlows,
   resolveLangflowOrigin,
   createWorkflowAgentSync,
@@ -13,7 +15,12 @@ const {
 } = require('~/server/services/Config');
 const { grantPermission } = require('~/server/services/PermissionService');
 const { getModelsConfig } = require('~/server/controllers/ModelController');
+const { resolveAllMcpConfigs } = require('~/server/services/MCP');
 const db = require('~/models');
+
+/** The tool names each Workflow project server last listed, by flow id; in Mongo, so a rename
+ *  made while LibreChat was down is still followed. */
+const workflowToolNames = new Keyv({ store: keyvMongo, namespace: 'workflow_tool_names' });
 
 /** Fallback orchestration provider/model, used only for a flow whose TARS node leaves the model
  *  blank ("let pwc_tars pick"). Env-overridable so other deployments can route Workflow agents
@@ -37,10 +44,13 @@ const syncWorkflowAgents = createWorkflowAgentSync({
   deleteAgent: (filter) => db.deleteAgent(filter),
   grantPermission,
   defaultOrchestration: { provider: PROVIDER, model: MODEL },
-  getCachedTools: (userId, serverName) => getMCPServerTools(userId, serverName),
+  getCachedTools: (userId, serverName, serverConfig) =>
+    getMCPServerTools(userId, serverName, serverConfig),
   invalidateCachedTools: (userId, serverName) => invalidateCachedTools({ userId, serverName }),
   refreshServers: (serverNames, tarsId) =>
     claimWorkflowConfigRefresh(serverNames, tarsId) ? invalidateConfigCaches() : undefined,
+  getToolNames: (serverName) => workflowToolNames.get(serverName),
+  setToolNames: (serverName, names) => workflowToolNames.set(serverName, names),
 });
 
 /**
@@ -55,8 +65,10 @@ async function reconcileLangflowAgents(req) {
   if (!req?.user?.id) {
     return;
   }
-  await syncWorkflowAgents({ id: req.user.id, tarsId: req.user.tarsId }, () =>
-    getModelsConfig(req),
+  await syncWorkflowAgents(
+    { id: req.user.id, tarsId: req.user.tarsId },
+    () => getModelsConfig(req),
+    () => resolveAllMcpConfigs(req.user.id, req.user),
   );
 }
 
