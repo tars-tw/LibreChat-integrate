@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
 import type { AdminMenuNode } from '~/components/Nav/Tars/AdminMenu';
-import { ADMIN_MENU_TREE } from '~/components/Nav/Tars/AdminMenu';
+import { ADMIN_MENU_KEYS, ADMIN_MENU_TREE } from '~/components/Nav/Tars/AdminMenu';
 import { useAuthContext } from '~/hooks/AuthContext';
 
 type MenuPathEntry = { key: string; path: string };
@@ -39,7 +39,7 @@ export function useTarsAdminAccess() {
   const { user } = useAuthContext();
   const isTarsAdmin = user?.role === SystemRoles.ADMIN && user?.provider === 'tars';
   const grantedKeys = useMemo(
-    () => new Set(user?.tarsAdminMenuKeys ?? []),
+    () => new Set((user?.tarsAdminMenuKeys ?? []).filter((key) => ADMIN_MENU_KEYS.has(key))),
     [user?.tarsAdminMenuKeys],
   );
 

@@ -70,17 +70,6 @@
       "count": 5
     }
   },
-  "client/src/components/Admin/Tars/Domains/Manager.tsx": {
-    "shadcn/no-arbitrary-values": {
-      "count": 1
-    },
-    "shadcn/no-raw-colors": {
-      "count": 4
-    },
-    "shadcn/no-restyle": {
-      "count": 1
-    }
-  },
   "client/src/components/Admin/Tars/FileSystems/Manager.tsx": {
     "shadcn/no-restyle": {
       "count": 2

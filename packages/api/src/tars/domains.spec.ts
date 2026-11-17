@@ -7,6 +7,8 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
+import { logger } from '@librechat/data-schemas';
+import { TARS_GENERAL_DOMAIN_ID } from 'librechat-data-provider';
 import {
   createTarsDomain,
   deleteTarsDomain,
@@ -38,6 +40,29 @@ const domain = (id: number, name: string): TarsDomain => ({
   status: true,
 });
 
+const GENERAL_ID = TARS_GENERAL_DOMAIN_ID;
+
+/** Answers the two listing routes `fetchTarsDomainsForUser` reads, by path. */
+const mockDomainRoutes = ({
+  byUser,
+  general = [],
+  generalStatus = 200,
+}: {
+  byUser: TarsDomain[];
+  general?: TarsDomain[];
+  generalStatus?: number;
+}) =>
+  jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.includes('/get_domain_by_user')) {
+      return buildResponse(200, { sys_domains: byUser });
+    }
+    if (url.includes('/get_domains')) {
+      return buildResponse(generalStatus, { sys_domains: general });
+    }
+    throw new Error(`unexpected request: ${url}`);
+  });
+
 describe('fetchTarsDomainsForUser', () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -50,13 +75,14 @@ describe('fetchTarsDomainsForUser', () => {
   });
 
   it('requests get_domain_by_user with the user id and returns sys_domains', async () => {
-    const domains = [domain(1, 'Finance'), domain(2, 'HR')];
+    const domains = [domain(1, 'Finance'), domain(GENERAL_ID, '通用腦')];
     const fetchMock = jest
       .spyOn(global, 'fetch')
       .mockResolvedValue(buildResponse(200, { sys_domains: domains }));
 
     const result = await fetchTarsDomainsForUser('u1', BASE_URL);
 
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
       `${BASE_URL}/api/domain_settings/get_domain_by_user?user_id=u1`,
       expect.objectContaining({ method: 'GET' }),
@@ -64,7 +90,52 @@ describe('fetchTarsDomainsForUser', () => {
     expect(result).toEqual(domains);
   });
 
-  it('defaults to [] when the response omits sys_domains', async () => {
+  it('adds 通用腦 for a user no role binds it to', async () => {
+    const granted = [domain(1, 'Finance'), domain(2, 'HR')];
+    const general = domain(GENERAL_ID, '通用腦');
+    const fetchMock = mockDomainRoutes({ byUser: granted, general: [general] });
+
+    const result = await fetchTarsDomainsForUser('u1', BASE_URL);
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      `${BASE_URL}/api/domain_settings/get_domains?id=${GENERAL_ID}`,
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(result).toEqual([...granted, general]);
+  });
+
+  it('gives 通用腦 to a user with no role grants at all', async () => {
+    const general = domain(GENERAL_ID, '通用腦');
+    mockDomainRoutes({ byUser: [], general: [general] });
+
+    await expect(fetchTarsDomainsForUser('u1', BASE_URL)).resolves.toEqual([general]);
+  });
+
+  it('keeps only 通用腦 when pwc_tars ignores the id filter', async () => {
+    const general = domain(GENERAL_ID, '通用腦');
+    mockDomainRoutes({ byUser: [domain(1, 'Finance')], general: [domain(2, 'HR'), general] });
+
+    const result = await fetchTarsDomainsForUser('u1', BASE_URL);
+
+    expect(result.map((item) => item.id)).toEqual([1, GENERAL_ID]);
+  });
+
+  it('lists the role grants alone when pwc_tars has no 通用腦', async () => {
+    const granted = [domain(1, 'Finance')];
+    mockDomainRoutes({ byUser: granted, general: [] });
+
+    await expect(fetchTarsDomainsForUser('u1', BASE_URL)).resolves.toEqual(granted);
+  });
+
+  it('lists the role grants alone and warns when 通用腦 cannot be read', async () => {
+    const granted = [domain(1, 'Finance')];
+    mockDomainRoutes({ byUser: granted, generalStatus: 500 });
+
+    await expect(fetchTarsDomainsForUser('u1', BASE_URL)).resolves.toEqual(granted);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('通用腦'), expect.any(Error));
+  });
+
+  it('defaults to [] when neither response carries sys_domains', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, {}));
     await expect(fetchTarsDomainsForUser('u1', BASE_URL)).resolves.toEqual([]);
   });
@@ -96,11 +167,18 @@ describe('fetchTarsDomainById', () => {
   });
 
   it('returns null when the domain is outside the user grants', async () => {
-    jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValue(buildResponse(200, { sys_domains: [domain(1, 'Finance')] }));
+    mockDomainRoutes({ byUser: [domain(1, 'Finance')], general: [domain(GENERAL_ID, '通用腦')] });
 
     await expect(fetchTarsDomainById('u1', 999, BASE_URL)).resolves.toBeNull();
+  });
+
+  it('resolves 通用腦 for a user no role binds it to', async () => {
+    mockDomainRoutes({ byUser: [domain(1, 'Finance')], general: [domain(GENERAL_ID, '通用腦')] });
+
+    await expect(fetchTarsDomainById('u1', String(GENERAL_ID), BASE_URL)).resolves.toMatchObject({
+      id: GENERAL_ID,
+      name: '通用腦',
+    });
   });
 });
 
