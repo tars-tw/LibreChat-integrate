@@ -19,6 +19,9 @@ interface:
   # Turn off bookmarks for every role: the chat header's 新增書籤 icon, the mobile ⋯ menu
   # entry and the sidebar chat filter's bookmark section all disappear.
   bookmarks: false
+  # Hide 設定 → 通用 → 在歡迎畫面顯示 Lia (and its settings search hit). The mascot code
+  # stays; while this is off she never shows, even for someone who turned her on before.
+  mascot: false
   # Hide the agent builder's 遠端存取 (globe) button for every role.
   remoteAgents:
     share: false
