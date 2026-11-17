@@ -75,6 +75,8 @@ endpoints:
       - azure-ai-search
       - open_weather
       - flux
+      - chart_agent
+      - file_agent
     # Hide the agent builder's Inline/Prompt instructions toggle, leaving inline only. Agents
     # already linked to a prompt keep the toggle so they can switch back. Default: false.
     hideInstructionsSource: true
