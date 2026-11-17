@@ -32,7 +32,7 @@ const knowledgeBases = [
 
 const domains = {
   sys_domains: [
-    { id: 100, name: '通用腦', knowledge_base_ids: 'kb-general,kb-docs' },
+    { id: 201, name: '人資腦', knowledge_base_ids: 'kb-general,kb-docs' },
     { id: 200, name: '雙庫腦', knowledge_base_ids: 'kb-general,kb-erp' },
   ],
 };
@@ -97,7 +97,7 @@ describe('createTarsAgentTool', () => {
     mockBackend();
     const agentTool = await createTarsAgentTool({
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       bindings: { knowledgeBases: true, database: true, chart: true, documents },
     });
 
@@ -113,7 +113,7 @@ describe('createTarsAgentTool', () => {
     mockBackend();
     const agentTool = await createTarsAgentTool({
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       bindings: { knowledgeBases: true, database: false, chart: false, documents: [] },
     });
     expect(agentTool.description).toContain('Knowledge bases');
@@ -145,7 +145,7 @@ describe('createTarsAgentTool', () => {
     });
     const agentTool = await createTarsAgentTool({
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       bindings: kbAndDb,
       model: 'gemini-3.6-flash',
     });
@@ -173,7 +173,7 @@ describe('createTarsAgentTool', () => {
     const fetchMock = mockBackend();
     const agentTool = await createTarsAgentTool({
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       bindings: none,
     });
     expect(agentTool.description).toContain('Nothing is bound');
@@ -185,7 +185,7 @@ describe('createTarsAgentTool', () => {
     mockBackend({ status: 400, body: { message: '資料庫 schema 資訊尚未生成' } });
     const agentTool = await createTarsAgentTool({
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       bindings: kbAndDb,
     });
     await expect(agentTool.invoke({ question: 'q' })).resolves.toContain(
@@ -197,7 +197,7 @@ describe('createTarsAgentTool', () => {
     const fetchMock = mockBackend();
     const agentTool = await createTarsAgentTool({
       tarsUserId: undefined,
-      domainId: 100,
+      domainId: 201,
       bindings: kbAndDb,
     });
     await expect(agentTool.invoke({ question: 'q' })).resolves.toContain('not linked to pwc_tars');
@@ -208,7 +208,7 @@ describe('createTarsAgentTool', () => {
 describe('buildTarsAgentContext', () => {
   it('names what is bound for the definition-only load path', async () => {
     mockBackend();
-    const context = await buildTarsAgentContext(USER_ID, 100, {
+    const context = await buildTarsAgentContext(USER_ID, 201, {
       knowledgeBases: true,
       database: true,
       chart: false,

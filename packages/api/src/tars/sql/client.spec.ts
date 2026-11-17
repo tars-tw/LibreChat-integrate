@@ -27,9 +27,9 @@ const knowledgeBases = [
   { id: 'kb-plain', name: '文件庫', description: null, has_sql_database: false },
 ];
 
-/** Domain 100 (通用腦) binds `kb-sql` and a database-less knowledge base. */
+/** Domain 201 binds `kb-sql` and a database-less knowledge base. */
 const domainResponse = {
-  sys_domains: [{ id: 100, name: '通用腦', knowledge_base_ids: 'kb-sql,kb-plain' }],
+  sys_domains: [{ id: 201, name: '人資腦', knowledge_base_ids: 'kb-sql,kb-plain' }],
 };
 
 const mockBackend = (sql?: { status: number; body: unknown }) =>
@@ -82,15 +82,15 @@ describe('listTarsSqlDatabases', () => {
 
   it('narrows the list to the databases the active brain binds', async () => {
     mockBackend();
-    await expect(listTarsSqlDatabases(USER_ID, 100)).resolves.toEqual([
+    await expect(listTarsSqlDatabases(USER_ID, 201)).resolves.toEqual([
       { knowledge_base_id: 'kb-sql', name: '通用知識庫', description: '含資料庫' },
     ]);
   });
 
   it('caches each brain separately', async () => {
     const fetchMock = mockBackend();
-    await listTarsSqlDatabases(USER_ID, 100);
-    await listTarsSqlDatabases(USER_ID, 100);
+    await listTarsSqlDatabases(USER_ID, 201);
+    await listTarsSqlDatabases(USER_ID, 201);
     const scopedCalls = fetchMock.mock.calls.length;
     await listTarsSqlDatabases(USER_ID);
     expect(fetchMock.mock.calls.length).toBeGreaterThan(scopedCalls);

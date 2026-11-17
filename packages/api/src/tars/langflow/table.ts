@@ -16,9 +16,9 @@ import {
   LANGFLOW_TOOL_RESPONSE_FORMAT,
   TARS_TABLE_TASK_DEFAULT_TIMEOUT_MS,
 } from './client';
+import { listTarsScopedKnowledgeBases, tarsAccessModeOf } from '~/tars/scope';
 import { TARS_NOT_LINKED, tarsToolFailureText } from '~/tars/failure';
 import { toTarsDataFileRefsContext } from '~/tars/files/sign';
-import { listTarsScopedKnowledgeBases } from '~/tars/scope';
 import { recordTarsCallUsage } from '~/tars/tools/usage';
 import { TarsRequestError } from '~/tars/client';
 
@@ -171,6 +171,7 @@ export function createTarsTableTaskTool(options: TarsTableToolOptions): DynamicS
             librechatUserId: options.librechatUserId,
             tarsUserId: options.tarsUserId,
             usage: tarsUsageAttribution(domainId, config),
+            accessMode: tarsAccessModeOf(domainId),
           },
         );
         logger.debug(

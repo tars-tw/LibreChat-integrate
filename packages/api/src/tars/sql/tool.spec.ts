@@ -33,7 +33,7 @@ const answerBody = {
   data: { answer: '共有 9 個模型', model_name: 'gpt-5.4-mini', tokens: { total: 8983 } },
 };
 
-/** Domain 100 binds `kb-sql` only; domain 235 binds both database-backed bases. */
+/** Domain 201 binds `kb-sql` only; domain 235 binds both database-backed bases. */
 const mockBackend = (sql: { status: number; body: unknown } = { status: 200, body: answerBody }) =>
   jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
@@ -43,7 +43,7 @@ const mockBackend = (sql: { status: number; body: unknown } = { status: 200, bod
     if (url.includes('/api/domain_settings/get_domain_by_user')) {
       return buildResponse(200, {
         sys_domains: [
-          { id: 100, name: '通用腦', knowledge_base_ids: 'kb-sql,kb-plain' },
+          { id: 201, name: '人資腦', knowledge_base_ids: 'kb-sql,kb-plain' },
           { id: 235, name: '雙庫腦', knowledge_base_ids: 'kb-sql,kb-other' },
         ],
       });
@@ -82,7 +82,7 @@ afterEach(() => {
 describe('createTarsSqlTool', () => {
   it('is named for the native tool and advertises the single bound database', async () => {
     mockBackend();
-    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 100 });
+    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 201 });
 
     expect(sqlTool.name).toBe('sql_agent');
     expect(sqlTool.description).toContain('通用知識庫');
@@ -93,7 +93,7 @@ describe('createTarsSqlTool', () => {
     const fetchMock = mockBackend();
     const sqlTool = await createTarsSqlTool({
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       model: 'gpt-5.4-mini',
     });
 
@@ -115,7 +115,7 @@ describe('createTarsSqlTool', () => {
 
   it('refuses a database outside the active brain', async () => {
     mockBackend();
-    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 100 });
+    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 201 });
 
     await expect(
       sqlTool.invoke({ question: 'q', knowledge_base_id: 'kb-other' }),
@@ -130,12 +130,12 @@ describe('createTarsSqlTool', () => {
       }
       if (url.includes('/api/domain_settings/get_domain_by_user')) {
         return buildResponse(200, {
-          sys_domains: [{ id: 100, name: '通用腦', knowledge_base_ids: 'kb-plain' }],
+          sys_domains: [{ id: 201, name: '人資腦', knowledge_base_ids: 'kb-plain' }],
         });
       }
       throw new Error(`Unexpected fetch: ${url}`);
     });
-    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 100 });
+    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 201 });
 
     expect(sqlTool.description).toContain('No database is bound');
     await expect(sqlTool.invoke({ question: 'q' })).resolves.toContain('nothing to query');
@@ -151,7 +151,7 @@ describe('createTarsSqlTool', () => {
       status: 200,
       body: { success: true, data: { ...answerBody.data, sql: 'SELECT count(*)', trace } },
     });
-    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 100 });
+    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 201 });
 
     const message = await sqlTool.invoke({
       id: 'call-1',
@@ -173,7 +173,7 @@ describe('createTarsSqlTool', () => {
 
   it('attaches nothing when pwc_tars sent no trace', async () => {
     mockBackend();
-    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 100 });
+    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 201 });
 
     const message = await sqlTool.invoke({
       id: 'call-1',
@@ -187,7 +187,7 @@ describe('createTarsSqlTool', () => {
 
   it('returns the pwc_tars failure as tool output rather than throwing', async () => {
     mockBackend({ status: 400, body: { message: '資料庫 schema 資訊尚未生成' } });
-    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 100 });
+    const sqlTool = await createTarsSqlTool({ tarsUserId: USER_ID, domainId: 201 });
 
     await expect(sqlTool.invoke({ question: 'q' })).resolves.toContain(
       '資料庫 schema 資訊尚未生成',
@@ -198,7 +198,7 @@ describe('createTarsSqlTool', () => {
 describe('createTarsSqlTool without a pwc_tars identity', () => {
   it('reaches nothing and never calls pwc_tars', async () => {
     const fetchMock = mockBackend();
-    const sqlTool = await createTarsSqlTool({ tarsUserId: undefined, domainId: 100 });
+    const sqlTool = await createTarsSqlTool({ tarsUserId: undefined, domainId: 201 });
 
     expect(sqlTool.description).toContain('not linked to pwc_tars');
     await expect(sqlTool.invoke({ question: 'q' })).resolves.toContain('not linked to pwc_tars');

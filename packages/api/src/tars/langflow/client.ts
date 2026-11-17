@@ -29,6 +29,12 @@ const TARS_USER_HEADER = 'X-TARS-User-Id';
 /** Who the call's embedding usage belongs to in pwc_tars `embedding_usage_log`. */
 const USAGE_DOMAIN_HEADER = 'X-TARS-Domain-Id';
 const USAGE_MESSAGE_HEADER = 'X-TARS-Message-Id';
+/** Which rule pwc_tars scopes the call's knowledge bases by; absent is the user's chat list. */
+const ACCESS_MODE_HEADER = 'X-TARS-Access-Mode';
+
+/** `X-TARS-Access-Mode` for a 通用腦 turn: pwc_tars's general knowledge base alone, no assignment needed. */
+export const TARS_GENERAL_ACCESS_MODE = 'general';
+export type TarsAccessMode = typeof TARS_GENERAL_ACCESS_MODE;
 
 /**
  * The chat a capability call serves, so pwc_tars files the embedding tokens it
@@ -166,6 +172,8 @@ export interface LangflowRequestOptions {
   tarsUserId?: string;
   /** The chat the call serves; pwc_tars files its embedding usage under it. */
   usage?: TarsUsageAttribution;
+  /** How pwc_tars authorizes the call's knowledge bases (`tarsAccessModeOf` in `~/tars/scope`). */
+  accessMode?: TarsAccessMode;
 }
 
 /**
@@ -224,6 +232,7 @@ async function langflowServiceHeaders({
   librechatUserId,
   tarsUserId,
   usage,
+  accessMode,
 }: Omit<LangflowRequestOptions, 'timeoutMs'>): Promise<Record<string, string>> {
   const key = await resolveLangflowServiceKey();
   if (!key) {
@@ -246,6 +255,9 @@ async function langflowServiceHeaders({
   }
   if (usage?.messageId) {
     headers[USAGE_MESSAGE_HEADER] = usage.messageId;
+  }
+  if (accessMode) {
+    headers[ACCESS_MODE_HEADER] = accessMode;
   }
   return headers;
 }

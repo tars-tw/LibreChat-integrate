@@ -31,9 +31,9 @@ const knowledgeBases = [
   { id: 'kb-docs', name: '文件庫', description: null, has_sql_database: false },
 ];
 
-/** Domain 100 (通用腦) binds `kb-general` and `kb-docs`; `kb-hr` belongs elsewhere. */
+/** Domain 201 binds `kb-general` and `kb-docs`; `kb-hr` belongs elsewhere. */
 const domainResponse = {
-  sys_domains: [{ id: 100, name: '通用腦', knowledge_base_ids: 'kb-general,kb-docs' }],
+  sys_domains: [{ id: 201, name: '人資腦', knowledge_base_ids: 'kb-general,kb-docs' }],
 };
 
 const mockBackend = (rag?: { status: number; body: unknown }) =>
@@ -85,7 +85,7 @@ afterEach(() => {
 describe('listTarsRagKnowledgeBases', () => {
   it('lists every knowledge base the active brain binds, database-backed or not', async () => {
     mockBackend();
-    const bases = await listTarsRagKnowledgeBases(USER_ID, 100);
+    const bases = await listTarsRagKnowledgeBases(USER_ID, 201);
     expect(bases.map((base) => base.knowledge_base_id)).toEqual(['kb-general', 'kb-docs']);
     expect(bases[1].description).toBe('');
   });
@@ -98,7 +98,7 @@ describe('listTarsRagKnowledgeBases', () => {
 
   it('returns nothing for an unlinked user without calling pwc_tars', async () => {
     const fetchMock = mockBackend();
-    await expect(listTarsRagKnowledgeBases('', 100)).resolves.toEqual([]);
+    await expect(listTarsRagKnowledgeBases('', 201)).resolves.toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
@@ -109,7 +109,7 @@ describe('runTarsRagAgent', () => {
 
     const result = await runTarsRagAgent(USER_ID, {
       question: '請假規定？',
-      domainId: 100,
+      domainId: 201,
       model: 'gpt-5.4-mini',
     });
     expect(result).toEqual({
@@ -135,7 +135,7 @@ describe('runTarsRagAgent', () => {
     const fetchMock = mockBackend({ status: 200, body: answerBody });
     await runTarsRagAgent(USER_ID, {
       question: 'q',
-      domainId: 100,
+      domainId: 201,
       knowledgeBaseIds: ['kb-docs', 'kb-docs', ' '],
     });
     expect(ragBodyOf(fetchMock)).toMatchObject({ knowledge_base_ids: 'kb-docs' });
@@ -144,7 +144,7 @@ describe('runTarsRagAgent', () => {
   it('refuses a knowledge base outside the brain instead of narrowing silently', async () => {
     const fetchMock = mockBackend({ status: 200, body: answerBody });
     await expect(
-      runTarsRagAgent(USER_ID, { question: 'q', domainId: 100, knowledgeBaseIds: ['kb-hr'] }),
+      runTarsRagAgent(USER_ID, { question: 'q', domainId: 201, knowledgeBaseIds: ['kb-hr'] }),
     ).rejects.toThrow('kb-hr');
     expect(
       fetchMock.mock.calls.some(([url]) => String(url).includes('/api/langflow-service/rag')),
@@ -172,13 +172,13 @@ describe('runTarsRagAgent', () => {
   it('carries the run trace back for the chat', async () => {
     const trace = [{ type: 'tool_call', id: 'c1', name: 'knowledge_search', input: {} }];
     mockBackend({ status: 200, body: { success: true, data: { ...answerBody.data, trace } } });
-    const result = await runTarsRagAgent(USER_ID, { question: 'q', domainId: 100 });
+    const result = await runTarsRagAgent(USER_ID, { question: 'q', domainId: 201 });
     expect(result.trace?.trace).toEqual(trace);
   });
 
   it('surfaces the pwc_tars failure message', async () => {
     mockBackend({ status: 404, body: { message: '部分知識庫不存在' } });
-    await expect(runTarsRagAgent(USER_ID, { question: 'q', domainId: 100 })).rejects.toMatchObject({
+    await expect(runTarsRagAgent(USER_ID, { question: 'q', domainId: 201 })).rejects.toMatchObject({
       status: 404,
       serverMessage: '部分知識庫不存在',
     });

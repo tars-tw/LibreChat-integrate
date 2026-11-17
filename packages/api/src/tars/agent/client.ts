@@ -16,6 +16,7 @@ import {
 import { listTarsRagKnowledgeBases, resolveTarsKnowledgeBaseIds } from '~/tars/rag/client';
 import { toTarsDataFileRefsContext } from '~/tars/files/sign';
 import { listTarsSqlDatabases } from '~/tars/sql/client';
+import { tarsAccessModeOf } from '~/tars/scope';
 
 const AGENT_PATH = '/api/langflow-service/agent';
 
@@ -175,6 +176,7 @@ export async function runTarsAgent(
       librechatUserId: input.librechatUserId,
       tarsUserId,
       usage: input.usage,
+      accessMode: tarsAccessModeOf(input.domainId),
     },
   );
 
