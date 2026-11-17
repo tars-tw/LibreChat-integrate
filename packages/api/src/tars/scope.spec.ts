@@ -10,6 +10,7 @@ jest.mock('@librechat/data-schemas', () => ({
 import { Constants } from 'librechat-data-provider';
 import {
   tarsSwitchScope,
+  tarsAccessModeOf,
   isTarsSavedAgentChat,
   tarsAgentKnowledgeBasesOf,
   fetchTarsChatKnowledgeBases,
@@ -34,16 +35,25 @@ const chatList = [
   { id: 'kb-other', name: '別的腦', description: null, has_sql_database: false },
 ];
 
-/** Domain 100 binds kb-general, kb-hr and kb-finance; the user is not on kb-finance's chat list. */
+/** Domain 201 binds kb-general, kb-hr and kb-finance; the user is not on kb-finance's chat list. */
 const domains = {
-  sys_domains: [{ id: 100, name: '通用腦', knowledge_base_ids: 'kb-general,kb-hr,kb-finance' }],
+  sys_domains: [
+    { id: 100, name: '通用腦', knowledge_base_ids: 'kb-general,kb-hr' },
+    { id: 201, name: '人資腦', knowledge_base_ids: 'kb-general,kb-hr,kb-finance' },
+  ],
 };
+
+/** What pwc_tars answers for 通用腦 (`general=true`): its general knowledge base, whoever asks. */
+const generalList = [
+  { id: 'kmgeneral', name: '通用知識庫', description: null, has_sql_database: false },
+];
 
 const mockBackend = () =>
   jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
     if (url.includes('/api/km_permission/chat_knowledge_bases')) {
-      return buildResponse(200, { success: true, data: chatList });
+      const general = new URL(url).searchParams.get('general') === 'true';
+      return buildResponse(200, { success: true, data: general ? generalList : chatList });
     }
     if (url.includes('/api/domain_settings/get_domain_by_user')) {
       return buildResponse(200, domains);
@@ -83,7 +93,7 @@ describe('listTarsScopedKnowledgeBases', () => {
   it("narrows the chat list to the brain's knowledge bases", async () => {
     mockBackend();
 
-    const bases = await listTarsScopedKnowledgeBases(USER_ID, 100);
+    const bases = await listTarsScopedKnowledgeBases(USER_ID, 201);
 
     expect(bases.map((base) => base.id)).toEqual(['kb-general', 'kb-hr']);
   });
@@ -91,7 +101,7 @@ describe('listTarsScopedKnowledgeBases', () => {
   it('never consults the management list', async () => {
     const fetchMock = mockBackend();
 
-    await listTarsScopedKnowledgeBases(USER_ID, 100);
+    await listTarsScopedKnowledgeBases(USER_ID, 201);
 
     expect(urlsOf(fetchMock).some((url) => url.includes('/api/knowledge_base/prepare_data'))).toBe(
       false,
@@ -115,7 +125,7 @@ describe('listTarsScopedKnowledgeBases', () => {
   it('is empty for an unlinked account without calling pwc_tars', async () => {
     const fetchMock = mockBackend();
 
-    await expect(listTarsScopedKnowledgeBases('', 100)).resolves.toEqual([]);
+    await expect(listTarsScopedKnowledgeBases('', 201)).resolves.toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -124,16 +134,45 @@ describe('listTarsScopedKnowledgeBases', () => {
     const listings = () =>
       urlsOf(fetchMock).filter((url) => url.includes('/api/km_permission/chat_knowledge_bases'));
 
-    await listTarsScopedKnowledgeBases(USER_ID, 100);
-    await listTarsScopedKnowledgeBases(USER_ID, 100);
+    await listTarsScopedKnowledgeBases(USER_ID, 201);
+    await listTarsScopedKnowledgeBases(USER_ID, 201);
     expect(listings()).toHaveLength(1);
 
     await listTarsScopedKnowledgeBases(USER_ID);
     expect(listings()).toHaveLength(2);
 
     invalidateTarsScopedKnowledgeBasesCache();
-    await listTarsScopedKnowledgeBases(USER_ID, 100);
+    await listTarsScopedKnowledgeBases(USER_ID, 201);
     expect(listings()).toHaveLength(3);
+  });
+});
+
+describe('通用腦 reaches the general knowledge base alone', () => {
+  it("asks pwc_tars for 通用腦's scope instead of the chat list and the brain's binding", async () => {
+    const fetchMock = mockBackend();
+
+    await expect(listTarsScopedKnowledgeBases(USER_ID, 100)).resolves.toEqual(generalList);
+    await expect(listTarsScopedKnowledgeBases(USER_ID, '100')).resolves.toEqual(generalList);
+
+    const urls = urlsOf(fetchMock);
+    expect(urls).toHaveLength(1);
+    expect(new URL(urls[0]).searchParams.get('general')).toBe('true');
+  });
+
+  it('declares the general access mode for 通用腦 only', () => {
+    expect(tarsAccessModeOf(100)).toBe('general');
+    expect(tarsAccessModeOf('100')).toBe('general');
+    expect(tarsAccessModeOf(201)).toBeUndefined();
+    expect(tarsAccessModeOf(undefined)).toBeUndefined();
+    expect(tarsAccessModeOf({ knowledgeBaseIds: ['kmgeneral'] })).toBeUndefined();
+  });
+
+  it("leaves a saved agent's picks to the chat list", async () => {
+    mockBackend();
+
+    const bases = await listTarsScopedKnowledgeBases(USER_ID, { knowledgeBaseIds: ['kmgeneral'] });
+
+    expect(bases).toEqual([]);
   });
 });
 
@@ -167,7 +206,7 @@ describe('a saved agent picks its own knowledge bases', () => {
     await listTarsScopedKnowledgeBases(USER_ID, { knowledgeBaseIds: ['kb-general', 'kb-hr'] });
     expect(listings()).toHaveLength(1);
 
-    await listTarsScopedKnowledgeBases(USER_ID, 100);
+    await listTarsScopedKnowledgeBases(USER_ID, 201);
     expect(listings()).toHaveLength(2);
   });
 });

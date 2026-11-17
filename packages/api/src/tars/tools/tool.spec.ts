@@ -41,10 +41,15 @@ const knowledgeBases = [
   { id: 'kb-hr', name: '人資知識庫', description: '別的腦的', has_sql_database: true },
 ];
 
-/** Domain 100 binds one database-backed base; domain 200 binds two. */
+/** What pwc_tars answers for 通用腦: its general knowledge base alone, whatever the chat list holds. */
+const generalBases = [
+  { id: 'kmgeneral', name: '通用知識庫', description: '', has_sql_database: false },
+];
+
+/** Domain 201 binds one database-backed base; domain 200 binds two. */
 const domains = {
   sys_domains: [
-    { id: 100, name: '通用腦', knowledge_base_ids: 'kb-general,kb-docs' },
+    { id: 201, name: '人資腦', knowledge_base_ids: 'kb-general,kb-docs' },
     { id: 200, name: '雙庫腦', knowledge_base_ids: 'kb-general,kb-docs,kb-erp' },
   ],
 };
@@ -149,7 +154,8 @@ const mockBackend = (
   jest.spyOn(global, 'fetch').mockImplementation(async (input, init) => {
     const url = String(input);
     if (url.includes('/api/km_permission/chat_knowledge_bases')) {
-      return buildResponse(200, { success: true, data: knowledgeBases });
+      const general = new URL(url).searchParams.get('general') === 'true';
+      return buildResponse(200, { success: true, data: general ? generalBases : knowledgeBases });
     }
     if (url.includes('/api/domain_settings/get_domain_by_user')) {
       return buildResponse(200, domains);
@@ -264,7 +270,7 @@ describe('createTarsBuiltinTool', () => {
     const builtin = await createTarsBuiltinTool({
       toolName: 'tars_knowledge_search',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       question: '台北到成田的班機？',
     });
 
@@ -301,7 +307,7 @@ describe('createTarsBuiltinTool', () => {
       createTarsBuiltinTool({
         toolName: 'tars_knowledge_search',
         tarsUserId: USER_ID,
-        domainId: 100,
+        domainId: 201,
         agentTools: ['tars_knowledge_search'],
         ...options,
       });
@@ -341,7 +347,7 @@ describe('createTarsBuiltinTool', () => {
     const builtin = await createTarsBuiltinTool({
       toolName: 'tars_knowledge_search',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
     });
 
     await builtin!.invoke(
@@ -350,8 +356,47 @@ describe('createTarsBuiltinTool', () => {
     );
     const headers = (toolCallOf(fetchMock)?.[1] as RequestInit).headers as Record<string, string>;
     expect(headers['X-TARS-User-Id']).toBe(USER_ID);
-    expect(headers['X-TARS-Domain-Id']).toBe('100');
+    expect(headers['X-TARS-Domain-Id']).toBe('201');
     expect(headers['X-TARS-Message-Id']).toBe('response-1');
+    expect(headers['X-TARS-Access-Mode']).toBeUndefined();
+  });
+
+  it('searches only the general knowledge base on 通用腦 and tells pwc_tars so', async () => {
+    const fetchMock = mockBackend();
+    const builtin = await createTarsBuiltinTool({
+      toolName: 'tars_knowledge_search',
+      tarsUserId: USER_ID,
+      domainId: 100,
+    });
+
+    await builtin!.invoke({
+      id: 'call-1',
+      name: 'tars_knowledge_search',
+      type: 'tool_call',
+      args: { query: 'q' },
+    });
+    const headers = (toolCallOf(fetchMock)?.[1] as RequestInit).headers as Record<string, string>;
+    expect(headers['X-TARS-Access-Mode']).toBe('general');
+    expect(bodyOf(fetchMock).context).toMatchObject({ knowledge_base_ids: 'kmgeneral' });
+    expect(String(fetchMock.mock.calls.map(([url]) => url))).not.toContain('get_domain_by_user');
+  });
+
+  it('refuses another knowledge base on 通用腦 even when the chat list holds it', async () => {
+    const fetchMock = mockBackend();
+    const builtin = await createTarsBuiltinTool({
+      toolName: 'tars_knowledge_search',
+      tarsUserId: USER_ID,
+      domainId: 100,
+    });
+
+    const message = await builtin!.invoke({
+      id: 'call-1',
+      name: 'tars_knowledge_search',
+      type: 'tool_call',
+      args: { query: 'q', knowledge_base_ids: ['kb-general'] },
+    });
+    expect(String(message.content)).toContain('kb-general');
+    expect(toolCallOf(fetchMock)).toBeUndefined();
   });
 
   it('narrows to the named knowledge bases and refuses one outside the brain', async () => {
@@ -359,7 +404,7 @@ describe('createTarsBuiltinTool', () => {
     const builtin = await createTarsBuiltinTool({
       toolName: 'tars_knowledge_search',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
     });
 
     await invoke(builtin, 'tars_knowledge_search', { query: 'q', knowledge_base_ids: ['kb-docs'] });
@@ -380,7 +425,7 @@ describe('createTarsBuiltinTool', () => {
     const single = await createTarsBuiltinTool({
       toolName: 'tars_sql_query',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
     });
     const message = await invoke(single, 'tars_sql_query', { purpose: 'count', sql: 'SELECT 1' });
     expect(bodyOf(fetchMock)).toEqual({
@@ -421,7 +466,7 @@ describe('createTarsBuiltinTool', () => {
     const withoutDatabase = await createTarsBuiltinTool({
       toolName: 'tars_create_chart',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       agentTools: ['tars_create_chart'],
       dataFiles,
       model: 'Gemini-3.6-Flash',
@@ -461,7 +506,7 @@ describe('createTarsBuiltinTool', () => {
     const withDatabase = await createTarsBuiltinTool({
       toolName: 'tars_create_chart',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       agentTools: ['tars_create_chart', 'tars_sql_query'],
     });
     await invoke(withDatabase, 'tars_create_chart', { instruction: 'bar' });
@@ -477,7 +522,7 @@ describe('createTarsBuiltinTool', () => {
     const builtin = await createTarsBuiltinTool({
       toolName: 'tars_knowledge_search',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       reportProgress,
     });
 
@@ -504,7 +549,7 @@ describe('createTarsBuiltinTool', () => {
     const builtin = await createTarsBuiltinTool({
       toolName: 'tars_knowledge_search',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       auditTraceOwner: req,
     });
 
@@ -520,7 +565,7 @@ describe('createTarsBuiltinTool', () => {
     const builtin = await createTarsBuiltinTool({
       toolName: 'tars_knowledge_search',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
     });
 
     await invoke(builtin, 'tars_knowledge_search', { query: 'q' });
@@ -539,7 +584,7 @@ describe('createTarsBuiltinTool', () => {
     const builtin = await createTarsBuiltinTool({
       toolName: 'tars_sql_query',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
     });
     const message = await invoke(builtin, 'tars_sql_query', { purpose: 'p', sql: 'SELECT x' });
     expect(message.content).toContain('failed');
@@ -575,7 +620,7 @@ describe('on a saved agent, each tool reaches its own picks', () => {
     const search = await createTarsBuiltinTool({
       toolName: 'tars_knowledge_search',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       agentKnowledgeBases: { rag_agent: ['kb-hr', 'kb-gone'], sql_agent: ['kb-general'] },
     });
 
@@ -597,7 +642,7 @@ describe('on a saved agent, each tool reaches its own picks', () => {
     const search = await createTarsBuiltinTool({
       toolName: 'tars_knowledge_search',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       agentKnowledgeBases: {},
     });
 
@@ -611,7 +656,7 @@ describe('on a saved agent, each tool reaches its own picks', () => {
     const query = await createTarsBuiltinTool({
       toolName: 'tars_sql_query',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       agentKnowledgeBases: { sql_agent: ['kb-erp'], chart_agent: ['kb-general'] },
     });
 
@@ -621,7 +666,7 @@ describe('on a saved agent, each tool reaches its own picks', () => {
     const none = await createTarsBuiltinTool({
       toolName: 'tars_sql_query',
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       agentKnowledgeBases: { sql_agent: ['kb-docs'] },
     });
     fetchMock.mockClear();
@@ -636,7 +681,7 @@ describe('on a saved agent, each tool reaches its own picks', () => {
       createTarsBuiltinTool({
         toolName: 'tars_create_chart',
         tarsUserId: USER_ID,
-        domainId: 100,
+        domainId: 201,
         agentTools: ['tars_create_chart'],
         agentKnowledgeBases: { chart_agent: picks, sql_agent: ['kb-hr'] },
       });
@@ -686,7 +731,7 @@ describe('on a saved agent, each tool reaches its own picks', () => {
     await resolveTarsBuiltinTools(tools);
     const context = await buildTarsToolsContext({
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       agentKnowledgeBases: {
         rag_agent: ['kb-hr'],
         sql_agent: ['kb-erp'],
@@ -710,7 +755,7 @@ describe('on a saved agent, each tool reaches its own picks', () => {
     await resolveTarsBuiltinTools(tools);
     const context = await buildTarsToolsContext({
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       agentKnowledgeBases: {},
       tools,
     });

@@ -11,6 +11,7 @@ import {
   TARS_CAPABILITY_DEFAULT_TIMEOUT_MS,
 } from '~/tars/langflow/client';
 import {
+  tarsAccessModeOf,
   listTarsScopedKnowledgeBases,
   invalidateTarsScopedKnowledgeBasesCache,
 } from '~/tars/scope';
@@ -102,6 +103,7 @@ export async function runTarsSqlAgent(
       librechatUserId: input.librechatUserId,
       tarsUserId,
       usage: input.usage,
+      accessMode: tarsAccessModeOf(input.domainId),
     },
   );
 

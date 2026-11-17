@@ -37,7 +37,7 @@ const answerBody = {
   },
 };
 
-/** Domain 100 binds `kb-general` + `kb-docs`; domain 7 binds nothing. */
+/** Domain 201 binds `kb-general` + `kb-docs`; domain 7 binds nothing. */
 const mockBackend = (rag: { status: number; body: unknown } = { status: 200, body: answerBody }) =>
   jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
@@ -47,7 +47,7 @@ const mockBackend = (rag: { status: number; body: unknown } = { status: 200, bod
     if (url.includes('/api/domain_settings/get_domain_by_user')) {
       return buildResponse(200, {
         sys_domains: [
-          { id: 100, name: '通用腦', knowledge_base_ids: 'kb-general,kb-docs' },
+          { id: 201, name: '人資腦', knowledge_base_ids: 'kb-general,kb-docs' },
           { id: 7, name: '空腦', knowledge_base_ids: '' },
         ],
       });
@@ -86,7 +86,7 @@ afterEach(() => {
 describe('createTarsRagTool', () => {
   it("is named for the native tool and advertises the brain's knowledge bases", async () => {
     mockBackend();
-    const ragTool = await createTarsRagTool({ tarsUserId: USER_ID, domainId: 100 });
+    const ragTool = await createTarsRagTool({ tarsUserId: USER_ID, domainId: 201 });
 
     expect(ragTool.name).toBe('rag_agent');
     expect(ragTool.responseFormat).toBe('content_and_artifact');
@@ -99,7 +99,7 @@ describe('createTarsRagTool', () => {
     const fetchMock = mockBackend();
     const ragTool = await createTarsRagTool({
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       model: 'gemini-3.6-flash',
     });
 
@@ -120,7 +120,7 @@ describe('createTarsRagTool', () => {
       { type: 'tool_result', id: 'c1', name: 'knowledge_search', ok: true, output: '…' },
     ];
     mockBackend({ status: 200, body: { success: true, data: { ...answerBody.data, trace } } });
-    const ragTool = await createTarsRagTool({ tarsUserId: USER_ID, domainId: 100 });
+    const ragTool = await createTarsRagTool({ tarsUserId: USER_ID, domainId: 201 });
 
     const message = await ragTool.invoke({
       id: 'call-1',
@@ -134,7 +134,7 @@ describe('createTarsRagTool', () => {
 
   it('refuses a knowledge base outside the active brain as tool output', async () => {
     mockBackend();
-    const ragTool = await createTarsRagTool({ tarsUserId: USER_ID, domainId: 100 });
+    const ragTool = await createTarsRagTool({ tarsUserId: USER_ID, domainId: 201 });
 
     await expect(
       ragTool.invoke({ question: 'q', knowledge_base_ids: ['kb-hr'] }),
@@ -154,7 +154,7 @@ describe('createTarsRagTool', () => {
 
   it('returns the pwc_tars failure as tool output rather than throwing', async () => {
     mockBackend({ status: 404, body: { message: '部分知識庫不存在' } });
-    const ragTool = await createTarsRagTool({ tarsUserId: USER_ID, domainId: 100 });
+    const ragTool = await createTarsRagTool({ tarsUserId: USER_ID, domainId: 201 });
 
     await expect(ragTool.invoke({ question: 'q' })).resolves.toContain('部分知識庫不存在');
   });
@@ -163,7 +163,7 @@ describe('createTarsRagTool', () => {
 describe('createTarsRagTool without a pwc_tars identity', () => {
   it('reaches nothing and never calls pwc_tars', async () => {
     const fetchMock = mockBackend();
-    const ragTool = await createTarsRagTool({ tarsUserId: undefined, domainId: 100 });
+    const ragTool = await createTarsRagTool({ tarsUserId: undefined, domainId: 201 });
 
     expect(ragTool.description).toContain('not linked to pwc_tars');
     await expect(ragTool.invoke({ question: 'q' })).resolves.toContain('not linked to pwc_tars');
@@ -174,13 +174,13 @@ describe('createTarsRagTool without a pwc_tars identity', () => {
 describe('buildTarsRagContext', () => {
   it('names the searchable knowledge bases for the definition-only load path', async () => {
     mockBackend();
-    const context = await buildTarsRagContext(USER_ID, 100);
+    const context = await buildTarsRagContext(USER_ID, 201);
     expect(context).toContain('`rag_agent` Runtime Context');
     expect(context).toContain('kb-general');
     expect(context).toContain('kb-docs');
   });
 
   it('fails closed for an unlinked account', async () => {
-    await expect(buildTarsRagContext(undefined, 100)).resolves.toContain('not linked to pwc_tars');
+    await expect(buildTarsRagContext(undefined, 201)).resolves.toContain('not linked to pwc_tars');
   });
 });

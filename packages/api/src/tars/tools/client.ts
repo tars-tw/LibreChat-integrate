@@ -1,5 +1,9 @@
 import { logger } from '@librechat/data-schemas';
-import type { LangflowGeneratedUrl, TarsUsageAttribution } from '~/tars/langflow/client';
+import type {
+  TarsAccessMode,
+  LangflowGeneratedUrl,
+  TarsUsageAttribution,
+} from '~/tars/langflow/client';
 import type { TarsTraceRecord } from '~/tars/trace';
 import {
   langflowTimeoutMs,
@@ -54,6 +58,8 @@ export interface TarsServiceToolCallOptions {
   tarsUserId?: string;
   /** The chat the call serves; pwc_tars files its embedding usage under it. */
   usage?: TarsUsageAttribution;
+  /** How pwc_tars authorizes the call's knowledge bases. */
+  accessMode?: TarsAccessMode;
   /** Receives each progress line the tool reports while it runs (e.g. which rows it is on). */
   onProgress?: (message: string) => void;
   /** Stops the tool, e.g. when the chat run that called it is stopped. */
@@ -93,6 +99,7 @@ async function streamToolRun<T>(
       librechatUserId: options.librechatUserId,
       tarsUserId: options.tarsUserId,
       usage: options.usage,
+      accessMode: options.accessMode,
       signal: options.signal,
     },
   );
@@ -131,6 +138,7 @@ export async function runTarsServiceTool<T>(
       librechatUserId: options.librechatUserId,
       tarsUserId: options.tarsUserId,
       usage: options.usage,
+      accessMode: options.accessMode,
     });
     outcome = { ok: true, data: legacy };
   }
@@ -170,6 +178,7 @@ export async function runTarsBuiltinTool(
       librechatUserId: options.librechatUserId,
       tarsUserId: options.tarsUserId,
       usage: options.usage,
+      accessMode: options.accessMode,
       onProgress: options.onProgress,
       signal: options.signal,
     },

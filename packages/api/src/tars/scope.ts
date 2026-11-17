@@ -1,7 +1,9 @@
-import { isEphemeralAgentId } from 'librechat-data-provider';
+import { isEphemeralAgentId, TARS_GENERAL_DOMAIN_ID } from 'librechat-data-provider';
 import type { TTarsToolSwitch, TTarsAgentKnowledgeBases } from 'librechat-data-provider';
+import type { TarsAccessMode } from '~/tars/langflow/client';
 import type { TarsKnowledgeBase } from '~/tars/knowledge';
 import type { TarsAccessEnvelope } from '~/tars/client';
+import { TARS_GENERAL_ACCESS_MODE } from '~/tars/langflow/client';
 import { fetchTarsDomainKnowledgeBaseIds } from '~/tars/prompts';
 import { tarsFetch } from '~/tars/client';
 
@@ -22,15 +24,17 @@ export function invalidateTarsScopedKnowledgeBasesCache(): void {
 /**
  * The knowledge bases a user may use in chat (`km_permission`): assigned to them or one
  * of their enabled groups, enabled bases only. Admins are not exempt, and the management
- * list (`allowed_user_ids`) grants nothing here.
+ * list (`allowed_user_ids`) grants nothing here. `general` asks for what 通用腦 reaches
+ * instead: pwc_tars's general knowledge base alone, open to every active user.
  */
 export async function fetchTarsChatKnowledgeBases(
   tarsId: string,
   baseUrl?: string,
+  general = false,
 ): Promise<TarsKnowledgeBase[]> {
   const envelope = await tarsFetch<TarsAccessEnvelope<TarsKnowledgeBase[]>>(
     '/api/km_permission/chat_knowledge_bases',
-    { query: { user_id: tarsId }, baseUrl },
+    { query: { user_id: tarsId, ...(general && { general: 'true' }) }, baseUrl },
   );
   return envelope?.data ?? [];
 }
@@ -49,13 +53,24 @@ export type TarsKnowledgeScope =
 const isPicked = (scope: TarsKnowledgeScope): scope is { knowledgeBaseIds: readonly string[] } =>
   scope != null && typeof scope === 'object';
 
+const isGeneralScope = (scope: TarsKnowledgeScope): boolean =>
+  !isPicked(scope) && scope != null && String(scope) === String(TARS_GENERAL_DOMAIN_ID);
+
+/**
+ * The access mode a `/api/langflow-service` call made in this scope declares, so pwc_tars
+ * authorizes it the same way {@link listTarsScopedKnowledgeBases} listed it.
+ */
+export const tarsAccessModeOf = (scope: TarsKnowledgeScope): TarsAccessMode | undefined =>
+  isGeneralScope(scope) ? TARS_GENERAL_ACCESS_MODE : undefined;
+
 /**
  * The knowledge bases one chat turn may reach: the user's chat list
  * ({@link fetchTarsChatKnowledgeBases}), narrowed to what the saved agent picked for the
- * tool or, without a saved agent, to what the active 專用腦 binds. The result doubles as
- * the authorization set for every capability that names a knowledge base (SQL, RAG, the
- * built-in tools, the table task). With neither it is the whole chat list; an agent that
- * picked nothing reaches nothing.
+ * tool or, without a saved agent, to what the active 專用腦 binds. 通用腦 is the exception:
+ * it reaches pwc_tars's general knowledge base alone, whatever the chat list or its own
+ * binding holds. The result doubles as the authorization set for every capability that
+ * names a knowledge base (SQL, RAG, the built-in tools, the table task). With neither it is
+ * the whole chat list; an agent that picked nothing reaches nothing.
  */
 export async function listTarsScopedKnowledgeBases(
   tarsUserId: string,
@@ -76,15 +91,25 @@ export async function listTarsScopedKnowledgeBases(
     return cached.bases;
   }
 
+  const scoped = isGeneralScope(scope)
+    ? await fetchTarsChatKnowledgeBases(tarsUserId, undefined, true)
+    : await listNarrowedChatKnowledgeBases(tarsUserId, picked, domain);
+  scopedCache.set(cacheKey, { bases: scoped, cachedAt: Date.now() });
+  return scoped;
+}
+
+async function listNarrowedChatKnowledgeBases(
+  tarsUserId: string,
+  picked: string[] | null,
+  domain: string,
+): Promise<TarsKnowledgeBase[]> {
   const [bases, domainIds] = await Promise.all([
     fetchTarsChatKnowledgeBases(tarsUserId),
     domain ? fetchTarsDomainKnowledgeBaseIds(tarsUserId, domain) : Promise.resolve(null),
   ]);
   const allowed = picked ?? domainIds;
   const within = allowed && new Set(allowed);
-  const scoped = within ? bases.filter((base) => within.has(base.id)) : bases;
-  scopedCache.set(cacheKey, { bases: scoped, cachedAt: Date.now() });
-  return scoped;
+  return within ? bases.filter((base) => within.has(base.id)) : bases;
 }
 
 /**

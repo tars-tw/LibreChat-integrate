@@ -31,10 +31,10 @@ const knowledgeBases = [
   { id: 'kb-hr', name: '人資知識庫', description: '別的腦的', has_sql_database: true },
 ];
 
-/** Domain 100 binds one database-backed base; domain 200 binds two. */
+/** Domain 201 binds one database-backed base; domain 200 binds two. */
 const domains = {
   sys_domains: [
-    { id: 100, name: '通用腦', knowledge_base_ids: 'kb-general,kb-docs' },
+    { id: 201, name: '人資腦', knowledge_base_ids: 'kb-general,kb-docs' },
     { id: 200, name: '雙庫腦', knowledge_base_ids: 'kb-general,kb-docs,kb-erp' },
   ],
 };
@@ -115,7 +115,7 @@ afterEach(() => {
 describe('listTarsAgentScope', () => {
   it('lists only the halves the bindings switch on', async () => {
     mockBackend();
-    const scope = await listTarsAgentScope(USER_ID, 100, all);
+    const scope = await listTarsAgentScope(USER_ID, 201, all);
     expect(scope.knowledgeBases.map((base) => base.knowledge_base_id)).toEqual([
       'kb-general',
       'kb-docs',
@@ -127,7 +127,7 @@ describe('listTarsAgentScope', () => {
 
   it('leaves an unbound half empty without asking pwc_tars for it', async () => {
     const fetchMock = mockBackend();
-    const scope = await listTarsAgentScope(USER_ID, 100, {
+    const scope = await listTarsAgentScope(USER_ID, 201, {
       knowledgeBases: false,
       database: false,
       chart: true,
@@ -146,7 +146,7 @@ describe('runTarsAgent', () => {
     const result = await runTarsAgent(USER_ID, {
       question: '台北到成田的班機',
       bindings: all,
-      domainId: 100,
+      domainId: 201,
       model: 'gemini-3.6-flash',
       librechatUserId: 'lc-user',
     });
@@ -172,7 +172,7 @@ describe('runTarsAgent', () => {
     await runTarsAgent(USER_ID, {
       question: 'q',
       bindings: { knowledgeBases: false, database: true, chart: false, documents: [] },
-      domainId: 100,
+      domainId: 201,
     });
     expect(agentBodyOf(fetchMock)).toEqual({
       query: 'q',
@@ -205,7 +205,7 @@ describe('runTarsAgent', () => {
       runTarsAgent(USER_ID, {
         question: 'q',
         bindings: kbAndDb,
-        domainId: 100,
+        domainId: 201,
         databaseKnowledgeBaseId: 'kb-hr',
       }),
     ).rejects.toThrow('kb-hr');
@@ -213,7 +213,7 @@ describe('runTarsAgent', () => {
       runTarsAgent(USER_ID, {
         question: 'q',
         bindings: kbAndDb,
-        domainId: 100,
+        domainId: 201,
         knowledgeBaseIds: ['kb-erp'],
       }),
     ).rejects.toThrow('kb-erp');
@@ -225,7 +225,7 @@ describe('runTarsAgent', () => {
       runTarsAgent(USER_ID, {
         question: 'q',
         bindings: { knowledgeBases: false, database: false, chart: true, documents: [] },
-        domainId: 100,
+        domainId: 201,
         knowledgeBaseIds: ['kb-general'],
       }),
     ).rejects.toThrow('No knowledge base is bound');
@@ -236,7 +236,7 @@ describe('runTarsAgent', () => {
     await runTarsAgent(USER_ID, {
       question: 'q',
       bindings: all,
-      domainId: 100,
+      domainId: 201,
       documentIds: ['file-2', 'foreign'],
       librechatUserId: 'lc-user',
     });
@@ -247,11 +247,11 @@ describe('runTarsAgent', () => {
     const tarsFetch = jest.requireActual<typeof import('~/tars/client')>('~/tars/client');
     const spy = jest.spyOn(tarsFetch, 'tarsFetch');
     mockBackend();
-    await runTarsAgent(USER_ID, { question: 'q', bindings: all, domainId: 100 });
+    await runTarsAgent(USER_ID, { question: 'q', bindings: all, domainId: 201 });
     const withDocs = spy.mock.calls.find(([path]) => path === '/api/langflow-service/agent')?.[1];
     expect(withDocs?.timeoutMs).toBe(1_740_000);
     spy.mockClear();
-    await runTarsAgent(USER_ID, { question: 'q', bindings: kbAndDb, domainId: 100 });
+    await runTarsAgent(USER_ID, { question: 'q', bindings: kbAndDb, domainId: 201 });
     const withoutDocs = spy.mock.calls.find(
       ([path]) => path === '/api/langflow-service/agent',
     )?.[1];
@@ -266,14 +266,14 @@ describe('runTarsAgent', () => {
         data: { answer: '畫好了', chart_url: 'http://tars.test/static/quickchart/c.png' },
       },
     });
-    const result = await runTarsAgent(USER_ID, { question: 'q', bindings: kbAndDb, domainId: 100 });
+    const result = await runTarsAgent(USER_ID, { question: 'q', bindings: kbAndDb, domainId: 201 });
     expect(result.answer).toMatch(/^畫好了\n\n!\[chart\]\(/);
   });
 
   it('carries the run trace back for the chat', async () => {
     const trace = [{ type: 'tool_call', id: 'c1', name: 'sql_query', input: {} }];
     mockBackend({ status: 200, body: { success: true, data: { ...answerBody.data, trace } } });
-    const result = await runTarsAgent(USER_ID, { question: 'q', bindings: kbAndDb, domainId: 100 });
+    const result = await runTarsAgent(USER_ID, { question: 'q', bindings: kbAndDb, domainId: 201 });
     expect(result.trace?.trace).toEqual(trace);
     expect(result.trace?.sql).toBe('SELECT count(*) FROM information_schema.tables');
   });

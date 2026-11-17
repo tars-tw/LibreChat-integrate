@@ -37,13 +37,13 @@ import { TARS_DATABASE_SWITCH_TOOL, tarsBuiltinToolCapability } from './names';
 import { TARS_NOT_LINKED, tarsBuiltinToolFailureText } from '~/tars/failure';
 import { normalizeJsonSchema, resolveJsonSchemaRefs } from '~/mcp/zod';
 import { TarsRequestError, isTarsConfigured } from '~/tars/client';
+import { tarsAccessModeOf, tarsSwitchScope } from '~/tars/scope';
 import { toTarsDataFileRefsContext } from '~/tars/files/sign';
 import { resolveTarsDatabaseId } from '~/tars/agent/client';
 import { listTarsSqlDatabases } from '~/tars/sql/client';
 import { resolveTarsSourceLinks } from '~/tars/sources';
 import { recordTarsToolAuditTrace } from './auditTrace';
 import { rewriteTarsAssetLinks } from '~/tars/assets';
-import { tarsSwitchScope } from '~/tars/scope';
 import { recordTarsCallUsage } from './usage';
 import { runTarsBuiltinTool } from './client';
 
@@ -505,6 +505,7 @@ export async function createTarsBuiltinTool(
           librechatUserId: options.librechatUserId,
           tarsUserId,
           usage: tarsUsageAttribution(options.domainId, config),
+          accessMode: tarsAccessModeOf(scopeOf(options)),
           onProgress: (message) => options.reportProgress?.(message, config),
           signal: config?.signal,
           auditTrace: options.auditTraceOwner != null,

@@ -29,20 +29,20 @@ const buildResponse = (status: number, body: unknown): Response =>
     json: async () => body,
   }) as Response;
 
-/** The user's chat list (`km_permission`) by default: both of domain 100's knowledge bases. */
+/** The user's chat list (`km_permission`) by default: both of domain 201's knowledge bases. */
 const fullChatList = [
   { id: 'kb-1', name: '規格庫' },
   { id: 'kb-2', name: '文件庫' },
 ];
 
-/** Domain 100 binds two knowledge bases; domain 200 binds none. */
+/** Domain 201 binds two knowledge bases; domain 200 binds none. */
 const mockBackend = (tableTask: { status: number; body: unknown }, chatList = fullChatList) =>
   jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
     if (url.includes('/api/domain_settings/get_domain_by_user')) {
       return buildResponse(200, {
         sys_domains: [
-          { id: 100, name: '通用腦', knowledge_base_ids: 'kb-1,kb-2' },
+          { id: 201, name: '人資腦', knowledge_base_ids: 'kb-1,kb-2' },
           { id: 200, name: '空腦', knowledge_base_ids: '' },
         ],
       });
@@ -90,7 +90,7 @@ describe('createTarsTableTaskTool', () => {
     });
     const tableTool = createTarsTableTaskTool({
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       dataFiles,
       model: 'gpt-5.4-mini',
       librechatUserId: 'lc-user',
@@ -120,7 +120,7 @@ describe('createTarsTableTaskTool', () => {
       { status: 200, body: { success: true, data: { answer: '| 列 |' } } },
       [{ id: 'kb-2', name: '文件庫' }],
     );
-    const tableTool = createTarsTableTaskTool({ tarsUserId: USER_ID, domainId: 100, dataFiles });
+    const tableTool = createTarsTableTaskTool({ tarsUserId: USER_ID, domainId: 201, dataFiles });
 
     await tableTool.invoke({ task: 't' });
 
@@ -129,7 +129,7 @@ describe('createTarsTableTaskTool', () => {
 
   it("refuses when the user is on none of the brain's chat lists", async () => {
     const fetchMock = mockBackend({ status: 200, body: {} }, []);
-    const tableTool = createTarsTableTaskTool({ tarsUserId: USER_ID, domainId: 100, dataFiles });
+    const tableTool = createTarsTableTaskTool({ tarsUserId: USER_ID, domainId: 201, dataFiles });
 
     await expect(tableTool.invoke({ task: 't' })).resolves.toMatch(/may use in chat/);
     expect(
@@ -142,7 +142,7 @@ describe('createTarsTableTaskTool', () => {
     mockBackend({ status: 200, body: { success: true, data: { answer, file_url: FILE_URL } } });
     const tableTool = createTarsTableTaskTool({
       tarsUserId: USER_ID,
-      domainId: 100,
+      domainId: 201,
       dataFiles,
     });
     await expect(tableTool.invoke({ task: 't' })).resolves.toBe(
@@ -172,10 +172,10 @@ describe('createTarsTableTaskTool', () => {
 
   it('fails closed for an unlinked account and with no attachments', async () => {
     const fetchMock = mockBackend({ status: 200, body: {} });
-    const notLinked = createTarsTableTaskTool({ domainId: 100, dataFiles });
+    const notLinked = createTarsTableTaskTool({ domainId: 201, dataFiles });
     await expect(notLinked.invoke({ task: 't' })).resolves.toMatch(/not linked to pwc_tars/);
 
-    const noFiles = createTarsTableTaskTool({ tarsUserId: USER_ID, domainId: 100, dataFiles: [] });
+    const noFiles = createTarsTableTaskTool({ tarsUserId: USER_ID, domainId: 201, dataFiles: [] });
     await expect(noFiles.invoke({ task: 't' })).resolves.toMatch(/No spreadsheet file/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
