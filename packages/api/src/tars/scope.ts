@@ -1,5 +1,9 @@
 import { isEphemeralAgentId, TARS_GENERAL_DOMAIN_ID } from 'librechat-data-provider';
-import type { TTarsToolSwitch, TTarsAgentKnowledgeBases } from 'librechat-data-provider';
+import type {
+  TTarsToolSwitch,
+  TTarsRagSelection,
+  TTarsAgentKnowledgeBases,
+} from 'librechat-data-provider';
 import type { TarsAccessMode } from '~/tars/langflow/client';
 import type { TarsKnowledgeBase } from '~/tars/knowledge';
 import type { TarsAccessEnvelope } from '~/tars/client';
@@ -115,18 +119,43 @@ async function listNarrowedChatKnowledgeBases(
 /**
  * A saved agent's TARS picks; undefined for a chat without one (an ephemeral agent),
  * which still follows the chat's 專用腦. A saved agent binds no brain, so a switch it
- * picked nothing for reaches nothing.
+ * picked nothing for reaches nothing. `selection` is the chat's 知識庫檢索 chip
+ * (`ephemeralAgent.tars_rag_selection`, from the request): it narrows 知識庫檢索's picks
+ * for the agent it names, and a selection naming none of them leaves every pick on.
  */
 export function tarsAgentKnowledgeBasesOf(
   agent:
     | { id?: string | null; tars_knowledge_bases?: TTarsAgentKnowledgeBases | null }
     | null
     | undefined,
+  selection?: Partial<TTarsRagSelection> | null,
 ): TTarsAgentKnowledgeBases | undefined {
   if (!agent?.id || isEphemeralAgentId(agent.id)) {
     return undefined;
   }
-  return agent.tars_knowledge_bases ?? {};
+  const picks = agent.tars_knowledge_bases ?? {};
+  const wanted = tarsRagSelectionIdsOf(selection, agent.id);
+  const rag = picks.rag_agent;
+  if (wanted == null || rag == null || rag.length === 0) {
+    return picks;
+  }
+  const kept = rag.filter((id) => wanted.has(id));
+  return kept.length > 0 ? { ...picks, rag_agent: kept } : picks;
+}
+
+/** The ids a request's 知識庫檢索 selection keeps for this agent; null when it names another agent or is malformed. */
+function tarsRagSelectionIdsOf(
+  selection: Partial<TTarsRagSelection> | null | undefined,
+  agentId: string,
+): Set<string> | null {
+  if (selection == null || typeof selection !== 'object') {
+    return null;
+  }
+  const ids = selection.knowledge_base_ids;
+  if (selection.agent_id !== agentId || !Array.isArray(ids)) {
+    return null;
+  }
+  return new Set(ids.filter((id) => typeof id === 'string'));
 }
 
 /** Whether a chat request runs a saved agent, which binds no 專用腦 (an ephemeral agent still follows the chat's). */

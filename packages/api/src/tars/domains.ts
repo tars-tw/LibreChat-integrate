@@ -1,4 +1,5 @@
-import { mergeTarsPluginFunctions } from 'librechat-data-provider';
+import { logger } from '@librechat/data-schemas';
+import { TARS_GENERAL_DOMAIN_ID, mergeTarsPluginFunctions } from 'librechat-data-provider';
 import type { TTarsPluginFunctionState } from 'librechat-data-provider';
 import type { TarsKnowledgeBase } from './knowledge';
 import { fetchTarsPluginTools } from './plugins/client';
@@ -32,9 +33,32 @@ interface DomainsByUserResponse {
   sys_domains?: TarsDomain[];
 }
 
+const isGeneralDomain = (domain: TarsDomain): boolean =>
+  Number(domain.id) === TARS_GENERAL_DOMAIN_ID;
+
 /**
- * The specialized brains a pwc_tars user may access, resolved by pwc_tars from
- * the union of the user's role → domain grants (`GET /domain_settings/get_domain_by_user`).
+ * 通用腦 read by id (`GET /domain_settings/get_domains`). Null when pwc_tars has none
+ * or cannot answer, so a user no role binds it to simply goes without, as before.
+ */
+async function fetchTarsGeneralDomain(baseUrl?: string): Promise<TarsDomain | null> {
+  try {
+    const data = await tarsFetch<DomainsByUserResponse>('/api/domain_settings/get_domains', {
+      query: { id: TARS_GENERAL_DOMAIN_ID },
+      baseUrl,
+    });
+    return data?.sys_domains?.find(isGeneralDomain) ?? null;
+  } catch (error) {
+    logger.warn('[tars/domains] Failed to read 通用腦; listing the role grants alone', error);
+    return null;
+  }
+}
+
+/**
+ * The specialized brains a pwc_tars user may access: the union of the user's
+ * role → domain grants (`GET /domain_settings/get_domain_by_user`), plus 通用腦 for
+ * everyone. 通用腦 is every linked account's default brain whether or not a role binds
+ * it, so the chat header (通用腦 + My Agents) and everything resolved through this list
+ * (`injectTarsDomain`, plugin tools, prompts) treat it as granted.
  */
 export async function fetchTarsDomainsForUser(
   tarsId: string,
@@ -47,7 +71,12 @@ export async function fetchTarsDomainsForUser(
     query: { user_id: tarsId },
     baseUrl,
   });
-  return data?.sys_domains ?? [];
+  const domains = data?.sys_domains ?? [];
+  if (domains.some(isGeneralDomain)) {
+    return domains;
+  }
+  const general = await fetchTarsGeneralDomain(baseUrl);
+  return general ? [...domains, general] : domains;
 }
 
 /**

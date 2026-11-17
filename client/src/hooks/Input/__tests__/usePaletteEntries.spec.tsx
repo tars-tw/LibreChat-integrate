@@ -23,6 +23,8 @@ let mockUser: { personalization?: { memories?: boolean } } | undefined;
 let mockSkillsQuery: Record<string, unknown>;
 let mockSkillsQueryEnabled: boolean | undefined;
 let mockStartupConfig: { tarsAuth?: boolean } | undefined;
+let mockTarsAgentKnowledgeArgs: Record<string, unknown> | undefined;
+let mockTarsAgentKnowledgeEntry: Record<string, unknown> | null;
 
 jest.mock('~/hooks', () => ({
   useHasAccess: ({ permissionType }: { permissionType: string }) =>
@@ -33,6 +35,15 @@ jest.mock('~/hooks', () => ({
   /* The real popover filter is used here, and it drops anything the user
      cannot invoke or that is not active for them. */
   useSkillActiveState: () => ({ isActive: () => mockSkillsActive }),
+}));
+
+/* Exercised on its own in hooks/Tars; here only where the palette places it and when it asks. */
+jest.mock('~/hooks/Tars/useTarsAgentKnowledge', () => ({
+  __esModule: true,
+  default: (args: Record<string, unknown>) => {
+    mockTarsAgentKnowledgeArgs = args;
+    return mockTarsAgentKnowledgeEntry;
+  },
 }));
 
 jest.mock('~/hooks/useLocalize', () => ({
@@ -155,6 +166,8 @@ describe('usePaletteEntries', () => {
     mockAgentsMap = {};
     mockSkillsActive = true;
     mockStartupConfig = undefined;
+    mockTarsAgentKnowledgeArgs = undefined;
+    mockTarsAgentKnowledgeEntry = null;
     mockSkillsQuery = {
       get data() {
         return { pages: [{ skills: mockSkills }] };
@@ -760,6 +773,53 @@ describe('usePaletteEntries', () => {
       expect(byKey.get('builtin:rag_agent')?.active).toBe(true);
       expect(byKey.get('builtin:chart_agent')?.pinned).toBe(true);
       expect(byKey.get('tool:tars_plugin_summarize')?.active).toBe(true);
+    });
+
+    it("adds a saved agent's 知識庫檢索 chip only where the chat's own tools are off", () => {
+      mockContext = tarsContext();
+      mockTarsAgentKnowledgeEntry = {
+        key: 'builtin:tars_agent_knowledge',
+        itemType: 'builtin',
+        itemId: 'tars_agent_knowledge',
+        label: 'com_ui_tars_rag_agent',
+        section: 'tool',
+        active: false,
+        pinned: false,
+        onSelect: jest.fn(),
+      };
+      const agentChat = () =>
+        renderHook(
+          () =>
+            usePaletteEntries({
+              conversationId: 'convo-1',
+              agentId: 'agent_rules',
+              toolsEnabled: false,
+            }),
+          { wrapper: stagedWrapper() },
+        );
+
+      const { result } = agentChat();
+      expect(mockTarsAgentKnowledgeArgs).toEqual({
+        conversationId: 'convo-1',
+        agentId: 'agent_rules',
+        enabled: true,
+      });
+      const toolKeys = result.current
+        .filter((entry) => entry.section === 'tool')
+        .map((entry) => entry.key);
+      expect(toolKeys).toEqual(['builtin:tars_agent_knowledge']);
+
+      entries('agent_rules');
+      expect(mockTarsAgentKnowledgeArgs?.enabled).toBe(false);
+
+      mockPermissions = { ...tarsPermissions, [PermissionTypes.RAG_AGENT]: false };
+      agentChat();
+      expect(mockTarsAgentKnowledgeArgs?.enabled).toBe(false);
+
+      mockPermissions = { ...tarsPermissions };
+      mockStartupConfig = { tarsAuth: false };
+      agentChat();
+      expect(mockTarsAgentKnowledgeArgs?.enabled).toBe(false);
     });
 
     it('drops charts, files and plugins on a deployment without pwc_tars', () => {

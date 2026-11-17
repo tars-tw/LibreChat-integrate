@@ -155,11 +155,6 @@ const loadTokenQuotaView = () =>
     Component: m.TokenQuotaView,
   }));
 
-const loadDomainsView = () =>
-  import('~/components/Admin/Tars/Domains').then((m) => ({
-    Component: m.DomainsView,
-  }));
-
 const placeholderRoute = (path: string, titleKey: TranslationKeys) => ({
   path,
   element: <AdminPlaceholder titleKey={titleKey} />,
@@ -284,16 +279,6 @@ export const router = createBrowserRouter(
                   lazy: loadInlinePromptsView,
                 },
                 {
-                  /** "new" is a literal segment (create-mode sentinel), not `:promptId` — otherwise it's looked up as a real id and fails. */
-                  path: 'prompts/domain/:domainId/new',
-                  lazy: loadInlinePromptsView,
-                },
-                {
-                  /** A specialized brain's own prompts, opened from its admin card. */
-                  path: 'prompts/domain/:domainId/:promptId',
-                  lazy: loadInlinePromptsView,
-                },
-                {
                   path: 'prompts/knowledge-base/:knowledgeBaseId/new',
                   lazy: loadInlinePromptsView,
                 },
@@ -345,10 +330,6 @@ export const router = createBrowserRouter(
                 {
                   path: 'mcp-settings',
                   lazy: loadMcpSettingsView,
-                },
-                {
-                  path: 'admin/domains',
-                  lazy: loadDomainsView,
                 },
                 {
                   path: 'kb-schedules',

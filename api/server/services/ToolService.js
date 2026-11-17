@@ -1662,7 +1662,10 @@ async function loadToolDefinitionsWrapper({
     const tarsToolsContext = await buildTarsToolsContext({
       tarsUserId: req.user?.tarsId,
       domainId: req.body?.domain_id,
-      agentKnowledgeBases: tarsAgentKnowledgeBasesOf(agent),
+      agentKnowledgeBases: tarsAgentKnowledgeBasesOf(
+        agent,
+        req.body?.ephemeralAgent?.tars_rag_selection,
+      ),
       tools: filteredTools,
     });
     if (tarsToolsContext) {

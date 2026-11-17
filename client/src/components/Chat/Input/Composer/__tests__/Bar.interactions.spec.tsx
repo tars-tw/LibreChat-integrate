@@ -46,4 +46,17 @@ describe('ChipModes', () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
+
+  it("reads a checklist's own summary in place of the tool count", () => {
+    const modes = [
+      { id: 'kb_rules', label: '公司規範知識庫', active: true, onSelect: jest.fn() },
+      { id: 'kb_env', label: '097內規比對(環安)', active: false, onSelect: jest.fn() },
+    ];
+    render(<ChipModes modes={modes} multiple summary="1/2 個知識庫" />);
+
+    expect(screen.getByRole('button', { name: 'com_ui_mode_value' })).toHaveTextContent(
+      '1/2 個知識庫',
+    );
+    expect(screen.queryByText('com_ui_tars_mcp_tools_count')).not.toBeInTheDocument();
+  });
 });

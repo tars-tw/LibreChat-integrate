@@ -3,7 +3,6 @@ import * as Menu from '@ariakit/react/menu';
 import { useNavigate } from 'react-router-dom';
 import {
   Boxes,
-  BrainCircuit,
   CalendarClock,
   ChevronRight,
   ClipboardList,
@@ -170,12 +169,6 @@ export const ADMIN_MENU: AdminMenuNode[] = [
         key: 'admin.permissions',
         path: '/admin/permissions',
       },
-      {
-        labelKey: 'com_ui_tars_nav_domains',
-        icon: BrainCircuit,
-        key: 'admin.domains',
-        path: '/admin/domains',
-      },
     ],
   },
   {
@@ -236,6 +229,12 @@ export function adminMenuLeafKeys(nodes: AdminMenuNode[] = ADMIN_MENU_TREE): str
   walk(nodes);
   return keys;
 }
+
+/**
+ * Every key the menu still offers. A role keeps whatever pwc_tars stored, including
+ * keys of pages since removed (e.g. `admin.domains`), so readers filter through this.
+ */
+export const ADMIN_MENU_KEYS: ReadonlySet<string> = new Set(adminMenuLeafKeys());
 
 /** The leaf keys one node covers — a leaf covers only itself. */
 export function adminMenuNodeKeys(node: AdminMenuNode): string[] {

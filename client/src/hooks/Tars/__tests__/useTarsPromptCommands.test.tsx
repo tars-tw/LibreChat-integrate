@@ -152,6 +152,23 @@ describe('useTarsPromptCommands', () => {
     ]);
   });
 
+  it('reads the picks off the agent a chat loads, which carries no tools', async () => {
+    mockSelectedAgentId = 'agent_hr';
+    jest.spyOn(dataService, 'getAgentById').mockResolvedValue({
+      id: 'agent_hr',
+      name: 'HR',
+      tars_knowledge_bases: { rag_agent: ['kb-orders'] },
+    } as Agent);
+    const getPrompts = jest
+      .spyOn(dataService, 'getTarsChatPrompts')
+      .mockResolvedValue({ prompts: chatPrompts, knowledgeBases: [] });
+
+    renderCommands(true);
+
+    await waitFor(() => expect(getPrompts).toHaveBeenCalledWith(['kb-orders']));
+    expect(getPrompts).toHaveBeenCalledTimes(1);
+  });
+
   it('asks for no knowledge base while the agent has 知識庫檢索 off, or without an agent', async () => {
     mockSelectedAgentId = 'agent_hr';
     agentWith(['tars_sql_query']);

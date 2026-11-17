@@ -1,5 +1,8 @@
 import { normalizeLocale } from '~/locales/i18n';
 
+/* Imported as `~/utils/manual`, never re-exported from `~/utils`: `~/locales/i18n` starts
+   i18next on import, which every spec that mocks `react-i18next` and reaches `~/utils` trips on. */
+
 /**
  * Static user-manual bundles shipped under `client/public/`. Vite copies them into
  * `client/dist/` at build time, so the backend's `staticCache(paths.dist)` serves them

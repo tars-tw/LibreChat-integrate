@@ -5,6 +5,7 @@ import type {
   TTarsRoleDetail,
   TTarsUserGroupWithMembers,
 } from 'librechat-data-provider';
+import { ADMIN_MENU_KEYS } from '~/components/Nav/Tars/AdminMenu';
 import { csvToIds } from '../Users/helpers';
 
 /** pwc_tars stores a role's status as numeric 1/0, like the group table. */
@@ -15,8 +16,9 @@ export const isRoleEnabled = (role: TTarsRoleDetail): boolean =>
   Number(role.status) === ROLE_ENABLED;
 
 /**
- * Brains are no longer picked on this page, but the chat header (通用腦 + My Agents)
- * only appears for a user whose roles grant the general brain, so a new role binds it.
+ * Brains are no longer picked on this page. LibreChat gives every user 通用腦 whatever
+ * their roles bind (`fetchTarsDomainsForUser`); a new role still binds it so pwc_tars's
+ * own role → brain data reads as it did.
  */
 export const newRoleDomainIds = (domains: TTarsDomain[]): string | undefined =>
   domains.some((domain) => Number(domain.id) === TARS_GENERAL_DOMAIN_ID)
@@ -26,8 +28,10 @@ export const newRoleDomainIds = (domains: TTarsDomain[]): string | undefined =>
 /**
  * The LibreChat menu keys a role grants. pwc_tars's login grants nothing for a
  * `null` column, so an unconfigured role reads as an empty selection here too.
+ * Keys of removed pages are dropped, so counts match the tree and a save clears them.
  */
-export const roleMenuKeys = (role: TTarsRoleDetail): string[] => csvToIds(role.librechat_menu_keys);
+export const roleMenuKeys = (role: TTarsRoleDetail): string[] =>
+  csvToIds(role.librechat_menu_keys).filter((key) => ADMIN_MENU_KEYS.has(key));
 
 export type RoleUsage = { users: number; groups: number };
 

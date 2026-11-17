@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { hasTarsKnowledgeSearch } from 'librechat-data-provider';
-import type { TTarsPromptsResponse } from 'librechat-data-provider';
+import type { Agent, TTarsPromptsResponse } from 'librechat-data-provider';
 import type { QueryObserverResult } from '@tanstack/react-query';
 import {
   useGetAgentByIdQuery,
@@ -20,6 +20,24 @@ export function useIsTarsLinkedUser(): boolean {
 }
 
 /**
+ * The knowledge bases a saved agent's 知識庫檢索 searches. The agent a chat reads carries no
+ * `tools` (only the builder's expanded read does), and the builder keeps a switch's picks
+ * only while that switch is on, so the picks tell on their own; `tools`, when present,
+ * must still carry the search.
+ */
+export function tarsKnowledgeSearchPicks(
+  agent?: Pick<Agent, 'tools' | 'tars_knowledge_bases'> | null,
+): readonly string[] {
+  if (agent == null) {
+    return NONE;
+  }
+  if (Array.isArray(agent.tools) && !hasTarsKnowledgeSearch(agent.tools)) {
+    return NONE;
+  }
+  return agent.tars_knowledge_bases?.rag_agent ?? NONE;
+}
+
+/**
  * The chat's 我的提示 (composer panel, `/` commands, side panel): personal prompts plus
  * those of the knowledge bases the selected agent's 知識庫檢索 picked, while that tool is
  * on. An agent binds no 專用腦, so there is no brain tier, and a chat without an agent
@@ -33,13 +51,7 @@ export default function useTarsChatPrompts(
   const { selectedAgentId } = useSelectedTarsDomain();
   const agentQuery = useGetAgentByIdQuery(selectedAgentId);
   const agent = agentQuery.data;
-  const knowledgeBaseIds = useMemo(
-    () =>
-      agent && hasTarsKnowledgeSearch(agent.tools)
-        ? (agent.tars_knowledge_bases?.rag_agent ?? NONE)
-        : NONE,
-    [agent],
-  );
+  const knowledgeBaseIds = useMemo(() => tarsKnowledgeSearchPicks(agent), [agent]);
   const agentSettled = selectedAgentId == null || agentQuery.isFetched;
   const query = useTarsChatPromptsQuery(knowledgeBaseIds, {
     enabled: enabled && isTarsUser && agentSettled,

@@ -24,6 +24,7 @@ import type {
 import type { BalanceRefillMode, RefillIntervalUnit } from './balance';
 import type { StatefulCodeEnvironment } from './stateful-code';
 import type { CodeApprovalMode } from './code/approval';
+import type { TTarsRagSelection } from './types/tars';
 import type { EToolResources } from './types/tools';
 import type { SettingDefinition } from './generate';
 import type { TMinimalFeedback } from './feedback';
@@ -141,6 +142,8 @@ export type TEphemeralAgent = {
   file_agent?: boolean;
   /** pwc_tars plugin tools (`tars_tool_sdk`) switched on for this chat, by plugin name. */
   tars_plugins?: string[];
+  /** A saved agent's 知識庫檢索 narrowed for this chat; absent = every pick. */
+  tars_rag_selection?: TTarsRagSelection | null;
   file_search?: boolean;
   execute_code?: boolean;
   artifacts?: string;
