@@ -50,6 +50,7 @@ import {
 import { getStatusColor, getStatusTextKey } from '~/components/MCP/mcpServerUtils';
 import { filterSkillsForPopover } from '~/components/Chat/Input/SkillsCommand';
 import { useSkillsInfiniteQuery, useGetStartupConfig } from '~/data-provider';
+import useTarsAgentKnowledge from '~/hooks/Tars/useTarsAgentKnowledge';
 import { useAgentsMapContext, useBadgeRowContext } from '~/Providers';
 import { ephemeralAgentByConvoId } from '~/store';
 import { favoriteKey } from './useToolFavorites';
@@ -101,6 +102,8 @@ export interface PaletteEntry {
   /** Independent on/off choices carried only on the bar chip, as a checklist
    *  (a pwc_tars gateway server's tools): too many to sit on the palette row. */
   toolModes?: PaletteMode[];
+  /** What the bar chip's checklist button reads in place of the default tool count. */
+  toolModesSummary?: string;
   /** The catalog record behind a skill row, for the "Show all" dialog's card. */
   skill?: TSkillSummary;
   /** A server's own branding, for the "Show all" dialog's card. */
@@ -259,6 +262,12 @@ export default function usePaletteEntries({
      register the memory tools once it is off, so role access and the global
      capability are not enough to offer the toggle. */
   const canUseMemory = useHasMemoryAccess() && user?.personalization?.memories !== false;
+  /* TARS: a saved agent's 知識庫檢索 chip, which narrows the knowledge bases it searches. */
+  const tarsAgentKnowledge = useTarsAgentKnowledge({
+    conversationId,
+    agentId,
+    enabled: enabled && !toolsEnabled && tarsEnabled && canUseRagAgent && ragAgentEnabled,
+  });
 
   /* Mirrors backend `resolveAgentScopedSkillIds`: ephemeral agents see the full
      catalog; persisted agents gate on `skills_enabled` and the resolved scope,
@@ -463,6 +472,10 @@ export default function usePaletteEntries({
         () => toggle.debouncedChange({ value: !toggle.toggleState }),
         () => toggle.setIsPinned(false),
       );
+    }
+
+    if (tarsAgentKnowledge != null) {
+      entries.push(tarsAgentKnowledge);
     }
 
     /* The plugin tools the active brain offers, each its own switch. */
@@ -852,6 +865,7 @@ export default function usePaletteEntries({
     canUseFileAgent,
     fileAgentEnabled,
     tarsEnabled,
+    tarsAgentKnowledge,
     user?.id,
   ]);
 }

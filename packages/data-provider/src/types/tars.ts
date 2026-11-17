@@ -305,6 +305,16 @@ export type TTarsChatKnowledgeBase = {
 export type TTarsChatKnowledgeBasesResponse = { knowledgeBases: TTarsChatKnowledgeBase[] };
 
 /**
+ * The composer's 知識庫檢索 chip on a saved agent's chat (`ephemeralAgent.tars_rag_selection`):
+ * the agent's 知識庫檢索 picks the user kept on for this chat. Absent, the agent searches
+ * every pick. It only narrows, never turns the search off, and only for the agent it names.
+ */
+export type TTarsRagSelection = {
+  agent_id: string;
+  knowledge_base_ids: string[];
+};
+
+/**
  * Who may use one knowledge base in chat (`km_permission`), disabled principals included.
  * An empty list means nobody yet, admins included.
  */

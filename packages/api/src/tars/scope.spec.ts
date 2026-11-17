@@ -226,6 +226,72 @@ describe('agent picks helpers', () => {
     expect(tarsAgentKnowledgeBasesOf(undefined)).toBeUndefined();
   });
 
+  describe("narrowing by the chat's 知識庫檢索 selection", () => {
+    const agent = {
+      id: 'agent_abc',
+      tars_knowledge_bases: { rag_agent: ['kb-general', 'kb-hr'], sql_agent: ['kb-general'] },
+    };
+
+    it('keeps only the selected picks of 知識庫檢索', () => {
+      expect(
+        tarsAgentKnowledgeBasesOf(agent, { agent_id: 'agent_abc', knowledge_base_ids: ['kb-hr'] }),
+      ).toEqual({ rag_agent: ['kb-hr'], sql_agent: ['kb-general'] });
+    });
+
+    it('never reaches beyond the picks', () => {
+      expect(
+        tarsAgentKnowledgeBasesOf(agent, {
+          agent_id: 'agent_abc',
+          knowledge_base_ids: ['kb-hr', 'kb-other'],
+        }),
+      ).toEqual({ rag_agent: ['kb-hr'], sql_agent: ['kb-general'] });
+    });
+
+    it('searches every pick when the selection names none of them', () => {
+      expect(
+        tarsAgentKnowledgeBasesOf(agent, {
+          agent_id: 'agent_abc',
+          knowledge_base_ids: ['kb-other'],
+        }),
+      ).toBe(agent.tars_knowledge_bases);
+      expect(
+        tarsAgentKnowledgeBasesOf(agent, { agent_id: 'agent_abc', knowledge_base_ids: [] }),
+      ).toBe(agent.tars_knowledge_bases);
+    });
+
+    it('ignores a selection for another agent or a malformed one', () => {
+      const picks = agent.tars_knowledge_bases;
+
+      expect(
+        tarsAgentKnowledgeBasesOf(agent, { agent_id: 'agent_xyz', knowledge_base_ids: ['kb-hr'] }),
+      ).toBe(picks);
+      expect(tarsAgentKnowledgeBasesOf(agent, { knowledge_base_ids: ['kb-hr'] })).toBe(picks);
+      expect(tarsAgentKnowledgeBasesOf(agent, { agent_id: 'agent_abc' })).toBe(picks);
+      expect(tarsAgentKnowledgeBasesOf(agent, 'kb-hr' as unknown as { agent_id: string })).toBe(
+        picks,
+      );
+      expect(
+        tarsAgentKnowledgeBasesOf(agent, {
+          agent_id: 'agent_abc',
+          knowledge_base_ids: [42, 'kb-hr'] as unknown as string[],
+        }),
+      ).toEqual({ rag_agent: ['kb-hr'], sql_agent: ['kb-general'] });
+      expect(tarsAgentKnowledgeBasesOf(agent, null)).toBe(picks);
+    });
+
+    it('leaves an ephemeral agent on the brain', () => {
+      expect(
+        tarsAgentKnowledgeBasesOf(
+          {
+            id: String(Constants.EPHEMERAL_AGENT_ID),
+            tars_knowledge_bases: { rag_agent: ['kb-hr'] },
+          },
+          { agent_id: String(Constants.EPHEMERAL_AGENT_ID), knowledge_base_ids: ['kb-hr'] },
+        ),
+      ).toBeUndefined();
+    });
+  });
+
   it("scopes a switch to the agent's picks, else to the brain", () => {
     const picks = { rag_agent: ['kb-hr'] };
 

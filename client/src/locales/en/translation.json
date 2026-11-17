@@ -3996,6 +3996,8 @@
   "com_ui_tars_quota_warning_hint": "Percentage of the limit at which platform warns the user.",
   "com_ui_tars_quota_warning_threshold": "Warning at",
   "com_ui_tars_rag_agent": "Knowledge Base Search",
+  "com_ui_tars_rag_agent_count": "{{selected}}/{{total}} knowledge bases",
+  "com_ui_tars_rag_agent_hint": "Searches every knowledge base the agent uses by default. Turn on to narrow it down.",
   "com_ui_tars_report_avg_per_user": "Average per user",
   "com_ui_tars_report_by_domain": "Usage by specialized brain",
   "com_ui_tars_report_by_model": "Usage by model",

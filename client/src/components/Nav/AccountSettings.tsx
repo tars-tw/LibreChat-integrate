@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { ArchivedChatsModal } from '~/components/Nav/SettingsTabs/General/ArchivedChatsModal';
 import { filesDialogTriggerAtom, showFilesDialogAtom } from '~/store/filesDialog';
-import { getHelpAndFaqURL, openInNewTab, policyUrls } from '~/utils';
 import useDirection, { inlineSide } from '~/hooks/Nav/useDirection';
 import useSidebarToggle from '~/hooks/Nav/useSidebarToggle';
 import AdminMenu, { SubmenuGroup } from './Tars/AdminMenu';
@@ -23,6 +22,8 @@ import useSidebarState from '~/hooks/Nav/useSidebarState';
 import { useLocalize, useTarsAdminAccess } from '~/hooks';
 import { useGetStartupConfig } from '~/data-provider';
 import { useAuthContext } from '~/hooks/AuthContext';
+import { openInNewTab, policyUrls } from '~/utils';
+import { getHelpAndFaqURL } from '~/utils/manual';
 import { settingsOpenAtom } from './Settings';
 import store from '~/store';
 

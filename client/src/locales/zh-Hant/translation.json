@@ -2898,6 +2898,8 @@
   "com_ui_tars_quota_warning_hint": "使用量達到額度的此百分比時，平台會提醒使用者。",
   "com_ui_tars_quota_warning_threshold": "預警門檻",
   "com_ui_tars_rag_agent": "知識庫檢索",
+  "com_ui_tars_rag_agent_count": "{{selected}}/{{total}} 個知識庫",
+  "com_ui_tars_rag_agent_hint": "預設檢索 Agent 綁定的全部知識庫，點選後可縮小範圍",
   "com_ui_tars_report_avg_per_user": "平均每人用量",
   "com_ui_tars_report_by_domain": "各專用腦用量",
   "com_ui_tars_report_by_model": "各模型用量",

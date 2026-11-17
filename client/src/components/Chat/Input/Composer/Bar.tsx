@@ -128,18 +128,23 @@ interface ChipModesProps {
   modes: PaletteMode[];
   /** Each mode switches on and off on its own (a checklist, not a radio group). */
   multiple?: boolean;
+  /** What the button reads in place of the checklist's default tool count. */
+  summary?: string;
 }
 
-export function ChipModes({ modes, multiple = false }: ChipModesProps) {
+export function ChipModes({ modes, multiple = false, summary: summaryLabel }: ChipModesProps) {
   const localize = useLocalize();
   const [open, setOpen] = useState(false);
   const active = multiple ? undefined : modes.find((mode) => mode.active);
-  const summary = multiple
-    ? localize('com_ui_tars_mcp_tools_count', {
-        selected: modes.filter((mode) => mode.active).length,
-        total: modes.length,
-      })
-    : active?.label;
+  let summary = active?.label;
+  if (summaryLabel != null) {
+    summary = summaryLabel;
+  } else if (multiple) {
+    summary = localize('com_ui_tars_mcp_tools_count', {
+      selected: modes.filter((mode) => mode.active).length,
+      total: modes.length,
+    });
+  }
 
   return (
     <Ariakit.MenuProvider open={open} setOpen={setOpen} placement="bottom">
@@ -333,7 +338,7 @@ function Bar({
     const menuModes = chipMenuModes(entry.modes);
     let modeMenu: React.ReactNode = null;
     if (entry.toolModes != null && entry.toolModes.length > 0) {
-      modeMenu = <ChipModes modes={entry.toolModes} multiple />;
+      modeMenu = <ChipModes modes={entry.toolModes} multiple summary={entry.toolModesSummary} />;
     } else if (menuModes.length > 0) {
       modeMenu = <ChipModes modes={menuModes} />;
     }

@@ -522,7 +522,10 @@ const loadTools = async ({
         toolName: tool,
         tarsUserId: options.req?.user?.tarsId,
         domainId: options.req?.body?.domain_id,
-        agentKnowledgeBases: tarsAgentKnowledgeBasesOf(agent),
+        agentKnowledgeBases: tarsAgentKnowledgeBasesOf(
+          agent,
+          options.req?.body?.ephemeralAgent?.tars_rag_selection,
+        ),
         agentTools: agent?.tools,
         agentId: agent?.id,
         sourceDownload: agent?.tars_source_download,
