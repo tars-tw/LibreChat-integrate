@@ -140,7 +140,7 @@ endpoints:
     # (30s cache), so a key rotated in pwc_tars needs no LibreChat change.
     # KEY_OPEN_AI_API is the key pwc_tars itself sends to Azure.
     - name: 'Azure'
-      apiKey: '${tars:KEY_OPEN_AI_API}'
+      apiKey: '${tars:KEY_AZURE_OPENAI_API}'
       baseURL: 'https://aoai-dev-ca-pcc-cssai-jpe-001.openai.azure.com/openai/v1'
       models:
         default: ['gpt56-luna-dev']
