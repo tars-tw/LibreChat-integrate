@@ -18,6 +18,7 @@ jest.mock('@librechat/api', () => ({
       this.errorCode = errorCode;
     }
   },
+  tarsLoginAttemptOf: jest.fn((error) => error?.attempt),
   isEnabled: jest.fn((value) => value === true || value === 'true'),
   isEmailDomainAllowed: jest.fn(() => true),
   getBalanceConfig: jest.fn(() => ({ enabled: false })),
@@ -233,6 +234,17 @@ describe('tarsStrategy', () => {
     expect(info.message).toBe('pwc_tars license is not active');
     expect(info.licenseStatus).toBe('deactivate');
     expect(info.message).not.toBe(ErrorTypes.AUTH_FAILED);
+    expect(createUser).not.toHaveBeenCalled();
+  });
+
+  it('hands pwc_tars lockout state to the login page instead of failing the request', async () => {
+    const attempt = { code: 'TARS_LOGIN_ACCOUNT_LOCKED', retryAfterSeconds: 840 };
+    authenticateTars.mockRejectedValue(Object.assign(new Error('locked'), { attempt }));
+
+    const { user, info } = await callVerify('jdoe', 'secret');
+
+    expect(user).toBe(false);
+    expect(info).toEqual({ message: ErrorTypes.AUTH_FAILED, ...attempt });
     expect(createUser).not.toHaveBeenCalled();
   });
 

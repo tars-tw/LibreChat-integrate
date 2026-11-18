@@ -1372,14 +1372,35 @@ export const useBulkDeleteTarsUsersMutation = (
   });
 };
 
+/** A reset also lifts pwc_tars's sign-in lock, so the listing is refetched. */
 export const useResetTarsUserPasswordMutation = (
   options?: UseMutationOptions<{ success: boolean }, unknown, { id: string; password: string }>,
 ): UseMutationResult<{ success: boolean }, unknown, { id: string; password: string }> => {
+  const queryClient = useQueryClient();
   return useMutation(
     ({ id, password }: { id: string; password: string }) =>
       dataService.resetTarsUserPassword(id, password),
-    options,
+    {
+      ...options,
+      onSuccess: (...args) => {
+        invalidateUsers(queryClient);
+        options?.onSuccess?.(...args);
+      },
+    },
   );
+};
+
+export const useUnlockTarsUserLoginMutation = (
+  options?: UseMutationOptions<UserResponse, unknown, string>,
+): UseMutationResult<UserResponse, unknown, string> => {
+  const queryClient = useQueryClient();
+  return useMutation((id: string) => dataService.unlockTarsUserLogin(id), {
+    ...options,
+    onSuccess: (...args) => {
+      invalidateUsers(queryClient);
+      options?.onSuccess?.(...args);
+    },
+  });
 };
 
 export const useImportTarsUsersMutation = (

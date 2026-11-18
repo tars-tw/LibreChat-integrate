@@ -362,7 +362,15 @@ export type ToolDialogProps = {
 };
 
 export type TResError = {
-  response: { data: { message: string; code?: string; licenseStatus?: string } };
+  response: {
+    data: {
+      message: string;
+      code?: string;
+      licenseStatus?: string;
+      remainingAttempts?: number;
+      retryAfterSeconds?: number;
+    };
+  };
   message: string;
 };
 
@@ -383,6 +391,8 @@ export type TAuthContext = {
    *  miss (pwc_tars only re-validates the licence file at login, not on every settings read). */
   tarsLicenseStatus: string | undefined;
   setTarsLicenseStatus: React.Dispatch<React.SetStateAction<string | undefined>>;
+  /** The tries left or the lock pwc_tars reported on the last refused local sign-in. */
+  tarsLoginAttempt?: t.TTarsLoginAttempt;
 };
 
 export type TUserContext = {

@@ -7,6 +7,7 @@ jest.mock('@librechat/data-schemas', () => ({
   },
 }));
 
+import { TARS_LOGIN_ACCOUNT_LOCKED, TARS_LOGIN_INVALID_PASSWORD } from 'librechat-data-provider';
 import {
   authenticateTars,
   isTarsAdminRole,
@@ -14,9 +15,12 @@ import {
   notifyTarsLogout,
   getTarsSsoStatus,
   hasTarsMenuAccess,
+  tarsLoginAttemptOf,
   canUseTarsAdminPage,
   flattenTarsMenuKeys,
+  readTarsLoginAttempt,
   parseTarsAdminRoleIds,
+  TarsLoginAttemptError,
 } from './tars';
 import type { TarsMenuItem } from './tars';
 
@@ -169,6 +173,44 @@ describe('authenticateTars', () => {
     await expect(authenticateTars('jdoe', 'pw', false, BASE_URL)).resolves.toBeNull();
   });
 
+  it('throws TarsLoginAttemptError with the tries left after a wrong password', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        buildResponse(401, { error_code: 'INVALID_PASSWORD', remaining_attempts: 3 }),
+      );
+
+    const error = await authenticateTars('jdoe', 'wrong', false, BASE_URL).catch((e) => e);
+    expect(error).toBeInstanceOf(TarsLoginAttemptError);
+    expect(tarsLoginAttemptOf(error)).toEqual({
+      code: TARS_LOGIN_INVALID_PASSWORD,
+      remainingAttempts: 3,
+    });
+  });
+
+  it('throws TarsLoginAttemptError with the time left on a locked account', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(403, {
+        error_code: 'ACCOUNT_LOCKED',
+        remaining_attempts: 0,
+        retry_after_seconds: 840,
+      }),
+    );
+
+    const error = await authenticateTars('jdoe', 'pw', false, BASE_URL).catch((e) => e);
+    expect(tarsLoginAttemptOf(error)).toEqual({
+      code: TARS_LOGIN_ACCOUNT_LOCKED,
+      retryAfterSeconds: 840,
+    });
+  });
+
+  it('returns null for a wrong password when pwc_tars reports no tries left (lockout off)', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(401, { error_code: 'INVALID_PASSWORD' }));
+    await expect(authenticateTars('jdoe', 'wrong', false, BASE_URL)).resolves.toBeNull();
+  });
+
   it('returns null when the response lacks a user', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(buildResponse(200, { token: 't' }));
     await expect(authenticateTars('jdoe', 'pw', false, BASE_URL)).resolves.toBeNull();
@@ -199,6 +241,32 @@ describe('authenticateTars', () => {
         body: JSON.stringify({ username: 'jdoe', password: 'secret', use_sso: true }),
       }),
     );
+  });
+});
+
+describe('readTarsLoginAttempt', () => {
+  it('ignores refusals that carry no lockout state', () => {
+    expect(readTarsLoginAttempt(null)).toBeUndefined();
+    expect(readTarsLoginAttempt({ error_code: 'USER_NOT_FOUND' })).toBeUndefined();
+    expect(readTarsLoginAttempt({ error_code: 'USER_DISABLED' })).toBeUndefined();
+  });
+
+  it('drops a remaining count that is not a non-negative number', () => {
+    expect(
+      readTarsLoginAttempt({ error_code: 'INVALID_PASSWORD', remaining_attempts: -1 }),
+    ).toBeUndefined();
+    expect(
+      readTarsLoginAttempt({
+        error_code: 'INVALID_PASSWORD',
+        remaining_attempts: '2' as unknown as number,
+      }),
+    ).toBeUndefined();
+  });
+
+  it('keeps a lock without a known end, so the page can still say it is locked', () => {
+    expect(readTarsLoginAttempt({ error_code: 'ACCOUNT_LOCKED' })).toEqual({
+      code: TARS_LOGIN_ACCOUNT_LOCKED,
+    });
   });
 });
 

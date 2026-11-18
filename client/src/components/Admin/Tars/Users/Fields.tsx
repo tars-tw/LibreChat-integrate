@@ -121,6 +121,25 @@ export function StatusBadge({ active }: { active: boolean }) {
   );
 }
 
+/** Marks an account pwc_tars is refusing sign-ins for after too many wrong passwords. */
+export function LoginLockBadge({ failCount, seconds }: { failCount: number; seconds: number }) {
+  const localize = useLocalize();
+  const hint = localize('com_ui_tars_users_login_locked_hint', {
+    count: failCount,
+    minutes: Math.max(1, Math.ceil(seconds / 60)),
+  });
+
+  return (
+    <span
+      title={hint}
+      aria-label={hint}
+      className="bg-status-warning-subtle text-status-warning ml-1 inline-block rounded-full px-2 py-0.5 text-xs whitespace-nowrap"
+    >
+      {localize('com_ui_tars_users_login_locked')}
+    </span>
+  );
+}
+
 /** Renders a multi-valued cell (role names, group names) as a compact list. */
 export function NameList({ names, empty }: { names: string[]; empty: string }) {
   if (names.length === 0) {

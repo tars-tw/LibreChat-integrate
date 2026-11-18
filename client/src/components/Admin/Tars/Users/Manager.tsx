@@ -10,6 +10,7 @@ import {
   OGDialog,
   OGDialogTemplate,
   useToastContext,
+  disabledInkClasses,
 } from '@librechat/client';
 import {
   Plus,
@@ -19,12 +20,20 @@ import {
   Trash2,
   Upload,
   KeyRound,
+  LockOpen,
   Download,
   ChevronUp,
   ChevronDown,
   FileSpreadsheet,
 } from 'lucide-react';
 import type { TTarsUser } from 'librechat-data-provider';
+import {
+  useTarsUsersQuery,
+  useDeleteTarsUserMutation,
+  useImportTarsUsersMutation,
+  useTarsUserPrepareDataQuery,
+  useUnlockTarsUserLoginMutation,
+} from '~/data-provider';
 import {
   isActive,
   toNameMap,
@@ -35,14 +44,8 @@ import {
   resolveRoleNames,
   resolveGroupNames,
 } from './helpers';
-import {
-  useTarsUsersQuery,
-  useDeleteTarsUserMutation,
-  useImportTarsUsersMutation,
-  useTarsUserPrepareDataQuery,
-} from '~/data-provider';
+import { StatusBadge, NameList, LoginLockBadge } from './Fields';
 import { BulkEditModal, BulkDeleteModal } from './Bulk';
-import { StatusBadge, NameList } from './Fields';
 import ResetPasswordModal from './Password';
 import UserDetailsModal from './Details';
 import { useLocalize } from '~/hooks';
@@ -129,6 +132,19 @@ export default function UserManager() {
       showToast({ message: localize('com_ui_tars_users_deleted'), status: 'success' });
       setDeleting(null);
     },
+    onError: (error) =>
+      showToast({
+        message: errorMessage(error) ?? localize('com_ui_tars_admin_error'),
+        status: 'error',
+      }),
+  });
+
+  const unlockMutation = useUnlockTarsUserLoginMutation({
+    onSuccess: ({ user }) =>
+      showToast({
+        message: localize('com_ui_tars_users_unlock_login_success', { name: user.username }),
+        status: 'success',
+      }),
     onError: (error) =>
       showToast({
         message: errorMessage(error) ?? localize('com_ui_tars_admin_error'),
@@ -407,6 +423,12 @@ export default function UserManager() {
                     </td>
                     <td className="px-3 py-2">
                       <StatusBadge active={isActive(user)} />
+                      {user.is_login_locked === true && (
+                        <LoginLockBadge
+                          failCount={user.login_fail_count ?? 0}
+                          seconds={user.login_lock_seconds ?? 0}
+                        />
+                      )}
                     </td>
                     <td className="text-text-secondary px-3 py-2">
                       {isAdAccount(user) ? '✓' : ''}
@@ -460,6 +482,19 @@ export default function UserManager() {
                           <KeyRound className="icon-sm" />
                         </button>
 
+                        {user.is_login_locked === true && (
+                          <button
+                            type="button"
+                            aria-label={localize('com_ui_tars_users_unlock_login')}
+                            title={localize('com_ui_tars_users_unlock_login')}
+                            disabled={unlockMutation.isLoading}
+                            onClick={() => unlockMutation.mutate(user.id)}
+                            className={`text-status-warning hover:text-text-primary rounded p-1.5 disabled:cursor-not-allowed disabled:opacity-40 ${disabledInkClasses}`}
+                          >
+                            <LockOpen className="icon-sm" />
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           aria-label={localize('com_ui_delete')}
@@ -470,7 +505,7 @@ export default function UserManager() {
                           }
                           disabled={user.is_self}
                           onClick={() => setDeleting(user)}
-                          className="rounded p-1.5 text-red-500 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                          className={`rounded p-1.5 text-red-500 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40 ${disabledInkClasses}`}
                         >
                           <Trash2 className="icon-sm" />
                         </button>

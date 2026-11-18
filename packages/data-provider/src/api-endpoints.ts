@@ -611,6 +611,7 @@ export const tarsUsersBulk = () => `${BASE_URL}/api/tars/users/bulk`;
 export const tarsUsersBulkDelete = () => `${BASE_URL}/api/tars/users/bulk-delete`;
 export const tarsUsersHeartbeat = () => `${BASE_URL}/api/tars/users/heartbeat`;
 export const tarsUserResetPassword = (id: string) => `${tarsUser(id)}/reset-password`;
+export const tarsUserUnlockLogin = (id: string) => `${tarsUser(id)}/unlock-login`;
 export const tarsUsersImport = () => `${BASE_URL}/api/tars/users/import`;
 export const tarsUsersImportTemplate = () => `${BASE_URL}/api/tars/users/import-template`;
 export const tarsUsersExportLog = () => `${BASE_URL}/api/tars/users/export-log`;

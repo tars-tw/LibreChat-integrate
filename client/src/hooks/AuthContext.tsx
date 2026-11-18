@@ -17,6 +17,7 @@ import {
   SystemRoles,
   setTokenHeader,
   isSystemRoleName,
+  toTarsLoginAttempt,
   buildLoginRedirectUrl,
   clearTwoFactorSetupToken,
   persistTwoFactorSetupToken,
@@ -101,6 +102,9 @@ const AuthContextProvider = ({
   const [token, setToken] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   const [tarsLicenseStatus, setTarsLicenseStatus] = useState<string | undefined>(undefined);
+  const [tarsLoginAttempt, setTarsLoginAttempt] = useState<t.TTarsLoginAttempt | undefined>(
+    undefined,
+  );
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(authConfig?.test === true);
   const setQueriesEnabled = useSetRecoilState<boolean>(store.queriesEnabled);
@@ -177,6 +181,7 @@ const AuthContextProvider = ({
   const { mutate: loginMutate } = useLoginUserMutation({
     onMutate: () => {
       setTarsLicenseStatus(undefined);
+      setTarsLoginAttempt(undefined);
     },
     onSuccess: (data: t.TLoginResponse) => {
       const { user, token, twoFAPending, twoFASetupRequired, tempToken } = data;
@@ -210,6 +215,7 @@ const AuthContextProvider = ({
       clearTwoFactorSetupToken();
       doSetError(getLoginErrorText(error as TResError));
       setTarsLicenseStatus((error as TResError).response?.data?.licenseStatus);
+      setTarsLoginAttempt(toTarsLoginAttempt((error as TResError).response?.data));
       // Preserve a valid redirect_to across login failures so the deep link survives retries.
       // Cannot use buildLoginRedirectUrl() here: it reads the current pathname (already /login)
       // and would return plain /login, dropping the redirect_to destination.
@@ -483,6 +489,7 @@ const AuthContextProvider = ({
       setError,
       tarsLicenseStatus,
       setTarsLicenseStatus,
+      tarsLoginAttempt,
       roles: {
         [SystemRoles.USER]: userRole,
         [SystemRoles.ADMIN]: adminRole,
@@ -496,6 +503,7 @@ const AuthContextProvider = ({
       user,
       error,
       tarsLicenseStatus,
+      tarsLoginAttempt,
       isAuthenticated,
       isAuthReady,
       token,

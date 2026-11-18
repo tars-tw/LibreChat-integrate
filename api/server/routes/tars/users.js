@@ -11,6 +11,7 @@ const {
   sendTarsHeartbeat,
   fetchTarsAdWhitelist,
   resetTarsUserPassword,
+  unlockTarsUserLogin,
   fetchTarsUserPrepareData,
   downloadTarsUserImportTemplate,
   recordTarsActionLog,
@@ -238,6 +239,21 @@ router.post('/users/:id/reset-password', requireTarsAdmin, async (req, res) => {
   } catch (error) {
     logger.error('[POST /api/tars/users/:id/reset-password] Failed', error);
     return relayTarsError(res, error, 'Failed to reset pwc_tars password');
+  }
+});
+
+/**
+ * @route POST /api/tars/users/:id/unlock-login
+ * @desc Lift the sign-in lock pwc_tars puts on an account after too many wrong passwords.
+ * @access Admin (pwc_tars)
+ */
+router.post('/users/:id/unlock-login', requireTarsAdmin, async (req, res) => {
+  try {
+    const user = await unlockTarsUserLogin(req.user.tarsId, req.params.id);
+    return res.json({ user });
+  } catch (error) {
+    logger.error('[POST /api/tars/users/:id/unlock-login] Failed', error);
+    return relayTarsError(res, error, 'Failed to unlock pwc_tars user');
   }
 });
 

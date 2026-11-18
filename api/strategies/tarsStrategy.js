@@ -5,6 +5,7 @@ const {
   isEnabled,
   TarsLicenseError,
   authenticateTars,
+  tarsLoginAttemptOf,
   getBalanceConfig,
   isTarsAdminRole,
   isEmailDomainAllowed,
@@ -135,6 +136,10 @@ const tarsLogin = new PassportLocalStrategy(
           message: 'pwc_tars license is not active',
           licenseStatus: err.licenseStatus,
         });
+      }
+      const attempt = tarsLoginAttemptOf(err);
+      if (attempt) {
+        return done(null, false, { message: ErrorTypes.AUTH_FAILED, ...attempt });
       }
       logger.error('[tarsStrategy]', err);
       done(err);
