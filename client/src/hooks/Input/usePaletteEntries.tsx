@@ -459,8 +459,9 @@ export default function usePaletteEntries({
         icon: <FileOutput className="icon-md" aria-hidden="true" />,
       },
     ];
+    const hiddenTools = new Set(context.agentsConfig?.hiddenTools);
     for (const { id, toggle, available, label, icon } of tarsToggles) {
-      if (!toolsEnabled || !available || toggle == null) {
+      if (!toolsEnabled || !available || toggle == null || hiddenTools.has(id)) {
         continue;
       }
       pushTool(

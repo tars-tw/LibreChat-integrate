@@ -30,6 +30,17 @@ describe('tarsToolsForToggles', () => {
       'tars_generate_file',
     ]);
   });
+
+  it('mounts nothing for a switch listed in hiddenTools, even when the toggle is still on', () => {
+    expect(
+      tarsToolsForToggles({ rag_agent: true, chart_agent: true, file_agent: true }, [
+        'chart_agent',
+        'file_agent',
+        'calculator',
+      ]),
+    ).toEqual(['tars_knowledge_search']);
+    expect(tarsToolsForToggles({ chart_agent: true }, [])).toEqual(['tars_create_chart']);
+  });
 });
 
 describe('withTarsSpreadsheetTools', () => {

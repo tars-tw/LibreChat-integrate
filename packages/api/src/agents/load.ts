@@ -127,7 +127,7 @@ export async function loadEphemeralAgent(
   /** The pwc_tars switches mount pwc_tars's built-in tools one by one, so the
    *  model here drives the loop and each step streams as its own tool call;
    *  the capability filter applies the librechat.yaml gate per tool. */
-  tools.push(...tarsToolsForToggles(ephemeralAgent));
+  tools.push(...tarsToolsForToggles(ephemeralAgent, req.config?.endpoints?.agents?.hiddenTools));
   /** pwc_tars plugin tools the user switched on; the brain's allowlist is
    *  enforced downstream in the capability filter (`resolveTarsPluginToolNames`). */
   for (const pluginName of tarsPluginNamesOf(ephemeralAgent?.tars_plugins)) {
