@@ -210,6 +210,8 @@ export default function FileSystemModal({
   };
 
   const testResult = testMutation.isSuccess ? testMutation.data : undefined;
+  /** Set when pwc_tars listed only this many files of the tested folder. */
+  const fileLimit = testResult?.fileLimit;
   const testedPath = tested?.path ?? '/';
   const sharesListed = listsSmbShares(form.protocol, testedPath);
 
@@ -275,6 +277,9 @@ export default function FileSystemModal({
         0: String(testResult?.files.length ?? 0),
       });
     }
+    if (fileLimit != null) {
+      return localize('com_ui_tars_fs_test_success_partial', { 0: String(rows.length) });
+    }
     return localize('com_ui_tars_fs_test_success', { 0: String(rows.length) });
   };
 
@@ -285,6 +290,7 @@ export default function FileSystemModal({
 
   const unreadableDirs = testResult?.unreadableDirs ?? [];
   const testsFromRoot = fileServerTestPath(form.protocol, form.path) === '/';
+  const passwordEdgeSpace = form.password !== form.password.trim();
 
   return (
     <OGDialog open={true} onOpenChange={(open) => !open && onClose()}>
@@ -397,7 +403,11 @@ export default function FileSystemModal({
                       value={form.hostName}
                       onChange={(event) => setConnectionField('hostName', event.target.value)}
                       placeholder="FILESRV"
+                      aria-describedby="tars-fs-hostname-hint"
                     />
+                    <p id="tars-fs-hostname-hint" className="text-text-secondary text-xs">
+                      {localize('com_ui_tars_fs_server_name_hint')}
+                    </p>
                   </div>
                 )}
                 <div className="space-y-1.5">
@@ -458,6 +468,15 @@ export default function FileSystemModal({
                         {localize('com_ui_tars_db_password_keep')}
                       </p>
                     )}
+                    {passwordEdgeSpace && (
+                      <p
+                        role="status"
+                        className="text-status-warning flex items-center gap-1.5 text-xs"
+                      >
+                        <AlertTriangle className="size-4 shrink-0" aria-hidden />
+                        {localize('com_ui_tars_fs_password_edge_space')}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -495,6 +514,12 @@ export default function FileSystemModal({
                       {testError()}
                     </p>
                   </div>
+                )}
+
+                {fileLimit != null && (
+                  <p className="text-text-secondary text-xs">
+                    {localize('com_ui_tars_fs_test_partial')}
+                  </p>
                 )}
 
                 {testMutation.isError && !testsFromRoot && (

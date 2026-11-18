@@ -41,6 +41,9 @@ interface ConnectionTestResponse {
   files?: string[];
   exports?: string[];
   unreadable_dirs?: TTarsUnreadableDir[];
+  /** SMB: the listing stopped at `file_limit` files and more remain. */
+  truncated?: boolean;
+  file_limit?: number;
 }
 
 interface FileSystemListResponse {
@@ -229,10 +232,12 @@ export async function testTarsFileSystemConnection(
   });
 
   const nfsExports = data?.exports;
+  const files = data?.files ?? [];
   return {
-    files: data?.files ?? [],
+    files,
     unreadableDirs: data?.unreadable_dirs ?? [],
     ...(Array.isArray(nfsExports) ? { exports: nfsExports } : {}),
+    ...(data?.truncated === true ? { fileLimit: data.file_limit ?? files.length } : {}),
   };
 }
 

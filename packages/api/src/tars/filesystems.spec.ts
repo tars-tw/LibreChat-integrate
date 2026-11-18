@@ -177,6 +177,21 @@ describe('testTarsFileSystemConnection', () => {
     expect(result.unreadableDirs).toEqual(skipped);
   });
 
+  it('says how many files were listed when pwc_tars stopped before the end', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        buildResponse(200, { files: ['reports/q1.pdf'], truncated: true, file_limit: 300 }),
+      );
+
+    const result = await testTarsFileSystemConnection(
+      { ...smbInput, account: 'svc_files', password: 'smb-secret' },
+      BASE_URL,
+    );
+
+    expect(result.fileLimit).toBe(300);
+  });
+
   it('asks an NFS server for its exports instead of mounting /', async () => {
     const fetchMock = jest
       .spyOn(global, 'fetch')
