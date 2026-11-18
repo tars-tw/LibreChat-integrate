@@ -597,6 +597,11 @@ export type TTarsFileSystemConnectionTest = {
   /** NFS only; absent when the server would not list its exports. */
   exports?: string[];
   unreadableDirs: TTarsUnreadableDir[];
+  /**
+   * Set when pwc_tars stopped listing at this many files and the folder holds
+   * more: the test only proves the share can be reached, a sync reads them all.
+   */
+  fileLimit?: number;
 };
 
 /** System-wide ceilings the upload forms must respect. */
