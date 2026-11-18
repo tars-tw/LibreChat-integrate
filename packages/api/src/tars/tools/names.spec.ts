@@ -61,6 +61,17 @@ describe('withTarsSpreadsheetTools', () => {
       'tars_table_task',
     ]);
   });
+
+  it('adds the workbook layout only when an .xlsx is attached', () => {
+    expect(withTarsSpreadsheetTools([], ['list.csv', 'old.xls'])).not.toContain(
+      'tars_workbook_layout',
+    );
+    expect(withTarsSpreadsheetTools([], ['list.csv', '報價單.XLSX'])).toEqual([
+      'tars_data_schema',
+      'tars_data_query',
+      'tars_workbook_layout',
+    ]);
+  });
 });
 
 describe('tarsBuiltinToolCapability', () => {

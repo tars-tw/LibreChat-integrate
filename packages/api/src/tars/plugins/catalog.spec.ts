@@ -40,7 +40,12 @@ const mockBackend = (options: { manifestsStatus?: number } = {}) =>
               display_name: 'Text Stats',
               description: 'Count.',
             },
-            { name: 'summarize_text', kind: 'plugin', description: 'Summarize.' },
+            {
+              name: 'summarize_text',
+              kind: 'plugin',
+              description: 'Summarize.',
+              summary: '摘要一段文字。',
+            },
           ],
         },
       });
@@ -59,7 +64,7 @@ afterEach(() => {
 });
 
 describe('listTarsPluginCatalog', () => {
-  it('lists every loaded plugin as an agent-builder tool, built-ins left out', async () => {
+  it('lists every loaded plugin as an agent-builder tool, built-ins left out, by its summary when set', async () => {
     mockBackend();
     await expect(listTarsPluginCatalog('u1')).resolves.toEqual([
       {
@@ -71,7 +76,7 @@ describe('listTarsPluginCatalog', () => {
       {
         name: 'summarize_text',
         pluginKey: 'tars_plugin_summarize_text',
-        description: 'Summarize.',
+        description: '摘要一段文字。',
         authConfig: [],
       },
     ]);

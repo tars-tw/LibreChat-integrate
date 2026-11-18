@@ -170,6 +170,7 @@ export const TARS_BUILTIN_TOOLS = {
   tars_sql_query: 'sql_query',
   tars_data_schema: 'data_schema',
   tars_data_query: 'data_query',
+  tars_workbook_layout: 'workbook_layout',
   tars_create_chart: 'create_chart',
   tars_generate_file: 'generate_file',
   tars_table_task: 'run_table_task',

@@ -16,6 +16,8 @@ export type TarsToolToggles = Pick<
 const KNOWLEDGE_TOOL: TTarsBuiltinToolName = 'tars_knowledge_search';
 const SPREADSHEET_TOOLS: TTarsBuiltinToolName[] = ['tars_data_schema', 'tars_data_query'];
 const TABLE_TASK_TOOL: TTarsBuiltinToolName = 'tars_table_task';
+/** Shows an .xlsx cell by cell, so generate_file can fill it in place; csv / xls have no layout to show. */
+const WORKBOOK_LAYOUT_TOOL: TTarsBuiltinToolName = 'tars_workbook_layout';
 
 /** The tool whose presence on a turn means the chat switched the database on. */
 export const TARS_DATABASE_SWITCH_TOOL: TTarsBuiltinToolName = 'tars_sql_query';
@@ -68,12 +70,19 @@ export function isPersistableTarsTool(toolName: string | undefined | null): bool
 /**
  * Adds the spreadsheet tools for a conversation whose memory holds csv / xlsx
  * files. The row-by-row task only makes sense against knowledge bases, so it
- * comes along only when knowledge search is already on the turn.
+ * comes along only when knowledge search is already on the turn; the workbook
+ * layout only when one of `filenames` is an .xlsx.
  */
-export function withTarsSpreadsheetTools(tools: readonly string[]): string[] {
+export function withTarsSpreadsheetTools(
+  tools: readonly string[],
+  filenames: readonly string[] = [],
+): string[] {
   const next = new Set(tools);
   for (const tool of SPREADSHEET_TOOLS) {
     next.add(tool);
+  }
+  if (filenames.some((name) => name.toLowerCase().endsWith('.xlsx'))) {
+    next.add(WORKBOOK_LAYOUT_TOOL);
   }
   if (next.has(KNOWLEDGE_TOOL)) {
     next.add(TABLE_TASK_TOOL);

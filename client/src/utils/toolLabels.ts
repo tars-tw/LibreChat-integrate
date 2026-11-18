@@ -27,6 +27,7 @@ export const TOOL_FRIENDLY_NAME_KEYS: Record<string, TranslationKeys> = {
   tars_sql_query: 'com_ui_tars_trace_tool_sql_query',
   tars_data_schema: 'com_ui_tars_trace_tool_data_schema',
   tars_data_query: 'com_ui_tars_trace_tool_data_query',
+  tars_workbook_layout: 'com_ui_tars_trace_tool_workbook_layout',
   tars_create_chart: 'com_ui_tars_trace_tool_create_chart',
   tars_generate_file: 'com_ui_tars_trace_tool_generate_file',
   tars_table_task: 'com_ui_tars_trace_tool_run_table_task',

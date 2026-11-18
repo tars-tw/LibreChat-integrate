@@ -783,6 +783,29 @@ describe('buildTarsToolsContext', () => {
     expect(context).not.toContain('人資知識庫');
   });
 
+  it('teaches the workbook write-back only through pwc_tars’s guide, when pwc_tars lists the tool', async () => {
+    const guide =
+      '先用 workbook_layout 看儲存格位置，再用 generate_file 的 base_file + cell_writes 寫回原檔。';
+    const workbook = manifest(
+      'workbook_layout',
+      { file: { type: 'string' } },
+      [{ name: 'data_file_refs', required: true }],
+      guide,
+    );
+    const tools = ['tars_data_query', 'tars_workbook_layout'];
+    mockBackend(undefined, { status: 200, body: { success: true, data: { tools: [workbook] } } });
+    const mounted = [...(await resolveTarsBuiltinTools(tools))];
+    expect(mounted).toEqual(['tars_workbook_layout']);
+    await expect(buildTarsToolsContext({ tarsUserId: USER_ID, tools: mounted })).resolves.toContain(
+      '- tars_workbook_layout：先用 tars_workbook_layout 看儲存格位置，再用 tars_generate_file 的 base_file + cell_writes 寫回原檔。',
+    );
+
+    jest.restoreAllMocks();
+    invalidateTarsPluginManifestsCache();
+    mockBackend();
+    await expect(resolveTarsBuiltinTools(tools)).resolves.toEqual(new Set());
+  });
+
   it('is absent without TARS tools and says so for an unlinked account', async () => {
     await expect(
       buildTarsToolsContext({ tarsUserId: USER_ID, tools: ['web_search'] }),

@@ -20,7 +20,8 @@ export async function listTarsPluginCatalog(tarsUserId?: string | null): Promise
     return [...manifests.values()].map((manifest) => ({
       name: manifest.display_name,
       pluginKey: tarsPluginToolName(manifest.name),
-      description: manifest.description,
+      // The builder shows this to people; the model still gets `description`.
+      description: manifest.summary || manifest.description,
       authConfig: [],
     }));
   } catch (error) {

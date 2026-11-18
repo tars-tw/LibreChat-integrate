@@ -1567,7 +1567,10 @@ export async function initializeAgent(
    *  and saved agents alike: the files belong to the conversation, not the agent. */
   const tarsFiles = await tarsFilesPromise;
   if (tarsFiles != null && tarsFiles.dataFiles.length > 0) {
-    agent.tools = withTarsSpreadsheetTools(agent.tools ?? []);
+    agent.tools = withTarsSpreadsheetTools(
+      agent.tools ?? [],
+      tarsFiles.dataFiles.map((file) => file.filename),
+    );
   }
 
   const nativeWebSearch = swapNativeWebSearch(agent.provider, agent.tools ?? [], appConfig);
