@@ -1,43 +1,24 @@
 import { useMemo, useState, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Button, Dropdown, Skeleton, FilterInput, TooltipAnchor } from '@librechat/client';
-import { Plus, Cloud, User, FileText, BookText, ListFilter, ChevronDown } from 'lucide-react';
-import type { TTarsPrompt, TTarsPromptScope } from 'librechat-data-provider';
-import type { TranslationKeys } from '~/hooks';
-import type { Option } from '~/common';
+import { Plus, FileText, ChevronDown } from 'lucide-react';
+import { Button, Skeleton, FilterInput, TooltipAnchor } from '@librechat/client';
+import type { TTarsPrompt } from 'librechat-data-provider';
+import type { ChatPromptScope } from './scopes';
 import useTarsChatPrompts from '~/hooks/Tars/useTarsChatPrompts';
+import { CHAT_PROMPT_SCOPES, PROMPT_SCOPE_META } from './scopes';
 import AutoSendPrompt from '../buttons/AutoSendPrompt';
+import { usePromptCategoryFilter } from './filter';
+import CategoryFilter from './CategoryFilter';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 import Item from './Item';
 
-const ALL_CATEGORIES = '__all__';
-
-/** An agent binds no 專用腦, so the chat lists no brain tier. */
-const SCOPE_ORDER: TTarsPromptScope[] = ['knowledge_base', 'personal'];
-
-const SCOPE_META: Record<
-  TTarsPromptScope,
-  { icon: typeof Cloud; labelKey: TranslationKeys; colorClass: string }
-> = {
-  domain: { icon: Cloud, labelKey: 'com_ui_tars_prompts_domain', colorClass: 'text-blue-500' },
-  knowledge_base: {
-    icon: BookText,
-    labelKey: 'com_ui_tars_prompts_kb',
-    colorClass: 'text-purple-400',
-  },
-  personal: {
-    icon: User,
-    labelKey: 'com_ui_tars_prompts_personal',
-    colorClass: 'text-pwc-orange-600',
-  },
-};
-
 /**
  * The prompts side panel, backed by pwc_tars prompts. On a chat route a card
  * inserts/sends its prompt; on `/prompts` it opens the prompt for editing.
- * Prompts are grouped by tier (the selected agent's picked knowledge bases / personal),
- * matching the chat composer's prompt panel, with only the personal tier
+ * Prompts are grouped by tier (the selected agent's picked knowledge bases / personal)
+ * and narrowed by search and by one category across every tier, matching the chat
+ * composer's prompt panel, with only the personal tier
  * editable/deletable here — brain and knowledge-base prompts are shared and
  * insert-only.
  */
@@ -48,48 +29,25 @@ export default function TarsPromptsPanel() {
   const prompts = useMemo(() => data?.prompts ?? [], [data]);
 
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<string>(ALL_CATEGORIES);
-  const [collapsed, setCollapsed] = useState<Partial<Record<TTarsPromptScope, boolean>>>({});
+  const [collapsed, setCollapsed] = useState<Partial<Record<ChatPromptScope, boolean>>>({});
+  const { categories, selected, setSelected, matchesCategory } = usePromptCategoryFilter(prompts);
   const isChatRoute = location.pathname?.startsWith('/c/') ?? false;
-
-  const categories = useMemo(() => {
-    const unique = new Set<string>();
-    for (const prompt of prompts) {
-      const name = prompt.category?.trim();
-      if (name) {
-        unique.add(name);
-      }
-    }
-    return Array.from(unique).sort((a, b) => a.localeCompare(b));
-  }, [prompts]);
-
-  const filterOptions: Option[] = useMemo(
-    () => [
-      { value: ALL_CATEGORIES, label: localize('com_ui_all_proper') },
-      ...categories.map((name) => ({ value: name, label: name })),
-    ],
-    [categories, localize],
-  );
 
   const grouped = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const matches = (prompt: TTarsPrompt) => {
-      if (category !== ALL_CATEGORIES && (prompt.category ?? '') !== category) {
-        return false;
-      }
-      if (!term) {
-        return true;
-      }
-      return (
-        prompt.name.toLowerCase().includes(term) || prompt.content.toLowerCase().includes(term)
-      );
-    };
+    const matchesTerm = (prompt: TTarsPrompt) =>
+      !term ||
+      prompt.name.toLowerCase().includes(term) ||
+      prompt.content.toLowerCase().includes(term);
 
-    return SCOPE_ORDER.map((scope) => ({
+    return CHAT_PROMPT_SCOPES.map((scope) => ({
       scope,
-      items: prompts.filter((prompt) => (prompt.scope ?? 'personal') === scope && matches(prompt)),
+      items: prompts.filter(
+        (prompt) =>
+          (prompt.scope ?? 'personal') === scope && matchesCategory(prompt) && matchesTerm(prompt),
+      ),
     })).filter((group) => group.items.length > 0);
-  }, [prompts, category, search]);
+  }, [prompts, search, matchesCategory]);
 
   const resultCount = grouped.reduce((sum, group) => sum + group.items.length, 0);
   const searchResultsAnnouncement = useMemo(() => {
@@ -106,7 +64,7 @@ export default function TarsPromptsPanel() {
     [],
   );
 
-  const toggleGroup = useCallback((scope: TTarsPromptScope) => {
+  const toggleGroup = useCallback((scope: ChatPromptScope) => {
     setCollapsed((prev) => ({ ...prev, [scope]: !prev[scope] }));
   }, []);
 
@@ -118,16 +76,6 @@ export default function TarsPromptsPanel() {
             <div aria-live="polite" aria-atomic="true" className="sr-only">
               {searchResultsAnnouncement}
             </div>
-            <Dropdown
-              value={category}
-              onChange={setCategory}
-              options={filterOptions}
-              className="shrink-0 rounded-lg bg-transparent [&>button]:size-9"
-              icon={<ListFilter className="h-4 w-4" />}
-              label="Filter: "
-              ariaLabel={localize('com_ui_filter_prompts')}
-              iconOnly
-            />
             <FilterInput
               inputId="prompts-filter"
               label={localize('com_ui_filter_prompts_name')}
@@ -153,6 +101,9 @@ export default function TarsPromptsPanel() {
               }
             />
           </div>
+          {!isLoading && categories.length > 0 && (
+            <CategoryFilter categories={categories} selected={selected} onSelect={setSelected} />
+          )}
           <AutoSendPrompt />
         </div>
         <section className="flex-grow" aria-label={localize('com_ui_prompt_groups')}>
@@ -175,7 +126,7 @@ export default function TarsPromptsPanel() {
           )}
           {!isLoading &&
             grouped.map((group) => {
-              const { icon: Icon, labelKey, colorClass } = SCOPE_META[group.scope];
+              const { icon: Icon, labelKey, colorClass } = PROMPT_SCOPE_META[group.scope];
               const isCollapsed = collapsed[group.scope] ?? false;
               return (
                 <div key={group.scope} className="mb-2">

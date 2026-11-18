@@ -3685,6 +3685,7 @@
   "com_ui_tars_prompt_category_updated": "Updated the category of {{0}} prompt(s)",
   "com_ui_tars_prompts": "My Prompts",
   "com_ui_tars_prompts_category": "Category",
+  "com_ui_tars_prompts_category_filter": "Filter by category",
   "com_ui_tars_prompts_content": "Prompt content",
   "com_ui_tars_prompts_content_placeholder": "Enter prompt text, use {{0}} to define variables",
   "com_ui_tars_prompts_domain": "Specialized brain",

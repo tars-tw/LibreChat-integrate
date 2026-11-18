@@ -2587,6 +2587,7 @@
   "com_ui_tars_prompt_category_updated": "已更新 {{0}} 個提示的類別",
   "com_ui_tars_prompts": "我的提示",
   "com_ui_tars_prompts_category": "類別",
+  "com_ui_tars_prompts_category_filter": "依類別篩選",
   "com_ui_tars_prompts_content": "提示內容",
   "com_ui_tars_prompts_content_placeholder": "輸入提示文字，使用 {{0}} 來定義變數",
   "com_ui_tars_prompts_domain": "專用腦",
