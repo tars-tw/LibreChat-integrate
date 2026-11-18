@@ -92,6 +92,8 @@ export interface TarsPluginManifest {
   name: string;
   description: string;
   display_name: string;
+  /** One line for people picking the tool in a menu; empty means show `description`. */
+  summary: string;
   version: string;
   input_schema: JsonSchemaType;
   requires: string[];
@@ -137,6 +139,7 @@ const toManifest = (entry: ServiceToolEntry): TarsPluginManifest | undefined => 
     name: entry.name,
     description: entry.description ?? '',
     display_name: entry.display_name || entry.name,
+    summary: entry.summary ?? '',
     version: entry.version ?? '',
     input_schema: entry.input_schema ?? EMPTY_SCHEMA,
     requires: entry.requires ?? [],
