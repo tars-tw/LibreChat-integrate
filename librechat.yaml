@@ -64,6 +64,8 @@ endpoints:
       - context
     # Tool library items hidden from the agent builder, by pluginKey or builtin id. Display
     # only: agents that already carry one keep it. Remove a line and restart to offer it again.
+    # A TARS switch listed here (rag_agent, sql_agent, chart_agent, file_agent) also leaves the
+    # chat's tools menu (通用腦), and those chats stop mounting its tools.
     hiddenTools:
       - handoffs
       - traversaal_search

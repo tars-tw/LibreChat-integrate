@@ -926,7 +926,9 @@ endpoints:
   #   # graph definitions. Defaults to 10; hard cap 50.
   #   maxSubagents: 20
     # (optional) Tool library items to hide from the agent builder, by pluginKey or builtin id.
-    # Display only: agents that already carry one keep it and can still run it.
+    # Display only: agents that already carry one keep it and can still run it. A TARS switch
+    # listed here (rag_agent, sql_agent, chart_agent, file_agent) also leaves the chat's tools
+    # menu, and ephemeral chats stop mounting its tools.
     hiddenTools:
       - handoffs
       - traversaal_search

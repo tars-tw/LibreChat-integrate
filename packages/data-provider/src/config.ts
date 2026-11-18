@@ -1834,7 +1834,9 @@ export const agentsEndpointSchema = baseEndpointSchema
         .optional(),
       allowedProviders: z.array(z.union([z.string(), eModelEndpointSchema])).optional(),
       /** Tool library items to hide from the agent builder, by pluginKey or builtin id.
-       *  Display only: agents that already carry one keep it and can still run it. */
+       *  Display only: agents that already carry one keep it and can still run it. A TARS
+       *  switch listed here (rag_agent, sql_agent, chart_agent, file_agent) also leaves the
+       *  chat menu, and an ephemeral chat no longer mounts its tools. */
       hiddenTools: z.array(z.string()).optional(),
       /** Hides the agent builder's Inline/Prompt instructions toggle. Display only: an agent
        *  already linked to a prompt keeps the link and the toggle, its only way back to inline. */

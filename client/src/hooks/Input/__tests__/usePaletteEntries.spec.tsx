@@ -775,6 +775,19 @@ describe('usePaletteEntries', () => {
       expect(byKey.get('tool:tars_plugin_summarize')?.active).toBe(true);
     });
 
+    it('leaves out a switch listed in hiddenTools, pinned or on', () => {
+      mockContext = tarsContext({
+        chartAgent: toggle(true, true),
+        fileAgent: toggle(true),
+        agentsConfig: { capabilities: [], hiddenTools: ['chart_agent', 'file_agent'] },
+      });
+      const keys = keysOf(entries().result);
+      expect(keys).toContain('builtin:sql_agent');
+      expect(keys).toContain('builtin:rag_agent');
+      expect(keys).not.toContain('builtin:chart_agent');
+      expect(keys).not.toContain('builtin:file_agent');
+    });
+
     it("adds a saved agent's 知識庫檢索 chip only where the chat's own tools are off", () => {
       mockContext = tarsContext();
       mockTarsAgentKnowledgeEntry = {

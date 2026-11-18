@@ -253,7 +253,7 @@ export async function loadAddedAgent(
     tools.push(Tools.web_search);
   }
   /** pwc_tars's built-in tools per switch; see `loadEphemeralAgent`. */
-  tools.push(...tarsToolsForToggles(ephemeralAgent));
+  tools.push(...tarsToolsForToggles(ephemeralAgent, appConfig?.endpoints?.agents?.hiddenTools));
   /** pwc_tars plugin tools the user switched on; the brain's allowlist is
    *  enforced downstream in the capability filter (`resolveTarsPluginToolNames`). */
   for (const pluginName of tarsPluginNamesOf(ephemeralAgent?.tars_plugins)) {

@@ -40,9 +40,17 @@ export function tarsBuiltinToolCapability(toolName: string): AgentCapabilities |
   return isTarsBuiltinToolName(toolName) ? TOOL_CAPABILITIES[toolName] : undefined;
 }
 
-/** The pwc_tars tools the chat's switches put on a turn, each switch on its own. */
-export function tarsToolsForToggles(toggles?: TarsToolToggles | null): TTarsBuiltinToolName[] {
-  return TARS_TOOL_SWITCHES.filter((name) => toggles?.[name] === true).flatMap(
+/**
+ * The pwc_tars tools the chat's switches put on a turn, each switch on its own. A switch
+ * listed in `endpoints.agents.hiddenTools` is not offered in the chat menu, so it mounts
+ * nothing even when a toggle the browser remembers from before still sends it.
+ */
+export function tarsToolsForToggles(
+  toggles?: TarsToolToggles | null,
+  hiddenTools?: readonly string[],
+): TTarsBuiltinToolName[] {
+  const hidden = new Set(hiddenTools);
+  return TARS_TOOL_SWITCHES.filter((name) => toggles?.[name] === true && !hidden.has(name)).flatMap(
     (name) => TARS_SWITCH_TOOLS[name],
   );
 }
