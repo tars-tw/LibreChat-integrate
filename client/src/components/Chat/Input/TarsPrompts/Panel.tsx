@@ -1,40 +1,21 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Plus, ArrowLeft, BookText, User } from 'lucide-react';
+import { Plus, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Spinner, Button, TextareaAutosize } from '@librechat/client';
 import type {
   TTarsPrompt,
-  TTarsPromptScope,
   TTarsPromptInput,
   TTarsPromptKnowledgeBase,
 } from 'librechat-data-provider';
-import type { TranslationKeys } from '~/hooks';
+import type { ChatPromptScope } from '~/components/Prompts/Tars/scopes';
+import type { PromptCategory } from '~/components/Prompts/Tars/filter';
+import { CHAT_PROMPT_SCOPES, PROMPT_SCOPE_META } from '~/components/Prompts/Tars/scopes';
+import { usePromptCategoryFilter } from '~/components/Prompts/Tars/filter';
+import CategoryFilter from '~/components/Prompts/Tars/CategoryFilter';
 import { extractUniqueVariables, detectVariables } from '~/utils';
 import useTarsChatPrompts from '~/hooks/Tars/useTarsChatPrompts';
 import { useCreateTarsPromptMutation } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
-
-/** The tiers a chat lists: an agent binds no 專用腦, so there is no brain tier. */
-type ChatPromptScope = Exclude<TTarsPromptScope, 'domain'>;
-
-const SCOPE_ORDER: ChatPromptScope[] = ['knowledge_base', 'personal'];
-
-/** Colors match the prompts side panel's group headers. */
-const SCOPE_META: Record<
-  ChatPromptScope,
-  { icon: typeof User; labelKey: TranslationKeys; colorClass: string }
-> = {
-  knowledge_base: {
-    icon: BookText,
-    labelKey: 'com_ui_tars_prompts_kb',
-    colorClass: 'text-purple-400',
-  },
-  personal: {
-    icon: User,
-    labelKey: 'com_ui_tars_prompts_personal',
-    colorClass: 'text-pwc-orange-600',
-  },
-};
 
 /** Quick-create ("+") is hidden in TARS; prompts are created from the prompts side panel. */
 const SHOW_QUICK_CREATE = false;
@@ -49,10 +30,18 @@ type Mode = { kind: 'list' } | { kind: 'variables'; prompt: TTarsPrompt } | { ki
 
 /**
  * The "我的提示" panel: lists prompts grouped by tier (the selected agent's picked
- * knowledge bases / personal), fills `{{variables}}` before insertion, and offers
- * quick creation of personal or knowledge-base prompts.
+ * knowledge bases / personal), each group collapsible, narrowed by search and by
+ * one category across every tier; fills `{{variables}}` before insertion, and
+ * offers quick creation of personal or knowledge-base prompts.
  */
-function Panel({ onInsert }: { onInsert: (text: string) => void }) {
+function Panel({
+  onInsert,
+  maxHeight,
+}: {
+  onInsert: (text: string) => void;
+  /** The room above the composer button, so a tall list scrolls instead of leaving the screen. */
+  maxHeight?: number;
+}) {
   const { data, isLoading } = useTarsChatPrompts();
   const prompts = useMemo(() => data?.prompts ?? [], [data]);
   const knowledgeBases = useMemo(() => data?.knowledgeBases ?? [], [data]);
@@ -60,21 +49,30 @@ function Panel({ onInsert }: { onInsert: (text: string) => void }) {
 
   const [mode, setMode] = useState<Mode>({ kind: 'list' });
   const [search, setSearch] = useState('');
+  const [collapsed, setCollapsed] = useState<Partial<Record<ChatPromptScope, boolean>>>({});
+  const { categories, selected, setSelected, matchesCategory } = usePromptCategoryFilter(prompts);
 
   const grouped = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const matches = (prompt: TTarsPrompt) =>
+    const matchesTerm = (prompt: TTarsPrompt) =>
       !term ||
       prompt.name.toLowerCase().includes(term) ||
       (prompt.command ?? '').toLowerCase().includes(term) ||
       (prompt.category ?? '').toLowerCase().includes(term) ||
       prompt.content.toLowerCase().includes(term);
 
-    return SCOPE_ORDER.map((scope) => ({
+    return CHAT_PROMPT_SCOPES.map((scope) => ({
       scope,
-      items: prompts.filter((prompt) => (prompt.scope ?? 'personal') === scope && matches(prompt)),
+      items: prompts.filter(
+        (prompt) =>
+          (prompt.scope ?? 'personal') === scope && matchesCategory(prompt) && matchesTerm(prompt),
+      ),
     })).filter((group) => group.items.length > 0);
-  }, [prompts, search]);
+  }, [prompts, search, matchesCategory]);
+
+  const toggleGroup = useCallback((scope: ChatPromptScope) => {
+    setCollapsed((prev) => ({ ...prev, [scope]: !prev[scope] }));
+  }, []);
 
   const handleSelect = useCallback(
     (prompt: TTarsPrompt) => {
@@ -88,13 +86,21 @@ function Panel({ onInsert }: { onInsert: (text: string) => void }) {
   );
 
   return (
-    <div className="border-border-light bg-surface-tertiary-alt w-80 rounded-2xl border p-2 shadow-lg sm:w-96">
+    <div
+      className="border-border-light bg-surface-tertiary-alt flex w-80 flex-col rounded-2xl border p-2 shadow-lg sm:w-96"
+      style={{ maxHeight }}
+    >
       {mode.kind === 'list' && (
         <ListView
           isLoading={isLoading}
           grouped={grouped}
           search={search}
           setSearch={setSearch}
+          categories={categories}
+          selectedCategory={selected}
+          onSelectCategory={setSelected}
+          collapsed={collapsed}
+          onToggleGroup={toggleGroup}
           onSelect={handleSelect}
           onCreate={() => setMode({ kind: 'create' })}
         />
@@ -122,7 +128,7 @@ function Panel({ onInsert }: { onInsert: (text: string) => void }) {
 
 function PanelHeader({ title, onBack }: { title: string; onBack?: () => void }) {
   return (
-    <div className="mb-2 flex items-center gap-2 px-1">
+    <div className="mb-2 flex shrink-0 items-center gap-2 px-1">
       {onBack && (
         <button
           type="button"
@@ -143,6 +149,11 @@ function ListView({
   grouped,
   search,
   setSearch,
+  categories,
+  selectedCategory,
+  onSelectCategory,
+  collapsed,
+  onToggleGroup,
   onSelect,
   onCreate,
 }: {
@@ -150,6 +161,11 @@ function ListView({
   grouped: { scope: ChatPromptScope; items: TTarsPrompt[] }[];
   search: string;
   setSearch: (value: string) => void;
+  categories: PromptCategory[];
+  selectedCategory: string;
+  onSelectCategory: (category: string) => void;
+  collapsed: Partial<Record<ChatPromptScope, boolean>>;
+  onToggleGroup: (scope: ChatPromptScope) => void;
   onSelect: (prompt: TTarsPrompt) => void;
   onCreate: () => void;
 }) {
@@ -171,32 +187,46 @@ function ListView({
       );
     }
     return (
-      <div className="max-h-72 overflow-y-auto">
+      <div className="max-h-72 min-h-0 overflow-y-auto">
         {grouped.map((group) => {
-          const { icon: Icon, labelKey, colorClass } = SCOPE_META[group.scope];
+          const { icon: Icon, labelKey, colorClass } = PROMPT_SCOPE_META[group.scope];
+          const isCollapsed = collapsed[group.scope] ?? false;
           return (
             <div
               key={group.scope}
               className="border-border-light mb-1 border-t pt-1 first:border-t-0 first:pt-0"
             >
-              <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => onToggleGroup(group.scope)}
+                aria-expanded={!isCollapsed}
+                className="hover:bg-surface-hover flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold"
+              >
                 <Icon className={cn('size-3.5 shrink-0', colorClass)} aria-hidden={true} />
                 <span className={colorClass}>{localize(labelKey)}</span>
                 <span className="text-text-tertiary">({group.items.length})</span>
-              </div>
-              {group.items.map((prompt) => (
-                <button
-                  key={prompt.id}
-                  type="button"
-                  onClick={() => onSelect(prompt)}
-                  className="hover:bg-surface-hover flex w-full flex-col items-start gap-0.5 rounded-lg py-1.5 pr-2 pl-7 text-left"
-                >
-                  <span className="text-text-primary text-sm">{prompt.name}</span>
-                  {prompt.category && (
-                    <span className="text-text-secondary text-xs">{prompt.category}</span>
+                <ChevronDown
+                  className={cn(
+                    'text-text-secondary ml-auto size-3.5 shrink-0 transition-transform',
+                    isCollapsed && '-rotate-90',
                   )}
-                </button>
-              ))}
+                  aria-hidden={true}
+                />
+              </button>
+              {!isCollapsed &&
+                group.items.map((prompt) => (
+                  <button
+                    key={prompt.id}
+                    type="button"
+                    onClick={() => onSelect(prompt)}
+                    className="hover:bg-surface-hover flex w-full flex-col items-start gap-0.5 rounded-lg py-1.5 pr-2 pl-7 text-left"
+                  >
+                    <span className="text-text-primary text-sm">{prompt.name}</span>
+                    {prompt.category && (
+                      <span className="text-text-secondary text-xs">{prompt.category}</span>
+                    )}
+                  </button>
+                ))}
             </div>
           );
         })}
@@ -206,7 +236,7 @@ function ListView({
 
   return (
     <>
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-2 flex shrink-0 items-center gap-2">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -226,6 +256,14 @@ function ListView({
           </Button>
         )}
       </div>
+      {!isLoading && categories.length > 0 && (
+        <CategoryFilter
+          categories={categories}
+          selected={selectedCategory}
+          onSelect={onSelectCategory}
+          className="shrink-0"
+        />
+      )}
       {renderBody()}
     </>
   );
@@ -247,7 +285,7 @@ function VariablesView({
   return (
     <>
       <PanelHeader title={prompt.name} onBack={onBack} />
-      <div className="max-h-72 space-y-2 overflow-y-auto px-1">
+      <div className="max-h-72 min-h-0 space-y-2 overflow-y-auto px-1">
         {variables.map((variable) => (
           <div key={variable}>
             <label className="text-text-secondary mb-1 block text-xs">{variable}</label>
@@ -259,7 +297,7 @@ function VariablesView({
           </div>
         ))}
       </div>
-      <div className="mt-3 flex justify-end px-1">
+      <div className="mt-3 flex shrink-0 justify-end px-1">
         <Button
           type="button"
           variant="submit"

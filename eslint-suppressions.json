@@ -1480,12 +1480,12 @@
   },
   "client/src/components/Prompts/Tars/List.tsx": {
     "shadcn/no-restyle": {
-      "count": 3
+      "count": 1
     }
   },
   "client/src/components/Prompts/Tars/Panel.tsx": {
     "shadcn/no-restyle": {
-      "count": 3
+      "count": 1
     }
   },
   "client/src/components/Prompts/buttons/AutoSendPrompt.tsx": {

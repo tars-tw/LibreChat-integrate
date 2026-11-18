@@ -9,6 +9,8 @@ import Panel from './Panel';
 
 const GAP = 8;
 const MAX_PANEL_WIDTH = 384;
+/** Below this the panel would be unusable, so it may run past the top instead. */
+const MIN_PANEL_HEIGHT = 160;
 
 /**
  * "我的提示" entry point in the chat composer. Opens a panel listing the
@@ -26,7 +28,11 @@ function PromptsButton({
 }) {
   const localize = useLocalize();
   const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState<{ left: number; bottom: number } | null>(null);
+  const [coords, setCoords] = useState<{
+    left: number;
+    bottom: number;
+    maxHeight: number;
+  } | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const isTarsUser = useIsTarsLinkedUser();
@@ -35,7 +41,8 @@ function PromptsButton({
     const rect = anchorRef.current?.getBoundingClientRect();
     if (rect) {
       const left = Math.max(GAP, Math.min(rect.left, window.innerWidth - MAX_PANEL_WIDTH - GAP));
-      setCoords({ left, bottom: window.innerHeight - rect.top + GAP });
+      const maxHeight = Math.max(MIN_PANEL_HEIGHT, rect.top - GAP * 2);
+      setCoords({ left, bottom: window.innerHeight - rect.top + GAP, maxHeight });
     }
   }, []);
 
@@ -99,7 +106,7 @@ function PromptsButton({
             style={{ left: coords.left, bottom: coords.bottom }}
             onClick={(e) => e.stopPropagation()}
           >
-            <Panel onInsert={handleInsert} />
+            <Panel onInsert={handleInsert} maxHeight={coords.maxHeight} />
           </div>,
           document.body,
         )}
