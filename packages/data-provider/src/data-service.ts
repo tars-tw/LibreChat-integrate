@@ -1454,6 +1454,10 @@ export const resetTarsUserPassword = (
   return request.post(endpoints.tarsUserResetPassword(id), { password });
 };
 
+export const unlockTarsUserLogin = (id: string): Promise<{ user: t.TTarsUser }> => {
+  return request.post(endpoints.tarsUserUnlockLogin(id));
+};
+
 export const importTarsUsers = (data: FormData): Promise<t.TTarsUserImportResult> => {
   return request.postMultiPart(endpoints.tarsUsersImport(), data);
 };

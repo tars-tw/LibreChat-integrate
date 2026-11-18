@@ -14,6 +14,7 @@ import {
   updateTarsUser,
   sendTarsHeartbeat,
   resetTarsUserPassword,
+  unlockTarsUserLogin,
   bulkUpdateTarsUsers,
   bulkDeleteTarsUsers,
   fetchTarsAdWhitelist,
@@ -229,6 +230,20 @@ describe('user mutations', () => {
       new_password: 'new-secret',
       operator_id: 'admin',
     });
+  });
+
+  it('unlocks a sign-in on pwc_tars with the operator stamped', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { user: account('u 1', 'alice') }));
+
+    await expect(unlockTarsUserLogin('admin', 'u 1', BASE_URL)).resolves.toMatchObject({
+      username: 'alice',
+    });
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      `${BASE_URL}/api/user_settings/unlock_login/u%201`,
+    );
+    expect(parseBody(fetchMock, 0)).toEqual({ unlocked_by: 'admin' });
   });
 });
 

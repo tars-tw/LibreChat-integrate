@@ -161,6 +161,11 @@ webSearch:
 # download them from LibreChat per call. `none` stores the bytes only, so the whole sheet is
 # never extracted into the prompt as text as well.
 fileConfig:
+  # Lets 我的檔案 / the agent builder delete a file that still has a copy in the Code
+  # Interpreter sandbox (code output, or an upload sent there) or the vector store, removing
+  # that copy too. Off (upstream default), such files fail with "部分檔案無法刪除".
+  # Safe here: one LibreChat instance, and Code Interpreter is always deployed.
+  retainedFileCleanup: true
   defaultLLMDeliveryPath:
     overrides:
       text/csv: none

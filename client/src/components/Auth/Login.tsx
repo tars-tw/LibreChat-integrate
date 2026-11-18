@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { OpenIDIcon, useToastContext } from '@librechat/client';
-import { ErrorTypes, registerPage } from 'librechat-data-provider';
 import { useOutletContext, useSearchParams, useLocation } from 'react-router-dom';
+import { ErrorTypes, registerPage, TARS_LOGIN_INVALID_PASSWORD } from 'librechat-data-provider';
+import type { TTarsLoginAttempt } from 'librechat-data-provider';
 import type { TLoginLayoutContext } from '~/common';
 import type { TranslationKeys } from '~/hooks';
 import { getLoginError, persistRedirectToSession } from '~/utils';
@@ -23,10 +24,27 @@ const oauthErrorKeys: Record<string, TranslationKeys> = {
   [ErrorTypes.AUTH_BANNED]: 'com_auth_error_login_ban',
 };
 
+/** pwc_tars's lockout state on a refused local sign-in, shown in place of the generic message. */
+const tarsLoginAttemptText = (
+  attempt: TTarsLoginAttempt,
+  localize: ReturnType<typeof useLocalize>,
+): string => {
+  if (attempt.code === TARS_LOGIN_INVALID_PASSWORD) {
+    return localize('com_auth_tars_password_remaining', { count: attempt.remainingAttempts ?? 0 });
+  }
+  if (attempt.retryAfterSeconds == null) {
+    return localize('com_auth_tars_account_locked_later');
+  }
+  return localize('com_auth_tars_account_locked', {
+    minutes: Math.max(1, Math.ceil(attempt.retryAfterSeconds / 60)),
+  });
+};
+
 function Login() {
   const localize = useLocalize();
   const { showToast } = useToastContext();
-  const { error, setError, login, tarsLicenseStatus, setTarsLicenseStatus } = useAuthContext();
+  const { error, setError, login, tarsLicenseStatus, setTarsLicenseStatus, tarsLoginAttempt } =
+    useAuthContext();
   const { startupConfig } = useOutletContext<TLoginLayoutContext>();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -115,7 +133,11 @@ function Login() {
   return (
     <>
       {error != null && tarsLicenseStatus == null && (
-        <ErrorMessage>{localize(getLoginError(error))}</ErrorMessage>
+        <ErrorMessage>
+          {tarsLoginAttempt != null
+            ? tarsLoginAttemptText(tarsLoginAttempt, localize)
+            : localize(getLoginError(error))}
+        </ErrorMessage>
       )}
       {startupConfig?.emailLoginEnabled === true &&
         (startupConfig.tarsAuth === true ? (

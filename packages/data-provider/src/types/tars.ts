@@ -1331,6 +1331,12 @@ export type TTarsUser = {
   roles_names?: string | null;
   /** Marks the signed-in admin's own row on the user admin listing. */
   is_self?: boolean;
+  /** Wrong passwords in a row since the last sign-in (local accounts only). */
+  login_fail_count?: number;
+  /** pwc_tars refuses sign-ins until the lock runs out or an admin lifts it. */
+  is_login_locked?: boolean;
+  /** Seconds left on the lock when the listing was read. */
+  login_lock_seconds?: number;
 };
 
 export type TTarsUsersResponse = {

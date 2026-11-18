@@ -35,6 +35,9 @@ export interface TarsAccount {
   roles_names?: string | null;
   /** Set by {@link fetchTarsUsersForAdmin} on the row that is the calling admin's own account. */
   is_self?: boolean;
+  login_fail_count?: number;
+  is_login_locked?: boolean;
+  login_lock_seconds?: number;
 }
 
 /** A pwc_tars user group (`SysUserGroup.to_dict()`). */
@@ -349,6 +352,23 @@ export async function resetTarsUserPassword(
     body: { user_id: userId, new_password: newPassword, operator_id: tarsId },
     baseUrl,
   });
+}
+
+/** Lifts pwc_tars's sign-in lock on an account and clears its wrong-password count. */
+export async function unlockTarsUserLogin(
+  tarsId: string,
+  userId: string,
+  baseUrl?: string,
+): Promise<TarsAccount> {
+  const data = await tarsFetch<{ user: TarsAccount }>(
+    `/api/user_settings/unlock_login/${encodeURIComponent(userId)}`,
+    {
+      method: 'POST',
+      body: { unlocked_by: tarsId },
+      baseUrl,
+    },
+  );
+  return data.user;
 }
 
 /**

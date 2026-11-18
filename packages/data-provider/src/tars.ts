@@ -17,6 +17,33 @@ export const TARS_MCP_PUBLIC_SHARE_BLOCKED = 'TARS_MCP_PUBLIC_SHARE_BLOCKED';
 /** pwc_tars could not answer, so the share stays refused. */
 export const TARS_MCP_SHARE_CHECK_UNAVAILABLE = 'TARS_MCP_SHARE_CHECK_UNAVAILABLE';
 
+/** A wrong password on a local pwc_tars account, with the tries left before it locks. */
+export const TARS_LOGIN_INVALID_PASSWORD = 'TARS_LOGIN_INVALID_PASSWORD';
+/** pwc_tars locked the account after too many wrong passwords in a row. */
+export const TARS_LOGIN_ACCOUNT_LOCKED = 'TARS_LOGIN_ACCOUNT_LOCKED';
+
+/** What a refused sign-in tells the login page about pwc_tars's lockout, sent as the failure body. */
+export type TTarsLoginAttempt = {
+  code: typeof TARS_LOGIN_INVALID_PASSWORD | typeof TARS_LOGIN_ACCOUNT_LOCKED;
+  remainingAttempts?: number;
+  retryAfterSeconds?: number;
+};
+
+/** Reads the lockout state off a failed login's body; `undefined` for every other refusal. */
+export const toTarsLoginAttempt = (
+  data?: { code?: string; remainingAttempts?: number; retryAfterSeconds?: number } | null,
+): TTarsLoginAttempt | undefined => {
+  const code = data?.code;
+  if (code !== TARS_LOGIN_INVALID_PASSWORD && code !== TARS_LOGIN_ACCOUNT_LOCKED) {
+    return undefined;
+  }
+  return {
+    code,
+    remainingAttempts: data?.remainingAttempts,
+    retryAfterSeconds: data?.retryAfterSeconds,
+  };
+};
+
 /**
  * Shared pwc_tars data-source facts. Both the form in the browser and the
  * proxy in `packages/api` validate against these, so the two can never drift.

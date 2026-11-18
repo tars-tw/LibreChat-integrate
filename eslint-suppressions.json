@@ -506,9 +506,6 @@
     }
   },
   "client/src/components/Admin/Tars/Users/Manager.tsx": {
-    "design/disabled-recipe": {
-      "count": 1
-    },
     "shadcn/no-arbitrary-values": {
       "count": 3
     },

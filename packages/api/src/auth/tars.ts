@@ -1,4 +1,6 @@
 import { logger } from '@librechat/data-schemas';
+import { TARS_LOGIN_ACCOUNT_LOCKED, TARS_LOGIN_INVALID_PASSWORD } from 'librechat-data-provider';
+import type { TTarsLoginAttempt } from 'librechat-data-provider';
 
 /**
  * A pwc_tars menu node — the unit of authorization in pwc_tars (a UI feature,
@@ -160,6 +162,52 @@ interface TarsLoginErrorResponse {
   message?: string;
   license_status?: string;
   error_code?: string;
+  remaining_attempts?: number;
+  retry_after_seconds?: number;
+}
+
+const toCount = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : undefined;
+
+/**
+ * The lockout state pwc_tars put on a refused local sign-in: the tries left after a wrong
+ * password, or how long the account stays locked. `undefined` for every other refusal
+ * (unknown user, LDAP, a pwc_tars without the lockout), which keeps the generic message.
+ */
+export function readTarsLoginAttempt(
+  body: TarsLoginErrorResponse | null,
+): TTarsLoginAttempt | undefined {
+  if (body?.error_code === 'ACCOUNT_LOCKED') {
+    return {
+      code: TARS_LOGIN_ACCOUNT_LOCKED,
+      retryAfterSeconds: toCount(body.retry_after_seconds),
+    };
+  }
+  const remainingAttempts = toCount(body?.remaining_attempts);
+  if (body?.error_code === 'INVALID_PASSWORD' && remainingAttempts != null) {
+    return { code: TARS_LOGIN_INVALID_PASSWORD, remainingAttempts };
+  }
+  return undefined;
+}
+
+/**
+ * Thrown by {@link authenticateTars} when pwc_tars refused the password and reported how its
+ * lockout stands, so `tarsStrategy` can hand that to the login page instead of the generic
+ * auth-failed message.
+ */
+export class TarsLoginAttemptError extends Error {
+  public readonly attempt: TTarsLoginAttempt;
+
+  constructor(attempt: TTarsLoginAttempt) {
+    super(attempt.code);
+    this.name = 'TarsLoginAttemptError';
+    this.attempt = attempt;
+  }
+}
+
+/** The failure body `tarsStrategy` sends for a {@link TarsLoginAttemptError}; `undefined` for any other error. */
+export function tarsLoginAttemptOf(error: unknown): TTarsLoginAttempt | undefined {
+  return error instanceof TarsLoginAttemptError ? error.attempt : undefined;
 }
 
 /**
@@ -193,6 +241,8 @@ export class TarsLicenseError extends Error {
  *          Connection/timeout failures throw so the strategy can surface a 5xx.
  * @throws {TarsLicenseError} when the 401 is pwc_tars reporting no valid
  *         licence rather than rejecting the credentials themselves.
+ * @throws {TarsLoginAttemptError} when pwc_tars refused a local password and reported
+ *         the tries left or the lock on the account.
  */
 export async function authenticateTars(
   username: string,
@@ -224,6 +274,10 @@ export async function authenticateTars(
           errorBody.license_status ?? 'deactivate',
           errorBody.error_code,
         );
+      }
+      const attempt = readTarsLoginAttempt(errorBody);
+      if (attempt) {
+        throw new TarsLoginAttemptError(attempt);
       }
       return null;
     }
