@@ -14,6 +14,20 @@ const imageTool: TPlugin = {
   authConfig: [{ authField: 'IMAGE_GEN_OAI_API_KEY', label: 'Key', description: 'Key' }],
 };
 
+const geminiTool: TPlugin = {
+  name: 'Gemini Image Tools',
+  pluginKey: 'gemini_image_gen',
+  description: 'Generate images using Gemini',
+  authConfig: [
+    {
+      authField: 'GEMINI_API_KEY||GOOGLE_KEY||GOOGLE_SERVICE_KEY_FILE',
+      label: 'Key',
+      description: 'Key',
+      optional: true,
+    },
+  ],
+};
+
 const otherTool: TPlugin = {
   name: 'Wolfram',
   pluginKey: 'wolfram',
@@ -36,6 +50,7 @@ afterEach(() => {
   jest.restoreAllMocks();
   delete process.env.TARS_AUTH_URL;
   delete process.env.IMAGE_GEN_OAI_API_KEY;
+  delete process.env.GEMINI_API_KEY;
 });
 
 describe('withTarsToolKeys', () => {
@@ -65,6 +80,31 @@ describe('withTarsToolKeys', () => {
     expect(image.missingKeyProvider).toBe('OpenAI');
   });
 
+  it('reads the Gemini key from KEY_GEMINI_API', async () => {
+    respondWith([{ key: 'KEY_GEMINI_API', value: 'AIza-live' }]);
+
+    const [gemini] = await withTarsToolKeys([geminiTool]);
+
+    expect(gemini.authConfig).toBeUndefined();
+    expect(gemini.authenticated).toBe(true);
+    expect(gemini.missingKeyProvider).toBeUndefined();
+  });
+
+  it.each([
+    ['unset', []],
+    ['empty', [{ key: 'KEY_GEMINI_API', value: '' }]],
+    ['DEFAULT', [{ key: 'KEY_GEMINI_API', value: 'default' }]],
+  ])('names Gemini when KEY_GEMINI_API is %s, whatever env holds', async (_label, rows) => {
+    process.env.GEMINI_API_KEY = 'AIza-env';
+    respondWith(rows);
+
+    const [gemini] = await withTarsToolKeys([geminiTool]);
+
+    expect(gemini.authConfig).toBeUndefined();
+    expect(gemini.authenticated).toBeUndefined();
+    expect(gemini.missingKeyProvider).toBe('Gemini');
+  });
+
   it('leaves the listing untouched while pwc_tars is unconfigured', async () => {
     delete process.env.TARS_AUTH_URL;
     const fetchSpy = jest.spyOn(global, 'fetch');
@@ -83,6 +123,21 @@ describe('loadTarsToolAuthValues', () => {
     await expect(loadTarsToolAuthValues('image_gen_oai')).resolves.toEqual({
       IMAGE_GEN_OAI_API_KEY: 'sk-live',
     });
+  });
+
+  it('hands KEY_GEMINI_API to the Gemini tool as GEMINI_API_KEY', async () => {
+    process.env.GEMINI_API_KEY = 'AIza-env';
+    respondWith([{ key: 'KEY_GEMINI_API', value: 'AIza-live' }]);
+
+    await expect(loadTarsToolAuthValues('gemini_image_gen')).resolves.toEqual({
+      GEMINI_API_KEY: 'AIza-live',
+    });
+  });
+
+  it('throws for Gemini when KEY_GEMINI_API is DEFAULT', async () => {
+    respondWith([{ key: 'KEY_GEMINI_API', value: 'DEFAULT' }]);
+
+    await expect(loadTarsToolAuthValues('gemini_image_gen')).rejects.toThrow('KEY_GEMINI_API');
   });
 
   it('throws when the key is unset rather than falling back to env', async () => {

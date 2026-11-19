@@ -213,8 +213,13 @@ const loadTools = async ({
       });
     },
     gemini_image_gen: async (_toolContextMap, dynamicToolContextMap) => {
-      const authFields = getAuthFields('gemini_image_gen');
-      const authValues = await loadAuthValues({ userId: user, authFields, throwError: false });
+      const authValues =
+        (await loadTarsToolAuthValues('gemini_image_gen')) ??
+        (await loadAuthValues({
+          userId: user,
+          authFields: getAuthFields('gemini_image_gen'),
+          throwError: false,
+        }));
       const imageFiles = options.tool_resources?.[EToolResources.image_edit]?.files ?? [];
       const toolContext = buildImageToolContext({
         imageFiles,
