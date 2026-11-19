@@ -21,6 +21,10 @@ const TARS_KEYED_TOOLS = new Map<string, TarsKeyedTool>([
     'image_gen_oai',
     { sysConfigKey: 'KEY_OPEN_AI_API', authField: 'IMAGE_GEN_OAI_API_KEY', provider: 'OpenAI' },
   ],
+  [
+    'gemini_image_gen',
+    { sysConfigKey: 'KEY_GEMINI_API', authField: 'GEMINI_API_KEY', provider: 'Gemini' },
+  ],
 ]);
 
 function getTarsKeyedTool(pluginKey: string): TarsKeyedTool | undefined {
