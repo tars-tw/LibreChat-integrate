@@ -271,7 +271,7 @@ export default function UserManager() {
   };
 
   const sortableHeader = (field: SortField, label: string) => (
-    <th className="px-3 py-2 font-medium">
+    <th className="px-3 py-2 font-medium whitespace-nowrap">
       <button
         type="button"
         onClick={() => toggleSort(field)}
@@ -433,7 +433,7 @@ export default function UserManager() {
                     <td className="text-text-secondary px-3 py-2">
                       {isAdAccount(user) ? '✓' : ''}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 whitespace-nowrap">
                       <span
                         title={
                           user.last_login_at

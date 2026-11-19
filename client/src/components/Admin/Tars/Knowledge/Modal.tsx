@@ -432,7 +432,7 @@ export default function KnowledgeModal({
                     value={form.description}
                     onChange={(event) => set('description', event.target.value)}
                     placeholder={localize('com_ui_tars_kb_description_placeholder')}
-                    className="border-border-light bg-surface-primary text-text-primary focus:ring-border-heavy w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                    className="border-border-control text-text-primary focus:ring-border-heavy w-full rounded-lg border bg-transparent px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                   />
                 </div>
               </div>

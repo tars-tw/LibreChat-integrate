@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Globe, Plus, Search } from 'lucide-react';
 import {
+  Alert,
   Button,
   Dropdown,
   Input,
@@ -167,9 +168,9 @@ export default function WebsiteManager() {
                 <p className="text-text-secondary text-sm">
                   {localize('com_ui_tars_web_delete_confirm_named', { 0: deleting.name ?? '' })}
                 </p>
-                <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+                <Alert variant="warning" role="note">
                   {localize('com_ui_tars_web_delete_warning')}
-                </p>
+                </Alert>
                 {boundIds(deleting).length > 0 && (
                   <UnbindWarning
                     label={localize('com_ui_tars_web_delete_kb_relations')}

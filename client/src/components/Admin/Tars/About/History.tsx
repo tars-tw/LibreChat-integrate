@@ -88,7 +88,7 @@ export default function History({
             value={query}
             onChange={(event) => handleQueryChange(event.target.value)}
             placeholder={localize('com_ui_tars_about_search_placeholder')}
-            className="border-border-light bg-surface-primary text-text-primary w-full rounded-md border px-2 py-1 text-xs outline-none"
+            className="border-border-control text-text-primary w-full rounded-md border bg-transparent px-2 py-1 text-xs outline-none"
           />
         </div>
 
@@ -136,7 +136,7 @@ export default function History({
               setPageSize(Number(event.target.value));
               setPage(1);
             }}
-            className="border-border-light bg-surface-primary text-text-secondary rounded-md border px-1 py-0.5 text-xs"
+            className="border-border-control text-text-secondary rounded-md border bg-transparent px-1 py-0.5 text-xs"
           >
             {PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>

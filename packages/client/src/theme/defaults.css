@@ -502,6 +502,9 @@ html {
   --link-prose: var(--text-primary);
   --accent-primary: var(--pwc-orange-400);
   --accent-primary-hover: var(--pwc-orange-300);
+  /* TARS: the light pwc-orange-100 tint glared on the dark page; this one keeps
+     `text-brand-primary` above 4.5:1 on it. */
+  --brand-primary-subtle: 67 27 9;
   --header-primary: var(--gray-700);
   --header-hover: var(--gray-600);
   --header-button-hover: var(--gray-700);
@@ -536,9 +539,9 @@ html {
   --prose-bullet: var(--border-medium);
   --prose-quote-bar: var(--border-medium);
   --surface-qr: var(--white);
-  /* One step off the page instead of two: in dark the edge only has to separate
-     a surface from the one behind it, and a brighter line reads as a seam. */
-  --border-light: var(--gray-800);
+  /* TARS: the dark page (`presentation`) and the secondary surfaces are gray-800, so an edge on
+     gray-800 vanished into them; gray-650 keeps cards, panels and tables outlined. */
+  --border-light: var(--gray-650);
   --border-medium-alt: var(--gray-650);
   --border-medium: var(--gray-650);
   --border-heavy: var(--gray-500);
@@ -546,7 +549,8 @@ html {
   /* Dark draws a visible edge: the scrim and the drawer are both near-black. */
   --drawer-edge: var(--border-xheavy);
   --border-destructive: var(--red-500);
-  --border-control: var(--gray-800);
+  /* TARS: a field is clear by default, so its edge is all that marks it on the dark page. */
+  --border-control: var(--gray-500);
   --border-field-focus: var(--focus-control);
   --field-fill: var(--surface-primary);
   --field-text: var(--text-primary);

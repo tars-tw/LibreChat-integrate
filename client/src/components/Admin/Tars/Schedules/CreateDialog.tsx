@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Button,
   Dropdown,
   Label,
@@ -106,9 +107,9 @@ export default function ScheduleCreateDialog({
     }
     if (candidates.length === 0) {
       return (
-        <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+        <Alert variant="neutral" role="note">
           {localize('com_ui_tars_sched_no_candidates')}
-        </p>
+        </Alert>
       );
     }
     return (

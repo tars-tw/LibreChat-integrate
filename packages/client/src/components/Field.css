@@ -20,7 +20,7 @@ html[data-input-modality='pointer'] :is(.lc-field, .lc-own-focus):focus-visible 
 
 html[data-input-modality='pointer'] .lc-field:not([aria-invalid='true']):focus,
 html[data-input-modality='pointer'] .lc-field:not([aria-invalid='true']):focus-visible {
-  border-color: rgb(var(--border-light) / var(--border-light-alpha, 1));
+  border-color: rgb(var(--border-control));
 }
 
 @container style(--theme-field-focus-style: border) {

@@ -123,7 +123,7 @@ export default function McpLogsTab() {
                 {pageLogs.map((log) => (
                   <tr key={log.id} className="border-border-light hover:bg-surface-hover border-t">
                     <td className="px-3 py-2">
-                      <span className="text-text-primary block font-mono text-xs break-words">
+                      <span className="text-text-primary block font-medium break-words">
                         {log.tool_name}
                       </span>
                       {log.error_message != null && log.error_message !== '' && (
@@ -152,7 +152,7 @@ export default function McpLogsTab() {
                     <td className="text-text-secondary px-3 py-2">
                       {log.duration_ms != null ? `${log.duration_ms} ms` : '—'}
                     </td>
-                    <td className="text-text-secondary truncate px-3 py-2 text-xs">
+                    <td className="text-text-secondary truncate px-3 py-2">
                       {log.created_at != null ? new Date(log.created_at).toLocaleString() : '—'}
                     </td>
                   </tr>

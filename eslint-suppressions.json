@@ -96,7 +96,7 @@
   },
   "client/src/components/Admin/Tars/Groups/Manager.tsx": {
     "shadcn/no-arbitrary-values": {
-      "count": 4
+      "count": 2
     },
     "shadcn/no-raw-colors": {
       "count": 2
@@ -173,10 +173,10 @@
       "count": 3
     },
     "shadcn/no-raw-colors": {
-      "count": 4
+      "count": 2
     },
     "shadcn/no-restyle": {
-      "count": 7
+      "count": 5
     }
   },
   "client/src/components/Admin/Tars/Knowledge/Detail/FileSystemImportDialog.tsx": {
@@ -355,7 +355,7 @@
       "count": 3
     },
     "shadcn/no-arbitrary-values": {
-      "count": 8
+      "count": 2
     },
     "shadcn/no-raw-colors": {
       "count": 3

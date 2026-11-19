@@ -192,7 +192,7 @@ export default function Picker({
           onClick={() => setOpen((current) => !current)}
           aria-haspopup="listbox"
           aria-expanded={open}
-          className={`border-border-light bg-surface-primary text-text-primary flex w-full items-center justify-between gap-2 rounded-md border px-3 text-left text-sm disabled:opacity-50 ${
+          className={`border-border-control text-text-primary flex w-full items-center justify-between gap-2 rounded-lg border bg-transparent px-3 text-left text-sm disabled:opacity-50 ${
             chips ? 'min-h-10 py-1.5' : 'h-10'
           }`}
         >

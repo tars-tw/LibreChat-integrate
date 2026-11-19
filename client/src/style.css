@@ -1325,6 +1325,9 @@ html {
 .dark body,
 .dark html {
   background-color: rgb(var(--page-canvas));
+  /* TARS: without an ink of its own, a control with no text color (a ghost button, a bare
+     icon) inherited the UA's black and vanished on the dark page. */
+  color: rgb(var(--text-primary));
 }
 #__next,
 #root {
@@ -2046,7 +2049,10 @@ html[data-input-modality='keyboard']
 .dark input[type='datetime-local'],
 .dark input[type='month'],
 .dark input[type='time'],
-.dark input[type='week'] {
+.dark input[type='week'],
+.dark input[type='checkbox'],
+.dark input[type='radio'],
+.dark select {
   color-scheme: dark;
 }
 

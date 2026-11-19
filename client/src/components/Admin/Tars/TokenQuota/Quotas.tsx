@@ -268,7 +268,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
       {!isLoading && filteredQuotas.length > 0 && (
         <>
           <div className="border-border-light overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[68rem] table-fixed text-sm">
+            <table className="w-full min-w-[60rem] table-fixed text-sm">
               <thead className="bg-surface-secondary text-text-secondary text-left">
                 <tr>
                   <th className="w-8 px-3 py-2">
@@ -281,7 +281,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                   <th className="w-[15%] px-3 py-2 font-medium">
                     {localize('com_ui_tars_quota_col_user')}
                   </th>
-                  <th className="w-[18%] px-3 py-2 font-medium">
+                  <th className="w-[14%] px-3 py-2 font-medium">
                     {localize('com_ui_tars_quota_col_group')}
                   </th>
                   <th className="w-[8%] px-3 py-2 font-medium">
@@ -290,22 +290,22 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                   <th className="w-[10%] px-3 py-2 text-right font-medium">
                     {localize('com_ui_tars_quota_custom_limit')}
                   </th>
-                  <th className="w-[10%] px-3 py-2 font-medium">
+                  <th className="w-[11%] px-3 py-2 font-medium">
                     {localize('com_ui_tars_quota_used')}
                   </th>
                   <th className="w-[8%] px-3 py-2 font-medium">
                     {localize('com_ui_tars_quota_col_reset')}
                   </th>
-                  <th className="w-[8%] px-3 py-2 text-right font-medium">
+                  <th className="w-[7%] px-3 py-2 text-right font-medium">
                     {localize('com_ui_tars_quota_warning_threshold')}
                   </th>
                   <th className="w-[10%] px-3 py-2 text-right font-medium">
                     {localize('com_ui_tars_quota_recent_col')}
                   </th>
-                  <th className="w-[6%] px-3 py-2 font-medium">
+                  <th className="w-[7%] px-3 py-2 font-medium">
                     {localize('com_ui_tars_quota_col_status')}
                   </th>
-                  <th className="w-[6%] px-3 py-2 text-right font-medium">
+                  <th className="w-[9%] px-3 py-2 text-right font-medium">
                     {localize('com_ui_actions')}
                   </th>
                 </tr>
@@ -374,7 +374,7 @@ export default function Quotas({ options }: { options: TTarsTokenPrepareData | u
                         {quota.custom_limit == null && '—'}
 
                         {quota.custom_limit != null && capOf(quota.custom_limit) == null && (
-                          <span className="bg-status-warning-subtle text-syntax-title dark:bg-status-neutral/50 dark:text-status-warning-subtle inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs whitespace-nowrap">
+                          <span className="bg-status-warning-subtle text-status-warning inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs whitespace-nowrap">
                             {localize('com_ui_tars_quota_unlimited')}
                           </span>
                         )}

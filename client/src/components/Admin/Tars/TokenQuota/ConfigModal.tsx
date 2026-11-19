@@ -29,7 +29,7 @@ import LimitInput, { toLimitField, fromLimitField, isValidLimitField } from './L
 import { useLocalize } from '~/hooks';
 
 const SELECT_CLASS =
-  'h-10 w-full rounded-md border border-border-light bg-surface-primary px-3 text-sm text-text-primary disabled:opacity-50';
+  'h-10 w-full rounded-lg border border-border-control bg-transparent px-3 text-sm text-text-primary disabled:opacity-50';
 
 interface ConfigForm {
   domainId: string;

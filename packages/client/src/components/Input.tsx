@@ -32,6 +32,11 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 /** Types whose native picker otherwise only opens from the small calendar/clock icon. */
 const PICKER_TYPES = new Set(['date', 'datetime-local', 'month', 'time', 'week']);
 
+/** Preflight strips the native file button down to bare text, so a file field draws it as a
+ *  secondary button again; otherwise "Choose File" reads as the field's value, not a control. */
+const FILE_CONTROL =
+  'cursor-pointer file:me-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-surface-tertiary file:px-3 file:py-0.5 file:text-sm file:font-medium file:text-text-primary file:hover:bg-surface-hover';
+
 const Input: React.ForwardRefExoticComponent<InputProps & React.RefAttributes<HTMLInputElement>> =
   React.forwardRef<HTMLInputElement, InputProps>(
     ({ className, colorTransition, variant = 'default', onClick, type, ...props }, ref) => {
@@ -61,6 +66,7 @@ const Input: React.ForwardRefExoticComponent<InputProps & React.RefAttributes<HT
             'ring-offset-surface-primary',
             fieldInvalid,
             INPUT_VARIANTS[variant],
+            type === 'file' && FILE_CONTROL,
             colorTransition && 'transition-colors',
             className ?? '',
           )}

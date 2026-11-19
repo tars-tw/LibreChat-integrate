@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import {
+  Alert,
   Button,
   Chip,
   Dropdown,
@@ -141,9 +142,9 @@ export default function LevelDialog({
               />
             </div>
             {note != null && (
-              <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+              <Alert variant="neutral" role="note">
                 {note}
-              </p>
+              </Alert>
             )}
           </div>
         }

@@ -47,7 +47,7 @@ export default function ResponseDialog({
               <p className="text-text-secondary mb-1 text-xs font-semibold tracking-wide uppercase">
                 {localize('com_ui_tars_audit_col_response')}
               </p>
-              <div className="prose dark:prose-invert text-text-primary max-w-none text-sm">
+              <div className="prose dark:prose-invert text-text-primary !max-w-none text-sm">
                 <MarkdownLite content={pair?.response ?? ''} codeExecution={false} />
               </div>
             </div>
