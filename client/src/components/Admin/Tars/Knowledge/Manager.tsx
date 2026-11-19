@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LayoutGrid, Library, List, Plus, Search, SlidersHorizontal } from 'lucide-react';
 import {
+  Alert,
   Button,
   Input,
   OGDialog,
@@ -216,9 +217,9 @@ export default function KnowledgeManager() {
                   {localize('com_ui_tars_kb_delete_confirm_named', { 0: deleting.name })}
                 </p>
                 {/* pwc_tars cascades to Milvus, chunks and documents. */}
-                <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+                <Alert variant="warning" role="note">
                   {localize('com_ui_tars_kb_delete_warning')}
-                </p>
+                </Alert>
               </div>
             }
             buttons={

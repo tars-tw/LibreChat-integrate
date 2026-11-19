@@ -93,7 +93,7 @@ export default function TraceView({ data }: { data: TTarsMessageTrace }) {
           content={message.response}
         >
           {message.response ? (
-            <div className="prose text-text-primary max-w-none !text-xs leading-relaxed [--markdown-font-size:0.75rem] [&_*]:!text-xs [&_li]:!my-0.5 [&_ol]:!my-1.5 [&_p]:!my-1.5 [&_ul]:!my-1.5">
+            <div className="prose text-text-primary !max-w-none !text-xs leading-relaxed [--markdown-font-size:0.75rem] [&_*]:!text-xs [&_li]:!my-0.5 [&_ol]:!my-1.5 [&_p]:!my-1.5 [&_ul]:!my-1.5">
               <MarkdownLite content={message.response} codeExecution={false} />
             </div>
           ) : (

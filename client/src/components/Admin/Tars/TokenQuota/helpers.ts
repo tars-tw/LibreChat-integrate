@@ -33,7 +33,7 @@ export const isActiveQuota = (quota: Pick<TTarsTokenUserQuota, 'status'>): boole
 
 /** The native `<select>` of the token pages' filter bars. */
 export const SELECT_CLASS =
-  'h-10 rounded-md border border-border-light bg-surface-primary px-3 text-sm text-text-primary';
+  'h-10 rounded-lg border border-border-control bg-transparent px-3 text-sm text-text-primary';
 
 export const BADGE_NEUTRAL =
   'rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-text-secondary';

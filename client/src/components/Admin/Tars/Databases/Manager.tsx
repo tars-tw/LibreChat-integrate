@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Database, Plus, Search } from 'lucide-react';
 import { TARS_DATABASE_TYPES } from 'librechat-data-provider';
 import {
+  Alert,
   Button,
   Dropdown,
   Input,
@@ -159,9 +160,9 @@ export default function DatabaseManager() {
                   {localize('com_ui_tars_db_delete_confirm_named', { 0: deleting.name })}
                 </p>
                 {/* Knowledge bases bound to the connection lose their tables with it. */}
-                <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+                <Alert variant="warning" role="note">
                   {localize('com_ui_tars_db_delete_warning')}
-                </p>
+                </Alert>
               </div>
             }
             buttons={

@@ -1,15 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Input,
-  Button,
-  Switch,
-  Spinner,
-  Dropdown,
-  OGDialog,
-  OGDialogTemplate,
-} from '@librechat/client';
-import {
   Plus,
   User,
   Users,
@@ -20,6 +11,16 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
+import {
+  Alert,
+  Input,
+  Button,
+  Switch,
+  Spinner,
+  Dropdown,
+  OGDialog,
+  OGDialogTemplate,
+} from '@librechat/client';
 import type {
   TTarsModelProfile,
   TTarsPrincipalInfo,
@@ -373,22 +374,22 @@ export default function ModelProfileManager() {
       {!isLoading && !isError && filtered.length > 0 && (
         <>
           <div className="border-border-light overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[72rem] table-fixed text-sm">
+            <table className="w-full min-w-[60rem] table-fixed text-sm">
               <thead className="bg-surface-secondary text-text-secondary text-left">
                 <tr>
-                  {sortableHeader('name', 'com_ui_tars_models_name', 'w-[16%]')}
-                  {sortableHeader('type', 'com_ui_tars_models_type', 'w-[10%]')}
-                  <th className="w-[20%] px-3 py-2 font-medium">
+                  {sortableHeader('name', 'com_ui_tars_models_name', 'w-[15%]')}
+                  {sortableHeader('type', 'com_ui_tars_models_type', 'w-[9%]')}
+                  <th className="w-[14%] px-3 py-2 font-medium">
                     {localize('com_ui_tars_models_endpoint')}
                   </th>
-                  <th className="w-[15%] px-3 py-2 font-medium">
+                  <th className="w-[14%] px-3 py-2 font-medium">
                     {localize('com_ui_tars_models_description')}
                   </th>
                   <th className="w-[7%] px-3 py-2 font-medium">{localize('com_ui_user')}</th>
                   <th className="w-[7%] px-3 py-2 font-medium">{localize('com_ui_group')}</th>
-                  {sortableHeader('status', 'com_ui_tars_users_status', 'w-[9%]')}
-                  {sortableHeader('updated_at', 'com_ui_tars_models_updated_at', 'w-[9%]')}
-                  <th className="w-[7%] px-3 py-2 text-right font-medium">
+                  {sortableHeader('status', 'com_ui_tars_users_status', 'w-[11%]')}
+                  {sortableHeader('updated_at', 'com_ui_tars_models_updated_at', 'w-[11%]')}
+                  <th className="w-[12%] px-3 py-2 text-right font-medium">
                     {localize('com_ui_actions')}
                   </th>
                 </tr>
@@ -459,7 +460,7 @@ export default function ModelProfileManager() {
                           )}
                         </div>
                       </td>
-                      <td className="text-text-secondary px-3 py-2 text-xs">
+                      <td className="text-text-secondary px-3 py-2">
                         {formatDateTime(profile.updated_at ?? profile.created_at, i18n.language) ||
                           '—'}
                       </td>
@@ -579,9 +580,9 @@ export default function ModelProfileManager() {
                 <p className="text-text-secondary text-sm">
                   {localize('com_ui_tars_models_disable_confirm', { name: disabling.name })}
                 </p>
-                <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+                <Alert variant="warning" role="note">
                   {localize('com_ui_tars_models_cascade_warning')}
-                </p>
+                </Alert>
               </div>
             }
             buttons={
@@ -615,9 +616,9 @@ export default function ModelProfileManager() {
                   {localize('com_ui_tars_models_delete_confirm', { name: deleting.name })}
                 </p>
                 {isProfileEnabled(deleting) && (
-                  <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+                  <Alert variant="warning" role="note">
                     {localize('com_ui_tars_models_cascade_warning')}
-                  </p>
+                  </Alert>
                 )}
               </div>
             }

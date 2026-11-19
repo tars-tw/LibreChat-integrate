@@ -78,14 +78,14 @@ export const darkTheme: IThemeRGB = {
   'rgb-text-fixed': '33 33 33', // #212121 (gray-800) — same in light + dark
 
   // Border colors
-  'rgb-border-light': '33 33 33', // #212121 (gray-800)
+  'rgb-border-light': '57 57 57', // #393939 (gray-650), an edge the gray-800 page can show
   'rgb-border-medium': '57 57 57', // #393939 (gray-650)
   'rgb-border-medium-alt': '57 57 57', // #393939 (gray-650)
   'rgb-border-heavy': '89 89 89', // #595959 (gray-500)
   'rgb-border-xheavy': '153 150 150', // #999696 (gray-400)
   'rgb-drawer-edge': '153 150 150', // #999696 (gray-400, matching border-xheavy)
   'rgb-border-destructive': '239 68 68', // #ef4444 (red-500)
-  'rgb-border-control': '33 33 33', // #212121 (gray-800), the stock field edge
+  'rgb-border-control': '89 89 89', // #595959 (gray-500), the stock field edge
   'rgb-border-field-focus': '236 236 236', // #ececec (gray-100, matching focus-control)
   'rgb-focus-subtle': '89 89 89', // #595959 (gray-500, matching border-heavy)
   'rgb-field-fill': '13 13 13', // #0d0d0d (gray-900, matching surface-primary)
@@ -103,7 +103,7 @@ export const darkTheme: IThemeRGB = {
   'rgb-surface-tab-selected': '47 47 47', // matching surface-tertiary
   'rgb-surface-menu': '33 33 33', // matching presentation
   'rgb-surface-popover': '33 33 33', // matching surface-secondary
-  'rgb-border-menu': '33 33 33', // matching border-light
+  'rgb-border-menu': '57 57 57', // matching border-light
   'rgb-surface-composer': '47 47 47', // matching surface-chat
   'rgb-surface-search': '33 33 33', // matching surface-secondary
   'rgb-surface-sidebar': '23 23 23', // matching surface-primary-alt

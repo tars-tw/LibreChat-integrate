@@ -77,7 +77,7 @@ export default function DatabasePromptDialog({
             rows={16}
             value={tableInfo ?? ''}
             onChange={(event) => setTableInfo(event.target.value)}
-            className="data-table-scroll border-border-light bg-surface-primary text-text-primary focus:ring-border-heavy w-full rounded-md border px-3 py-2 font-mono text-xs focus:ring-2 focus:outline-none"
+            className="data-table-scroll border-border-control text-text-primary focus:ring-border-heavy w-full rounded-lg border bg-transparent px-3 py-2 font-mono text-xs focus:ring-2 focus:outline-none"
           />
         </div>
       </>

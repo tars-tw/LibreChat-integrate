@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 import {
+  Alert,
   Button,
   Input,
   Label,
@@ -227,9 +228,9 @@ export default function WebsiteModal({
             )}
 
             {!isEdit && (
-              <p className="border-border-light text-text-secondary rounded-lg border p-3 text-xs">
+              <Alert variant="neutral" role="note">
                 {localize('com_ui_tars_web_import_notice')}
-              </p>
+              </Alert>
             )}
 
             {isBusy && importsAny && (

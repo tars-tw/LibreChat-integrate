@@ -13,6 +13,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import {
+  Alert,
   Input,
   Button,
   Spinner,
@@ -263,7 +264,7 @@ export default function GroupManager() {
                         onClick={() => setMembersId(group.id)}
                         aria-label={localize('com_ui_tars_groups_members')}
                         title={localize('com_ui_tars_groups_members')}
-                        className="hover:text-text-primary inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))]"
+                        className="hover:text-text-primary bg-status-info-subtle text-text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5"
                       >
                         <Users className="icon-sm" />
                         {memberCount(group)}
@@ -387,11 +388,11 @@ export default function GroupManager() {
                 <p className="text-text-secondary text-sm">
                   {localize('com_ui_tars_groups_delete_confirm', { name: deleting.name })}
                 </p>
-                <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+                <Alert variant="warning" role="note">
                   {localize('com_ui_tars_groups_delete_warning', {
                     count: memberCount(deleting),
                   })}
-                </p>
+                </Alert>
                 {deletingLosesAccess.length > 0 && (
                   <p className="border-status-warning-border bg-status-warning-subtle text-status-warning rounded-lg border p-3 text-sm">
                     {localize('com_ui_tars_groups_delete_no_access', {

@@ -83,9 +83,8 @@ export default function DocumentRowActions({
         title={localize(
           processing ? 'com_ui_tars_kb_reprocess_processing_hint' : 'com_ui_tars_kb_reprocess',
         )}
-        className="text-green-700 hover:text-green-700"
       >
-        <RefreshCw className="size-4" aria-hidden />
+        <RefreshCw className="text-status-success size-4" aria-hidden />
       </Button>
       {processing && onRetryStuck != null && (
         <Button

@@ -1,4 +1,4 @@
-import { Button, OGDialog, OGDialogTemplate, Spinner } from '@librechat/client';
+import { Alert, Button, OGDialog, OGDialogTemplate, Spinner } from '@librechat/client';
 
 /**
  * One confirmation prompt, shared by every destructive dataset action.
@@ -36,9 +36,9 @@ export default function ConfirmDialog({
           <div className="space-y-2">
             <p className="text-text-secondary text-sm break-words">{message}</p>
             {note != null && (
-              <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+              <Alert variant={destructive === true ? 'warning' : 'neutral'} role="note">
                 {note}
-              </p>
+              </Alert>
             )}
           </div>
         }

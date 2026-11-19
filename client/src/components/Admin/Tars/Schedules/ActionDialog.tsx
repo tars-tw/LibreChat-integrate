@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pencil, Play, RotateCcw, Square, Trash2 } from 'lucide-react';
 import {
+  Alert,
   Button,
   OGDialog,
   OGDialogTemplate,
@@ -176,10 +177,9 @@ export default function ScheduleActionDialog({
               )}
 
               {running && (
-                <p className="border-border-light text-text-secondary flex items-center gap-2 rounded-lg border p-3 text-sm">
-                  <Spinner className="size-4" />
+                <Alert variant="neutral" icon={<Spinner className="size-4" />} role="note">
                   {localize('com_ui_tars_sched_running_note')}
-                </p>
+                </Alert>
               )}
 
               <div className="flex flex-col gap-2">

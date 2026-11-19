@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Eye, Search } from 'lucide-react';
 import {
+  Alert,
   Button,
   Checkbox,
   Dropdown,
@@ -228,9 +229,9 @@ export default function FileSystemImportDialog({
 
     if (available.length === 0) {
       return (
-        <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+        <Alert variant="neutral" role="note">
           {localize('com_ui_tars_kb_ds_no_file_servers')}
-        </p>
+        </Alert>
       );
     }
 

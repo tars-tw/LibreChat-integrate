@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { FolderTree, Plus, Search } from 'lucide-react';
 import { TARS_FILE_PROTOCOLS } from 'librechat-data-provider';
 import {
+  Alert,
   Button,
   Dropdown,
   Input,
@@ -159,9 +160,9 @@ export default function FileSystemManager() {
                   {localize('com_ui_tars_fs_delete_confirm_named', { 0: deleting.name })}
                 </p>
                 {/* Documents already imported from the group are left behind. */}
-                <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+                <Alert variant="warning" role="note">
                   {localize('com_ui_tars_fs_delete_warning')}
-                </p>
+                </Alert>
               </div>
             }
             buttons={

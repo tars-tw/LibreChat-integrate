@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FileText, Table2, Unlink } from 'lucide-react';
-import { Button, useToastContext } from '@librechat/client';
+import { Alert, Button, useToastContext } from '@librechat/client';
 import type { TTarsDatasetDatabase } from 'librechat-data-provider';
 import { useUnbindTarsDatabaseMutation } from '~/data-provider';
 import { enabledStatusMeta, matchesName } from './helpers';
@@ -89,9 +89,9 @@ export default function DatabasesTab({
       {available.length === 0 && (
         /* Connections are created in pwc_tars itself, so an empty list is a
            setup fact rather than a failure — say which, or it reads as a bug. */
-        <p className="border-border-light text-text-secondary rounded-lg border p-3 text-sm">
+        <Alert variant="neutral" role="note">
           {localize('com_ui_tars_kb_ds_no_connections')}
-        </p>
+        </Alert>
       )}
 
       {visible.length === 0 ? (

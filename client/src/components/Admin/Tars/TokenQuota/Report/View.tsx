@@ -165,7 +165,7 @@ export default function Report({ options }: { options: TTarsTokenPrepareData | u
         </header>
 
         <form
-          className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-5"
+          className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto]"
           onSubmit={(event) => {
             event.preventDefault();
             if (!rangeInvalid) {

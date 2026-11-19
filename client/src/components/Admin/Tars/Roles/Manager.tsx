@@ -296,7 +296,7 @@ export default function RoleManager() {
                             disabled={counts.users === 0}
                             aria-label={localize('com_ui_tars_roles_usage_users')}
                             title={localize('com_ui_tars_roles_usage_users')}
-                            className="hover:text-text-primary inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))] disabled:cursor-default disabled:opacity-40 disabled:hover:text-[rgb(var(--gray-600))]"
+                            className="hover:text-text-primary bg-status-info-subtle text-text-secondary disabled:hover:text-text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5 disabled:cursor-default disabled:opacity-40"
                           >
                             <User className="icon-sm" />
                             {counts.users}
@@ -307,7 +307,7 @@ export default function RoleManager() {
                             disabled={counts.groups === 0}
                             aria-label={localize('com_ui_tars_roles_usage_groups')}
                             title={localize('com_ui_tars_roles_usage_groups')}
-                            className="hover:text-text-primary inline-flex items-center gap-1 rounded-full bg-[rgb(var(--blue-50))] px-2 py-0.5 text-[rgb(var(--gray-600))] disabled:cursor-default disabled:opacity-40 disabled:hover:text-[rgb(var(--gray-600))]"
+                            className="hover:text-text-primary bg-status-info-subtle text-text-secondary disabled:hover:text-text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5 disabled:cursor-default disabled:opacity-40"
                           >
                             <UsersRound className="icon-sm" />
                             {counts.groups}
