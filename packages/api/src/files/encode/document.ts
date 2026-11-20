@@ -26,6 +26,7 @@ import {
   getConfiguredFileSizeLimit,
   isAttachmentObjectNotFoundError,
 } from './utils';
+import { usesDocumentTextFallback, encodeDocumentsWithTextFallback } from './fallback';
 import { validatePdf, validateBedrockDocument } from '~/files/validation';
 import { someReachableAgent } from '~/agents/traversal';
 import { runGuardedEncode } from './memoryGuard';
@@ -334,6 +335,10 @@ export async function encodeAndFormatDocuments(
 
   if (!isDocSupported && !isBedrock) {
     return result;
+  }
+
+  if (usesDocumentTextFallback(req, params)) {
+    return encodeDocumentsWithTextFallback(req, files, params, getStrategyFunctions);
   }
 
   const processableFiles = filterProviderDocumentFiles(provider, files, model);

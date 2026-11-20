@@ -1053,8 +1053,8 @@ function extractPptxSlideXml(
 }
 
 /** The deck's slide text for the model, one block per slide; slides with no text are left out. */
-export async function pptxToText(filePath: string): Promise<string> {
-  const rawSlides = await extractPptxSlideXml(filePath);
+export async function pptxToText(source: string | Buffer): Promise<string> {
+  const rawSlides = await extractPptxSlideXml(source);
   return rawSlides
     .flatMap(({ number, xml }) => {
       const { title, body } = extractSlideText(xml);

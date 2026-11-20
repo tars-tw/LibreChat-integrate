@@ -177,6 +177,11 @@ fileConfig:
       # Audio is always transcribed (speech.stt below) and the text goes to the model,
       # whichever model the chat is on — as pwc_tars's own chat did.
       audio/*: text
+  endpoints:
+    vLLM:
+      # vLLM rejects OpenAI `file` content parts. PDFs uploaded here are extracted to text;
+      # documents uploaded under another model are sent as text extracted on each turn.
+      supportsFileParts: false
 
 # Speech-to-text for audio uploads (and the composer mic's external engine). Keys are
 # pwc_tars's sys_config rows, read live like webSearch's — rotate them there.
