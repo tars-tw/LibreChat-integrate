@@ -57,6 +57,11 @@ export type EndpointFileConfig = {
   /** Delivers the text extracted at upload for a file routed to tools (`none`) on a turn that
    *  runs no tool able to read it. Off by default, which leaves such a file out of the prompt. */
   textFallbackWithoutTools?: boolean;
+  /** `false` for an OpenAI-compatible server that rejects `file` / `input_file` content parts
+   *  (vLLM): PDF uploads are extracted to text, and documents still on the provider path are
+   *  sent as text extracted from storage. Unset means supported; Anthropic, Google and Bedrock
+   *  endpoints ignore it. */
+  supportsFileParts?: boolean;
 };
 
 export type FileConfig = {
@@ -105,6 +110,11 @@ export type FileConfig = {
   /** Delivers the text extracted at upload for a file routed to tools (`none`) on a turn that
    *  runs no tool able to read it. Off by default, which leaves such a file out of the prompt. */
   textFallbackWithoutTools?: boolean;
+  /** `false` for an OpenAI-compatible server that rejects `file` / `input_file` content parts
+   *  (vLLM): PDF uploads are extracted to text, and documents still on the provider path are
+   *  sent as text extracted from storage. Unset means supported; Anthropic, Google and Bedrock
+   *  endpoints ignore it. */
+  supportsFileParts?: boolean;
 };
 
 export type FileConfigInput = {
@@ -148,6 +158,11 @@ export type FileConfigInput = {
   /** Delivers the text extracted at upload for a file routed to tools (`none`) on a turn that
    *  runs no tool able to read it. Off by default, which leaves such a file out of the prompt. */
   textFallbackWithoutTools?: boolean;
+  /** `false` for an OpenAI-compatible server that rejects `file` / `input_file` content parts
+   *  (vLLM): PDF uploads are extracted to text, and documents still on the provider path are
+   *  sent as text extracted from storage. Unset means supported; Anthropic, Google and Bedrock
+   *  endpoints ignore it. */
+  supportsFileParts?: boolean;
 };
 
 /** The immutable origin of a file explicitly published from an agent execution. */

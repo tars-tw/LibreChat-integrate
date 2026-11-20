@@ -11,6 +11,7 @@ import {
   fileConfig as baseFileConfig,
 } from './file-config';
 import {
+  Providers,
   EModelEndpoint,
   isOpenAILikeProvider,
   isKnownProviderIdentifier,
@@ -56,6 +57,56 @@ const isConfiguredMediaEndpoint = (
   return baseFileConfig.checkType(mimeType, supportedMimeTypes);
 };
 
+const OPENAI_LOWERCASE_IDENTIFIERS = new Set([
+  Providers.OPENAI.toLowerCase(),
+  Providers.AZURE.toLowerCase(),
+]);
+
+/** Config and stored agents spell providers in any case (`openai`, `OpenAI`); the provider set
+ *  holds every OpenAI-like name in lowercase except these two. */
+const isOpenAILikeIdentifier = (value: string): boolean => {
+  const lower = value.toLowerCase();
+  return isOpenAILikeProvider(lower) || OPENAI_LOWERCASE_IDENTIFIERS.has(lower);
+};
+
+/** Whether an endpoint speaks an OpenAI-compatible dialect that delivers documents as
+ *  `file` / `input_file` content parts rather than native Anthropic/Google/Bedrock blocks. */
+const usesOpenAIFileParts = (endpoint?: string, endpointProvider?: string | null): boolean => {
+  if (endpointProvider != null) {
+    return isOpenAILikeIdentifier(endpointProvider);
+  }
+  return (
+    endpoint == null ||
+    endpoint === EModelEndpoint.agents ||
+    !isKnownProviderIdentifier(endpoint) ||
+    isOpenAILikeIdentifier(endpoint)
+  );
+};
+
+/** `supportsFileParts` as it applies to this endpoint; undefined where documents travel as
+ *  native blocks rather than OpenAI file parts, which the setting does not govern. */
+export function resolveSupportsFileParts({
+  endpoint,
+  endpointProvider,
+  endpointConfig,
+  fileConfig,
+}: {
+  endpoint?: string;
+  endpointProvider?: string | null;
+  endpointConfig?: EndpointFileConfig;
+  fileConfig?: FileConfig;
+}): boolean | undefined {
+  if (!usesOpenAIFileParts(endpoint, endpointProvider)) {
+    return undefined;
+  }
+  return endpointConfig?.supportsFileParts ?? fileConfig?.supportsFileParts;
+}
+
+/** Whether a record holds extracted plain text; an inline office preview (`html`) does not count. */
+export function hasPlainTextContent(file: Pick<TurnDeliveryFile, 'text' | 'textFormat'>): boolean {
+  return typeof file.text === 'string' && file.text.trim().length > 0 && file.textFormat !== 'html';
+}
+
 /** Audio and video reach the model only through the media encoders, which support a
  *  narrower provider set than documents. Images use the broadly supported vision
  *  path and are never gated here. */
@@ -64,6 +115,7 @@ const isProviderCapable = (
   endpoint: string,
   useResponsesApi?: boolean,
   supportedMimeTypes?: RegexLike[],
+  supportsFileParts?: boolean,
 ): boolean => {
   if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
     return (
@@ -72,6 +124,9 @@ const isProviderCapable = (
     );
   }
   if (mimeType === 'application/pdf') {
+    if (supportsFileParts === false) {
+      return false;
+    }
     /* Azure is out of the document set because it needs the Responses API for native
      * documents, so the encoder's own condition decides rather than the endpoint alone. */
     return useResponsesApi === true || isDocumentSupportedProvider(endpoint);
@@ -158,6 +213,7 @@ export function resolveDefaultLLMDeliveryPath(
   useResponsesApi?: boolean,
   sttConfigured?: boolean,
   supportedMimeTypes?: RegexLike[],
+  supportsFileParts?: boolean,
 ): TDefaultLLMDeliveryPath {
   const wildcard = mimeType.split('/')[0] + '/*';
 
@@ -215,11 +271,18 @@ export function resolveDefaultLLMDeliveryPath(
    * closes the path. */
   const canRecoverText = (type: string): boolean =>
     type.startsWith('audio/') && sttConfigured === false ? false : hasTextExtractionPath(type);
-  const canJudgeCapability = isMedia ? namedEndpoint : providerKnown;
+  /* `supportsFileParts: false` is the admin stating what the endpoint cannot carry. */
+  const canJudgeCapability = isMedia ? namedEndpoint : providerKnown || supportsFileParts === false;
   if (
     systemDefault === 'provider' &&
     canJudgeCapability &&
-    !isProviderCapable(mimeType, endpoint as string, useResponsesApi, supportedMimeTypes)
+    !isProviderCapable(
+      mimeType,
+      endpoint as string,
+      useResponsesApi,
+      supportedMimeTypes,
+      supportsFileParts,
+    )
   ) {
     /* Downgrading is only useful where text can actually be recovered. Video has no
      * extraction step: speech-to-text covers audio, and the default text matcher accepts
@@ -290,6 +353,7 @@ export function resolveDefaultUploadLLMDeliveryPath({
     useResponsesApi,
     sttConfigured,
     runsAsOpenAI ? endpointConfig?.supportedMimeTypes : undefined,
+    resolveSupportsFileParts({ endpoint, endpointProvider, endpointConfig, fileConfig }),
   );
 }
 
@@ -424,6 +488,8 @@ export interface TurnDeliveryRouting {
 export interface TurnDeliveryFile {
   type?: string;
   text?: string | null;
+  /** Format of stored `text`; `'html'` holds an inline office preview rather than plain text. */
+  textFormat?: 'html' | 'text' | null;
   /** Stored as an upload-time inference, so any string may be read back. */
   llmDeliveryPath?: string | null;
   /** Whether a vector store holds this file, which is what lets file search serve it.
@@ -488,6 +554,17 @@ export function resolveTurnLLMDeliveryPath(
     !hasTurnFileConsumer(mimeType, consumers, file)
   ) {
     return 'text';
+  }
+  /* `supportsFileParts: false` sends a PDF to `text`, which delivers nothing for one stored
+   * without plain text (uploaded under another endpoint, or an attached code output). On
+   * `provider` the document encoder extracts its text on each turn instead. */
+  if (
+    path === 'text' &&
+    mimeType === 'application/pdf' &&
+    !hasPlainTextContent(file) &&
+    resolveSupportsFileParts(routing) === false
+  ) {
+    return 'provider';
   }
   return path;
 }

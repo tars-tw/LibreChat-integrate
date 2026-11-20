@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import yauzl from 'yauzl';
+import { logger } from '@librechat/data-schemas';
 import {
   megabyte,
   FileSources,
@@ -59,6 +60,31 @@ export async function parseDocument({
   };
 }
 
+/** {@link parseDocument} for bytes already in memory, such as a stored file streamed back for a
+ *  turn: the same parsers and limits apply, and nothing is written to disk. */
+export function parseDocumentBuffer({
+  buffer,
+  mimetype,
+  originalname,
+}: {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+}): Promise<MistralOCRUploadResult> {
+  const file = { buffer, mimetype, originalname, size: buffer.length } as Express.Multer.File;
+  return parseDocument({ file });
+}
+
+/** Whether {@link parseDocument} has a parser for this MIME type. */
+export function canParseDocumentMimeType(mimetype: string): boolean {
+  return getParserForMimeType(mimetype) !== undefined;
+}
+
+/** The upload's bytes: in memory when given to {@link parseDocumentBuffer}, else read from disk. */
+function readUpload(file: Express.Multer.File): Promise<Buffer> {
+  return file.buffer ? Promise.resolve(file.buffer) : fs.promises.readFile(file.path);
+}
+
 /** Maps a MIME type to its document parser function, or `undefined` if unsupported. */
 function getParserForMimeType(mimetype: string): FileParseFn | undefined {
   if (mimetype === 'application/pdf') {
@@ -77,13 +103,13 @@ function getParserForMimeType(mimetype: string): FileParseFn | undefined {
     return odtToText;
   }
   if (mimetype === 'application/msword') {
-    return async (file) => wordBinaryToText(await fs.promises.readFile(file.path));
+    return async (file) => wordBinaryToText(await readUpload(file));
   }
   if (mimetype === ODP_MIME_TYPE) {
     return odpToText;
   }
   if (presentationMimeTypes.test(mimetype)) {
-    return (file) => pptxToText(file.path);
+    return (file) => pptxToText(file.buffer ?? file.path);
   }
   return undefined;
 }
@@ -93,26 +119,35 @@ async function pdfToText(file: Express.Multer.File): Promise<string> {
   // Imported inline so that Jest can test other routes without failing due to loading ESM
   const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
-  const data = new Uint8Array(await fs.promises.readFile(file.path));
-  const pdf = await getDocument({ data }).promise;
+  const data = new Uint8Array(await readUpload(file));
+  const loadingTask = getDocument({ data });
+  try {
+    const pdf = await loadingTask.promise;
 
-  let fullText = '';
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .filter((item): item is TextItem => !('type' in item))
-      .map((item) => item.str)
-      .join(' ');
-    fullText += pageText + '\n';
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .filter((item): item is TextItem => !('type' in item))
+        .map((item) => item.str)
+        .join(' ');
+      fullText += pageText + '\n';
+    }
+
+    return fullText;
+  } finally {
+    /* Frees the document and its in-process worker, loaded or not, which a turn's text
+     * fallback would otherwise leave behind on every request; teardown never masks the result. */
+    await loadingTask.destroy().catch((error: unknown) => {
+      logger.debug('[parseDocument] PDF teardown failed', error);
+    });
   }
-
-  return fullText;
 }
 
 /** Parses Word document, returns text inside. */
 async function wordDocToText(file: Express.Multer.File): Promise<string> {
-  const buffer = await fs.promises.readFile(file.path);
+  const buffer = await readUpload(file);
   /* Reject zip-bomb DOCX before mammoth's internal extractor runs.
    * mammoth has no decompressed-size cap of its own; without this, a
    * sub-1MB compressed bomb (~200x ratio) would block the event loop
@@ -128,7 +163,7 @@ async function excelSheetToText(file: Express.Multer.File): Promise<string> {
   // xlsx CDN build (0.20.x) does not bind fs internally when dynamically imported;
   // readFile() fails with "Cannot access file". read() takes a pre-loaded Buffer instead.
   const { read, utils } = await import('xlsx');
-  const data = await fs.promises.readFile(file.path);
+  const data = await readUpload(file);
   /* Reject zip-bomb XLSX/ODS before SheetJS's internal extractor runs.
    * `.xls` (BIFF/CFB) is not a ZIP — magic-byte check skips the
    * validator for it (yauzl would reject it as malformed anyway). */
@@ -155,7 +190,7 @@ async function excelSheetToText(file: Express.Multer.File): Promise<string> {
  * text boxes, and annotations are stripped without replacement.
  */
 async function odtToText(file: Express.Multer.File): Promise<string> {
-  const xml = await extractOdfContentXml(file.path);
+  const xml = await extractOdfContentXml(file.buffer ?? file.path);
   const bodyMatch = xml.match(/<office:body[^>]*>([\s\S]*?)<\/office:body>/);
   if (!bodyMatch) {
     return '';
@@ -168,7 +203,7 @@ async function odtToText(file: Express.Multer.File): Promise<string> {
  * the `.pptx` output: speaker notes and shape alt text are left out, as are slides without text.
  */
 async function odpToText(file: Express.Multer.File): Promise<string> {
-  const xml = await extractOdfContentXml(file.path);
+  const xml = await extractOdfContentXml(file.buffer ?? file.path);
   const pages = xml.matchAll(/<draw:page(?:\s[^>]*[^/])?>([\s\S]*?)<\/draw:page>/g);
   const slides: string[] = [];
   let number = 0;
@@ -206,6 +241,18 @@ function odfMarkupToText(markup: string): string {
     .trim();
 }
 
+/** Opens a ZIP from its path on disk, or from memory for {@link parseDocumentBuffer}. */
+function openZip(
+  source: string | Buffer,
+  callback: (err: Error | null, zipfile?: yauzl.ZipFile) => void,
+): void {
+  if (typeof source === 'string') {
+    yauzl.open(source, { lazyEntries: true }, callback);
+    return;
+  }
+  yauzl.fromBuffer(source, { lazyEntries: true }, callback);
+}
+
 /**
  * Streams content.xml out of an OpenDocument ZIP archive using yauzl, counting real
  * decompressed bytes and aborting mid-inflate if the cap is exceeded.
@@ -215,9 +262,9 @@ function odfMarkupToText(markup: string): string {
  * The zipfile is closed on all exit paths (success, size cap, missing entry,
  * error) to prevent file descriptor leaks.
  */
-function extractOdfContentXml(filePath: string): Promise<string> {
+function extractOdfContentXml(source: string | Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
-    yauzl.open(filePath, { lazyEntries: true }, (err, zipfile) => {
+    openZip(source, (err, zipfile) => {
       if (err) {
         return reject(err);
       }
