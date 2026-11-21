@@ -6,6 +6,7 @@ import {
   alternateName,
   PermissionTypes,
   LocalStorageKeys,
+  isTarsLocalEndpointName,
 } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
 import type { AgentForm, StringOption } from '~/common';
@@ -110,6 +111,7 @@ export default function ModelPanel({
   /** The rendered set omits role-gated controls; `parameterSettings.parameters`
    *  stays complete so the pruning effect below still recognises them. */
   const { visibleParameters: parameters } = parameterSettings;
+  const showParameters = !isTarsLocalEndpointName(tempProvider);
   const webSearchBlocked =
     !webSearchAllowed &&
     (tempModelParameters?.web_search === true ||
@@ -248,18 +250,20 @@ export default function ModelPanel({
         </div>
       </div>
 
-      {webSearchBlocked && (
+      {showParameters && webSearchBlocked && (
         <Alert variant="warning" role="status">
           {localize('com_ui_native_web_search_denied')}
         </Alert>
       )}
-      <ParametersFields
-        parameters={parameters}
-        values={tempModelParameters as Partial<t.TConversation>}
-        setOption={setOption as t.TSetOption}
-        onReset={handleResetParameters}
-        bedrockRegions={bedrockRegions}
-      />
+      {showParameters && (
+        <ParametersFields
+          parameters={parameters}
+          values={tempModelParameters as Partial<t.TConversation>}
+          setOption={setOption as t.TSetOption}
+          onReset={handleResetParameters}
+          bedrockRegions={bedrockRegions}
+        />
+      )}
     </ParametersModal>
   );
 }
