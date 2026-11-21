@@ -26,19 +26,25 @@ const mockPrompts: TTarsPrompt[] = [
   prompt({ id: '3', name: 'sales_report', category: '銷售' }),
 ];
 
+const mockScope = { isError: false, basePath: '/prompts/knowledge-base/kb1' };
+
 jest.mock('../hooks', () => ({
   __esModule: true,
   default: () => ({
-    prompts: mockPrompts,
+    prompts: mockScope.isError ? [] : mockPrompts,
     categories: [],
     categoryCounts: {},
     isLoading: false,
-    basePath: '/prompts/knowledge-base/kb1',
+    isError: mockScope.isError,
+    basePath: mockScope.basePath,
   }),
 }));
 
 jest.mock('~/data-provider', () => ({
   useDeleteTarsPromptMutation: () => ({ mutate: jest.fn(), isLoading: false }),
+  useGetAgentByIdQuery: (agentId?: string) => ({
+    data: agentId ? { id: agentId, name: '客服助理' } : undefined,
+  }),
 }));
 
 jest.mock('~/hooks', () => ({
@@ -52,6 +58,11 @@ const chip = (name: RegExp) =>
   );
 
 describe('Tars prompt management list', () => {
+  afterEach(() => {
+    mockScope.isError = false;
+    mockScope.basePath = '/prompts/knowledge-base/kb1';
+  });
+
   it('lists the scope by the picked category, combined with the search', async () => {
     const user = userEvent.setup();
     render(
@@ -69,5 +80,35 @@ describe('Tars prompt management list', () => {
     await user.type(screen.getByRole('textbox'), 'draft');
     expect(screen.getByText('contract_draft')).toBeInTheDocument();
     expect(screen.queryByText('contract_review')).not.toBeInTheDocument();
+  });
+
+  it("heads an agent's list with the agent's name and links new prompts under it", () => {
+    mockScope.basePath = '/prompts/agent/agent_a';
+    render(
+      <MemoryRouter>
+        <TarsPromptList agentId="agent_a" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: '客服助理' })).toBeInTheDocument();
+    expect(screen.getByText('com_ui_tars_agent_prompts_title')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'com_ui_create_prompt' })).toHaveAttribute(
+      'href',
+      '/prompts/agent/agent_a/new',
+    );
+  });
+
+  it('tells a caller who may not edit the agent so, with no way to create', () => {
+    mockScope.isError = true;
+    mockScope.basePath = '/prompts/agent/agent_a';
+    render(
+      <MemoryRouter>
+        <TarsPromptList agentId="agent_a" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('com_ui_tars_agent_prompts_no_access')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'com_ui_create_prompt' })).not.toBeInTheDocument();
+    expect(screen.queryByText('com_ui_no_prompts_title')).not.toBeInTheDocument();
   });
 });

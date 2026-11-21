@@ -283,6 +283,19 @@ export const router = createBrowserRouter(
                   lazy: loadInlinePromptsView,
                 },
                 {
+                  /** A saved agent's own prompts, opened from the agent builder. */
+                  path: 'prompts/agent/:agentId',
+                  lazy: loadInlinePromptsView,
+                },
+                {
+                  path: 'prompts/agent/:agentId/new',
+                  lazy: loadInlinePromptsView,
+                },
+                {
+                  path: 'prompts/agent/:agentId/:promptId',
+                  lazy: loadInlinePromptsView,
+                },
+                {
                   /** A knowledge base's own prompts, opened from its admin card. */
                   path: 'prompts/knowledge-base/:knowledgeBaseId/:promptId',
                   lazy: loadInlinePromptsView,

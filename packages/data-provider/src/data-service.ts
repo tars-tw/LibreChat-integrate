@@ -1802,8 +1802,13 @@ export const getTarsPrompts = (domainId?: string | number): Promise<t.TTarsPromp
 
 export const getTarsChatPrompts = (
   knowledgeBaseIds: readonly string[],
+  agentId?: string | null,
 ): Promise<t.TTarsPromptsResponse> => {
-  return request.get(endpoints.tarsChatPrompts(knowledgeBaseIds));
+  return request.get(endpoints.tarsChatPrompts(knowledgeBaseIds, agentId));
+};
+
+export const getTarsAgentPrompts = (agentId: string): Promise<{ prompts: t.TTarsPrompt[] }> => {
+  return request.get(endpoints.tarsAgentPrompts(agentId));
 };
 
 export const getTarsKnowledgeBasePrompts = (
@@ -1812,28 +1817,46 @@ export const getTarsKnowledgeBasePrompts = (
   return request.get(endpoints.tarsKnowledgeBasePrompts(knowledgeBaseId));
 };
 
-export const createTarsPrompt = (data: t.TTarsPromptInput): Promise<{ prompt: t.TTarsPrompt }> => {
-  return request.post(endpoints.tarsPrompts(), data);
+/** `agent_id` sends the prompt to that agent's routes; anything else is the generic tier. */
+export const createTarsPrompt = ({
+  agent_id,
+  ...data
+}: t.TTarsPromptInput): Promise<{ prompt: t.TTarsPrompt }> => {
+  return request.post(
+    agent_id ? endpoints.tarsAgentPrompts(agent_id) : endpoints.tarsPrompts(),
+    data,
+  );
 };
 
 export const updateTarsPrompt = (
   id: string,
-  data: t.TTarsPromptInput,
+  { agent_id, ...data }: t.TTarsPromptInput,
 ): Promise<{ prompt: t.TTarsPrompt }> => {
-  return request.put(endpoints.tarsPrompt(id), data);
+  return request.put(
+    agent_id ? endpoints.tarsAgentPrompt(agent_id, id) : endpoints.tarsPrompt(id),
+    data,
+  );
 };
 
-export const renameTarsPromptCategory = (
-  data: t.TTarsPromptCategoryRenameInput,
-): Promise<t.TTarsPromptCategoryRenameResponse> => {
-  return request.put(endpoints.tarsPromptCategoryRename(), data);
+export const renameTarsPromptCategory = ({
+  agent_id,
+  ...data
+}: t.TTarsPromptCategoryRenameInput): Promise<t.TTarsPromptCategoryRenameResponse> => {
+  return request.put(
+    agent_id
+      ? endpoints.tarsAgentPromptCategoryRename(agent_id)
+      : endpoints.tarsPromptCategoryRename(),
+    data,
+  );
 };
 
 export const deleteTarsPrompt = (
   id: string,
-  query?: { domainId?: string; knowledgeBaseId?: string },
+  query?: { domainId?: string; knowledgeBaseId?: string; agentId?: string },
 ): Promise<{ success: boolean }> => {
-  return request.delete(endpoints.tarsPrompt(id, query));
+  return request.delete(
+    query?.agentId ? endpoints.tarsAgentPrompt(query.agentId, id) : endpoints.tarsPrompt(id, query),
+  );
 };
 
 export const getTarsSysConfigs = (): Promise<t.TTarsSysConfigsResponse> => {

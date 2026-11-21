@@ -20,6 +20,7 @@ const {
   mapAgentManagementError,
   restoreTenantContextFromReq,
   resolveToolRoleGrants,
+  withTarsAgentPromptCleanup,
 } = require('@librechat/api');
 const {
   checkBan,
@@ -61,7 +62,7 @@ const deleteHandler = createAgentManagementDeleteHandler({
   getAgentWithVersionCount: db.getAgentWithVersionCount,
   checkPermission,
   hasCapability,
-  deleteAgent: db.deleteAgent,
+  deleteAgent: withTarsAgentPromptCleanup(db.deleteAgent),
 });
 const fileHandlers = createAgentManagementFileHandlers({
   getRoleByName: db.getRoleByName,

@@ -5,7 +5,7 @@ import TarsPromptForm from '../Tars/Form';
 import { useHasAccess } from '~/hooks';
 
 export default function InlinePromptsView() {
-  const { promptId, domainId, knowledgeBaseId } = useParams();
+  const { promptId, domainId, knowledgeBaseId, agentId } = useParams();
 
   const hasAccess = useHasAccess({
     permissionType: PermissionTypes.PROMPTS,
@@ -22,11 +22,17 @@ export default function InlinePromptsView() {
         <TarsPromptList
           domainId={domainId}
           knowledgeBaseId={knowledgeBaseId}
+          agentId={agentId}
           activePromptId={promptId}
         />
       </div>
       <div className="h-full min-w-0 flex-1 overflow-y-auto">
-        <TarsPromptForm promptId={promptId} domainId={domainId} knowledgeBaseId={knowledgeBaseId} />
+        <TarsPromptForm
+          promptId={promptId}
+          domainId={domainId}
+          knowledgeBaseId={knowledgeBaseId}
+          agentId={agentId}
+        />
       </div>
     </div>
   );

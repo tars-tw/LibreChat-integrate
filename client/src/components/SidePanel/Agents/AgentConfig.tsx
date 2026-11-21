@@ -13,6 +13,7 @@ import Instructions from './Instructions';
 import FileContext from './FileContext';
 import AgentAvatar from './AgentAvatar';
 import ModelPanel from './ModelPanel';
+import AgentPrompts from './Prompts';
 import Starters from './Starters';
 import { cn } from '~/utils';
 
@@ -175,6 +176,9 @@ export default function AgentConfig({
 
       {/* CONVERSATION STARTERS */}
       {showStep2 && <Starters />}
+
+      {/* PROMPTS — the saved agent's own pwc_tars prompts, managed on the prompts page */}
+      {showStep2 && <AgentPrompts agent_id={agent_id} />}
 
       {/* TOOLS — unified built-ins / tools / actions / mcp / skills */}
       {showStep3 && <ToolsSection agentId={agent_id} />}

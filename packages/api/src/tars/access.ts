@@ -1,16 +1,22 @@
-import { logger } from '@librechat/data-schemas';
+import { PermissionBits, ResourceType } from 'librechat-data-provider';
+import { logger, ResourceCapabilityMap } from '@librechat/data-schemas';
 import type {
   TTarsPrincipalInfo,
   TTarsKnowledgeBaseShareGap,
   TTarsKnowledgeBaseChatSaveResult,
   TTarsKnowledgeBaseChatSavePayload,
 } from 'librechat-data-provider';
+import type { SystemCapability } from '@librechat/data-schemas';
 import type { NextFunction, Request, Response } from 'express';
-import type { TarsPrompt, TarsPromptKnowledgeBase } from './prompts';
+import type { TarsPrompt, TarsPromptAgent, TarsPromptKnowledgeBase } from './prompts';
 import type { TarsAccessEnvelope } from './client';
 import type { TarsAccessUser } from '~/auth/tars';
+import {
+  fetchTarsAgentPrompts,
+  fetchTarsPersonalPrompts,
+  fetchTarsKnowledgeBasePrompts,
+} from './prompts';
 import { invalidateTarsScopedKnowledgeBasesCache, fetchTarsChatKnowledgeBases } from './scope';
-import { fetchTarsPersonalPrompts, fetchTarsKnowledgeBasePrompts } from './prompts';
 import { canUseTarsAdminPage, isTarsAdminRole } from '~/auth/tars';
 import { fetchTarsManagedKnowledgeBases } from './managed';
 import { tarsFetch } from './client';
@@ -96,21 +102,84 @@ export interface TarsChatPrompts {
   knowledgeBases: TarsPromptKnowledgeBase[];
 }
 
+/** What {@link resolveTarsChatPromptAgent} reads: the agent, and the caller's access to it. */
+export interface TarsPromptAgentAccessDeps<TId, TUser> {
+  getAgent: (search: {
+    id: string;
+  }) => Promise<{ _id: TId; id: string; name?: string | null } | null>;
+  /** The manage-agents capability, which every agent route also lets past the ACL. */
+  hasCapability: (user: TUser, capability: SystemCapability) => Promise<boolean>;
+  checkPermission: (params: {
+    userId: string;
+    role?: string;
+    resourceType: ResourceType;
+    resourceId: TId;
+    requiredPermission: PermissionBits;
+  }) => Promise<boolean>;
+}
+
+async function canManageAllAgents<TUser>(
+  user: TUser,
+  hasCapability: (user: TUser, capability: SystemCapability) => Promise<boolean>,
+): Promise<boolean> {
+  try {
+    return await hasCapability(user, ResourceCapabilityMap[ResourceType.AGENT]);
+  } catch (error) {
+    logger.warn(
+      `[tars] Agent capability check failed, denying bypass: ${(error as Error).message}`,
+    );
+    return false;
+  }
+}
+
 /**
- * The prompts a chat offers (composer panel, `/` commands, side panel): the user's own,
- * plus those of the knowledge bases the agent's 知識庫檢索 picked that the user may use in
- * chat. No 專用腦 tier: an agent binds no brain. Ids the user may not reach are dropped,
- * so a client cannot list the prompts of a knowledge base it was never granted.
+ * The saved agent whose prompts a chat may list: one the caller may view (owner, shared
+ * to them or their group, or public), or any agent for a role that manages all agents, as
+ * on every agent route and on the agent's prompt page. Anything else lists no agent tier, so
+ * a client cannot read the prompts of an agent it was never shared.
+ */
+export async function resolveTarsChatPromptAgent<TId, TUser extends { id?: string; role?: string }>(
+  user: TUser | null | undefined,
+  agentId: string | null | undefined,
+  deps: TarsPromptAgentAccessDeps<TId, TUser>,
+): Promise<TarsPromptAgent | null> {
+  if (!user?.id || !agentId) {
+    return null;
+  }
+  const agent = await deps.getAgent({ id: agentId });
+  if (!agent) {
+    return null;
+  }
+  const allowed =
+    (await canManageAllAgents(user, deps.hasCapability)) ||
+    (await deps.checkPermission({
+      userId: user.id,
+      role: user.role,
+      resourceType: ResourceType.AGENT,
+      resourceId: agent._id,
+      requiredPermission: PermissionBits.VIEW,
+    }));
+  return allowed ? { id: agent.id, name: agent.name || agent.id } : null;
+}
+
+/**
+ * The prompts a chat offers (composer panel, `/` commands, side panel): the selected
+ * agent's own (`agent`, already authorized by {@link resolveTarsChatPromptAgent}), those
+ * of the knowledge bases the agent's 知識庫檢索 picked that the user may use in chat, then
+ * the user's own. No 專用腦 tier: an agent binds no brain. Ids the user may not reach are
+ * dropped, so a client cannot list the prompts of a knowledge base it was never granted.
  */
 export async function fetchTarsChatPrompts(
   tarsId: string,
   knowledgeBaseIds: readonly string[],
+  agent?: TarsPromptAgent | null,
   baseUrl?: string,
 ): Promise<TarsChatPrompts> {
   const wanted = new Set(knowledgeBaseIds);
-  const [personal, reachable] = await Promise.all([
+  const [personal, reachable, agentPrompts] = await Promise.all([
     fetchTarsPersonalPrompts(tarsId, baseUrl),
     wanted.size > 0 ? fetchTarsChatKnowledgeBases(tarsId, baseUrl) : Promise.resolve([]),
+    agent ? fetchTarsAgentPrompts(agent.id, baseUrl) : Promise.resolve([]),
   ]);
   const knowledgeBases = reachable
     .filter((kb) => wanted.has(kb.id))
@@ -128,6 +197,9 @@ export async function fetchTarsChatPrompts(
   );
   return {
     prompts: [
+      ...agentPrompts.map(
+        (prompt): TarsPrompt => ({ ...prompt, scope: 'agent', agent_name: agent?.name }),
+      ),
       ...shared.flat(),
       ...personal.map((prompt): TarsPrompt => ({ ...prompt, scope: 'personal' })),
     ],

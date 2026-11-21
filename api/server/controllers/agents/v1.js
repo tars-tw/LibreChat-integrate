@@ -53,6 +53,7 @@ const {
   applyInstructionsPromptUnset,
   instructionsContentForScan,
   isPersistableTarsTool,
+  forgetTarsAgentPrompts,
 } = require('@librechat/api');
 const {
   Time,
@@ -1761,6 +1762,7 @@ const deleteAgentHandler = async (req, res) => {
       return res.status(404).json({ error: 'Agent not found' });
     }
     await db.deleteAgent({ id });
+    forgetTarsAgentPrompts(id);
     return res.json({ message: 'Agent deleted' });
   } catch (error) {
     logger.error('[/Agents/:id] Error deleting Agent', error);

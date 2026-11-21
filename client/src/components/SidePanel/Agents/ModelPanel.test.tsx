@@ -264,6 +264,38 @@ describe('ModelPanel', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('shows only the provider and model for the vLLM provider', () => {
+    mockWebSearchAllowed.mockReturnValue(false);
+    const parameters = { temperature: 0.3, web_search: true };
+    const vllmProps = {
+      defaultProvider: 'vLLM',
+      defaultModel: 'local-model',
+      defaultModelParameters: parameters,
+      modelsByProvider: { vLLM: ['local-model'] },
+      providers: [{ label: 'vLLM', value: 'vLLM' }],
+    };
+    const { getByTestId, getByText, queryByRole, queryByText } = render(
+      <TestForm {...vllmProps} />,
+    );
+
+    expect(getByTestId('com_ui_provider-selected')).toHaveTextContent('vLLM');
+    expect(getByTestId('com_ui_model-selected')).toHaveTextContent('local-model');
+    expect(queryByText('com_ui_reset_var')).toBeNull();
+    expect(queryByRole('status')).toBeNull();
+
+    fireEvent.click(getByText('com_ui_confirm'));
+
+    expect(capturedFormMethods?.getValues('model_parameters')).toEqual(parameters);
+  });
+
+  it('keeps the parameter fields for other providers', () => {
+    const { getByText } = render(
+      <TestForm defaultProvider="custom" modelsByProvider={{ custom: ['custom-model'] }} />,
+    );
+
+    expect(getByText('com_ui_reset_var')).toBeInTheDocument();
+  });
+
   it('labels the provider and model controls', () => {
     const { container } = render(
       <TestForm defaultProvider="custom" modelsByProvider={{ custom: ['custom-model'] }} />,

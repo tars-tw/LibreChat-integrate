@@ -884,28 +884,20 @@ export const useUpdateTarsPromptMutation = (
   );
 };
 
+type DeleteTarsPromptVariables = {
+  id: string;
+  domainId?: string;
+  knowledgeBaseId?: string;
+  agentId?: string;
+};
+
 export const useDeleteTarsPromptMutation = (
-  options?: UseMutationOptions<
-    { success: boolean },
-    unknown,
-    { id: string; domainId?: string; knowledgeBaseId?: string }
-  >,
-): UseMutationResult<
-  { success: boolean },
-  unknown,
-  { id: string; domainId?: string; knowledgeBaseId?: string }
-> => {
+  options?: UseMutationOptions<{ success: boolean }, unknown, DeleteTarsPromptVariables>,
+): UseMutationResult<{ success: boolean }, unknown, DeleteTarsPromptVariables> => {
   const queryClient = useQueryClient();
   return useMutation(
-    ({
-      id,
-      domainId,
-      knowledgeBaseId,
-    }: {
-      id: string;
-      domainId?: string;
-      knowledgeBaseId?: string;
-    }) => dataService.deleteTarsPrompt(id, { domainId, knowledgeBaseId }),
+    ({ id, domainId, knowledgeBaseId, agentId }: DeleteTarsPromptVariables) =>
+      dataService.deleteTarsPrompt(id, { domainId, knowledgeBaseId, agentId }),
     {
       ...options,
       onSuccess: (...args) => {

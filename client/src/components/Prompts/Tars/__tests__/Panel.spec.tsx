@@ -91,4 +91,21 @@ describe('Tars prompts side panel', () => {
     expect(screen.getByText('kb_contract')).toBeInTheDocument();
     expect(screen.queryByText('FTP_ok')).not.toBeInTheDocument();
   });
+
+  it("heads the agent's own prompts with its name, ahead of the other tiers", () => {
+    mockPrompts.current = [
+      prompt({ id: '4', name: 'leave_rules', scope: 'agent', agent_name: 'HR 助理' }),
+      ...mockPrompts.current,
+    ];
+    renderPanel();
+
+    const headers = screen
+      .getAllByRole('button', { expanded: true })
+      .map((button) => button.textContent);
+    expect(headers).toEqual([
+      'HR 助理(1)',
+      'com_ui_tars_prompts_kb(1)',
+      'com_ui_tars_prompts_personal(2)',
+    ]);
+  });
 });

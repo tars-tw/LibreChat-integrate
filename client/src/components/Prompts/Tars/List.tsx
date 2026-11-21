@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, FileText } from 'lucide-react';
+import { Bot, Plus, Trash2, FileText } from 'lucide-react';
 import {
   Button,
   Spinner,
@@ -10,7 +10,7 @@ import {
   OGDialogTemplate,
 } from '@librechat/client';
 import type { TTarsPrompt } from 'librechat-data-provider';
-import { useDeleteTarsPromptMutation } from '~/data-provider';
+import { useGetAgentByIdQuery, useDeleteTarsPromptMutation } from '~/data-provider';
 import { usePromptCategoryFilter } from './filter';
 import CategoryFilter from './CategoryFilter';
 import useScopedTarsPrompts from './hooks';
@@ -26,18 +26,23 @@ import { cn } from '~/utils';
 export default function TarsPromptList({
   domainId,
   knowledgeBaseId,
+  agentId,
   activePromptId,
 }: {
   domainId?: string;
   knowledgeBaseId?: string;
+  agentId?: string;
   activePromptId?: string;
 }) {
   const localize = useLocalize();
   const navigate = useNavigate();
-  const { prompts, isLoading, basePath } = useScopedTarsPrompts({
+  const { prompts, isLoading, isError, basePath } = useScopedTarsPrompts({
     domainId,
     knowledgeBaseId,
+    agentId,
   });
+  const { data: agent } = useGetAgentByIdQuery(agentId);
+  const noAgentAccess = agentId != null && isError;
 
   const [search, setSearch] = useState('');
   const [deleting, setDeleting] = useState<TTarsPrompt | null>(null);
@@ -71,6 +76,22 @@ export default function TarsPromptList({
 
   return (
     <div className="border-border-light flex h-full w-72 shrink-0 flex-col gap-2 overflow-hidden border-r p-2 sm:w-80">
+      {agentId != null && (
+        <div className="flex min-w-0 items-center gap-2 px-1 pt-1">
+          <Bot className="text-text-secondary size-4 shrink-0" aria-hidden="true" />
+          <div className="min-w-0">
+            <h2
+              className="text-text-primary truncate text-sm font-semibold"
+              title={agent?.name ?? undefined}
+            >
+              {agent?.name || agentId}
+            </h2>
+            <p className="text-text-secondary text-xs">
+              {localize('com_ui_tars_agent_prompts_title')}
+            </p>
+          </div>
+        </div>
+      )}
       <div role="search" className="flex items-center gap-2">
         <FilterInput
           inputId="tars-prompt-list-filter"
@@ -79,23 +100,25 @@ export default function TarsPromptList({
           onChange={handleSearchChange}
           containerClassName="flex-1"
         />
-        <TooltipAnchor
-          description={localize('com_ui_create_prompt')}
-          side="bottom"
-          render={
-            <Button
-              asChild
-              variant="outline"
-              size="icon"
-              className="size-9 shrink-0 bg-transparent"
-              aria-label={localize('com_ui_create_prompt')}
-            >
-              <Link to={`${basePath}/new`}>
-                <Plus className="size-4" aria-hidden="true" />
-              </Link>
-            </Button>
-          }
-        />
+        {!noAgentAccess && (
+          <TooltipAnchor
+            description={localize('com_ui_create_prompt')}
+            side="bottom"
+            render={
+              <Button
+                asChild
+                variant="outline"
+                size="icon"
+                className="size-9 shrink-0 bg-transparent"
+                aria-label={localize('com_ui_create_prompt')}
+              >
+                <Link to={`${basePath}/new`}>
+                  <Plus className="size-4" aria-hidden="true" />
+                </Link>
+              </Button>
+            }
+          />
+        )}
       </div>
       {!isLoading && categories.length > 0 && (
         <CategoryFilter
@@ -112,7 +135,12 @@ export default function TarsPromptList({
             <Spinner />
           </div>
         )}
-        {!isLoading && filtered.length === 0 && (
+        {noAgentAccess && (
+          <p className="text-text-secondary px-2 py-10 text-center text-sm">
+            {localize('com_ui_tars_agent_prompts_no_access')}
+          </p>
+        )}
+        {!isLoading && !noAgentAccess && filtered.length === 0 && (
           <div className="flex flex-col items-center gap-1 py-10 text-center">
             <FileText className="text-text-tertiary size-6" aria-hidden="true" />
             <p className="text-text-primary text-sm font-medium">
@@ -174,7 +202,12 @@ export default function TarsPromptList({
               disabled={deletePrompt.isLoading}
               onClick={() =>
                 deleting != null &&
-                deletePrompt.mutate({ id: String(deleting.id), domainId, knowledgeBaseId })
+                deletePrompt.mutate({
+                  id: String(deleting.id),
+                  domainId,
+                  knowledgeBaseId,
+                  agentId,
+                })
               }
             >
               {deletePrompt.isLoading ? <Spinner className="size-4" /> : localize('com_ui_delete')}
