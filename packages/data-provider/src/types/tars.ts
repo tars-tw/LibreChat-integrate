@@ -850,7 +850,7 @@ export type TTarsRetryStuckDocumentsResult = {
 };
 
 /** Which pwc_tars table a "我的提示" lives in — its visibility tier. */
-export type TTarsPromptScope = 'personal' | 'domain' | 'knowledge_base';
+export type TTarsPromptScope = 'personal' | 'domain' | 'knowledge_base' | 'agent';
 
 /**
  * A pwc_tars "我的提示" as surfaced to the client. Mirrors the backend
@@ -871,6 +871,9 @@ export type TTarsPrompt = {
   updated_by?: string | null;
   updated_at?: string | null;
   knowledge_base_name?: string | null;
+  /** Set on a saved agent's own prompts (`prompt_to_agent`); the chat list adds its name. */
+  agent_id?: string | null;
+  agent_name?: string | null;
   scope?: TTarsPromptScope;
 };
 
@@ -898,6 +901,8 @@ export type TTarsPromptInput = {
   status?: number;
   domain_id?: string | number;
   knowledge_base_id?: string;
+  /** A saved agent's prompt; sent to that agent's routes, which check the caller may edit it. */
+  agent_id?: string;
 };
 
 /**
@@ -910,6 +915,7 @@ export type TTarsPromptCategoryRenameInput = {
   new_category: string;
   domain_id?: string | number;
   knowledge_base_id?: string;
+  agent_id?: string;
 };
 
 export type TTarsPromptCategoryRenameResponse = {

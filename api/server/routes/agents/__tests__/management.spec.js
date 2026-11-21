@@ -100,6 +100,7 @@ jest.mock('@librechat/api', () => ({
   createAgentManagementFileHandlers: mockCreateAgentManagementFileHandlers,
   createAgentManagementReadHandlers: mockCreateAgentManagementReadHandlers,
   createAgentManagementUpdateHandler: mockCreateAgentManagementUpdateHandler,
+  withTarsAgentPromptCleanup: (deleteAgent) => deleteAgent,
 }));
 jest.mock('~/server/middleware', () => ({
   checkBan: mockCheckBan,

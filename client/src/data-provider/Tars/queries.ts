@@ -434,18 +434,20 @@ export const useTarsPromptsQuery = (
 };
 
 /**
- * The chat's "我的提示" (composer panel, `/` commands, side panel): personal prompts plus
- * those of the knowledge bases the agent's 知識庫檢索 picked, limited server-side to the
- * ones the user may use in chat. Keyed under `tarsPrompts`, so every prompt edit refreshes it.
+ * The chat's "我的提示" (composer panel, `/` commands, side panel): the selected agent's own
+ * prompts, those of the knowledge bases the agent's 知識庫檢索 picked, and personal prompts,
+ * limited server-side to the agent the user may view and the knowledge bases they may use in
+ * chat. Keyed under `tarsPrompts`, so every prompt edit refreshes it.
  */
 export const useTarsChatPromptsQuery = (
   knowledgeBaseIds: readonly string[],
+  agentId: string | null,
   config?: UseQueryOptions<TTarsPromptsResponse>,
 ): QueryObserverResult<TTarsPromptsResponse> => {
   const ids = [...knowledgeBaseIds].sort();
   return useQuery<TTarsPromptsResponse>(
-    [QueryKeys.tarsPrompts, 'chat', ids.join(',')],
-    () => dataService.getTarsChatPrompts(ids),
+    [QueryKeys.tarsPrompts, 'chat', ids.join(','), agentId ?? ''],
+    () => dataService.getTarsChatPrompts(ids, agentId),
     {
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
@@ -481,6 +483,28 @@ export const useTarsKnowledgeBasePromptsQuery = (
       select: (data) => data.prompts ?? [],
       enabled: knowledgeBaseId != null && knowledgeBaseId !== '',
       ...adminQueryOptions,
+      ...config,
+    },
+  );
+};
+
+/**
+ * A saved agent's own prompts (`prompt_to_agent`), for its prompt management page.
+ * The server answers 403 unless the caller may edit the agent, so no retry.
+ */
+export const useTarsAgentPromptsQuery = (
+  agentId: string | null,
+  config?: UseQueryOptions<{ prompts: TTarsPrompt[] }, unknown, TTarsPrompt[]>,
+): QueryObserverResult<TTarsPrompt[]> => {
+  return useQuery<{ prompts: TTarsPrompt[] }, unknown, TTarsPrompt[]>(
+    [QueryKeys.tarsPrompts, 'agent', agentId],
+    () => dataService.getTarsAgentPrompts(agentId as string),
+    {
+      select: (data) => data.prompts ?? [],
+      enabled: agentId != null && agentId !== '',
+      retry: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
       ...config,
     },
   );

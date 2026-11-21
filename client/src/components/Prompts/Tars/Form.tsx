@@ -47,19 +47,23 @@ export default function TarsPromptForm({
   promptId,
   domainId,
   knowledgeBaseId,
+  agentId,
 }: {
   promptId?: string;
   domainId?: string;
   knowledgeBaseId?: string;
+  agentId?: string;
 }) {
   const localize = useLocalize();
   const navigate = useNavigate();
   const { showToast } = useToastContext();
   const isSmallScreen = useMediaQuery('(max-width: 768px)');
-  const { prompts, categories, categoryCounts, isLoading, basePath } = useScopedTarsPrompts({
-    domainId,
-    knowledgeBaseId,
-  });
+  const { prompts, categories, categoryCounts, isLoading, isError, basePath } =
+    useScopedTarsPrompts({
+      domainId,
+      knowledgeBaseId,
+      agentId,
+    });
 
   const isEdit = promptId != null && promptId !== '';
   const prompt = useMemo(
@@ -129,6 +133,7 @@ export default function TarsPromptForm({
       command: data.command.trim(),
       domain_id: domainId,
       knowledge_base_id: knowledgeBaseId,
+      agent_id: agentId,
     };
 
     if (isEdit && promptId) {
@@ -137,6 +142,17 @@ export default function TarsPromptForm({
     }
     createPrompt.mutate(payload);
   };
+
+  if (agentId != null && isError) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="text-text-secondary">{localize('com_ui_tars_agent_prompts_no_access')}</p>
+        <Button type="button" variant="outline" onClick={handleCancel}>
+          {localize('com_ui_cancel')}
+        </Button>
+      </div>
+    );
+  }
 
   if (isEdit && !prompt) {
     return (
@@ -171,6 +187,7 @@ export default function TarsPromptForm({
               categoryCounts={categoryCounts}
               domainId={domainId}
               knowledgeBaseId={knowledgeBaseId}
+              agentId={agentId}
             />
           </div>
         ) : null}
@@ -223,6 +240,7 @@ export default function TarsPromptForm({
                       categoryCounts={categoryCounts}
                       domainId={domainId}
                       knowledgeBaseId={knowledgeBaseId}
+                      agentId={agentId}
                     />
                     <div
                       className={cn(

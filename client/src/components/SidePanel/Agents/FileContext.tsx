@@ -116,8 +116,8 @@ function FileContext({
           aria-label={addLabel}
           className={cn(addButtonClassName, 'focus:outline-hidden')}
         >
-          <Plus className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
-          {localize('com_ui_add')}
+          <Plus className="text-accent-primary h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+          <span className="text-accent-primary">{localize('com_ui_add')}</span>
         </Ariakit.MenuButton>
       }
       items={dropdownItems}
@@ -132,8 +132,8 @@ function FileContext({
       className={addButtonClassName}
       onClick={handleLocalFileClick}
     >
-      <Plus className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
-      {localize('com_ui_add')}
+      <Plus className="text-accent-primary h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+      <span className="text-accent-primary">{localize('com_ui_add')}</span>
     </Button>
   );
 

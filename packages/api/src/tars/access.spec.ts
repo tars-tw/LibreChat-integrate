@@ -1,4 +1,5 @@
 jest.mock('@librechat/data-schemas', () => ({
+  ...jest.requireActual('@librechat/data-schemas'),
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
@@ -8,9 +9,11 @@ jest.mock('@librechat/data-schemas', () => ({
 }));
 
 import jwt from 'jsonwebtoken';
+import { PermissionBits, ResourceType } from 'librechat-data-provider';
 import type { JwtPayload } from 'jsonwebtoken';
 import {
   fetchTarsChatPrompts,
+  resolveTarsChatPromptAgent,
   fetchTarsKnowledgeBaseShareCheck,
   saveTarsKnowledgeBaseChatAssignees,
   fetchTarsKnowledgeBaseChatAssignees,
@@ -226,6 +229,10 @@ describe('knowledge base chat list', () => {
             ]),
           );
         }
+        if (url.pathname === '/api/prompt/prepare_data_agent') {
+          const agent = url.searchParams.get('agent_id');
+          return buildResponse(200, { prompts: [prompt(`${agent}-p`, { agent_id: agent })] });
+        }
         if (url.pathname === '/api/prompt/prepare_data_km') {
           const kb = url.searchParams.get('knowledge_base_id');
           return buildResponse(200, {
@@ -268,6 +275,93 @@ describe('knowledge base chat list', () => {
         knowledgeBases: [],
       });
       expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("lists the authorized agent's prompts first, tagged with its name", async () => {
+      const fetchMock = mockPrompts();
+
+      const result = await fetchTarsChatPrompts('u1', ['kb1'], { id: 'agent_a', name: '客服' });
+
+      expect(result.prompts.map((p) => [p.id, p.scope, p.agent_name])).toEqual([
+        ['agent_a-p', 'agent', '客服'],
+        ['kb1-p', 'knowledge_base', undefined],
+        ['mine', 'personal', undefined],
+      ]);
+      const agentCalls = fetchMock.mock.calls
+        .map(([url]) => new URL(String(url)))
+        .filter((url) => url.pathname === '/api/prompt/prepare_data_agent');
+      expect(agentCalls.map((url) => url.searchParams.get('agent_id'))).toEqual(['agent_a']);
+    });
+  });
+
+  describe('resolveTarsChatPromptAgent', () => {
+    const stored = { _id: 'oid-1', id: 'agent_a', name: '客服' };
+
+    const deps = (agent: typeof stored | null, allowed: boolean, managesAll = false) => ({
+      getAgent: jest.fn(async () => agent),
+      hasCapability: jest.fn(async () => managesAll),
+      checkPermission: jest.fn(async () => allowed),
+    });
+
+    it('returns the agent when the user may view it', async () => {
+      const d = deps(stored, true);
+
+      const agent = await resolveTarsChatPromptAgent({ id: 'u1', role: 'USER' }, 'agent_a', d);
+
+      expect(agent).toEqual({ id: 'agent_a', name: '客服' });
+      expect(d.getAgent).toHaveBeenCalledWith({ id: 'agent_a' });
+      expect(d.checkPermission).toHaveBeenCalledWith({
+        userId: 'u1',
+        role: 'USER',
+        resourceType: ResourceType.AGENT,
+        resourceId: 'oid-1',
+        requiredPermission: PermissionBits.VIEW,
+      });
+    });
+
+    it('lets a role that manages all agents past the ACL, as the agent routes do', async () => {
+      const d = deps(stored, false, true);
+
+      const agent = await resolveTarsChatPromptAgent({ id: 'u1', role: 'ADMIN' }, 'agent_a', d);
+
+      expect(agent).toEqual({ id: 'agent_a', name: '客服' });
+      expect(d.hasCapability).toHaveBeenCalledWith({ id: 'u1', role: 'ADMIN' }, 'manage:agents');
+      expect(d.checkPermission).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the ACL when the capability check fails', async () => {
+      const d = deps(stored, true);
+      d.hasCapability.mockRejectedValue(new Error('down'));
+
+      expect(await resolveTarsChatPromptAgent({ id: 'u1' }, 'agent_a', d)).toEqual({
+        id: 'agent_a',
+        name: '客服',
+      });
+    });
+
+    it('returns nothing for an agent the user may not view', async () => {
+      expect(await resolveTarsChatPromptAgent({ id: 'u1' }, 'agent_a', deps(stored, false))).toBe(
+        null,
+      );
+    });
+
+    it('returns nothing for a missing agent or no agent id, without a permission check', async () => {
+      const missing = deps(null, true);
+      expect(await resolveTarsChatPromptAgent({ id: 'u1' }, 'agent_x', missing)).toBe(null);
+      expect(missing.checkPermission).not.toHaveBeenCalled();
+
+      const none = deps(stored, true);
+      expect(await resolveTarsChatPromptAgent({ id: 'u1' }, undefined, none)).toBe(null);
+      expect(none.getAgent).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the id for an unnamed agent', async () => {
+      const agent = await resolveTarsChatPromptAgent(
+        { id: 'u1' },
+        'agent_a',
+        deps({ ...stored, name: '' }, true),
+      );
+      expect(agent).toEqual({ id: 'agent_a', name: 'agent_a' });
     });
   });
 });

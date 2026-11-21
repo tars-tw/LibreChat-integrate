@@ -36,6 +36,7 @@ export default function CategorySelector({
   categoryCounts,
   domainId,
   knowledgeBaseId,
+  agentId,
   className = '',
 }: {
   value: string;
@@ -44,6 +45,7 @@ export default function CategorySelector({
   categoryCounts: Record<string, number>;
   domainId?: string;
   knowledgeBaseId?: string;
+  agentId?: string;
   className?: string;
 }) {
   const localize = useLocalize();
@@ -102,6 +104,7 @@ export default function CategorySelector({
         new_category: to,
         domain_id: domainId,
         knowledge_base_id: knowledgeBaseId,
+        agent_id: agentId,
       },
       {
         onSuccess: () => {

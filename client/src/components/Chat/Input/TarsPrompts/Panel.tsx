@@ -8,7 +8,11 @@ import type {
 } from 'librechat-data-provider';
 import type { ChatPromptScope } from '~/components/Prompts/Tars/scopes';
 import type { PromptCategory } from '~/components/Prompts/Tars/filter';
-import { CHAT_PROMPT_SCOPES, PROMPT_SCOPE_META } from '~/components/Prompts/Tars/scopes';
+import {
+  CHAT_PROMPT_SCOPES,
+  PROMPT_SCOPE_META,
+  promptGroupLabel,
+} from '~/components/Prompts/Tars/scopes';
 import { usePromptCategoryFilter } from '~/components/Prompts/Tars/filter';
 import CategoryFilter from '~/components/Prompts/Tars/CategoryFilter';
 import { extractUniqueVariables, detectVariables } from '~/utils';
@@ -189,7 +193,7 @@ function ListView({
     return (
       <div className="max-h-72 min-h-0 overflow-y-auto">
         {grouped.map((group) => {
-          const { icon: Icon, labelKey, colorClass } = PROMPT_SCOPE_META[group.scope];
+          const { icon: Icon, colorClass } = PROMPT_SCOPE_META[group.scope];
           const isCollapsed = collapsed[group.scope] ?? false;
           return (
             <div
@@ -203,7 +207,9 @@ function ListView({
                 className="hover:bg-surface-hover flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold"
               >
                 <Icon className={cn('size-3.5 shrink-0', colorClass)} aria-hidden={true} />
-                <span className={colorClass}>{localize(labelKey)}</span>
+                <span className={colorClass}>
+                  {promptGroupLabel(group.scope, group.items, localize)}
+                </span>
                 <span className="text-text-tertiary">({group.items.length})</span>
                 <ChevronDown
                   className={cn(

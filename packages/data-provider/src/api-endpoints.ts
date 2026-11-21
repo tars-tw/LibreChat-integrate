@@ -512,11 +512,28 @@ export const tarsPrompts = (domainId?: string | number) =>
   domainId != null && domainId !== ''
     ? `${BASE_URL}/api/tars/prompts?domain_id=${encodeURIComponent(String(domainId))}`
     : `${BASE_URL}/api/tars/prompts`;
-/** The chat's 我的提示: personal plus the picked knowledge bases' prompts (no 專用腦 tier). */
-export const tarsChatPrompts = (knowledgeBaseIds: readonly string[]) =>
-  knowledgeBaseIds.length > 0
-    ? `${BASE_URL}/api/tars/prompts/chat?knowledge_base_ids=${encodeURIComponent(knowledgeBaseIds.join(','))}`
-    : `${BASE_URL}/api/tars/prompts/chat`;
+/**
+ * The chat's 我的提示: the selected agent's, the picked knowledge bases' and personal
+ * prompts (no 專用腦 tier).
+ */
+export const tarsChatPrompts = (knowledgeBaseIds: readonly string[], agentId?: string | null) => {
+  const params = new URLSearchParams();
+  if (knowledgeBaseIds.length > 0) {
+    params.append('knowledge_base_ids', knowledgeBaseIds.join(','));
+  }
+  if (agentId) {
+    params.append('agent_id', agentId);
+  }
+  const qs = params.toString();
+  return qs ? `${BASE_URL}/api/tars/prompts/chat?${qs}` : `${BASE_URL}/api/tars/prompts/chat`;
+};
+/** A saved agent's own prompts; every route checks the caller may edit the agent. */
+export const tarsAgentPrompts = (agentId: string) =>
+  `${BASE_URL}/api/tars/prompts/agent/${encodeURIComponent(agentId)}`;
+export const tarsAgentPrompt = (agentId: string, id: string) =>
+  `${tarsAgentPrompts(agentId)}/${encodeURIComponent(id)}`;
+export const tarsAgentPromptCategoryRename = (agentId: string) =>
+  `${tarsAgentPrompts(agentId)}/categories/rename`;
 export const tarsPromptCategoryRename = () => `${BASE_URL}/api/tars/prompts/categories/rename`;
 export const tarsKnowledgeBasePrompts = (knowledgeBaseId: string) =>
   `${BASE_URL}/api/tars/prompts/knowledge-base/${encodeURIComponent(knowledgeBaseId)}`;

@@ -43,6 +43,10 @@ function TarsPromptItem({
 
   const promptId = String(prompt.id);
   const isActive = !isChatRoute && params.promptId === promptId;
+  const openPath =
+    scope === 'agent' && prompt.agent_id
+      ? `${PROMPT_PATH}/agent/${encodeURIComponent(prompt.agent_id)}/${promptId}`
+      : `${PROMPT_PATH}/${promptId}`;
 
   const deletePrompt = useDeleteTarsPromptMutation({
     onSuccess: () => {
@@ -56,7 +60,7 @@ function TarsPromptItem({
 
   const onCardClick = useCallback(() => {
     if (!isChatRoute) {
-      navigate(`${PROMPT_PATH}/${promptId}`, { replace: true });
+      navigate(openPath, { replace: true });
       return;
     }
     if (!prompt.content.trim()) {
@@ -67,7 +71,7 @@ function TarsPromptItem({
       return;
     }
     submitPrompt(prompt.content);
-  }, [isChatRoute, navigate, promptId, prompt.content, submitPrompt]);
+  }, [isChatRoute, navigate, openPath, prompt.content, submitPrompt]);
 
   const dropdownItems = useMemo(
     () => [

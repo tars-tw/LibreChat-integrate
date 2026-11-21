@@ -134,19 +134,24 @@ describe('useTarsPromptCommands', () => {
     expect(result.current).toEqual({ data: undefined, isLoading: false });
   });
 
-  it("lists the picked knowledge bases' prompts and the user's own once opened", async () => {
+  it("lists the agent's, the picked knowledge bases' and the user's own prompts once opened", async () => {
     mockSelectedAgentId = 'agent_hr';
     agentWith(['tars_knowledge_search']);
-    const getPrompts = jest
-      .spyOn(dataService, 'getTarsChatPrompts')
-      .mockResolvedValue({ prompts: chatPrompts, knowledgeBases: [] });
+    const getPrompts = jest.spyOn(dataService, 'getTarsChatPrompts').mockResolvedValue({
+      prompts: [
+        makePrompt({ id: 'a1', name: '請假規定', scope: 'agent', agent_name: 'HR' }),
+        ...chatPrompts,
+      ],
+      knowledgeBases: [],
+    });
 
     const { result } = renderCommands(true);
 
-    await waitFor(() => expect(result.current.data?.promptGroups).toHaveLength(2));
+    await waitFor(() => expect(result.current.data?.promptGroups).toHaveLength(3));
     expect(getPrompts).toHaveBeenCalledTimes(1);
-    expect(getPrompts).toHaveBeenCalledWith(['kb-orders']);
+    expect(getPrompts).toHaveBeenCalledWith(['kb-orders'], 'agent_hr');
     expect(result.current.data?.promptGroups.map((option) => option.description)).toEqual([
+      'HR',
       '訂單知識庫',
       'com_ui_tars_prompts_personal',
     ]);
@@ -165,7 +170,7 @@ describe('useTarsPromptCommands', () => {
 
     renderCommands(true);
 
-    await waitFor(() => expect(getPrompts).toHaveBeenCalledWith(['kb-orders']));
+    await waitFor(() => expect(getPrompts).toHaveBeenCalledWith(['kb-orders'], 'agent_hr'));
     expect(getPrompts).toHaveBeenCalledTimes(1);
   });
 
@@ -177,11 +182,11 @@ describe('useTarsPromptCommands', () => {
       .mockResolvedValue({ prompts: [], knowledgeBases: [] });
 
     renderCommands(true);
-    await waitFor(() => expect(getPrompts).toHaveBeenCalledWith([]));
+    await waitFor(() => expect(getPrompts).toHaveBeenCalledWith([], 'agent_hr'));
 
     mockSelectedAgentId = null;
     getPrompts.mockClear();
     renderCommands(true);
-    await waitFor(() => expect(getPrompts).toHaveBeenCalledWith([]));
+    await waitFor(() => expect(getPrompts).toHaveBeenCalledWith([], null));
   });
 });

@@ -4,8 +4,8 @@ import { Plus, FileText, ChevronDown } from 'lucide-react';
 import { Button, Skeleton, FilterInput, TooltipAnchor } from '@librechat/client';
 import type { TTarsPrompt } from 'librechat-data-provider';
 import type { ChatPromptScope } from './scopes';
+import { CHAT_PROMPT_SCOPES, PROMPT_SCOPE_META, promptGroupLabel } from './scopes';
 import useTarsChatPrompts from '~/hooks/Tars/useTarsChatPrompts';
-import { CHAT_PROMPT_SCOPES, PROMPT_SCOPE_META } from './scopes';
 import AutoSendPrompt from '../buttons/AutoSendPrompt';
 import { usePromptCategoryFilter } from './filter';
 import CategoryFilter from './CategoryFilter';
@@ -126,7 +126,7 @@ export default function TarsPromptsPanel() {
           )}
           {!isLoading &&
             grouped.map((group) => {
-              const { icon: Icon, labelKey, colorClass } = PROMPT_SCOPE_META[group.scope];
+              const { icon: Icon, colorClass } = PROMPT_SCOPE_META[group.scope];
               const isCollapsed = collapsed[group.scope] ?? false;
               return (
                 <div key={group.scope} className="mb-2">
@@ -137,7 +137,9 @@ export default function TarsPromptsPanel() {
                     className="hover:bg-surface-hover mb-1 flex w-full items-center gap-1.5 rounded-md px-1 py-1 text-xs font-semibold tracking-wide uppercase"
                   >
                     <Icon className={cn('size-3.5 shrink-0', colorClass)} aria-hidden="true" />
-                    <span className={colorClass}>{localize(labelKey)}</span>
+                    <span className={colorClass}>
+                      {promptGroupLabel(group.scope, group.items, localize)}
+                    </span>
                     <span className="text-text-tertiary">({group.items.length})</span>
                     <ChevronDown
                       className={cn(

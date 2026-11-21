@@ -71,7 +71,7 @@ function StartersField({
               onClick={addStarter}
               disabled={!canAdd}
             >
-              <Plus className="size-4" aria-hidden="true" />
+              <Plus className="text-accent-primary size-4" aria-hidden="true" />
             </Button>
           }
         />

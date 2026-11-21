@@ -8,6 +8,7 @@ import useLocalize from '~/hooks/useLocalize';
 import { tarsPromptAsGroup } from '~/utils';
 
 const SCOPE_LABELS: Record<TTarsPromptScope, TranslationKeys> = {
+  agent: 'com_ui_tars_prompts_agent',
   domain: 'com_ui_tars_prompts_domain',
   knowledge_base: 'com_ui_tars_prompts_kb',
   personal: 'com_ui_tars_prompts_personal',
@@ -67,6 +68,9 @@ export default function useTarsPromptCommands(enabled: boolean): {
       const scope = prompt.scope ?? 'personal';
       if (scope === 'knowledge_base' && prompt.knowledge_base_name) {
         return prompt.knowledge_base_name;
+      }
+      if (scope === 'agent' && prompt.agent_name) {
+        return prompt.agent_name;
       }
       return localize(SCOPE_LABELS[scope]);
     });

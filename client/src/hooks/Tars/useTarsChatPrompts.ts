@@ -38,11 +38,11 @@ export function tarsKnowledgeSearchPicks(
 }
 
 /**
- * The chat's 我的提示 (composer panel, `/` commands, side panel): personal prompts plus
- * those of the knowledge bases the selected agent's 知識庫檢索 picked, while that tool is
- * on. An agent binds no 專用腦, so there is no brain tier, and a chat without an agent
- * lists personal prompts only. Waits for the agent before asking, so the list is fetched
- * once rather than once without its knowledge bases and again with them.
+ * The chat's 我的提示 (composer panel, `/` commands, side panel): the selected agent's own
+ * prompts, those of the knowledge bases its 知識庫檢索 picked while that tool is on, and
+ * personal prompts. An agent binds no 專用腦, so there is no brain tier, and a chat without
+ * an agent lists personal prompts only. Waits for the agent before asking, so the list is
+ * fetched once rather than once without the agent's tiers and again with them.
  */
 export default function useTarsChatPrompts(
   enabled = true,
@@ -53,7 +53,7 @@ export default function useTarsChatPrompts(
   const agent = agentQuery.data;
   const knowledgeBaseIds = useMemo(() => tarsKnowledgeSearchPicks(agent), [agent]);
   const agentSettled = selectedAgentId == null || agentQuery.isFetched;
-  const query = useTarsChatPromptsQuery(knowledgeBaseIds, {
+  const query = useTarsChatPromptsQuery(knowledgeBaseIds, agent?.id ?? null, {
     enabled: enabled && isTarsUser && agentSettled,
   });
   return { ...query, isTarsUser };
