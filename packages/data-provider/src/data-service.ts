@@ -1632,8 +1632,8 @@ export const importTarsFileSystemDataset = (
 export const refreshTarsFileSystemDataset = (
   id: string,
   fsId: string,
-  data: { associationId?: string; chunkSize?: number; overlap?: number },
-): Promise<{ success: boolean }> => {
+  data: t.TTarsFileSystemSyncInput,
+): Promise<t.TTarsFileSystemSyncResult> => {
   return request.post(endpoints.tarsKnowledgeBaseFileSystemRefresh(id, fsId), data);
 };
 

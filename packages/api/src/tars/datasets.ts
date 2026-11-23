@@ -1,3 +1,8 @@
+import type {
+  TTarsFileSystemSyncInput,
+  TTarsFileSystemSyncResult,
+  TTarsFileSystemSyncFailure,
+} from 'librechat-data-provider';
 import type { TarsDocument, TarsKnowledgeBase } from './knowledge';
 import { tarsFetch } from './client';
 
@@ -602,32 +607,61 @@ export async function importTarsFileSystemDataset(
   });
 }
 
+/** The parts of pwc_tars's sync reply the knowledge-base page reports. */
+interface RawFileSystemSyncResult {
+  status?: string;
+  total_updated?: number;
+  total_failed?: number;
+  failed_files?: TTarsFileSystemSyncFailure[];
+  deleted_count?: number | null;
+  deletion_notices?: string[];
+  is_sync_all?: boolean;
+}
+
 /**
- * Pulls anything new or newer from the file server
- * (`POST /api/knowledge_detail/refresh_file_server_files`). pwc_tars reads the
- * connection itself, so only the ids travel. `associationId` picks which of the
- * group's associations (directories) to sync.
+ * Brings a document group in line with its source
+ * (`POST /api/knowledge_detail/refresh_file_server_files`): changed files are
+ * re-imported, files gone from the source are removed, and new files come in
+ * only when the group syncs everything. pwc_tars reads the connection itself,
+ * so only the ids travel; `associationId` picks which of the group's
+ * associations (directories) to sync. `syncAll` switches a selected-files
+ * group to sync everything, which imports the whole source, so it gets the
+ * import's time budget.
  */
 export async function refreshTarsFileSystemDataset(
   tarsId: string,
   knowledgeBaseId: string,
   fileSystemId: string,
-  chunk: { associationId?: string; chunkSize?: number; overlap?: number } = {},
+  input: TTarsFileSystemSyncInput = {},
   baseUrl?: string,
-): Promise<void> {
-  await tarsFetch('/api/knowledge_detail/refresh_file_server_files', {
-    method: 'POST',
-    timeoutMs: INGEST_TIMEOUT_MS,
-    baseUrl,
-    body: {
-      user_id: tarsId,
-      knowledge_base_id: knowledgeBaseId,
-      dataset_file_system_id: fileSystemId,
-      ...(chunk.associationId ? { association_id: chunk.associationId } : {}),
-      new_file_chunk_size: chunk.chunkSize ?? 1000,
-      new_file_overlap_size: chunk.overlap ?? 100,
+): Promise<TTarsFileSystemSyncResult> {
+  const data = await tarsFetch<RawFileSystemSyncResult>(
+    '/api/knowledge_detail/refresh_file_server_files',
+    {
+      method: 'POST',
+      timeoutMs: input.syncAll === true ? FILE_SERVER_IMPORT_TIMEOUT_MS : INGEST_TIMEOUT_MS,
+      baseUrl,
+      body: {
+        user_id: tarsId,
+        knowledge_base_id: knowledgeBaseId,
+        dataset_file_system_id: fileSystemId,
+        ...(input.associationId ? { association_id: input.associationId } : {}),
+        new_file_chunk_size: input.chunkSize ?? 1000,
+        new_file_overlap_size: input.overlap ?? 100,
+        ...(input.syncAll === true ? { sync_all: true } : {}),
+      },
     },
-  });
+  );
+  const failed = data?.failed_files ?? [];
+  return {
+    total_updated: data?.total_updated ?? 0,
+    total_failed: data?.total_failed ?? failed.length,
+    failed_files: failed,
+    deleted_count: data?.deleted_count ?? 0,
+    deletion_notices: data?.deletion_notices ?? [],
+    is_sync_all: typeof data?.is_sync_all === 'boolean' ? data.is_sync_all : null,
+    status: data?.status === 'warning' ? 'warning' : 'success',
+  };
 }
 
 /**

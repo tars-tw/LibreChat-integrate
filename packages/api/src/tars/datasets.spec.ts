@@ -12,6 +12,7 @@ import {
   fetchTarsDatabaseTables,
   fetchTarsFileSystemSources,
   importTarsFileSystemDataset,
+  refreshTarsFileSystemDataset,
   importTarsWebsiteDataset,
   batchDeleteTarsDatasets,
   unbindTarsDatabase,
@@ -265,6 +266,79 @@ describe('importTarsFileSystemDataset', () => {
     expect(body.selected_folder).toBe('');
     expect(body).not.toHaveProperty('chunk_size');
     expect(body).not.toHaveProperty('overlap');
+  });
+});
+
+describe('refreshTarsFileSystemDataset', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('asks pwc_tars to switch to sync everything only when told to', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { status: 'success', is_sync_all: false }));
+
+    await refreshTarsFileSystemDataset(
+      'user-1',
+      'kb-1',
+      'fs-1',
+      { associationId: 'assoc-1', chunkSize: 800, overlap: 80 },
+      BASE_URL,
+    );
+    await refreshTarsFileSystemDataset(
+      'user-1',
+      'kb-1',
+      'fs-1',
+      { associationId: 'assoc-1', syncAll: true },
+      BASE_URL,
+    );
+
+    expect(bodyOf(fetchMock, 0)).toEqual({
+      user_id: 'user-1',
+      knowledge_base_id: 'kb-1',
+      dataset_file_system_id: 'fs-1',
+      association_id: 'assoc-1',
+      new_file_chunk_size: 800,
+      new_file_overlap_size: 80,
+    });
+    expect(bodyOf(fetchMock, 1)).toMatchObject({ association_id: 'assoc-1', sync_all: true });
+  });
+
+  it("reports what the sync did in pwc_tars's own terms", async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      buildResponse(200, {
+        message: '檔案同步完成',
+        status: 'warning',
+        total_updated: 3,
+        total_failed: 1,
+        failed_files: [{ file: 'a.pdf', reason: '下載失敗' }],
+        deleted_count: 2,
+        deletion_notices: ['「b.pdf」：已延後刪除'],
+        is_sync_all: true,
+        updated_files_info: [{ file_path: '/srv/a.pdf' }],
+      }),
+    );
+
+    await expect(
+      refreshTarsFileSystemDataset('user-1', 'kb-1', 'fs-1', { syncAll: true }, BASE_URL),
+    ).resolves.toEqual({
+      total_updated: 3,
+      total_failed: 1,
+      failed_files: [{ file: 'a.pdf', reason: '下載失敗' }],
+      deleted_count: 2,
+      deletion_notices: ['「b.pdf」：已延後刪除'],
+      is_sync_all: true,
+      status: 'warning',
+    });
+  });
+
+  it('leaves the mode unknown when pwc_tars predates the switch', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildResponse(200, { message: '檔案同步完成', total_updated: 0 }));
+
+    await expect(
+      refreshTarsFileSystemDataset('user-1', 'kb-1', 'fs-1', {}, BASE_URL),
+    ).resolves.toMatchObject({ is_sync_all: null, deleted_count: 0, status: 'success' });
   });
 });
 

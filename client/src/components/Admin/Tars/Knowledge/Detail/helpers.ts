@@ -1,4 +1,5 @@
 import type {
+  TTarsFileSystemSyncResult,
   TTarsDatasetFileSystemLink,
   TTarsDatasetWebsite,
   TTarsDatasetLimits,
@@ -129,6 +130,56 @@ export const chunkSettingsInvalid = (
   overlap < 0 ||
   overlap > limits.max_overlap ||
   overlap >= chunkSize;
+
+/** How many failures and pwc_tars notices one sync toast lists before counting the rest. */
+const SYNC_DETAIL_LIMIT = 5;
+
+export interface SyncToast {
+  message: string;
+  status: 'success' | 'warning';
+}
+
+/**
+ * The toast a finished sync leaves: what it did, whether a requested switch to
+ * sync everything took, then pwc_tars's own reasons for failed files and
+ * deferred deletions. The switch only counts as made when pwc_tars reports the
+ * group syncing everything, so an older pwc_tars that ignores it says so.
+ */
+export const syncResultToast = (
+  result: TTarsFileSystemSyncResult,
+  requestedSyncAll: boolean,
+  localize: Localize,
+): SyncToast => {
+  const switchFailed = requestedSyncAll && result.is_sync_all !== true;
+  const details = [
+    ...result.failed_files.map(({ file, reason }) =>
+      localize('com_ui_tars_kb_ds_sync_failed_file', { 0: file, 1: reason }),
+    ),
+    ...result.deletion_notices,
+  ];
+  const hidden = details.length - SYNC_DETAIL_LIMIT;
+  const lines = [
+    localize('com_ui_tars_kb_ds_sync_done', {
+      0: String(result.total_updated),
+      1: String(result.total_failed),
+      2: String(result.deleted_count),
+    }),
+    requestedSyncAll
+      ? localize(
+          switchFailed ? 'com_ui_tars_kb_ds_sync_switch_failed' : 'com_ui_tars_kb_ds_sync_switched',
+        )
+      : null,
+    ...details.slice(0, SYNC_DETAIL_LIMIT),
+    hidden > 0 ? localize('com_ui_tars_kb_ds_sync_more', { 0: String(hidden) }) : null,
+  ];
+  return {
+    message: lines.filter((line): line is string => line != null).join('\n'),
+    status:
+      result.status === 'warning' || result.total_failed > 0 || switchFailed
+        ? 'warning'
+        : 'success',
+  };
+};
 
 /** `Intl` handles the units; this only keeps the call sites short. */
 export const formatCount = (value: number | null | undefined): string =>

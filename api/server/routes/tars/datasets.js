@@ -24,6 +24,7 @@ const {
   fetchTarsKnowledgeBaseSecurity,
   saveTarsKnowledgeBaseSecurity,
   requireTarsKnowledgeBase,
+  fileSystemTestErrorReply,
 } = require('@librechat/api');
 const { requireJwtAuth, requireTarsMenuAccess } = require('~/server/middleware');
 const { relayTarsError } = require('./relay');
@@ -308,21 +309,32 @@ router.post('/knowledge-bases/:id/file-systems/:fsId', async (req, res) => {
 
 /**
  * @route POST /api/tars/knowledge-bases/:id/file-systems/:fsId/refresh
- * @desc Pull anything new or newer from the file server.
+ * @desc Sync a document group with its file server and report what changed;
+ *       `syncAll` switches a selected-files group to sync everything.
  * @access 知識庫清單 (kb.list) or pwc_tars admin
  */
 router.post('/knowledge-bases/:id/file-systems/:fsId/refresh', async (req, res) => {
-  const { associationId, chunkSize, overlap } = req.body ?? {};
+  const { associationId, chunkSize, overlap, syncAll } = req.body ?? {};
   try {
-    await refreshTarsFileSystemDataset(req.user.tarsId, req.params.id, req.params.fsId, {
-      associationId: typeof associationId === 'string' ? associationId : undefined,
-      chunkSize: chunkSize != null ? Number(chunkSize) : undefined,
-      overlap: overlap != null ? Number(overlap) : undefined,
-    });
-    return res.json({ success: true });
+    const result = await refreshTarsFileSystemDataset(
+      req.user.tarsId,
+      req.params.id,
+      req.params.fsId,
+      {
+        associationId: typeof associationId === 'string' ? associationId : undefined,
+        chunkSize: chunkSize != null ? Number(chunkSize) : undefined,
+        overlap: overlap != null ? Number(overlap) : undefined,
+        syncAll: syncAll === true,
+      },
+    );
+    return res.json(result);
   } catch (error) {
     logger.error('[POST /api/tars/knowledge-bases/:id/file-systems/:fsId/refresh] Failed', error);
-    return relayTarsError(res, error, 'Failed to refresh pwc_tars document group');
+    const { status, error: message } = fileSystemTestErrorReply(
+      error,
+      'Failed to sync pwc_tars document group',
+    );
+    return res.status(status).json({ error: message });
   }
 });
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button, Checkbox, useToastContext } from '@librechat/client';
-import { Eye, RefreshCcw, RotateCcw, RotateCw, ShieldCheck, Unlink } from 'lucide-react';
+import { Eye, Info, RefreshCcw, RotateCcw, RotateCw, ShieldCheck, Unlink } from 'lucide-react';
 import type {
   TTarsDatasetFileSystemLink,
   TTarsDatasetLimits,
@@ -23,20 +23,24 @@ import {
   fileSystemLabel,
   boundFolderLabel,
   enabledStatusMeta,
+  syncResultToast,
   recordedChunkLabel,
 } from './helpers';
 import FileSystemImportDialog from './FileSystemImportDialog';
 import FileSystemEditDialog from './FileSystemEditDialog';
 import GroupDocumentsDialog from './GroupDocumentsDialog';
 import Pagination, { usePagination } from '../Pagination';
+import { relayedError, relayedStatus } from '../helpers';
 import { formatDateTime } from '../../Users/helpers';
 import LevelDialog, { LevelChip } from './Level';
 import ConfirmDialog from './ConfirmDialog';
-import { relayedError } from '../helpers';
 import StatusBadge from './StatusBadge';
 import SyncDialog from './SyncDialog';
 import { useLocalize } from '~/hooks';
 import Toolbar from './Toolbar';
+
+/** A sync toast that lists failures or deferred deletions stays up long enough to read. */
+const SYNC_WARNING_TOAST_MS = 12000;
 
 /**
  * The document groups a knowledge base pulls from file servers.
@@ -148,12 +152,32 @@ export default function FileSystemsTab({
   const onError = () =>
     showToast({ message: localize('com_ui_tars_admin_error'), status: 'error' });
 
+  /**
+   * pwc_tars answers once every file is downloaded, so the toast can say what
+   * the sync did. A timeout leaves it running there: the dialog closes and the
+   * toast says to refresh later rather than reporting a failure.
+   */
   const refreshMutation = useRefreshTarsFileSystemMutation(knowledgeBaseId, {
-    onSuccess: () => {
-      showToast({ message: localize('com_ui_tars_kb_ds_sync_started'), status: 'success' });
+    onSuccess: (result, { syncAll }) => {
+      const { message, status } = syncResultToast(result, syncAll === true, localize);
+      showToast({
+        message,
+        status,
+        ...(status === 'warning' ? { duration: SYNC_WARNING_TOAST_MS } : {}),
+      });
       setSyncing(null);
     },
-    onError,
+    onError: (error) => {
+      if (relayedStatus(error) === 504) {
+        showToast({ message: localize('com_ui_tars_kb_ds_sync_timeout'), status: 'warning' });
+        setSyncing(null);
+        return;
+      }
+      showToast({
+        message: relayedError(error) ?? localize('com_ui_tars_admin_error'),
+        status: 'error',
+      });
+    },
   });
 
   const reprocessMutation = useReprocessTarsFileSystemMutation(knowledgeBaseId, {
@@ -332,10 +356,19 @@ export default function FileSystemsTab({
                       {counts.done} / {counts.total}
                     </td>
                     <td className="text-text-secondary px-3 py-1.5 whitespace-nowrap">
-                      {localize(
-                        link.is_sync_all === true
-                          ? 'com_ui_tars_kb_ds_sync_all'
-                          : 'com_ui_tars_kb_ds_sync_selected',
+                      {link.is_sync_all === true ? (
+                        localize('com_ui_tars_kb_ds_sync_all')
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1"
+                          title={localize('com_ui_tars_kb_ds_sync_selected_hint')}
+                        >
+                          {localize('com_ui_tars_kb_ds_sync_selected')}
+                          <Info className="size-3.5" aria-hidden />
+                          <span className="sr-only">
+                            {localize('com_ui_tars_kb_ds_sync_selected_hint')}
+                          </span>
+                        </span>
                       )}
                     </td>
                     <td className="text-text-secondary px-3 py-1.5 whitespace-nowrap tabular-nums">
@@ -493,12 +526,13 @@ export default function FileSystemsTab({
           link={syncing}
           limits={limits}
           isBusy={refreshMutation.isLoading}
-          onConfirm={({ chunkSize, overlap }) =>
+          onConfirm={({ chunkSize, overlap, syncAll }) =>
             refreshMutation.mutate({
               fileSystemId: syncing.dataset_file_system_id,
               associationId: syncing.id,
               chunkSize,
               overlap,
+              syncAll,
             })
           }
           onClose={() => setSyncing(null)}
