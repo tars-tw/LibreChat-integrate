@@ -5,7 +5,8 @@ import type { MCPOAuthTeardownOptions } from '~/mcp/oauth/cleanup';
 import type { TarsOidcPolicy } from './oidc';
 import { cleanupDeletedMCPServerOAuthUsers } from '~/mcp/oauth/cleanup';
 import { derivedTarsMcpEntryName, tarsMcpEntryName } from './names';
-import { buildTarsOidcEntry, isTarsOidcServer } from './oidc';
+import { buildTarsOidcServerEntry } from './config';
+import { isTarsOidcServer } from './oidc';
 import { tarsMcpFetch } from './client';
 
 /**
@@ -24,11 +25,20 @@ export interface TarsOidcTeardownTarget {
   serverConfig?: MCPOptions;
 }
 
-/** What a stored token was issued for: a change to any of these makes it unusable or unsafe. */
+/**
+ * What a stored token was issued for: a change to any of these makes it unusable or unsafe. The
+ * URL is the MCP server's for a direct server and the API's for one pwc_tars executes, since that
+ * is where the token is sent.
+ */
 function credentialIdentity(server: TarsMcpServerDetail): string {
   const connection = server.connection_config;
   const auth = connection?.auth as { issuer?: unknown; client_id?: unknown } | undefined;
-  return JSON.stringify([server.code, connection?.url, auth?.issuer, auth?.client_id]);
+  return JSON.stringify([
+    server.code,
+    connection?.url ?? connection?.base_url,
+    auth?.issuer,
+    auth?.client_id,
+  ]);
 }
 
 /** Includes disabled servers, which have no `mcpConfig` entry but keep their users' tokens. */
@@ -44,7 +54,7 @@ export async function readTarsOidcTeardownTargets(
       serverId: server.id,
       entryName: tarsMcpEntryName(server.id) ?? derivedTarsMcpEntryName(server.id, server.code),
       identity: credentialIdentity(server),
-      serverConfig: buildTarsOidcEntry(server, {}, policy) ?? undefined,
+      serverConfig: buildTarsOidcServerEntry(server, policy ?? {}) ?? undefined,
     }));
 }
 

@@ -44,6 +44,7 @@ import { filterManagedServers } from './servers';
 import ServerTypeBadge from './ServerTypeBadge';
 import McpUserToolsTab from './McpUserToolsTab';
 import McpServerModal from './McpServerModal';
+import { isDirectOidcServer } from './oidc';
 import { mcpActionClass } from './actions';
 import McpLogsTab from './McpLogsTab';
 
@@ -61,9 +62,8 @@ function serverStatus(server: TTarsMcpServer): ServerStatus {
   if (!server.is_enabled) {
     return 'disabled';
   }
-  /** pwc_tars never lists an OIDC server's tools, so "not synced yet" would never clear. */
-  const auth = server.connection_config?.auth as { type?: string } | undefined;
-  if (auth?.type === 'oidc') {
+  /** pwc_tars never lists a direct OIDC server's tools, so "not synced yet" would never clear. */
+  if (isDirectOidcServer(server)) {
     return 'userLogin';
   }
   return (server.tool_count ?? 0) > 0 ? 'connected' : 'pending';

@@ -28,6 +28,7 @@ jest.mock('~/data-provider', () => {
     useUpdateTarsMcpServerMutation: () => ({ mutateAsync: mockUpdate, isLoading: false }),
     useCreateTarsMcpServerMutation: () => idle,
     useParseTarsMcpOpenapiMutation: () => idle,
+    useTarsMcpSystemVariablesQuery: () => ({ data: [] }),
   };
 });
 
@@ -200,5 +201,75 @@ describe('McpServerModal OIDC', () => {
       status: 'error',
     });
     expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  describe('on an OpenAPI server', () => {
+    const openapiServer = (auth: Record<string, unknown> = {}): TTarsMcpServer =>
+      ({
+        id: 's2',
+        name: 'Orders',
+        code: 'orders',
+        type: 'openapi',
+        is_enabled: true,
+        connection_config: {
+          openapi_url: 'https://orders.example.com/openapi.json',
+          base_url: 'https://orders.example.com',
+          auth: {
+            type: 'oidc',
+            issuer: 'https://idp.example.com',
+            client_id: 'librechat',
+            has_client_secret: false,
+            ...auth,
+          },
+        },
+      }) as unknown as TTarsMcpServer;
+
+    it("explains that TARS runs the tools on each user's token", () => {
+      renderModal(openapiServer());
+      expect(screen.getByText('com_ui_tars_mcp_oidc_api_hint')).toBeInTheDocument();
+      expect(screen.queryByText('com_ui_tars_mcp_oidc_hint')).not.toBeInTheDocument();
+    });
+
+    it('saves the spec with the OIDC block and syncs its tools from it', async () => {
+      mockSync.mockResolvedValue({ result: {} });
+      renderModal(openapiServer());
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
+
+      await waitFor(() => expect(mockSync).toHaveBeenCalledWith('s1'));
+      expect(mockUpdate.mock.calls[0][0].data.connection_config).toMatchObject({
+        openapi_url: 'https://orders.example.com/openapi.json',
+        base_url: 'https://orders.example.com',
+        auth: { type: 'oidc', issuer: 'https://idp.example.com', client_id: 'librechat' },
+      });
+      expect(mockShowToast).not.toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'com_ui_tars_mcp_oidc_saved' }),
+      );
+    });
+
+    it('refuses to save without an issuer', () => {
+      renderModal(openapiServer({ issuer: '' }));
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
+
+      expect(mockShowToast).toHaveBeenCalledWith({
+        message: 'com_ui_tars_mcp_oidc_required',
+        status: 'error',
+      });
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it('refuses to save without the API URL the token is sent to', () => {
+      const server = openapiServer();
+      renderModal({
+        ...server,
+        connection_config: { ...server.connection_config, base_url: '' },
+      } as TTarsMcpServer);
+      fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
+
+      expect(mockShowToast).toHaveBeenCalledWith({
+        message: 'com_ui_tars_mcp_base_url_required',
+        status: 'error',
+      });
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
   });
 });

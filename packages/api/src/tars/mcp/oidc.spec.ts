@@ -11,7 +11,10 @@ import {
   buildTarsOidcEntry,
   sealTarsOidcInput,
   testTarsOidcServer,
+  tarsOidcGatewayAuth,
   redactTarsOidcServer,
+  isTarsDirectOidcServer,
+  isTarsDirectOidcSetting,
   discoverTarsOidcProvider,
 } from './oidc';
 
@@ -280,7 +283,7 @@ describe('sealTarsOidcInput', () => {
     provider.close();
   });
 
-  it('refuses stdio, non-external servers and static headers', async () => {
+  it('refuses stdio, unsupported server types and static headers', async () => {
     const input = oidcInput('https://idp.example.com');
     await expect(
       sealTarsOidcInput({
@@ -288,7 +291,7 @@ describe('sealTarsOidcInput', () => {
         connection_config: { ...input.connection_config, transport: 'stdio' },
       }),
     ).rejects.toThrow('streamable_http');
-    await expect(sealTarsOidcInput({ ...input, type: 'custom_api' as never })).rejects.toThrow(
+    await expect(sealTarsOidcInput({ ...input, type: 'builtin' as never })).rejects.toThrow(
       'streamable_http',
     );
     await expect(
@@ -323,6 +326,144 @@ describe('sealTarsOidcInput', () => {
     ).rejects.toThrow('重新輸入');
     provider.close();
     other.close();
+  });
+});
+
+describe('sealTarsOidcInput for servers pwc_tars executes', () => {
+  const apiInput = (
+    issuer: string,
+    type: 'openapi' | 'custom_api',
+    connection: Record<string, unknown> = {},
+  ) => ({
+    name: 'Orders',
+    type,
+    connection_config: {
+      base_url: 'https://orders.example.com',
+      openapi_url: 'https://orders.example.com/openapi.json',
+      headers: { 'X-Tenant': '{{TARS_CURRENT_LOGINID}}' },
+      ...connection,
+      auth: { type: 'oidc', issuer, client_id: 'librechat', client_secret: 's3cret' },
+    },
+  });
+
+  it.each(['openapi', 'custom_api'] as const)(
+    'keeps the rest of a %s config beside the sealed auth block',
+    async (type) => {
+      const provider = await startProvider(goodDocument);
+      const sealed = await sealTarsOidcInput(apiInput(provider.issuer, type), {
+        policy: provider.policy,
+      });
+      const connection = sealed.connection_config as Record<string, unknown>;
+      expect(connection).toMatchObject({
+        base_url: 'https://orders.example.com',
+        openapi_url: 'https://orders.example.com/openapi.json',
+        headers: { 'X-Tenant': '{{TARS_CURRENT_LOGINID}}' },
+      });
+      const auth = connection.auth as Record<string, string>;
+      expect(auth).not.toHaveProperty('client_secret');
+      expect(decryptV3(auth.client_secret_enc)).toBe('s3cret');
+      expect(auth.token_url).toBe(`${provider.issuer}/token`);
+      provider.close();
+    },
+  );
+
+  it.each([[''], [undefined]])(
+    'refuses a spec with no API URL (%p), whose host would come from the spec unchecked',
+    async (base_url) => {
+      const provider = await startProvider(goodDocument);
+      await expect(
+        sealTarsOidcInput(apiInput(provider.issuer, 'openapi', { base_url }), {
+          policy: provider.policy,
+        }),
+      ).rejects.toThrow('base_url');
+      provider.close();
+    },
+  );
+
+  it('refuses to send the token to a plain http API the operator has not allowlisted', async () => {
+    const provider = await startProvider(goodDocument);
+    await expect(
+      sealTarsOidcInput(
+        apiInput(provider.issuer, 'openapi', { base_url: 'http://orders.example.com' }),
+        { policy: provider.policy },
+      ),
+    ).rejects.toThrow('base_url');
+    provider.close();
+  });
+});
+
+describe('tarsOidcGatewayAuth', () => {
+  const storedApi = async (type: string) => {
+    const provider = await startProvider(goodDocument);
+    const sealed = await sealTarsOidcInput(
+      {
+        name: 'Orders',
+        type: 'openapi' as const,
+        connection_config: {
+          base_url: 'https://orders.example.com',
+          auth: { type: 'oidc', issuer: provider.issuer, client_id: 'librechat' },
+        },
+      },
+      { policy: provider.policy },
+    );
+    return { provider, server: { id: 's', type, connection_config: sealed.connection_config } };
+  };
+
+  it('adds the same sign-in as a direct entry', async () => {
+    const { provider, server } = await storedApi('openapi');
+    expect(tarsOidcGatewayAuth(server, provider.policy)).toEqual({
+      requiresOAuth: true,
+      oauth: expect.objectContaining({
+        client_id: 'librechat',
+        token_url: `${provider.issuer}/token`,
+        oidc_issuer: provider.issuer,
+        oidc_jwks_uri: `${provider.issuer}/jwks`,
+        code_challenge_methods_supported: ['S256'],
+      }),
+    });
+    provider.close();
+  });
+
+  it('skips a direct server, which is reached without the gateway', async () => {
+    const { provider, server } = await storedApi('external');
+    expect(tarsOidcGatewayAuth(server, provider.policy)).toBeNull();
+    provider.close();
+  });
+
+  it('skips a stored API URL that would carry the token over plain http', async () => {
+    const { provider, server } = await storedApi('openapi');
+    const connection = { ...server.connection_config, base_url: 'http://orders.example.com' };
+    expect(
+      tarsOidcGatewayAuth({ ...server, connection_config: connection }, provider.policy),
+    ).toBeNull();
+    provider.close();
+  });
+
+  it('skips a stored row with no API URL, e.g. one written from pwc_tars', async () => {
+    const { provider, server } = await storedApi('openapi');
+    const { base_url: _baseUrl, ...connection } = server.connection_config;
+    expect(
+      tarsOidcGatewayAuth({ ...server, connection_config: connection }, provider.policy),
+    ).toBeNull();
+    provider.close();
+  });
+
+  it('leaves a server without OIDC alone', () => {
+    expect(
+      tarsOidcGatewayAuth({ id: 's', type: 'openapi', connection_config: { base_url: 'x' } }),
+    ).toBeNull();
+  });
+});
+
+describe('isTarsDirectOidcServer / isTarsDirectOidcSetting', () => {
+  const oidc = { auth: { type: 'oidc' } };
+
+  it('is true only for an external server', () => {
+    expect(isTarsDirectOidcServer({ type: 'external', connection_config: oidc })).toBe(true);
+    expect(isTarsDirectOidcServer({ type: 'openapi', connection_config: oidc })).toBe(false);
+    expect(isTarsDirectOidcServer({ type: 'external', connection_config: {} })).toBe(false);
+    expect(isTarsDirectOidcSetting({ type: 'external', auth_type: 'oidc' })).toBe(true);
+    expect(isTarsDirectOidcSetting({ type: 'custom_api', auth_type: 'oidc' })).toBe(false);
   });
 });
 

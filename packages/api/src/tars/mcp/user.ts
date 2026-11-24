@@ -10,9 +10,9 @@ import {
   cachedTarsMcpVisibility,
   invalidateTarsMcpToolsCache,
 } from './client';
+import { isTarsDirectOidcSetting, tarsDirectEnabledTools } from './oidc';
 import { listDirectCatalogTools, readDirectCatalogs } from './catalog';
 import { filterVisibleWorkflowMcpConfigs } from '~/langflow/config';
-import { TARS_MCP_AUTH_OIDC, tarsDirectEnabledTools } from './oidc';
 import { isTarsMcpEnabled } from './config';
 import { gatewayNameFor } from './names';
 
@@ -89,7 +89,7 @@ export interface TarsMcpDomainServer {
 }
 
 const isReachableDirectServer = (server: TarsMcpUserServer): boolean =>
-  server.user_enabled && server.auth_type === TARS_MCP_AUTH_OIDC && server.gateway_name != null;
+  server.user_enabled && isTarsDirectOidcSetting(server) && server.gateway_name != null;
 
 /** The admin's allow-lists live on the server rows, which `user-settings` does not carry. */
 async function readServerEnabledTools(): Promise<Map<string, ReadonlySet<string>>> {
@@ -232,10 +232,10 @@ export async function getUserTarsMcpTools(
 
   /** Authoritative opt-in state: a server can be enabled yet contribute no rows
    *  above (every tool individually disabled), and that is not a pending server.
-   *  An OIDC server is the exception: pwc_tars cannot list its tools, they come from
+   *  A direct OIDC server is the exception: pwc_tars cannot list its tools, they come from
    *  the user's own connection, so an enabled one has no rows and is still usable. */
   for (const setting of settings) {
-    const enabledOidc = setting.user_enabled && setting.auth_type === TARS_MCP_AUTH_OIDC;
+    const enabledOidc = setting.user_enabled && isTarsDirectOidcSetting(setting);
     if (
       (setting.user_enabled && !enabledOidc) ||
       servers.has(setting.id) ||
@@ -300,12 +300,12 @@ const isGatewayEntry = (serverName: string): boolean =>
 const NO_TOOLS: ReadonlySet<string> = new Set();
 const ANY_TOOL: TarsToolCheck = () => true;
 
-/** Only an OIDC entry is checked here; pwc_tars applies a gateway entry's switches on its own. */
+/** Only a direct OIDC entry is checked here; pwc_tars applies a gateway entry's switches itself. */
 const toolCheckFor = (
   server: TarsMcpUserServer,
   serverEnabled: ReadonlySet<string> = NO_TOOLS,
 ): TarsToolCheck =>
-  server.auth_type === TARS_MCP_AUTH_OIDC
+  isTarsDirectOidcSetting(server)
     ? (toolName) => serverEnabled.has(toolName) && server.tool_config?.[toolName] !== false
     : ANY_TOOL;
 

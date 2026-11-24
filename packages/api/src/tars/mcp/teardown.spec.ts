@@ -116,6 +116,25 @@ describe('pwc_tars OIDC token teardown', () => {
       expect(target.serverConfig).toBeUndefined();
     });
 
+    it('can revoke the tokens of an API pwc_tars executes, through its gateway entry', async () => {
+      const server = oidcServer();
+      const { auth } = server.connection_config as Record<string, unknown>;
+      stubServerList([
+        {
+          ...server,
+          type: 'openapi',
+          connection_config: { base_url: 'https://orders.example.com', auth },
+        },
+      ]);
+
+      const [target] = await readTarsOidcTeardownTargets(['s1']);
+
+      expect(target.serverConfig).toMatchObject({
+        requiresOAuth: true,
+        oauth: { client_id: 'client-1', client_secret: 'secret' },
+      });
+    });
+
     it('rejects when pwc_tars cannot answer, so the change does not go ahead blind', async () => {
       jest.spyOn(global, 'fetch').mockRejectedValue(new Error('down'));
 
@@ -136,6 +155,21 @@ describe('pwc_tars OIDC token teardown', () => {
       ['the code', oidcServer({ code: 'renamed' })],
     ])('flags a change of %s', async (_label, updated) => {
       expect(movedTarsOidcTargets(await targetsFor(), updated)).toHaveLength(1);
+    });
+
+    it('flags a change of the API an OpenAPI server sends the token to', async () => {
+      const server = oidcServer();
+      const { auth } = server.connection_config as Record<string, unknown>;
+      const api = (base_url: string): TarsMcpServerDetail => ({
+        ...server,
+        type: 'openapi',
+        connection_config: { base_url, auth },
+      });
+      stubServerList([api('https://orders.example.com')]);
+      const targets = await readTarsOidcTeardownTargets(['s1']);
+
+      expect(movedTarsOidcTargets(targets, api('https://orders.example.com'))).toEqual([]);
+      expect(movedTarsOidcTargets(targets, api('https://elsewhere.example.com'))).toHaveLength(1);
     });
 
     it('flags a server moved off OIDC', async () => {
