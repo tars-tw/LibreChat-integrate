@@ -410,6 +410,9 @@ Each status family has a foreground, a `-subtle` background, a `-border`, and a
   names those and not these. Fields stay clear unless the theme's
   `fieldFillStyle` appearance role is `fill` (the default is `transparent`),
   read from the nearest themed root through the `theme-field-fill:` variant.
+- `placeholder:text-field-placeholder` - A form field's placeholder, lighter than
+  the typed value so an empty field never reads as filled. It follows
+  `text-secondary` when a theme names that and not this.
 - `bg-checkbox-fill` - An unchecked checkbox's fill. It follows `surface-primary`
   when a theme names that and not this. The box stays clear unless the theme's
   `checkboxFillStyle` appearance role is `fill` (the default is `transparent`),

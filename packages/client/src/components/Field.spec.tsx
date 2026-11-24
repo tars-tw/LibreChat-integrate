@@ -27,7 +27,7 @@ const FRAMED = [
   'border-border-medium',
   'bg-transparent',
   'text-text-primary',
-  'placeholder:text-text-secondary',
+  'placeholder:text-field-placeholder',
   'focus-visible:ring-2',
   'focus-visible:ring-focus-control',
 ];

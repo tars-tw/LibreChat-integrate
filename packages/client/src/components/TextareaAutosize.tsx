@@ -21,7 +21,7 @@ import { cn } from '~/utils';
 import './Field.css';
 
 /** A rounded editor box of its own, such as a prompt or message editor. */
-const framed = `${FIELD_OWN_FOCUS} rounded-xl border border-border-medium bg-transparent text-text-primary placeholder:text-text-secondary focus-visible:ring-2 focus-visible:ring-focus-control`;
+const framed = `${FIELD_OWN_FOCUS} rounded-xl border border-border-medium bg-transparent text-text-primary placeholder:text-field-placeholder focus-visible:ring-2 focus-visible:ring-focus-control`;
 
 /** The control is bare by default and the caller draws it. `field` is a form field like `Textarea`,
  *  with its outline and focus ring, that grows with its text. `framed` is the bordered, rounded

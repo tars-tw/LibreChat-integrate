@@ -57,7 +57,7 @@ export const InputCombobox: React.FC<ComboboxProps> = ({
           placeholder={placeholder}
           className={cn(
             'border-border-light bg-surface-primary h-10 w-full rounded-md border px-3 py-2 text-sm',
-            'placeholder-text-secondary hover:bg-surface-hover',
+            'placeholder:text-field-placeholder hover:bg-surface-hover',
             'focus:outline-hidden',
             className,
           )}

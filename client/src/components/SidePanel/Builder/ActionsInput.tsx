@@ -277,7 +277,7 @@ export default function ActionsInput({
           <input
             type="text"
             placeholder="https://api.example-weather-app.com/privacy"
-            className="placeholder:text-text-secondary-alt focus:ring-border-light flex-1 rounded-lg bg-transparent px-3 py-1.5 text-sm outline-hidden focus:ring-1"
+            className="placeholder:text-field-placeholder focus:ring-border-light flex-1 rounded-lg bg-transparent px-3 py-1.5 text-sm outline-hidden focus:ring-1"
           />
         </div>
       </div>

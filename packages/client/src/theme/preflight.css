@@ -17,8 +17,9 @@
  * The placeholder is the same story: Tailwind 3 painted it `gray-400` and
  * Tailwind 4 uses the field's own colour at half strength, so a consumer's
  * `MultiSelect` search field or searchable `Combobox` — neither of which names
- * a placeholder role — would follow the input's ink. The secondary text role is
- * what those fields' placeholders are meant to read as, and it themes.
+ * a placeholder role — would follow the input's ink. The field placeholder role
+ * is what those fields' placeholders are meant to read as, and it themes; it
+ * falls back to the secondary text role for a theme that predates it.
  *
  * Uncoloured borders need no rule here: each primitive names a border role.
  */
@@ -30,6 +31,6 @@
 
   input::placeholder,
   textarea::placeholder {
-    color: rgb(var(--text-secondary));
+    color: rgb(var(--field-placeholder, var(--text-secondary)));
   }
 }

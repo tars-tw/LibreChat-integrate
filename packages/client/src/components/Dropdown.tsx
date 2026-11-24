@@ -302,7 +302,7 @@ const Dropdown: React.FC<DropdownProps> = ({
                   autoSelect
                   placeholder={searchPlaceholder}
                   aria-label={searchPlaceholder}
-                  className="border-border-control text-text-primary placeholder:text-text-secondary w-full rounded-lg border bg-inherit py-1.5 ps-8 pe-2 text-sm focus:outline-hidden"
+                  className="border-border-control text-text-primary placeholder:text-field-placeholder w-full rounded-lg border bg-inherit py-1.5 ps-8 pe-2 text-sm focus:outline-hidden"
                 />
               </div>
             </div>

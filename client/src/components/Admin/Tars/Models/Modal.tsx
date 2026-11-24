@@ -404,7 +404,7 @@ export default function ModelProfileModal({
                 />
                 <Input
                   id="tars-model-name"
-                  className="placeholder:text-text-muted mt-1"
+                  className="mt-1"
                   value={form.name}
                   autoComplete="off"
                   aria-invalid={errors.name != null}
@@ -451,7 +451,7 @@ export default function ModelProfileModal({
                 <Label htmlFor="tars-model-version">{localize('com_ui_tars_models_version')}</Label>
                 <Input
                   id="tars-model-version"
-                  className="placeholder:text-text-muted mt-1"
+                  className="mt-1"
                   value={form.version}
                   autoComplete="off"
                   placeholder={localize('com_ui_tars_models_version_placeholder')}
@@ -464,7 +464,7 @@ export default function ModelProfileModal({
                 </Label>
                 <Input
                   id="tars-model-endpoint"
-                  className="placeholder:text-text-muted mt-1 font-mono"
+                  className="mt-1 font-mono"
                   value={form.endpoint}
                   autoComplete="off"
                   spellCheck={false}
@@ -481,7 +481,7 @@ export default function ModelProfileModal({
                 </Label>
                 <Input
                   id="tars-model-api-version"
-                  className="placeholder:text-text-muted mt-1 font-mono"
+                  className="mt-1 font-mono"
                   value={form.apiVersion}
                   autoComplete="off"
                   placeholder={localize('com_ui_tars_models_api_version_placeholder')}
@@ -631,7 +631,7 @@ export default function ModelProfileModal({
                   id="tars-model-config"
                   rows={12}
                   spellCheck={false}
-                  className="placeholder:text-text-muted mt-2 resize-y font-mono text-xs"
+                  className="mt-2 resize-y font-mono text-xs"
                   value={form.config}
                   aria-invalid={errors.config != null}
                   placeholder={localize('com_ui_tars_models_config_placeholder')}

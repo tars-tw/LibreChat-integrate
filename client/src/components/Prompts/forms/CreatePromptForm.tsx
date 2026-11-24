@@ -197,7 +197,7 @@ const CreatePromptForm = ({
                     <TextareaAutosize
                       focusOutline="hidden"
                       {...field}
-                      className="text-text-primary placeholder:text-text-tertiary focus-visible:ring-ring-primary w-full resize-none overflow-y-auto bg-transparent font-mono text-sm leading-relaxed focus-visible:ring-2 sm:text-base"
+                      className="text-text-primary focus-visible:ring-ring-primary w-full resize-none overflow-y-auto bg-transparent font-mono text-sm leading-relaxed focus-visible:ring-2 sm:text-base"
                       minRows={isDialog ? 10 : 4}
                       maxRows={16}
                       tabIndex={0}

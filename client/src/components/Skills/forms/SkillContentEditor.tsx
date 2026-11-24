@@ -101,7 +101,7 @@ const SkillContentEditor: React.FC<SkillContentEditorProps> = ({
                 {...field}
                 // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
-                className="text-text-primary placeholder:text-text-secondary focus-visible:ring-ring-primary w-full resize-none overflow-y-auto bg-transparent font-mono text-sm leading-relaxed focus-visible:ring-2 sm:text-base"
+                className="text-text-primary focus-visible:ring-ring-primary w-full resize-none overflow-y-auto bg-transparent font-mono text-sm leading-relaxed focus-visible:ring-2 sm:text-base"
                 minRows={4}
                 maxRows={16}
                 onKeyDown={(e) => {

@@ -126,6 +126,7 @@ export const highContrastLightTheme: IThemeRGB = {
   'rgb-focus-subtle': '0 0 0', // #000000 (matching border-heavy)
   'rgb-field-fill': '255 255 255', // #ffffff (matching surface-primary)
   'rgb-field-text': '0 0 0', // #000000 (matching text-primary)
+  'rgb-field-placeholder': '0 0 0', // #000000 (matching text-secondary)
   'rgb-surface-tooltip': '255 255 255', // matching surface-primary
   'rgb-text-tooltip': '0 0 0', // matching text-primary
   'rgb-alert-error-fill': '255 255 255', // matching status-error-subtle
@@ -344,6 +345,7 @@ export const highContrastDarkTheme: IThemeRGB = {
   'rgb-focus-subtle': '255 255 255', // #ffffff (matching border-heavy)
   'rgb-field-fill': '0 0 0', // #000000 (matching surface-primary)
   'rgb-field-text': '255 255 255', // #ffffff (matching text-primary)
+  'rgb-field-placeholder': '255 255 255', // #ffffff (matching text-secondary)
   'rgb-surface-tooltip': '0 0 0', // matching surface-primary
   'rgb-text-tooltip': '255 255 255', // matching text-primary
   'rgb-alert-error-fill': '0 0 0', // matching status-error-subtle

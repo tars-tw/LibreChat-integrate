@@ -40,7 +40,7 @@ export const DataTableSearch: MemoExoticComponent<
           aria-describedby={descriptionId}
           placeholder={placeholder || localize('com_ui_search')}
           className={cn(
-            'placeholder:text-text-tertiary h-11 rounded-none border-0 bg-transparent ps-9 text-sm focus-visible:ring-inset',
+            'placeholder:text-field-placeholder h-11 rounded-none border-0 bg-transparent ps-9 text-sm focus-visible:ring-inset',
             className,
           )}
         />

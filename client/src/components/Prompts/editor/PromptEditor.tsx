@@ -92,7 +92,7 @@ const PromptEditor: React.FC<Props> = ({ name, isEditing, setIsEditing }) => {
                 }}
                 // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
-                className="text-text-primary placeholder:text-text-tertiary focus-visible:ring-ring-primary w-full resize-none overflow-y-auto bg-transparent font-mono text-sm leading-relaxed focus-visible:ring-2 sm:text-base"
+                className="text-text-primary focus-visible:ring-ring-primary w-full resize-none overflow-y-auto bg-transparent font-mono text-sm leading-relaxed focus-visible:ring-2 sm:text-base"
                 minRows={4}
                 maxRows={16}
                 onBlur={(e) => {

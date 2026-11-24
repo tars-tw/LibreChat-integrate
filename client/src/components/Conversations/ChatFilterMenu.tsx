@@ -444,7 +444,7 @@ const FacetSearch = ({
             event.preventDefault();
             menu?.move(menu.first());
           }}
-          className="text-text-primary placeholder:text-text-tertiary w-full bg-transparent py-1 text-sm outline-hidden"
+          className="text-text-primary placeholder:text-field-placeholder w-full bg-transparent py-1 text-sm outline-hidden"
         />
       </div>
     </div>

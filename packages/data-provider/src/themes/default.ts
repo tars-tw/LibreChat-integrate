@@ -90,6 +90,7 @@ export const defaultTheme: IThemeRGB = {
   'rgb-focus-subtle': '153 150 150', // #999696 (gray-400, matching border-heavy)
   'rgb-field-fill': '255 255 255', // #fff (white, matching surface-primary)
   'rgb-field-text': '33 33 33', // #212121 (gray-800, matching text-primary)
+  'rgb-field-placeholder': '153 150 150', // #999696 (gray-400), lighter than the typed value
   'rgb-surface-tooltip': '255 255 255', // matching surface-primary
   'rgb-text-tooltip': '33 33 33', // matching text-primary
   'rgb-alert-error-fill': '254 242 242', // matching status-error-subtle

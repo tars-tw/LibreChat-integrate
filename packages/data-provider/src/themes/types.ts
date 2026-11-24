@@ -119,6 +119,8 @@ export interface IThemeRGB {
   'rgb-field-fill'?: string;
   /** A field's typed value; follows `rgb-text-primary` when a theme omits it. */
   'rgb-field-text'?: string;
+  /** A field's placeholder; follows `rgb-text-secondary` when a theme omits it. */
+  'rgb-field-placeholder'?: string;
   /** A tooltip's chip and its label; they follow `rgb-surface-primary` and `rgb-text-primary` when a
    *  theme omits them. */
   'rgb-surface-tooltip'?: string;
@@ -361,6 +363,7 @@ export interface IThemeVariables {
   '--border-field-focus': string;
   '--field-fill': string;
   '--field-text': string;
+  '--field-placeholder': string;
   '--surface-tooltip': string;
   '--text-tooltip': string;
   '--alert-error-fill': string;
@@ -538,6 +541,7 @@ export interface IThemeColors {
   'border-field-focus'?: string;
   'field-fill'?: string;
   'field-text'?: string;
+  'field-placeholder'?: string;
   'surface-tooltip'?: string;
   'text-tooltip'?: string;
   'alert-error-fill'?: string;

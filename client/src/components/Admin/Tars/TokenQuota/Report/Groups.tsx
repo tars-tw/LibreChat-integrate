@@ -54,7 +54,7 @@ export default function Groups({
               setCurrentPage(1);
             }}
             placeholder={localize('com_ui_tars_report_group_search_placeholder')}
-            className="text-text-primary placeholder:text-text-secondary min-w-0 flex-1 bg-transparent text-xs outline-none"
+            className="text-text-primary placeholder:text-field-placeholder min-w-0 flex-1 bg-transparent text-xs outline-none"
           />
           {search && (
             <button

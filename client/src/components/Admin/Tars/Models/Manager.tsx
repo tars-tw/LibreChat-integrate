@@ -326,7 +326,7 @@ export default function ModelProfileManager() {
               onChange={(e) => resetPage(setSearch)(e.target.value)}
               placeholder={localize('com_ui_tars_models_search')}
               aria-label={localize('com_ui_tars_models_search')}
-              className="placeholder:text-text-muted pl-9"
+              className="pl-9"
             />
           </div>
           <Button variant="submit" onClick={() => setCreating(true)}>

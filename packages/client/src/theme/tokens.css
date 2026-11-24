@@ -148,6 +148,7 @@
   /* Follow the canvas and the primary ink, for a stylesheet that predates them. */
   --color-field-fill: rgb(var(--field-fill, var(--surface-primary)));
   --color-field-text: rgb(var(--field-text, var(--text-primary)));
+  --color-field-placeholder: rgb(var(--field-placeholder, var(--text-secondary)));
   --color-checkbox-fill: rgb(var(--checkbox-fill, var(--surface-primary)));
   /* Follow the roles they were painted in before they had their own, for a stylesheet that
      predates them. */

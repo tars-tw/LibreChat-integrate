@@ -90,6 +90,7 @@ export const darkTheme: IThemeRGB = {
   'rgb-focus-subtle': '89 89 89', // #595959 (gray-500, matching border-heavy)
   'rgb-field-fill': '13 13 13', // #0d0d0d (gray-900, matching surface-primary)
   'rgb-field-text': '236 236 236', // #ececec (gray-100, matching text-primary)
+  'rgb-field-placeholder': '153 150 150', // #999696 (gray-400), dimmer than the typed value
   'rgb-surface-tooltip': '13 13 13', // matching surface-primary
   'rgb-text-tooltip': '236 236 236', // matching text-primary
   'rgb-alert-error-fill': '69 10 10', // matching status-error-subtle

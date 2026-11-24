@@ -352,7 +352,7 @@ function AskUserQuestionSingle({
         minRows={2}
         maxRows={12}
         placeholder={otherLabel ?? localize('com_ui_your_answer')}
-        className="border-border-light bg-surface-chat text-text-primary placeholder:text-text-secondary focus-visible:ring-text-primary w-full resize-none rounded-lg border px-3 py-2 text-sm focus-visible:ring-2"
+        className="border-border-light bg-surface-chat text-text-primary focus-visible:ring-text-primary w-full resize-none rounded-lg border px-3 py-2 text-sm focus-visible:ring-2"
         aria-label={localize('com_ui_your_answer')}
       />
 

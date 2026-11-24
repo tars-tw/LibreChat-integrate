@@ -151,7 +151,7 @@ describe('ToolApproval', () => {
     expect(submit).toBeEnabled();
   });
 
-  test('every decision field names its own text, placeholder and border tokens', () => {
+  test('every decision field names its own text and border tokens', () => {
     renderCards(
       <ToolApproval
         approval={approval(['approve', 'reject', 'edit', 'respond'])}
@@ -167,9 +167,6 @@ describe('ToolApproval', () => {
       // A bare `textarea` inherits its colour, so the tokens have to be named here.
       expect(field).toHaveClass('text-text-primary');
       expect(field).toHaveClass('border-border-xheavy');
-      if (decision !== 'Edit') {
-        expect(field).toHaveClass('placeholder:text-text-secondary');
-      }
       fireEvent.click(toggle);
     }
   });

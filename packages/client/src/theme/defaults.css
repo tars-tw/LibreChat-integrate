@@ -240,6 +240,7 @@ html {
   --focus-subtle: var(--border-heavy);
   --field-fill: var(--surface-primary);
   --field-text: var(--text-primary);
+  --field-placeholder: var(--gray-400);
   --checkbox-fill: var(--surface-primary);
   --surface-tooltip: var(--surface-primary);
   --text-tooltip: var(--text-primary);
@@ -554,6 +555,7 @@ html {
   --border-field-focus: var(--focus-control);
   --field-fill: var(--surface-primary);
   --field-text: var(--text-primary);
+  --field-placeholder: var(--gray-400);
   --checkbox-fill: var(--surface-primary);
   --surface-tooltip: var(--surface-primary);
   --text-tooltip: var(--text-primary);

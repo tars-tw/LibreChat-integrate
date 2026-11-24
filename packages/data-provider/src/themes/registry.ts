@@ -174,6 +174,7 @@ export function primaryInkFallbacks(colors: IThemeRGB): IThemeRGB {
 export const overlayFallbackSources: ReadonlyArray<readonly [keyof IThemeRGB, keyof IThemeRGB]> = [
   ['rgb-surface-tooltip', 'rgb-surface-primary'],
   ['rgb-text-tooltip', 'rgb-text-primary'],
+  ['rgb-field-placeholder', 'rgb-text-secondary'],
   ['rgb-alert-error-fill', 'rgb-status-error-subtle'],
   ['rgb-alert-error-border', 'rgb-status-error-border'],
   ['rgb-category-icon-1', 'rgb-series-1'],
@@ -184,8 +185,8 @@ export const overlayFallbackSources: ReadonlyArray<readonly [keyof IThemeRGB, ke
   ['rgb-category-icon-7', 'rgb-series-7'],
 ];
 
-/** A theme that repaints a source role keeps the tooltip, the error alert and the category icons on
- *  it, unless it names them. */
+/** A theme that repaints a source role keeps the tooltip, the field placeholder, the error alert and
+ *  the category icons on it, unless it names them. */
 export function overlayFallbacks(colors: IThemeRGB): IThemeRGB {
   return Object.fromEntries(
     overlayFallbackSources.flatMap(([role, source]) => {

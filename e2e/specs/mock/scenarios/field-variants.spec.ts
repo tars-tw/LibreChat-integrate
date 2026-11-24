@@ -200,7 +200,7 @@ for (const theme of THEMES) {
               'aria-label': 'legacy',
               id: 'legacy',
               className:
-                'rounded-xl border border-border-medium bg-transparent focus-visible:ring-2 focus-visible:ring-focus-control text-text-primary placeholder:text-text-secondary',
+                'rounded-xl border border-border-medium bg-transparent focus-visible:ring-2 focus-visible:ring-focus-control text-text-primary placeholder:text-field-placeholder',
             }),
           ),
         ),

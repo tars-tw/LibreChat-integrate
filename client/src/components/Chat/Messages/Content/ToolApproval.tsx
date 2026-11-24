@@ -63,7 +63,7 @@ const DECISION_LABEL: Record<DecisionType, TranslationKeys> = {
  * (`border-light` measures ~1.4:1 against this fill).
  */
 const fieldClasses =
-  'w-full resize-none rounded-md border border-border-xheavy bg-surface-primary p-2 text-text-primary placeholder:text-text-secondary';
+  'w-full resize-none rounded-md border border-border-xheavy bg-surface-primary p-2 text-text-primary';
 
 /** Pretty-print tool args as JSON for the `edit` textarea seed. */
 function seedArgs(args: string | Record<string, unknown> | undefined): string {

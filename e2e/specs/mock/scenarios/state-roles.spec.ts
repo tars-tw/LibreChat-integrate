@@ -114,7 +114,7 @@ async function pressedFill(page: Page): Promise<string | null> {
 
 /** The ink an empty disabled field shows is its placeholder, which `Field` colors on its own. */
 const PLACEHOLDER_CLASSES =
-  'placeholder:text-text-secondary disabled:opacity-50 theme-disabled:placeholder:text-text-disabled';
+  'placeholder:text-field-placeholder disabled:opacity-50 theme-disabled:placeholder:text-text-disabled';
 
 async function disabledLook(page: Page) {
   const probe = await addProbe(page, 'state-disabled-probe', DISABLED_CLASSES, true);

@@ -321,7 +321,7 @@ export default function DirectoryPeoplePicker({
                   combobox.hide();
                 }
               }}
-              className="text-text-primary placeholder:text-text-secondary h-7 min-w-[8rem] flex-1 bg-transparent text-sm outline-none"
+              className="text-text-primary placeholder:text-field-placeholder h-7 min-w-[8rem] flex-1 bg-transparent text-sm outline-none"
             />
           </div>
           <Button
