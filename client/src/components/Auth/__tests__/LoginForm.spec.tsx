@@ -163,3 +163,82 @@ test('displays validation error messages', async () => {
   expect(getByText(/You must enter a valid email address/i)).toBeInTheDocument();
   expect(getByText(/Password must be at least 8 characters/i)).toBeInTheDocument();
 });
+
+const ldapStartupConfig: TStartupConfig = {
+  ...mockStartupConfig,
+  tarsAuth: true,
+  tarsSso: { enabled: true, type: 'ldap' },
+};
+
+const fillAndSubmit = async (getByLabelText: (text: RegExp) => HTMLElement) => {
+  await userEvent.type(getByLabelText(/email/i), 'ad.user');
+  await userEvent.type(getByLabelText(/^password$/i), 'password');
+  await userEvent.click(getByTestId(document.body, 'login-button'));
+};
+
+test('checks the SSO option by default when pwc_tars has an LDAP SSO config', async () => {
+  const { getByLabelText, getByRole } = render(
+    <Login
+      onSubmit={mockLogin}
+      startupConfig={ldapStartupConfig}
+      error={undefined}
+      setError={jest.fn()}
+    />,
+  );
+  expect(getByRole('checkbox', { name: /sso/i })).toBeChecked();
+
+  await fillAndSubmit(getByLabelText);
+
+  expect(mockLogin).toHaveBeenLastCalledWith({
+    email: 'ad.user',
+    password: 'password',
+    use_sso: true,
+  });
+});
+
+test('signs in with local credentials once the SSO option is unchecked', async () => {
+  const { getByLabelText, getByRole } = render(
+    <Login
+      onSubmit={mockLogin}
+      startupConfig={ldapStartupConfig}
+      error={undefined}
+      setError={jest.fn()}
+    />,
+  );
+  await userEvent.click(getByRole('checkbox', { name: /sso/i }));
+
+  await fillAndSubmit(getByLabelText);
+
+  expect(mockLogin).toHaveBeenLastCalledWith({
+    email: 'ad.user',
+    password: 'password',
+    use_sso: false,
+  });
+});
+
+test('shows no SSO option without an LDAP SSO config', () => {
+  const { queryByRole } = render(
+    <Login
+      onSubmit={mockLogin}
+      startupConfig={{ ...mockStartupConfig, tarsAuth: true }}
+      error={undefined}
+      setError={jest.fn()}
+    />,
+  );
+  expect(queryByRole('checkbox', { name: /sso/i })).not.toBeInTheDocument();
+});
+
+test('asks for the username, not an email, when TARS signs in by username', async () => {
+  const { getByText, queryByText } = render(
+    <Login
+      onSubmit={mockLogin}
+      startupConfig={ldapStartupConfig}
+      error={undefined}
+      setError={jest.fn()}
+    />,
+  );
+  await userEvent.click(getByTestId(document.body, 'login-button'));
+
+  expect(getByText(/Username is required/i)).toBeInTheDocument();
+  expect(queryByText(/Email is required/i)).not.toBeInTheDocument();
+});

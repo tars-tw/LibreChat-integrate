@@ -27,20 +27,21 @@ type TLoginFormProps = {
 const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, setError }) => {
   const localize = useLocalize();
   const { theme } = useContext(ThemeContext);
+  const tarsLdapEnabled =
+    startupConfig?.tarsSso?.enabled === true && startupConfig?.tarsSso?.type === 'ldap';
   const {
     register,
     getValues,
+    setValue,
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<TLoginUser>();
+  } = useForm<TLoginUser>({ defaultValues: tarsLdapEnabled ? { use_sso: true } : undefined });
   const [showResendLink, setShowResendLink] = useState<boolean>(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const useUsernameLogin = startupConfig?.ldap?.username || startupConfig?.tarsAuth;
   const isTars = startupConfig?.tarsAuth === true;
-  const tarsLdapEnabled =
-    startupConfig?.tarsSso?.enabled === true && startupConfig?.tarsSso?.type === 'ldap';
   const validTheme = isDark(theme) ? 'dark' : 'light';
   const requireCaptcha = Boolean(startupConfig.turnstile?.siteKey);
   /** The `webauthn` token lets the browser offer a passkey inline in this field's autofill. */
@@ -57,6 +58,12 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
     'flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500';
   const tarsInputClassName =
     'w-full rounded-r-md border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:border-pwc-orange focus:outline-none focus-visible:border-pwc-orange';
+
+  useEffect(() => {
+    if (tarsLdapEnabled) {
+      setValue('use_sso', true);
+    }
+  }, [tarsLdapEnabled, setValue]);
 
   useEffect(() => {
     if (error && error.includes('422') && !showResendLink) {
@@ -93,8 +100,13 @@ const LoginForm: React.FC<TLoginFormProps> = ({ onSubmit, startupConfig, error, 
   };
 
   const emailField = register('email', {
-    required: localize('com_auth_email_required'),
-    maxLength: { value: 120, message: localize('com_auth_email_max_length') },
+    required: localize(useUsernameLogin ? 'com_auth_username_required' : 'com_auth_email_required'),
+    maxLength: {
+      value: 120,
+      message: localize(
+        useUsernameLogin ? 'com_auth_username_too_long' : 'com_auth_email_max_length',
+      ),
+    },
     validate: useUsernameLogin
       ? undefined
       : (value) => validateEmail(value, localize('com_auth_email_pattern')),
