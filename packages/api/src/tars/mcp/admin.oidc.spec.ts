@@ -72,6 +72,21 @@ describe('pwc_tars MCP admin proxy with OIDC servers', () => {
     ...(await sealTarsOidcInput(oidcInput({ client_secret: SECRET }), { policy })),
   });
 
+  const apiRow = async () => ({
+    id: 's3',
+    ...(await sealTarsOidcInput(
+      {
+        name: 'Orders',
+        type: 'openapi' as const,
+        connection_config: {
+          base_url: 'https://orders.example.com',
+          auth: { type: 'oidc', issuer, client_id: 'librechat' },
+        },
+      },
+      { policy },
+    )),
+  });
+
   const bearerRow = {
     id: 's2',
     name: 'Plain',
@@ -224,6 +239,20 @@ describe('pwc_tars MCP admin proxy with OIDC servers', () => {
       await expect(adminTestTarsMcpServer('s2', ADMIN, policy)).resolves.toEqual({ ok: true });
       expect(calls[1]).toMatchObject({ path: '/api/mcp/servers/s2/test', method: 'POST' });
     });
+
+    it('checks the provider, then lets pwc_tars test the spec of an API it executes', async () => {
+      const stored = await apiRow();
+      const calls = stubPwcTars(({ method }) =>
+        method === 'GET' ? stored : { connected: false, error: 'spec not found' },
+      );
+      await expect(adminTestTarsMcpServer('s3', ADMIN, policy)).resolves.toMatchObject({
+        connected: false,
+        error: 'spec not found',
+        issuer,
+        requires_user_login: true,
+      });
+      expect(calls[1]).toMatchObject({ path: '/api/mcp/servers/s3/test', method: 'POST' });
+    });
   });
 
   describe('server-wide tool switches', () => {
@@ -313,6 +342,15 @@ describe('pwc_tars MCP admin proxy with OIDC servers', () => {
       await expect(adminListTarsDirectTools('s2', jest.fn())).rejects.toThrow('OIDC');
       expect(calls.every((call) => call.method === 'GET')).toBe(true);
     });
+
+    it('refuses an OIDC API, whose tools pwc_tars lists and switches', async () => {
+      const stored = await apiRow();
+      const calls = stubPwcTars(() => stored);
+
+      await expect(adminSetTarsDirectEnabledTools('s3', ['x'], ADMIN)).rejects.toThrow('OIDC');
+      await expect(adminListTarsDirectTools('s3', jest.fn())).rejects.toThrow('OIDC');
+      expect(calls.every((call) => call.method === 'GET')).toBe(true);
+    });
   });
 
   describe('sync', () => {
@@ -326,6 +364,13 @@ describe('pwc_tars MCP admin proxy with OIDC servers', () => {
         deleted_count: 0,
       });
       expect(calls.map((call) => call.method)).toEqual(['GET']);
+    });
+
+    it('syncs an OIDC API from its spec, which needs no token', async () => {
+      const stored = await apiRow();
+      const calls = stubPwcTars(({ method }) => (method === 'GET' ? stored : { synced_count: 2 }));
+      await expect(adminSyncTarsMcpServer('s3', ADMIN)).resolves.toEqual({ synced_count: 2 });
+      expect(calls[1]).toMatchObject({ path: '/api/mcp/servers/s3/sync', method: 'POST' });
     });
 
     it('still asks pwc_tars for other servers', async () => {

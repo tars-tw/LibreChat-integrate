@@ -42,7 +42,12 @@ export class TarsMcpAccessDeniedError extends Error {
   }
 }
 
-/** A `tars_*` entry that talks to its server directly; gateway entries never carry `oauth`. */
+/**
+ * A `tars_*` entry users sign in to: a direct OIDC server, or an `openapi` / `custom_api` one whose
+ * gateway entry carries `oauth`. Nothing else enforces the assignment before an OAuth flow starts,
+ * so both are checked here; for a gateway entry the per-tool switches stay pwc_tars's, which checks
+ * them again on every call.
+ */
 export function isTarsDirectMcpConfig(
   serverName: string,
   config?: Pick<MCPOptions, 'oauth'> | null,

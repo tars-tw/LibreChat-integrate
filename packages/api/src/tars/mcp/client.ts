@@ -325,13 +325,16 @@ export async function resolveTarsMcpTool(
  * (`sys_user_mcp.auth_credentials`) and attribute the `mcp_logs` audit row.
  * Failures surface as HTTP errors ({@link TarsRequestError} with the backend's
  * message), not as a `success: false` body — callers translate them into MCP
- * `isError` content.
+ * `isError` content. `accessToken` is the caller's OIDC access token for a server
+ * pwc_tars runs on it; pwc_tars sends it to that API for this call alone and keeps
+ * it out of its logs.
  */
 export async function executeTarsMcpTool(
   tarsUserId: string,
   name: string,
   toolArguments: Record<string, unknown> | undefined,
   serverId?: string,
+  accessToken?: string,
 ): Promise<TarsMcpExecuteResult> {
   const entry = await resolveTarsMcpTool(tarsUserId, name, serverId);
   if (!entry) {
@@ -350,6 +353,7 @@ export async function executeTarsMcpTool(
       user_id: tarsUserId,
       /** Text files (CSV, attachments) come back as parts too, for `mcpFiles` to save. */
       relay_files: true,
+      ...(accessToken ? { user_access_token: accessToken } : {}),
     },
     timeoutMs: executeTimeoutMs(),
   });

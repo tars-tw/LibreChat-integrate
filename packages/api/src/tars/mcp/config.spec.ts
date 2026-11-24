@@ -16,7 +16,7 @@ import {
   isTarsMcpEnabled,
   tarsMcpSelfUrl,
 } from './config';
-import { tarsMcpDirectEntries } from './names';
+import { isTarsMcpOidcGateway, tarsMcpDirectEntries } from './names';
 
 const BASE_URL = 'http://tars.test';
 
@@ -291,6 +291,43 @@ describe('withTarsMcpConfig with an OIDC server', () => {
     expect(MCPOptionsSchema.safeParse(entry).success).toBe(true);
     expect(config.mcpSettings?.allowedAddresses ?? []).not.toContain('mcp.example.com:443');
   });
+
+  it.each(['openapi', 'custom_api'])(
+    'keeps a %s server on the gateway and adds the sign-in to its entry',
+    async (type) => {
+      process.env.TARS_AUTH_URL = BASE_URL;
+      process.env.JWT_SECRET = 'jwt-secret';
+      const row = oidcRow();
+      jest.spyOn(global, 'fetch').mockResolvedValue(
+        buildResponse(
+          200,
+          envelope([
+            {
+              ...row,
+              type,
+              connection_config: {
+                base_url: 'https://orders.example.com',
+                auth: row.connection_config.auth,
+              },
+            },
+          ]),
+        ),
+      );
+      const config = await withTarsMcpConfig({ mcpConfig: {} } as AppConfig);
+      const entry = config.mcpConfig?.tars_secure as Record<string, unknown>;
+      expect(entry.url).toBe(`${tarsMcpSelfUrl()}/srv-oidc`);
+      expect(entry.headers).toMatchObject({ 'X-Tars-Gateway-Key': deriveTarsMcpGatewayKey() });
+      expect(entry.requiresOAuth).toBe(true);
+      expect(entry.oauth).toMatchObject({
+        client_id: 'librechat',
+        token_url: 'https://idp.example.com/token',
+        oidc_issuer: 'https://idp.example.com',
+      });
+      expect(MCPOptionsSchema.safeParse(entry).success).toBe(true);
+      expect(tarsMcpDirectEntries().size).toBe(0);
+      expect(isTarsMcpOidcGateway('srv-oidc')).toBe(true);
+    },
+  );
 
   it('skips a row it cannot trust instead of falling back to the gateway', async () => {
     process.env.TARS_AUTH_URL = BASE_URL;

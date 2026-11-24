@@ -18,6 +18,7 @@ import {
   testTarsOidcServer,
   TarsOidcConfigError,
   redactTarsOidcServer,
+  isTarsDirectOidcServer,
   tarsDirectEnabledTools,
 } from './oidc';
 import { directToolsFailureStatus, listDirectCatalogTools, loadDirectCatalogs } from './catalog';
@@ -164,10 +165,11 @@ export async function adminUpdateTarsMcpServer(
   return server && redactTarsOidcServer(server);
 }
 
-async function readStoredOidcServer(serverId: string): Promise<TarsMcpServerDetail> {
+/** A direct OIDC server, the only kind whose tools an admin opens here rather than in pwc_tars. */
+async function readStoredDirectOidcServer(serverId: string): Promise<TarsMcpServerDetail> {
   const stored = await readStoredServer(serverId);
-  if (!stored || !isTarsOidcServer(stored)) {
-    throw new TarsOidcConfigError('此伺服器未使用 OIDC 驗證');
+  if (!stored || !isTarsDirectOidcServer(stored)) {
+    throw new TarsOidcConfigError('此伺服器不是以 OIDC 直接連線的外部 MCP 伺服器');
   }
   return stored;
 }
@@ -189,7 +191,7 @@ export async function adminListTarsDirectTools(
   loadCatalog: TarsDirectToolCatalog,
   timeoutMs?: number,
 ): Promise<{ tools: TarsMcpDirectAdminTool[]; tools_status: TTarsMcpDirectToolsStatus }> {
-  const stored = await readStoredOidcServer(serverId);
+  const stored = await readStoredDirectOidcServer(serverId);
   const enabled = tarsDirectEnabledTools(stored);
   const gatewayName = gatewayNameFor(serverId, stored.code);
   let listed: DirectCatalogTool[] = [];
@@ -231,7 +233,7 @@ export async function adminSetTarsDirectEnabledTools(
   ) {
     throw new TarsOidcConfigError('enabled_tools 必須為工具名稱陣列');
   }
-  const stored = await readStoredOidcServer(serverId);
+  const stored = await readStoredDirectOidcServer(serverId);
   const enabled_tools = [...new Set(enabledTools as string[])];
   await tarsMcpFetch(`/api/mcp/servers/${encodeURIComponent(serverId)}`, {
     method: 'PUT',
@@ -269,20 +271,26 @@ export async function adminBatchDeleteTarsMcpServers(
   });
 }
 
-/** Type-specific connectivity + auth probe (parses spec / validates config / probes auth). */
+/**
+ * Type-specific connectivity + auth probe (parses spec / validates config / probes auth). An OIDC
+ * server's provider is checked here, since only LibreChat signs in to it; one pwc_tars executes is
+ * then also tested by pwc_tars for its spec or tool config, whose result wins where both answer.
+ */
 export async function adminTestTarsMcpServer(
   serverId: string,
   asUser: string,
   policy?: TarsOidcPolicy,
 ): Promise<Record<string, unknown> | undefined> {
   const stored = await readStoredServer(serverId);
-  if (stored && isTarsOidcServer(stored)) {
-    return testTarsOidcServer(stored, policy);
+  const oidc = stored && isTarsOidcServer(stored) ? await testTarsOidcServer(stored, policy) : null;
+  if (oidc && stored && isTarsDirectOidcServer(stored)) {
+    return oidc;
   }
-  return tarsMcpFetch<Record<string, unknown>>(
+  const tested = await tarsMcpFetch<Record<string, unknown>>(
     `/api/mcp/servers/${encodeURIComponent(serverId)}/test`,
     { method: 'POST', body: {}, timeoutMs: 60_000, asUser },
   );
+  return oidc ? { ...oidc, ...tested } : tested;
 }
 
 /** Materializes the server's tool definitions into pwc_tars `mcp_tools` rows. */
@@ -290,9 +298,12 @@ export async function adminSyncTarsMcpServer(
   serverId: string,
   asUser: string,
 ): Promise<TarsMcpSyncResult | undefined> {
-  /** pwc_tars holds no user token, so it could only fail; tools come from each user's connection. */
+  /**
+   * pwc_tars holds no user token, so syncing a direct OIDC server could only fail; its tools come
+   * from each user's connection. A spec or tool config needs no token, so those still sync.
+   */
   const stored = await readStoredServer(serverId);
-  if (stored && isTarsOidcServer(stored)) {
+  if (stored && isTarsDirectOidcServer(stored)) {
     return { synced_count: 0, created_count: 0, updated_count: 0, deleted_count: 0 };
   }
   return tarsMcpFetch<TarsMcpSyncResult>(`/api/mcp/servers/${encodeURIComponent(serverId)}/sync`, {

@@ -2,6 +2,7 @@ import { Spinner, useToastContext } from '@librechat/client';
 import type { TTarsMcpTool } from 'librechat-data-provider';
 import { useTarsMcpServerQuery, useUpdateTarsMcpToolMutation } from '~/data-provider';
 import McpDirectToolsPanel from './McpDirectToolsPanel';
+import { isDirectOidcServer } from './oidc';
 import McpToolRow from './McpToolRow';
 import { useLocalize } from '~/hooks';
 
@@ -26,9 +27,8 @@ export default function McpServerToolsPanel({ serverId }: { serverId: string }) 
     );
   }
 
-  /** pwc_tars holds no tool rows for an OIDC server, so its switches live elsewhere. */
-  const auth = server?.connection_config?.auth as { type?: string } | undefined;
-  if (auth?.type === 'oidc') {
+  /** pwc_tars holds no tool rows for a direct OIDC server, so its switches live elsewhere. */
+  if (isDirectOidcServer(server)) {
     return <McpDirectToolsPanel serverId={serverId} />;
   }
 

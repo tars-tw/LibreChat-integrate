@@ -346,6 +346,26 @@ describe('getUserTarsMcpTools with OIDC servers', () => {
       }),
     ]);
   });
+
+  it('treats an enabled OIDC API with no tool rows like any gateway server, not as usable', async () => {
+    process.env.TARS_AUTH_URL = BASE_URL;
+    clearTarsMcpEntryNames();
+    const api = userServer({
+      id: 's-api',
+      name: 'Orders',
+      code: 'orders',
+      type: 'openapi',
+      user_enabled: true,
+      auth_type: 'oidc',
+      tools: [],
+    });
+    jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async (input) =>
+        jsonResponse(envelope(String(input).includes('available-tools') ? [] : [api])),
+      );
+    await expect(getUserTarsMcpTools(USER_ID)).resolves.toEqual([]);
+  });
 });
 
 describe('getUserTarsMcpTools with an OIDC server', () => {

@@ -77,6 +77,21 @@ describe('canUseTarsDirectMcpServer', () => {
     await expect(canUseTarsDirectMcpServer(NAME, DIRECT, { tarsId: 'u1' })).resolves.toBe(false);
   });
 
+  it('holds an OIDC API to assignment and opt-in only, leaving its tool switches to pwc_tars', async () => {
+    const api = { type: 'openapi', auth_type: 'oidc' };
+    const fetchSpy = respondWith(settings(api));
+    await expect(
+      canUseTarsDirectMcpServer(NAME, DIRECT, { tarsId: 'u1' }, 'listOrders'),
+    ).resolves.toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    invalidateTarsMcpToolsCache();
+    respondWith(settings({ ...api, user_enabled: false }));
+    await expect(
+      canUseTarsDirectMcpServer(NAME, DIRECT, { tarsId: 'u1' }, 'listOrders'),
+    ).resolves.toBe(false);
+  });
+
   it('fails closed for an unlinked account and when pwc_tars is down', async () => {
     const fetchSpy = respondWith([]);
     await expect(canUseTarsDirectMcpServer(NAME, DIRECT, { id: 'mongo-1' })).resolves.toBe(false);

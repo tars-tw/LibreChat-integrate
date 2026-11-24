@@ -129,6 +129,15 @@ describe('McpUserToolsTab', () => {
     expect(screen.getByText('com_ui_tars_mcp_oidc_user_hint')).toBeInTheDocument();
   });
 
+  it('shows an OIDC API server like any other, since TARS lists its tools', () => {
+    mockServers = [server({ type: 'openapi', auth_type: 'oidc', user_enabled: true })];
+    render(<McpUserToolsTab />);
+
+    expect(screen.getByText('com_ui_tars_mcp_server_tool_count')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(screen.queryByText('com_ui_tars_mcp_oidc_user_hint')).not.toBeInTheDocument();
+  });
+
   it.each([
     ['timeout', 'com_ui_tars_mcp_oidc_tools_timeout'],
     ['error', 'com_ui_tars_mcp_oidc_tools_error'],

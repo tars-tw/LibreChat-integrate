@@ -6,12 +6,14 @@ import { discardBody, readLimitedText } from '~/mcp/oauth/body';
 import { isMCPDomainAllowed, isOAuthUrlAllowed } from '~/auth';
 
 /**
- * pwc_tars `external` MCP servers protected by an OIDC provider. pwc_tars keeps the
- * definition and the assignments, but cannot hold a user's token, so LibreChat's own MCP
- * OAuth stack signs the user in and talks to the server directly: the token never leaves
- * LibreChat. Everything an admin enters here reaches `processMCPEnv`, which expands
- * `${ENV}` and `{{LIBRECHAT_*}}` for trusted YAML, so placeholders are refused both when
- * saving and when injecting (a row can also be written from pwc_tars's own UI).
+ * pwc_tars MCP servers protected by an OIDC provider. pwc_tars keeps the definition and the
+ * assignments, but cannot hold a user's token, so LibreChat's own MCP OAuth stack signs the
+ * user in and keeps the tokens. An `external` server is then reached directly, and its token
+ * never leaves LibreChat. An `openapi` or `custom_api` server is still executed by pwc_tars:
+ * the gateway hands it the user's access token for that one call, and pwc_tars sends it to the
+ * API without storing it. Everything an admin enters here reaches `processMCPEnv`, which
+ * expands `${ENV}` and `{{LIBRECHAT_*}}` for trusted YAML, so placeholders are refused both
+ * when saving and when injecting (a row can also be written from pwc_tars's own UI).
  */
 
 const DISCOVERY_PATH = '/.well-known/openid-configuration';
@@ -29,6 +31,10 @@ const PLACEHOLDER_PATTERN = /\$\{|\{\{/;
 const CONTROL_CHAR_PATTERN = /[\u0000-\u001f\u007f]/;
 
 export const TARS_MCP_AUTH_OIDC = 'oidc';
+
+/** Server types pwc_tars executes itself, on the access token the gateway hands it per call. */
+const GATEWAY_OIDC_SERVER_TYPES: ReadonlySet<string> = new Set(['openapi', 'custom_api']);
+const DIRECT_OIDC_SERVER_TYPE = 'external';
 
 /** The operator allowlists (`mcpSettings`) every URL here is held to. */
 export interface TarsOidcPolicy {
@@ -69,7 +75,7 @@ export interface TarsOidcProvider {
   allowsRefreshGrant: boolean;
 }
 
-/** The fields {@link buildTarsOidcEntry} reads off a pwc_tars server row. */
+/** The fields {@link buildTarsOidcEntry} and {@link tarsOidcGatewayAuth} read off a server row. */
 interface TarsOidcServerRow {
   id: string;
   type?: string;
@@ -260,6 +266,22 @@ export function isTarsOidcServer(server: {
 }
 
 /**
+ * An OIDC server LibreChat connects to itself, bypassing the gateway: pwc_tars has no tool rows
+ * for it, so its tools come from each user's connection and its access is enforced here.
+ */
+export function isTarsDirectOidcServer(server: {
+  type?: string;
+  connection_config?: Record<string, unknown> | null;
+}): boolean {
+  return server.type === DIRECT_OIDC_SERVER_TYPE && isTarsOidcServer(server);
+}
+
+/** The same test for a row of pwc_tars `user-settings`, which reports the auth type on its own. */
+export function isTarsDirectOidcSetting(server: { type?: string; auth_type?: string }): boolean {
+  return server.type === DIRECT_OIDC_SERVER_TYPE && server.auth_type === TARS_MCP_AUTH_OIDC;
+}
+
+/**
  * `openid` is what makes this OIDC, so it is always requested. Left blank, the scope also asks
  * for a refresh token where the provider advertises the scope for it; otherwise every access
  * token expiry would send the user back through sign-in.
@@ -317,18 +339,11 @@ export async function sealTarsOidcInput<
     return input;
   }
   const policy = options.policy ?? {};
-  const connection = input.connection_config as Record<string, unknown>;
-  const type = input.type ?? options.previous?.type;
-  if (type !== 'external' || connection.transport !== 'streamable_http') {
-    throw new TarsOidcConfigError('OIDC 驗證僅支援 streamable_http 類型的外部 MCP 伺服器');
-  }
-  if (isRecord(connection.headers) && Object.keys(connection.headers).length > 0) {
-    throw new TarsOidcConfigError('OIDC 驗證的伺服器不支援自訂標頭');
-  }
-  const url = requireSecureUrl(connection.url, 'MCP 伺服器 URL', policy);
-  if (!(await isMCPDomainAllowed({ url }, policy.allowedDomains, policy.allowedAddresses))) {
-    throw new TarsOidcConfigError('MCP 伺服器 URL 不在 mcpSettings 白名單內');
-  }
+  const connection = await sealOidcConnection(
+    input.connection_config as Record<string, unknown>,
+    input.type ?? options.previous?.type,
+    policy,
+  );
 
   const issuer = requireText(auth.issuer, 'issuer');
   const provider = await discoverTarsOidcProvider(issuer, policy, options.fetchFn);
@@ -347,10 +362,38 @@ export async function sealTarsOidcInput<
     ...(clientSecretEnc ? { client_secret_enc: clientSecretEnc } : {}),
     ...(audience ? { audience } : {}),
   };
-  return {
-    ...input,
-    connection_config: { transport: 'streamable_http', url, auth: sealed },
-  };
+  return { ...input, connection_config: { ...connection, auth: sealed } };
+}
+
+/**
+ * The connection fields kept beside the sealed auth block. A direct server keeps only its URL,
+ * since LibreChat connects to it and anything else would reach `processMCPEnv`. A server pwc_tars
+ * executes keeps its whole config (spec, tools, static headers are pwc_tars's own), and must name
+ * its API URL, held to the same transport rule: the user's token travels there. Without one
+ * pwc_tars takes the host from the spec, which nothing here checks.
+ */
+async function sealOidcConnection(
+  connection: Record<string, unknown>,
+  type: string | undefined,
+  policy: TarsOidcPolicy,
+): Promise<Record<string, unknown>> {
+  if (type != null && GATEWAY_OIDC_SERVER_TYPES.has(type)) {
+    requireSecureUrl(connection.base_url, 'API base_url', policy);
+    return connection;
+  }
+  if (type !== DIRECT_OIDC_SERVER_TYPE || connection.transport !== 'streamable_http') {
+    throw new TarsOidcConfigError(
+      'OIDC 驗證僅支援 OpenAPI、自訂 API，以及使用 streamable_http 的外部 MCP 伺服器',
+    );
+  }
+  if (isRecord(connection.headers) && Object.keys(connection.headers).length > 0) {
+    throw new TarsOidcConfigError('OIDC 驗證的伺服器不支援自訂標頭');
+  }
+  const url = requireSecureUrl(connection.url, 'MCP 伺服器 URL', policy);
+  if (!(await isMCPDomainAllowed({ url }, policy.allowedDomains, policy.allowedAddresses))) {
+    throw new TarsOidcConfigError('MCP 伺服器 URL 不在 mcpSettings 白名單內');
+  }
+  return { transport: 'streamable_http', url };
 }
 
 /**
@@ -392,11 +435,10 @@ function readStoredSecret(auth: Record<string, unknown>): string | undefined {
 }
 
 /**
- * The `mcpConfig` entry of an OIDC server, or `null` when the stored row cannot be trusted.
- * Unlike a gateway entry it points at the real server and carries no gateway key or user
- * header, and it is never added to `allowedAddresses`: the operator's allowlists decide
- * whether this host is reachable. The token request stays on the endpoints pinned at save
- * time and PKCE is fixed to S256, whatever the server's own metadata claims later.
+ * The `mcpConfig` entry of a direct (`external`) OIDC server, or `null` when the stored row
+ * cannot be trusted. Unlike a gateway entry it points at the real server and carries no gateway
+ * key or user header, and it is never added to `allowedAddresses`: the operator's allowlists
+ * decide whether this host is reachable.
  */
 export function buildTarsOidcEntry(
   server: TarsOidcServerRow,
@@ -409,47 +451,87 @@ export function buildTarsOidcEntry(
     return null;
   }
   try {
-    if (server.type !== 'external' || connection?.transport !== 'streamable_http') {
+    if (server.type !== DIRECT_OIDC_SERVER_TYPE || connection?.transport !== 'streamable_http') {
       throw new TarsOidcConfigError('OIDC 驗證僅支援 streamable_http 類型的外部 MCP 伺服器');
     }
-    const clientSecret = readStoredSecret(auth);
-    const audience = optionalText(auth.audience, 'audience');
-    const revocation = optionalText(auth.revocation_endpoint, 'revocation_endpoint');
-    const tokenAuthMethods = toTokenAuthMethods(auth.token_endpoint_auth_methods);
     return {
       type: 'streamable-http',
       url: requireSecureUrl(connection.url, 'MCP 伺服器 URL', policy),
       startup: false,
       requiresOAuth: true,
       ...base,
-      oauth: {
-        authorization_url: requireSecureUrl(auth.authorization_url, 'authorization_url', policy),
-        token_url: requireSecureUrl(auth.token_url, 'token_url', policy),
-        oidc_issuer: requireSecureUrl(auth.issuer, 'issuer', policy),
-        oidc_jwks_uri: requireSecureUrl(auth.jwks_uri, 'jwks_uri', policy),
-        client_id: requireText(auth.client_id, 'client_id'),
-        scope: normalizeScope(auth.scope),
-        grant_types_supported: ['authorization_code', 'refresh_token'],
-        response_types_supported: ['code'],
-        code_challenge_methods_supported: ['S256'],
-        ...(clientSecret
-          ? {
-              client_secret: clientSecret,
-              token_endpoint_auth_methods_supported: tokenAuthMethods ?? ['client_secret_basic'],
-            }
-          : {}),
-        ...(audience ? { audience } : {}),
-        ...(revocation
-          ? { revocation_endpoint: requireSecureUrl(revocation, 'revocation_endpoint', policy) }
-          : {}),
-      },
+      oauth: buildOidcOAuth(auth, policy),
     } as MCPOptions;
   } catch (error) {
-    logger.warn(
-      `[tars-mcp] Skipping OIDC server ${server.id}: ${error instanceof Error ? error.message : 'invalid configuration'}`,
-    );
+    logSkippedServer(server.id, error);
     return null;
   }
+}
+
+/**
+ * The sign-in an `openapi` or `custom_api` OIDC server adds to its gateway entry, or `null` when
+ * the stored row cannot be trusted. The entry still points at the gateway, which forwards the
+ * access token its MCP client sends to pwc_tars for that call alone.
+ */
+export function tarsOidcGatewayAuth(
+  server: TarsOidcServerRow,
+  policy: TarsOidcPolicy = {},
+): Pick<MCPOptions, 'requiresOAuth' | 'oauth'> | null {
+  const auth = readOidcAuth(server.connection_config);
+  if (!auth) {
+    return null;
+  }
+  try {
+    if (server.type == null || !GATEWAY_OIDC_SERVER_TYPES.has(server.type)) {
+      throw new TarsOidcConfigError('此類型的伺服器不透過閘道使用 OIDC');
+    }
+    requireSecureUrl(server.connection_config?.base_url, 'API base_url', policy);
+    return { requiresOAuth: true, oauth: buildOidcOAuth(auth, policy) };
+  } catch (error) {
+    logSkippedServer(server.id, error);
+    return null;
+  }
+}
+
+function logSkippedServer(serverId: string, error: unknown): void {
+  logger.warn(
+    `[tars-mcp] Skipping OIDC server ${serverId}: ${error instanceof Error ? error.message : 'invalid configuration'}`,
+  );
+}
+
+/**
+ * The token request stays on the endpoints pinned at save time and PKCE is fixed to S256,
+ * whatever the server's own metadata claims later.
+ */
+function buildOidcOAuth(
+  auth: Record<string, unknown>,
+  policy: TarsOidcPolicy,
+): MCPOptions['oauth'] {
+  const clientSecret = readStoredSecret(auth);
+  const audience = optionalText(auth.audience, 'audience');
+  const revocation = optionalText(auth.revocation_endpoint, 'revocation_endpoint');
+  const tokenAuthMethods = toTokenAuthMethods(auth.token_endpoint_auth_methods);
+  return {
+    authorization_url: requireSecureUrl(auth.authorization_url, 'authorization_url', policy),
+    token_url: requireSecureUrl(auth.token_url, 'token_url', policy),
+    oidc_issuer: requireSecureUrl(auth.issuer, 'issuer', policy),
+    oidc_jwks_uri: requireSecureUrl(auth.jwks_uri, 'jwks_uri', policy),
+    client_id: requireText(auth.client_id, 'client_id'),
+    scope: normalizeScope(auth.scope),
+    grant_types_supported: ['authorization_code', 'refresh_token'],
+    response_types_supported: ['code'],
+    code_challenge_methods_supported: ['S256'],
+    ...(clientSecret
+      ? {
+          client_secret: clientSecret,
+          token_endpoint_auth_methods_supported: tokenAuthMethods ?? ['client_secret_basic'],
+        }
+      : {}),
+    ...(audience ? { audience } : {}),
+    ...(revocation
+      ? { revocation_endpoint: requireSecureUrl(revocation, 'revocation_endpoint', policy) }
+      : {}),
+  } as MCPOptions['oauth'];
 }
 
 /** Admin "test": discovery must still succeed and still agree with the pinned endpoints. */

@@ -10,8 +10,10 @@ jest.mock('@librechat/data-schemas', () => ({
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { IncomingMessage, ServerResponse } from 'http';
+import { createTarsMcpServer, handleTarsMcpRequest, readGatewayAccessToken } from './server';
+import { clearTarsMcpEntryNames, recordTarsMcpOidcGateway } from './names';
 import { invalidateTarsMcpToolsCache } from './client';
-import { createTarsMcpServer } from './server';
 
 const BASE_URL = 'http://tars.test';
 const USER_ID = '42';
@@ -52,8 +54,12 @@ const mockTarsBackend = (execute: { status: number; body: unknown }) =>
     throw new Error(`Unexpected fetch: ${url}`);
   });
 
-async function connectClient(tarsUserId: string | null, serverId?: string): Promise<Client> {
-  const server = createTarsMcpServer(tarsUserId, serverId);
+async function connectClient(
+  tarsUserId: string | null,
+  serverId?: string,
+  accessToken?: string,
+): Promise<Client> {
+  const server = createTarsMcpServer(tarsUserId, serverId, accessToken);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: 'spec-client', version: '1.0.0' });
@@ -236,5 +242,76 @@ describe('createTarsMcpServer', () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     await client.close();
+  });
+});
+
+describe('OIDC access tokens through the gateway', () => {
+  afterEach(() => clearTarsMcpEntryNames());
+
+  it("hands the caller's token to pwc_tars with the call", async () => {
+    const fetchMock = mockTarsBackend({
+      status: 200,
+      body: envelope({ result: { ok: true }, duration_ms: 3 }),
+    });
+    const client = await connectClient(USER_ID, undefined, 'user-token');
+
+    await client.callTool({ name: 'issues__create_issue', arguments: { title: 'bug' } });
+
+    const executeCall = fetchMock.mock.calls.find(([input]) =>
+      String(input).includes('/api/mcp/execute'),
+    );
+    expect(JSON.parse(executeCall?.[1]?.body as string)).toMatchObject({
+      server_id: 'srv-custom-1',
+      user_access_token: 'user-token',
+    });
+    await client.close();
+  });
+
+  it('reads the token only for a server that runs on one', () => {
+    recordTarsMcpOidcGateway('srv-oidc');
+    expect(readGatewayAccessToken('srv-oidc', 'Bearer abc.def')).toBe('abc.def');
+    expect(readGatewayAccessToken('srv-oidc', 'bearer abc')).toBe('abc');
+    expect(readGatewayAccessToken('srv-oidc', undefined)).toBeNull();
+    expect(readGatewayAccessToken('srv-oidc', 'Basic dXNlcjpwdw==')).toBeNull();
+    expect(readGatewayAccessToken('srv-other', 'Bearer abc')).toBeUndefined();
+    expect(readGatewayAccessToken(undefined, 'Bearer abc')).toBeUndefined();
+  });
+
+  it('asks for a fresh token once a JWT access token has expired', () => {
+    recordTarsMcpOidcGateway('srv-oidc');
+    const jwt = (claims: Record<string, unknown>) =>
+      ['e30', Buffer.from(JSON.stringify(claims)).toString('base64url'), 'sig'].join('.');
+    const now = 1_700_000_000_000;
+
+    expect(
+      readGatewayAccessToken('srv-oidc', `Bearer ${jwt({ exp: now / 1000 - 1 })}`, now),
+    ).toBeNull();
+    const live = jwt({ exp: now / 1000 + 30 });
+    expect(readGatewayAccessToken('srv-oidc', `Bearer ${live}`, now)).toBe(live);
+    const noExp = jwt({ sub: 'alice' });
+    expect(readGatewayAccessToken('srv-oidc', `Bearer ${noExp}`, now)).toBe(noExp);
+    expect(readGatewayAccessToken('srv-oidc', 'Bearer opaque-token', now)).toBe('opaque-token');
+    expect(readGatewayAccessToken('srv-oidc', 'Bearer a.%%%.c', now)).toBe('a.%%%.c');
+  });
+
+  it('answers 401 without reaching pwc_tars when a sign-in is missing', async () => {
+    recordTarsMcpOidcGateway('srv-oidc');
+    const fetchMock = jest.spyOn(global, 'fetch');
+    const res = { writeHead: jest.fn(), end: jest.fn(), on: jest.fn() };
+
+    await handleTarsMcpRequest({
+      req: { headers: {} } as IncomingMessage,
+      res: res as unknown as ServerResponse,
+      body: { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+      tarsUserId: USER_ID,
+      serverId: 'srv-oidc',
+    });
+
+    expect(res.writeHead).toHaveBeenCalledWith(
+      401,
+      expect.objectContaining({ 'WWW-Authenticate': 'Bearer' }),
+    );
+    expect(JSON.parse(res.end.mock.calls[0][0]).error.code).toBe(-32001);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

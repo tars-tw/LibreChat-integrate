@@ -7,6 +7,7 @@ import McpCredentialsForm from '~/components/Tars/McpCredentialsForm';
 import McpPaginationControls from './McpPaginationControls';
 import { useClientPagination } from './useClientPagination';
 import ServerTypeBadge from './ServerTypeBadge';
+import { isDirectOidcUserServer } from './oidc';
 import { emptyToolsKey } from './toolStatus';
 import { useLocalize } from '~/hooks';
 
@@ -114,7 +115,7 @@ function ServerCard({ server }: { server: TTarsMcpUserServer }) {
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="text-text-primary truncate font-medium">{server.name}</span>
             <ServerTypeBadge type={server.type} />
-            {(server.auth_type !== 'oidc' || server.tools.length > 0) && (
+            {(!isDirectOidcUserServer(server) || server.tools.length > 0) && (
               <span className="text-text-secondary text-xs">
                 {localize('com_ui_tars_mcp_server_tool_count', { count: server.tools.length })}
               </span>

@@ -183,6 +183,14 @@ function toServerType(type?: string): ServerType {
   return 'openapi';
 }
 
+/**
+ * OIDC runs on an external server over streamable_http, which the app connects to itself, and on
+ * the API types TARS executes with the user's token. A stdio server has nowhere to send a token.
+ */
+function supportsOidc(form: Pick<ServerForm, 'type' | 'transport'>): boolean {
+  return form.type !== 'external' || form.transport === 'streamable_http';
+}
+
 function toForm(server?: TTarsMcpServer): ServerForm {
   const config = server?.connection_config ?? {};
   return {
@@ -261,12 +269,11 @@ export default function McpServerModal({
     setForm((prev) => ({ ...prev, [key]: value }));
   const setAuth = <K extends keyof AuthForm>(key: K, value: AuthForm[K]) =>
     setForm((prev) => ({ ...prev, auth: { ...prev.auth, [key]: value } }));
-  /** OIDC exists only on external streamable_http, so a choice that leaves it clears the selection. */
+  /** A choice that leaves the kinds OIDC exists on clears the selection. */
   const setConnectionKind = (kind: Partial<Pick<ServerForm, 'type' | 'transport'>>) =>
     setForm((prev) => {
       const next = { ...prev, ...kind };
-      const supportsOidc = next.type === 'external' && next.transport === 'streamable_http';
-      return next.auth.type === 'oidc' && !supportsOidc
+      return next.auth.type === 'oidc' && !supportsOidc(next)
         ? { ...next, auth: { ...next.auth, type: 'none' } }
         : next;
     });
@@ -333,11 +340,25 @@ export default function McpServerModal({
       return null;
     }
 
+    if (
+      form.auth.type === 'oidc' &&
+      supportsOidc(form) &&
+      (!form.auth.oidcIssuer.trim() || !form.auth.oidcClientId.trim())
+    ) {
+      showToast({ message: localize('com_ui_tars_mcp_oidc_required'), status: 'error' });
+      return null;
+    }
+
     const connection: Record<string, unknown> = { ...(auth ? { auth } : {}) };
     let envVars: Record<string, string> | undefined;
     if (form.type === 'openapi') {
       if (!form.openapiUrl.trim()) {
         showToast({ message: localize('com_ui_tars_mcp_openapi_url_required'), status: 'error' });
+        return null;
+      }
+      /** The user's token goes to this URL; without it TARS would take the host from the spec. */
+      if (form.auth.type === 'oidc' && !form.baseUrl.trim()) {
+        showToast({ message: localize('com_ui_tars_mcp_base_url_required'), status: 'error' });
         return null;
       }
       connection.openapi_url = form.openapiUrl.trim();
@@ -365,13 +386,6 @@ export default function McpServerModal({
           return null;
         }
         connection.url = form.externalUrl.trim();
-        if (
-          form.auth.type === 'oidc' &&
-          (!form.auth.oidcIssuer.trim() || !form.auth.oidcClientId.trim())
-        ) {
-          showToast({ message: localize('com_ui_tars_mcp_oidc_required'), status: 'error' });
-          return null;
-        }
         if (form.auth.type !== 'oidc') {
           try {
             const headers = JSON.parse(form.headersJson || '{}') as Record<string, unknown>;
@@ -457,7 +471,8 @@ export default function McpServerModal({
       const { server: saved } = isEdit
         ? await updateMutation.mutateAsync({ id: server.id, data: input })
         : await createMutation.mutateAsync(input);
-      if (form.auth.type === 'oidc') {
+      /** A direct OIDC server has no spec or tool config to sync; its tools come from sign-ins. */
+      if (form.auth.type === 'oidc' && form.type === 'external') {
         showToast({ message: localize('com_ui_tars_mcp_oidc_saved'), status: 'success' });
       } else if (saved?.id) {
         try {
@@ -505,11 +520,12 @@ export default function McpServerModal({
             { value: 'bearer', label: localize('com_ui_tars_mcp_auth_bearer') },
             { value: 'api_key', label: localize('com_ui_tars_mcp_auth_api_key') },
             ...(isExternal
-              ? [{ value: 'oidc', label: localize('com_ui_tars_mcp_auth_oidc') }]
+              ? []
               : [
                   { value: 'basic', label: localize('com_ui_tars_mcp_auth_basic') },
                   { value: 'login', label: localize('com_ui_tars_mcp_auth_login') },
                 ]),
+            { value: 'oidc', label: localize('com_ui_tars_mcp_auth_oidc') },
           ]}
         />
       </div>
@@ -560,7 +576,9 @@ export default function McpServerModal({
       )}
       {form.auth.type === 'oidc' && (
         <div className="space-y-3">
-          <p className="text-text-secondary text-xs">{localize('com_ui_tars_mcp_oidc_hint')}</p>
+          <p className="text-text-secondary text-xs">
+            {localize(isExternal ? 'com_ui_tars_mcp_oidc_hint' : 'com_ui_tars_mcp_oidc_api_hint')}
+          </p>
           {form.code.trim() !== '' && startupConfig?.serverDomain != null && (
             <p className="text-text-secondary text-xs break-all">
               {localize('com_ui_tars_mcp_oidc_redirect_hint')}{' '}

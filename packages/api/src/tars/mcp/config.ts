@@ -3,15 +3,21 @@ import { logger } from '@librechat/data-schemas';
 import { sanitizeMCPTitle } from 'librechat-data-provider';
 import type { MCPOptions } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
+import type { TarsOidcEntryBase, TarsOidcPolicy } from './oidc';
 import type { TarsMcpServerDetail } from './admin';
-import type { TarsOidcEntryBase } from './oidc';
 import {
   clearTarsMcpEntryNames,
   recordTarsMcpEntryName,
   derivedTarsMcpEntryName,
   recordTarsMcpDirectEntry,
+  recordTarsMcpOidcGateway,
 } from './names';
-import { buildTarsOidcEntry, isTarsOidcServer } from './oidc';
+import {
+  isTarsOidcServer,
+  buildTarsOidcEntry,
+  tarsOidcGatewayAuth,
+  isTarsDirectOidcServer,
+} from './oidc';
 import { PROXIED_SERVER_TYPES, tarsMcpFetch } from './client';
 import { hostPortFromUrl } from '~/auth/allowedAddresses';
 import { isTarsConfigured } from '~/tars/client';
@@ -92,6 +98,27 @@ function buildServerEntry(
     startup: false,
     ...entryDisplay(server),
   };
+}
+
+/**
+ * The entry of an OIDC server, or `null` when its stored row cannot be trusted. An `external` one
+ * points at the real server; an `openapi` or `custom_api` one stays on the gateway and gains the
+ * sign-in, so its MCP client carries the user's access token to the gateway on every call.
+ */
+export function buildTarsOidcServerEntry(
+  server: TarsMcpServerDetail,
+  policy: TarsOidcPolicy,
+  gatewayKey: string = deriveTarsMcpGatewayKey() ?? '',
+): MCPOptions | null {
+  if (isTarsDirectOidcServer(server)) {
+    return buildTarsOidcEntry(server, entryDisplay(server), policy);
+  }
+  const auth = tarsOidcGatewayAuth(server, policy);
+  if (!auth) {
+    return null;
+  }
+  const url = `${tarsMcpSelfUrl()}/${encodeURIComponent(server.id)}`;
+  return { ...buildServerEntry(url, gatewayKey, server), ...auth } as MCPOptions;
 }
 
 /** Display fields every entry shares, whichever way its tools are reached. */
@@ -197,10 +224,14 @@ export async function withTarsMcpConfig(appConfig: AppConfig): Promise<AppConfig
     }
     const oidc = isTarsOidcServer(server);
     const entry = oidc
-      ? buildTarsOidcEntry(server, entryDisplay(server), {
-          allowedDomains: appConfig.mcpSettings?.allowedDomains,
-          allowedAddresses: appConfig.mcpSettings?.allowedAddresses,
-        })
+      ? buildTarsOidcServerEntry(
+          server,
+          {
+            allowedDomains: appConfig.mcpSettings?.allowedDomains,
+            allowedAddresses: appConfig.mcpSettings?.allowedAddresses,
+          },
+          gatewayKey,
+        )
       : buildServerEntry(`${baseUrl}/${encodeURIComponent(server.id)}`, gatewayKey, server);
     if (!entry) {
       continue;
@@ -208,8 +239,10 @@ export async function withTarsMcpConfig(appConfig: AppConfig): Promise<AppConfig
     taken.add(name);
     mcpConfig[name] = entry;
     recordTarsMcpEntryName(server.id, name);
-    if (oidc) {
+    if (isTarsDirectOidcServer(server)) {
       recordTarsMcpDirectEntry(name, server.id);
+    } else if (oidc) {
+      recordTarsMcpOidcGateway(server.id);
     }
     injected += 1;
   }

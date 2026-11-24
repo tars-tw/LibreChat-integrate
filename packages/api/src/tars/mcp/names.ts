@@ -18,11 +18,23 @@ export const PROVIDER_TOOL_NAME_LIMIT = 64;
 const injectedEntryNames = new Map<string, string>();
 /** Entry name → pwc_tars server id, for entries that bypass the gateway (OIDC servers). */
 const directEntryServers = new Map<string, string>();
+/** pwc_tars server ids whose gateway calls must carry the user's OIDC access token. */
+const oidcGatewayServers = new Set<string>();
 
 /** Resets the registry; called at the start of every injection run. */
 export function clearTarsMcpEntryNames(): void {
   injectedEntryNames.clear();
   directEntryServers.clear();
+  oidcGatewayServers.clear();
+}
+
+/** Records a server pwc_tars executes on the access token its gateway caller signs in for. */
+export function recordTarsMcpOidcGateway(serverId: string): void {
+  oidcGatewayServers.add(serverId);
+}
+
+export function isTarsMcpOidcGateway(serverId: string): boolean {
+  return oidcGatewayServers.has(serverId);
 }
 
 /** Records an injected entry whose tools pwc_tars cannot list, so it cannot map them to ids. */
