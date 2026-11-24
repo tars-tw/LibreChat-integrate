@@ -227,6 +227,7 @@ export default function McpServerModal({
   const [parsed, setParsed] = useState<TTarsMcpParsedSpec | null>(null);
   const [openapiTools, setOpenapiTools] = useState<TTarsMcpParsedTool[]>([]);
   const [formTab, setFormTab] = useState<FormTab>('basic');
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
   /** Hosts the auth list, which the form's own scroll area would otherwise cut off. */
   const [dialogElement, setDialogElement] = useState<HTMLDivElement | null>(null);
 
@@ -439,8 +440,17 @@ export default function McpServerModal({
   };
 
   const handleSave = async () => {
+    setShowValidationErrors(true);
+
     const input = buildInput();
     if (!input) {
+      if (!form.name.trim()) {
+        setFormTab('basic');
+      } else if (form.type === 'custom_api' && form.tools.length === 0) {
+        setFormTab('tools');
+      } else {
+        setFormTab('connection');
+      }
       return;
     }
     try {
@@ -707,19 +717,29 @@ export default function McpServerModal({
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="tars-mcp-name">{localize('com_ui_name')}</Label>
+          <Label htmlFor="tars-mcp-name">
+            {localize('com_ui_name')}
+            <span className="text-status-error-strong"> *</span>
+          </Label>
           <Input
-            id="tars-mcp-name"
-            className="mt-1"
-            value={form.name}
-            onChange={(e) => set('name', e.target.value)}
+            id="tars-mcp-openapi-url"
+            className="placeholder:text-text-muted mt-1"
+            aria-invalid={showValidationErrors && !form.openapiUrl.trim()}
+            value={form.openapiUrl}
+            onChange={(e) => set('openapiUrl', e.target.value)}
+            placeholder="https://api.example.com/openapi.json"
           />
+          {showValidationErrors && !form.name.trim() && (
+            <p className="text-status-error-strong mt-1 text-xs">
+              {localize('com_ui_tars_models_required')}
+            </p>
+          )}
         </div>
         <div>
           <Label htmlFor="tars-mcp-code">{localize('com_ui_tars_mcp_code')}</Label>
           <Input
             id="tars-mcp-code"
-            className="mt-1"
+            className="placeholder:text-text-muted mt-1"
             value={form.code}
             onChange={(e) => set('code', e.target.value)}
             placeholder="issues"
@@ -754,7 +774,7 @@ export default function McpServerModal({
           <Label htmlFor="tars-mcp-tags">{localize('com_ui_tars_mcp_tags')}</Label>
           <Input
             id="tars-mcp-tags"
-            className="mt-1"
+            className="placeholder:text-text-muted mt-1"
             value={form.tags}
             onChange={(e) => set('tags', e.target.value)}
             placeholder={localize('com_ui_tars_mcp_tags_hint')}
@@ -797,14 +817,26 @@ export default function McpServerModal({
       {form.type === 'openapi' && (
         <div className="border-border-light space-y-3 rounded-lg border p-3">
           <div>
-            <Label htmlFor="tars-mcp-openapi-url">{localize('com_ui_tars_mcp_openapi_url')}</Label>
-            <div className="mt-1 flex gap-2">
-              <Input
-                id="tars-mcp-openapi-url"
-                value={form.openapiUrl}
-                onChange={(e) => set('openapiUrl', e.target.value)}
-                placeholder="https://api.example.com/openapi.json"
-              />
+            <Label htmlFor="tars-mcp-openapi-url">
+              {localize('com_ui_tars_mcp_openapi_url')}
+              <span className="text-status-error-strong"> *</span>
+            </Label>
+            <div className="mt-1 flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <Input
+                  id="tars-mcp-openapi-url"
+                  className="placeholder:text-text-muted mt-1"
+                  aria-invalid={showValidationErrors && !form.openapiUrl.trim()}
+                  value={form.openapiUrl}
+                  onChange={(e) => set('openapiUrl', e.target.value)}
+                  placeholder="https://api.example.com/openapi.json"
+                />
+                {showValidationErrors && !form.openapiUrl.trim() && (
+                  <p className="text-status-error-strong mt-1 text-xs">
+                    {localize('com_ui_tars_models_required')}
+                  </p>
+                )}
+              </div>
               <Button variant="outline" onClick={handleParse} disabled={parseMutation.isLoading}>
                 {parseMutation.isLoading ? <Spinner /> : localize('com_ui_tars_mcp_parse')}
               </Button>
@@ -815,7 +847,7 @@ export default function McpServerModal({
               <Label htmlFor="tars-mcp-base-url">{localize('com_ui_tars_mcp_base_url')}</Label>
               <Input
                 id="tars-mcp-base-url"
-                className="mt-1"
+                className="placeholder:text-text-muted mt-1"
                 value={form.baseUrl}
                 onChange={(e) => set('baseUrl', e.target.value)}
                 placeholder={localize('com_ui_tars_mcp_base_url_optional')}

@@ -199,6 +199,7 @@ export default function McpToolEditorModal({
   const localize = useLocalize();
   const [draft, setDraft] = useState<ToolDraft>(initialDraft);
   const [error, setError] = useState<string | null>(null);
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
 
   const set = <K extends keyof ToolDraft>(key: K, value: ToolDraft[K]) =>
     setDraft((prev) => ({ ...prev, [key]: value }));
@@ -241,11 +242,15 @@ export default function McpToolEditorModal({
     }));
 
   const handleSave = () => {
+    setShowValidationErrors(true);
+
     const validationError = validateToolDraft(draft, otherNames);
     if (validationError) {
-      setError(localize(validationError));
+      setError(validationError);
       return;
     }
+
+    setError(null);
     onSave(draft);
   };
 
@@ -259,17 +264,28 @@ export default function McpToolEditorModal({
         className="w-11/12 md:max-w-4xl"
         main={
           <div className="max-h-[65vh] space-y-4 overflow-y-auto pr-1">
-            {error != null && <p className="text-sm text-red-500">{error}</p>}
-
             <div className="grid grid-cols-[1fr_8rem] gap-3">
               <div>
-                <Label htmlFor="tars-mcp-tool-name">{localize('com_ui_name')}</Label>
+                <Label htmlFor="tars-mcp-tool-name">
+                  {localize('com_ui_name')}
+                  <span className="text-status-error-strong"> *</span>
+                </Label>
                 <Input
                   id="tars-mcp-tool-name"
+                  className="mt-1"
+                  aria-invalid={
+                    showValidationErrors &&
+                    (error === 'com_ui_tars_mcp_tool_name_required' ||
+                      error === 'com_ui_tars_mcp_tool_name_invalid' ||
+                      error === 'com_ui_tars_mcp_tool_name_duplicate')
+                  }
                   value={draft.name}
                   onChange={(e) => set('name', e.target.value)}
                   placeholder="create_issue"
                 />
+                {showValidationErrors && error?.startsWith('com_ui_tars_mcp_tool_name') && (
+                  <p className="text-status-error-strong mt-1 text-xs">{localize(error)}</p>
+                )}
               </div>
               <div>
                 <Label>{localize('com_ui_tars_mcp_tool_method')}</Label>
@@ -279,19 +295,29 @@ export default function McpToolEditorModal({
                   ariaLabel={localize('com_ui_tars_mcp_tool_method')}
                   options={HTTP_METHODS}
                   sizeClasses="w-full"
-                  className="w-full"
+                  className="mt-1 w-full"
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="tars-mcp-tool-path">{localize('com_ui_tars_mcp_tool_path')}</Label>
+              <Label htmlFor="tars-mcp-tool-path">
+                {localize('com_ui_tars_mcp_tool_path')}
+                <span className="text-status-error-strong"> *</span>
+              </Label>
               <Input
                 id="tars-mcp-tool-path"
+                className="mt-1"
+                aria-invalid={
+                  showValidationErrors && error === 'com_ui_tars_mcp_tool_path_required'
+                }
                 value={draft.path}
                 onChange={(e) => set('path', e.target.value)}
                 placeholder="/issues/{id}"
               />
+              {showValidationErrors && error === 'com_ui_tars_mcp_tool_path_required' && (
+                <p className="text-status-error-strong mt-1 text-xs">{localize(error)}</p>
+              )}
               <p className="text-text-secondary mt-1 text-xs">
                 {localize('com_ui_tars_mcp_tool_path_hint')}
               </p>
@@ -303,6 +329,7 @@ export default function McpToolEditorModal({
                 id="tars-mcp-tool-desc"
                 value={draft.description}
                 onChange={(e) => set('description', e.target.value)}
+                className="mt-1"
               />
             </div>
 
@@ -404,7 +431,7 @@ export default function McpToolEditorModal({
                       ariaLabel={localize('com_ui_tars_mcp_body_content_type')}
                       options={BODY_CONTENT_TYPES}
                       sizeClasses="w-full"
-                      className="w-full"
+                      className="mt-1 w-full"
                     />
                   </div>
                   <div>
@@ -415,6 +442,7 @@ export default function McpToolEditorModal({
                       id="tars-mcp-tool-body-wrap"
                       value={draft.bodyWrap}
                       onChange={(e) => set('bodyWrap', e.target.value)}
+                      className="mt-1"
                     />
                   </div>
                 </div>

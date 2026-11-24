@@ -141,6 +141,7 @@ export default function ModelProfileModal({
   const [form, setForm] = useState<FormState>(initial);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [copySource, setCopySource] = useState(NO_SOURCE);
+  const [endpointSource, setEndpointSource] = useState(NO_SOURCE);
   /** Hosts the help tooltips, which the form's own scroll area would otherwise cut off. */
   const [dialogElement, setDialogElement] = useState<HTMLDivElement | null>(null);
   const showConfig = form.type === CONFIG_EDITABLE_TYPE;
@@ -187,6 +188,16 @@ export default function ModelProfileModal({
     () => [
       { value: NO_SOURCE, label: localize('com_ui_tars_models_copy_none') },
       ...profiles.map((item) => ({ value: item.id, label: item.name })),
+    ],
+    [profiles, localize],
+  );
+
+  const endpointSourceOptions = useMemo(
+    () => [
+      { value: NO_SOURCE, label: localize('com_ui_tars_models_endpoint_copy_none') },
+      ...profiles
+        .filter((item) => item.endpoint?.trim())
+        .map((item) => ({ value: item.id, label: item.name })),
     ],
     [profiles, localize],
   );
@@ -259,6 +270,13 @@ export default function ModelProfileModal({
       endpoint: prev.endpoint.trim() ? prev.endpoint : (source.endpoint ?? ''),
     }));
     setErrors({});
+  };
+
+  const handleEndpointCopy = (sourceId: string) => {
+    setEndpointSource(sourceId);
+    const source = profiles.find((item) => item.id === sourceId);
+    setForm((prev) => ({ ...prev, endpoint: source?.endpoint ?? '' }));
+    setErrors((prev) => ({ ...prev, endpoint: undefined }));
   };
 
   const handleEndpointBlur = () => {
@@ -404,7 +422,7 @@ export default function ModelProfileModal({
                 />
                 <Input
                   id="tars-model-name"
-                  className="mt-1"
+                  className="placeholder:text-text-muted mt-1"
                   value={form.name}
                   autoComplete="off"
                   aria-invalid={errors.name != null}
@@ -427,7 +445,7 @@ export default function ModelProfileModal({
                 />
                 <Input
                   id="tars-model-display-name"
-                  className="mt-1"
+                  className="placeholder:text-text-muted mt-1"
                   value={form.displayName}
                   autoComplete="off"
                   maxLength={TARS_MODEL_DISPLAY_NAME_MAX}
@@ -436,7 +454,10 @@ export default function ModelProfileModal({
                 />
               </div>
               <div>
-                <Label id="tars-model-type-label">{localize('com_ui_tars_models_type')} *</Label>
+                <Label id="tars-model-type-label">
+                  {localize('com_ui_tars_models_type')}
+                  <span className="text-status-error-strong"> *</span>
+                </Label>
                 <Dropdown
                   value={form.type || NO_TYPE}
                   options={typeOptions}
@@ -451,7 +472,7 @@ export default function ModelProfileModal({
                 <Label htmlFor="tars-model-version">{localize('com_ui_tars_models_version')}</Label>
                 <Input
                   id="tars-model-version"
-                  className="mt-1"
+                  className="placeholder:text-text-muted mt-1"
                   value={form.version}
                   autoComplete="off"
                   placeholder={localize('com_ui_tars_models_version_placeholder')}
@@ -460,18 +481,38 @@ export default function ModelProfileModal({
               </div>
               <div className="md:col-span-2">
                 <Label htmlFor="tars-model-endpoint">
-                  {localize('com_ui_tars_models_endpoint')} *
+                  {localize('com_ui_tars_models_endpoint')}
+                  <span className="text-status-error-strong"> *</span>
                 </Label>
+                {!isEdit && endpointSourceOptions.length > 1 && (
+                  <div className="mt-1">
+                    <Label id="tars-model-endpoint-copy-label" className="text-xs">
+                      {localize('com_ui_tars_models_endpoint_copy_from')}
+                    </Label>
+                    <Dropdown
+                      value={endpointSource}
+                      options={endpointSourceOptions}
+                      onChange={handleEndpointCopy}
+                      searchable={true}
+                      variant="field"
+                      aria-labelledby="tars-model-endpoint-copy-label"
+                      className="mt-1"
+                    />
+                  </div>
+                )}
                 <Input
                   id="tars-model-endpoint"
-                  className="mt-1 font-mono"
+                  className="placeholder:text-text-muted mt-2 font-mono"
                   value={form.endpoint}
                   autoComplete="off"
                   spellCheck={false}
                   aria-invalid={errors.endpoint != null}
                   onBlur={handleEndpointBlur}
                   placeholder={localize('com_ui_tars_models_endpoint_placeholder')}
-                  onChange={(e) => update('endpoint', e.target.value)}
+                  onChange={(e) => {
+                    update('endpoint', e.target.value);
+                    setEndpointSource(NO_SOURCE);
+                  }}
                 />
                 <FieldError messageKey={errors.endpoint} />
               </div>
@@ -481,7 +522,7 @@ export default function ModelProfileModal({
                 </Label>
                 <Input
                   id="tars-model-api-version"
-                  className="mt-1 font-mono"
+                  className="placeholder:text-text-muted mt-1 font-mono"
                   value={form.apiVersion}
                   autoComplete="off"
                   placeholder={localize('com_ui_tars_models_api_version_placeholder')}
@@ -502,7 +543,8 @@ export default function ModelProfileModal({
             {isCloudType && (
               <div>
                 <p className="text-text-primary text-sm">
-                  {localize('com_ui_tars_models_api_key')} *
+                  {localize('com_ui_tars_models_api_key')}
+                  <span className="text-status-error-strong"> *</span>
                 </p>
                 <p className="text-text-secondary mt-1 text-xs">
                   {localize('com_ui_tars_models_api_key_hint')}
@@ -631,7 +673,7 @@ export default function ModelProfileModal({
                   id="tars-model-config"
                   rows={12}
                   spellCheck={false}
-                  className="mt-2 resize-y font-mono text-xs"
+                  className="placeholder:text-text-muted mt-1 mt-2 resize-y font-mono text-xs"
                   value={form.config}
                   aria-invalid={errors.config != null}
                   placeholder={localize('com_ui_tars_models_config_placeholder')}
