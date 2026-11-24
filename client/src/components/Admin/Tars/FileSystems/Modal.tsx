@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react';
 import { TARS_FILE_PROTOCOLS } from 'librechat-data-provider';
-import { AlertTriangle, CheckCircle2, PlugZap, Search, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, PlugZap, XCircle } from 'lucide-react';
 import {
   Button,
-  Dropdown,
   Input,
   Label,
   OGDialog,
@@ -11,9 +10,11 @@ import {
   Spinner,
   Switch,
   useToastContext,
+  disabledInkClasses,
 } from '@librechat/client';
 import type { TTarsFileProtocol, TTarsFileSystemSource } from 'librechat-data-provider';
-import type { FileSystemForm } from './helpers';
+import type { FileSystemForm, SaveBlocker } from './helpers';
+import type { TranslationKeys } from '~/hooks';
 import {
   NAME_MAX,
   NAME_MIN,
@@ -24,19 +25,19 @@ import {
   usesHostName,
   connectionFieldsFilled,
   knowledgeBasePickerOptions,
-  nameInvalid,
+  nameRejected,
   portInvalid,
+  saveBlockers,
   protocolIcon,
   toFileRows,
   folderOptions,
   missingFolder,
   listsNfsExports,
   listsSmbShares,
+  groupPathLabel,
   toFileSystemForm,
   fileServerTestPath,
   folderWithinTested,
-  buildFullFolderPath,
-  selectedFolderOption,
 } from './helpers';
 import {
   useCreateTarsFileSystemMutation,
@@ -45,9 +46,19 @@ import {
 } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 import Picker from '../Audit/Picker';
+import Explorer from './Explorer';
 
-/** How many walked files the preview lists before it asks for a filter. */
-const FILE_PREVIEW_LIMIT = 200;
+/** The footer's reason for each thing that keeps the form from saving. */
+const SAVE_BLOCKER_KEYS = {
+  unchanged: 'com_ui_tars_fs_save_unchanged',
+  name: 'com_ui_tars_fs_reason_name',
+  host: 'com_ui_tars_fs_reason_host',
+  credentials: 'com_ui_tars_fs_reason_credentials',
+  port: 'com_ui_tars_fs_reason_port',
+  smb_share: 'com_ui_tars_fs_reason_smb_share',
+  nfs_export: 'com_ui_tars_fs_reason_nfs_export',
+} as const satisfies Record<SaveBlocker, TranslationKeys>;
+
 /** How many skipped folders the warning lists before it scrolls. */
 const UNREADABLE_PREVIEW_LIMIT = 50;
 
@@ -83,11 +94,15 @@ export default function FileSystemModal({
   const { showToast } = useToastContext();
   const isEdit = fileSystem != null;
 
-  const [form, setForm] = useState<FileSystemForm>(
-    fileSystem != null ? toFileSystemForm(fileSystem) : emptyFileSystemForm,
+  /** The group as stored, which an edit is compared against; `null` for a new group. */
+  const original = useMemo(
+    () => (fileSystem != null ? toFileSystemForm(fileSystem) : null),
+    [fileSystem],
   );
-  const [fileFilter, setFileFilter] = useState('');
+  const [form, setForm] = useState<FileSystemForm>(original ?? emptyFileSystemForm);
   const [tested, setTested] = useState<TestedFolder | null>(null);
+  /** The folder being browsed. Browsing never changes the group path. */
+  const [location, setLocation] = useState('/');
 
   const kbOptions = useMemo(() => knowledgeBasePickerOptions(knowledgeBases), [knowledgeBases]);
 
@@ -130,9 +145,13 @@ export default function FileSystemModal({
 
   /**
    * Switching protocol re-applies that protocol's default port and drops the
-   * folder and the fields it does not use, as pwc_tars' own form does.
+   * folder and the fields it does not use. Only a new group may switch: an
+   * existing one's documents store their source paths in its protocol's form.
    */
   const selectProtocol = (protocol: TTarsFileProtocol) => {
+    if (isEdit) {
+      return;
+    }
     resetConnectionTest();
     setForm((prev) => ({
       ...prev,
@@ -147,11 +166,12 @@ export default function FileSystemModal({
 
   const smb = usesHostName(form.protocol);
   const withCredentials = needsCredentials(form.protocol);
-  const invalidName = nameInvalid(form.name);
+  const invalidName = nameRejected(form.name, fileSystem?.name);
   const invalidConnection = !connectionFieldsFilled(form, isEdit) || portInvalid(form.port);
   const folderNeeded = missingFolder(form);
   const isSaving = createMutation.isLoading || updateMutation.isLoading;
-  const canSave = !invalidName && !invalidConnection && !folderNeeded && !isSaving;
+  const blockers = useMemo(() => saveBlockers(form, original), [form, original]);
+  const canSave = blockers.length === 0 && !isSaving;
 
   const inputPayload = () => ({
     name: form.name.trim(),
@@ -168,9 +188,9 @@ export default function FileSystemModal({
   });
 
   /**
-   * Tests the folder on the form — `/` until one is picked, the stored one on
-   * an edit form — so picking a folder and testing again drills into it, as
-   * pwc_tars' own form does. An NFS form with no export yet asks for the list.
+   * Tests one folder and browses from there. "Test connection" runs it on the
+   * group path (`/` until one is set); browsing runs it wherever the last test
+   * did not reach. An NFS form with no export yet asks for the export list.
    */
   const runTest = (path: string) => {
     const next: TestedFolder = {
@@ -178,7 +198,7 @@ export default function FileSystemModal({
       listExports: listsNfsExports({ protocol: form.protocol, path }),
     };
     setTested(next);
-    setFileFilter('');
+    setLocation(next.listExports ? '/' : groupPathLabel(next.path));
     testMutation.mutate({
       ...inputPayload(),
       path: next.path,
@@ -189,14 +209,14 @@ export default function FileSystemModal({
 
   const testConnection = () => runTest(form.path);
 
-  /** A stored or picked folder that is gone fails every test; this starts over at the root. */
-  const testFromRoot = () => {
-    set('path', '');
-    runTest('');
-  };
+  /** A group path that is gone fails every test; this browses from the root and leaves the path as it is. */
+  const testFromRoot = () => runTest('');
 
-  /** Picking a folder does not itself invalidate the test — it is what lets testing again drill deeper into it. */
-  const selectFolder = (value: string) => set('path', value);
+  /** What the group syncs from now, and — on an edit — what it will sync once saved. */
+  const savedPath = groupPathLabel(fileSystem?.path);
+  const pendingPath = groupPathLabel(form.path);
+  const pathEdited = isEdit && pendingPath !== savedPath;
+  const restorePath = () => set('path', fileSystem?.path ?? '');
 
   const submit = () => {
     if (!canSave) {
@@ -227,44 +247,19 @@ export default function FileSystemModal({
         : folderOptions(form.protocol, testedPath, testResult.files, testResult.exports),
     [form.protocol, testedPath, testResult],
   );
-  const choices = useMemo(() => {
-    const current = buildFullFolderPath(testedPath, '');
-    return folders.map((path) => ({
-      value: path,
-      label: path === current ? localize('com_ui_tars_fs_folder_use_current', { 0: path }) : path,
-    }));
-  }, [folders, testedPath, localize]);
-  const selectedFolder = selectedFolderOption(folders, form);
-
   /**
-   * The picked folder relative to the tested one, same as `rows[].directory`,
-   * so the preview narrows to it — or `null` when it lies outside what the
-   * test walked (a folder above it, another export), whose files it never saw.
+   * Opens a folder: at once when the last test walked it, otherwise by testing
+   * there. A share or export list is names only, so whatever is picked from it
+   * is tested; NFS's `/` is the export list itself.
    */
-  const scope =
-    selectedFolder == null ? '' : folderWithinTested(form.protocol, testedPath, selectedFolder);
-
-  const scoped = useMemo(() => {
-    if (scope == null) {
-      return [];
+  const navigate = (path: string) => {
+    const walked = testResult != null && !sharesListed && tested?.listExports !== true;
+    if (walked && folderWithinTested(form.protocol, testedPath, path) != null) {
+      setLocation(groupPathLabel(path));
+      return;
     }
-    return scope === ''
-      ? rows
-      : rows.filter((row) => row.directory === scope || row.directory.startsWith(`${scope}/`));
-  }, [rows, scope]);
-
-  const needle = fileFilter.trim().toLowerCase();
-  const matched = useMemo(
-    () =>
-      needle === ''
-        ? scoped
-        : scoped.filter(
-            (row) =>
-              row.name.toLowerCase().includes(needle) ||
-              row.directory.toLowerCase().includes(needle),
-          ),
-    [scoped, needle],
-  );
+    runTest(form.protocol === 'NFS' && groupPathLabel(path) === '/' ? '' : path);
+  };
 
   const successMessage = () => {
     if (tested?.listExports === true) {
@@ -289,7 +284,7 @@ export default function FileSystemModal({
       : (errorMessage(testMutation.error) ?? localize('com_ui_tars_db_test_failed'));
 
   const unreadableDirs = testResult?.unreadableDirs ?? [];
-  const testsFromRoot = fileServerTestPath(form.protocol, form.path) === '/';
+  const testsFromRoot = fileServerTestPath(form.protocol, tested?.path ?? form.path) === '/';
   const passwordEdgeSpace = form.password !== form.password.trim();
 
   return (
@@ -360,18 +355,20 @@ export default function FileSystemModal({
                 {TARS_FILE_PROTOCOLS.map((protocol) => {
                   const Icon = protocolIcon(protocol);
                   const active = form.protocol === protocol;
+                  const locked = isEdit && !active;
                   return (
                     <button
                       key={protocol}
                       type="button"
                       role="radio"
                       aria-checked={active}
+                      disabled={locked}
                       onClick={() => selectProtocol(protocol)}
                       className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors ${
                         active
                           ? 'border-brand-primary bg-brand-primary-subtle text-brand-primary'
                           : 'border-border-light text-text-secondary hover:bg-surface-hover'
-                      }`}
+                      } disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent ${disabledInkClasses}`}
                     >
                       <Icon className="size-4" aria-hidden />
                       {protocol}
@@ -379,6 +376,11 @@ export default function FileSystemModal({
                   );
                 })}
               </div>
+              {isEdit && (
+                <p className="text-text-secondary text-xs">
+                  {localize('com_ui_tars_fs_protocol_locked')}
+                </p>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className={smb ? 'space-y-1.5' : 'space-y-1.5 sm:col-span-2'}>
@@ -481,6 +483,45 @@ export default function FileSystemModal({
                 </div>
               )}
 
+              <div className="space-y-1">
+                <p className="text-text-primary text-sm font-medium">
+                  {localize('com_ui_tars_fs_path')}
+                </p>
+                {isEdit && (
+                  <p className="text-text-primary text-sm break-all">
+                    {localize('com_ui_tars_fs_path_current', { 0: savedPath })}
+                  </p>
+                )}
+                {(pathEdited || !isEdit) && (
+                  <p className="text-text-primary flex flex-wrap items-center gap-x-2 text-sm break-all">
+                    {folderNeeded
+                      ? localize(
+                          form.protocol === 'NFS'
+                            ? 'com_ui_tars_fs_path_unset_nfs'
+                            : 'com_ui_tars_fs_path_unset_smb',
+                        )
+                      : localize(
+                          isEdit ? 'com_ui_tars_fs_path_new' : 'com_ui_tars_fs_path_to_save',
+                          { 0: pendingPath },
+                        )}
+                    {pathEdited && (
+                      <button
+                        type="button"
+                        onClick={restorePath}
+                        className="text-text-secondary hover:text-text-primary text-xs underline"
+                      >
+                        {localize('com_ui_tars_fs_path_restore')}
+                      </button>
+                    )}
+                  </p>
+                )}
+                {pathEdited && (
+                  <p className="text-text-secondary text-xs">
+                    {localize('com_ui_tars_fs_path_change_hint')}
+                  </p>
+                )}
+              </div>
+
               <div className="border-border-light space-y-2 rounded-lg border p-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
@@ -546,105 +587,20 @@ export default function FileSystemModal({
                   </div>
                 )}
 
-                {testMutation.isSuccess && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="tars-fs-folder">
-                      {localize('com_ui_tars_fs_select_folder')}
-                    </Label>
-                    <Dropdown
-                      value={selectedFolder}
-                      label={selectedFolder == null ? localize('com_ui_tars_fs_select_folder') : ''}
-                      onChange={selectFolder}
-                      options={choices}
-                      variant="field"
-                      className="w-full"
-                      sizeClasses="max-h-64 overflow-y-auto"
-                      ariaLabel={localize('com_ui_tars_fs_select_folder')}
-                      searchable={choices.length > 8}
-                      searchPlaceholder={localize('com_ui_tars_audit_search_placeholder')}
-                      searchEmptyText={localize('com_ui_no_results_found')}
-                    />
-                    <p className="text-text-secondary text-xs">
-                      {localize(
-                        form.protocol === 'NFS'
-                          ? 'com_ui_tars_fs_select_folder_hint_nfs'
-                          : 'com_ui_tars_fs_select_folder_hint',
-                      )}
-                    </p>
-                  </div>
-                )}
-
-                {folderNeeded && (
-                  <p
-                    className={`text-xs ${testMutation.isSuccess ? 'text-pwc-danger' : 'text-text-secondary'}`}
-                  >
-                    {localize(
-                      form.protocol === 'NFS'
-                        ? 'com_ui_tars_fs_select_nfs_export'
-                        : 'com_ui_tars_fs_select_smb_share',
-                    )}
-                  </p>
-                )}
-
-                {testMutation.isSuccess && scope == null && (
-                  <p className="text-text-secondary text-xs">
-                    {localize('com_ui_tars_fs_folder_outside_tested')}
-                  </p>
-                )}
-
-                {testMutation.isSuccess && scope != null && rows.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <Search
-                        className="text-text-secondary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-                        aria-hidden
-                      />
-                      <Input
-                        value={fileFilter}
-                        onChange={(event) => setFileFilter(event.target.value)}
-                        placeholder={localize('com_ui_tars_fs_search_file')}
-                        aria-label={localize('com_ui_tars_fs_search_file')}
-                        className="pl-9"
-                      />
-                    </div>
-                    <div className="border-border-light max-h-56 overflow-y-auto rounded-md border">
-                      <table className="w-full border-collapse text-xs">
-                        <thead className="bg-surface-secondary text-text-secondary sticky top-0 text-left">
-                          <tr>
-                            <th className="px-3 py-1.5 font-medium">
-                              {localize('com_ui_tars_fs_file_name')}
-                            </th>
-                            <th className="px-3 py-1.5 font-medium">
-                              {localize('com_ui_tars_fs_file_directory')}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {matched.slice(0, FILE_PREVIEW_LIMIT).map((row) => (
-                            <tr
-                              key={`${row.directory}/${row.name}`}
-                              className="border-border-light border-t"
-                            >
-                              <td className="text-text-primary px-3 py-1" title={row.name}>
-                                {row.name}
-                              </td>
-                              <td className="text-text-secondary px-3 py-1" title={row.directory}>
-                                {row.directory === '' ? '—' : row.directory}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    {matched.length > FILE_PREVIEW_LIMIT && (
-                      <p className="text-text-tertiary text-xs">
-                        {localize('com_ui_tars_fs_file_truncated', {
-                          0: String(FILE_PREVIEW_LIMIT),
-                          1: String(matched.length),
-                        })}
-                      </p>
-                    )}
-                  </div>
+                {testResult != null && (
+                  <Explorer
+                    protocol={form.protocol}
+                    testedPath={testedPath}
+                    listedExports={tested?.listExports === true}
+                    sharesListed={sharesListed}
+                    exports={testResult.exports}
+                    rows={rows}
+                    folders={folders}
+                    location={location}
+                    groupPath={form.path}
+                    onNavigate={navigate}
+                    onSetGroupPath={(path) => set('path', path)}
+                  />
                 )}
               </div>
             </section>
@@ -667,6 +623,29 @@ export default function FileSystemModal({
               />
             </section>
           </div>
+        }
+        leftButtons={
+          blockers.length > 0 ? (
+            <p
+              role="status"
+              className={`max-w-md text-xs ${
+                blockers[0] === 'unchanged' ? 'text-text-secondary' : 'text-pwc-danger'
+              }`}
+            >
+              {blockers[0] === 'unchanged'
+                ? localize('com_ui_tars_fs_save_unchanged')
+                : localize('com_ui_tars_fs_save_blocked', {
+                    0: blockers
+                      .map((blocker) =>
+                        localize(SAVE_BLOCKER_KEYS[blocker], {
+                          0: String(NAME_MIN),
+                          1: String(NAME_MAX),
+                        }),
+                      )
+                      .join(' · '),
+                  })}
+            </p>
+          ) : undefined
         }
         buttons={
           <Button variant="submit" onClick={submit} disabled={!canSave}>

@@ -3,13 +3,16 @@ import {
   toFileRows,
   folderOptions,
   missingFolder,
+  groupPathLabel,
   listsNfsExports,
   listsSmbShares,
   discoverFolders,
   fileServerTestPath,
   folderWithinTested,
   buildFullFolderPath,
-  selectedFolderOption,
+  childFolders,
+  breadcrumbOf,
+  groupPathBlocker,
 } from '../helpers';
 
 /** What pwc_tars' test_connection answered for the demo servers, trimmed. */
@@ -26,6 +29,17 @@ describe('fileServerTestPath', () => {
     expect(fileServerTestPath('FTP', '  ')).toBe('/');
     expect(fileServerTestPath('SMB', '\\SharedFolder\\sub')).toBe('/SharedFolder/sub');
     expect(fileServerTestPath('FTP', 'a\\b')).toBe('a\\b');
+  });
+});
+
+describe('groupPathLabel', () => {
+  it("shows every protocol's stored path the same way", () => {
+    expect(groupPathLabel('SharedFolder')).toBe('/SharedFolder');
+    expect(groupPathLabel('\\SharedFolder\\SMB測試\\')).toBe('/SharedFolder/SMB測試');
+    expect(groupPathLabel('/mnt/data/nfs_data/')).toBe('/mnt/data/nfs_data');
+    expect(groupPathLabel('/')).toBe('/');
+    expect(groupPathLabel('')).toBe('/');
+    expect(groupPathLabel(null)).toBe('/');
   });
 });
 
@@ -150,15 +164,45 @@ describe('NFS', () => {
   });
 });
 
-describe('selectedFolderOption', () => {
-  it('matches the folder on the form, ignoring a trailing slash', () => {
-    const options = ['/', '/upload', '/upload/docs'];
-    expect(selectedFolderOption(options, { protocol: 'SFTP', path: '/upload/' })).toBe('/upload');
-    expect(selectedFolderOption(options, { protocol: 'SFTP', path: '' })).toBe('/');
+describe('childFolders', () => {
+  it('keeps only the folders directly inside the one on screen', () => {
+    const folders = [
+      '/',
+      '/SharedFolder',
+      '/SharedFolder/A',
+      '/SharedFolder/A/2024',
+      '/SharedFolder/B',
+    ];
+    expect(childFolders(folders, '/SharedFolder')).toEqual(['/SharedFolder/A', '/SharedFolder/B']);
+    expect(childFolders(folders, '/')).toEqual(['/SharedFolder']);
+    expect(childFolders(folders, '/SharedFolder/B')).toEqual([]);
   });
 
-  it('selects nothing for NFS until an export is picked', () => {
-    expect(selectedFolderOption(['/'], { protocol: 'NFS', path: '' })).toBeUndefined();
+  it('lists SMB shares as the folders of the server root', () => {
+    expect(childFolders(folderOptions('SMB', '/', SMB_SHARES), '/')).toContain('/SharedFolder');
+  });
+});
+
+describe('breadcrumbOf', () => {
+  it('walks from the root down to the folder on screen', () => {
+    expect(breadcrumbOf('/SharedFolder/SMB測試/')).toEqual([
+      { name: '/', path: '/' },
+      { name: 'SharedFolder', path: '/SharedFolder' },
+      { name: 'SMB測試', path: '/SharedFolder/SMB測試' },
+    ]);
+    expect(breadcrumbOf('/')).toEqual([{ name: '/', path: '/' }]);
+  });
+});
+
+describe('groupPathBlocker', () => {
+  it('needs a share on SMB and an export on NFS; anywhere is fine for FTP and SFTP', () => {
+    expect(groupPathBlocker('SMB', '/', false)).toBe('smb_share');
+    expect(groupPathBlocker('SMB', '/SharedFolder', false)).toBeNull();
+    expect(groupPathBlocker('NFS', '/', false)).toBe('nfs_export');
+    expect(groupPathBlocker('NFS', '/mnt/data', true)).toBe('nfs_export');
+    expect(groupPathBlocker('NFS', '/mnt/data/nfs_data', false)).toBeNull();
+    expect(groupPathBlocker('FTP', '/', false)).toBeNull();
+    expect(groupPathBlocker('SFTP', '/', false)).toBeNull();
   });
 });
 
