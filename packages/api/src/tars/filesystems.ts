@@ -250,10 +250,10 @@ const withoutSmbPacketDump = (message: string): string =>
   message.replace(/\n=+ SMB Message \d+ =+[\s\S]*?(?=）|$)/, '');
 
 /**
- * Answers a failed connection test. pwc_tars reports most failures as a 500
- * whose message is the file server's own reason (`連線失敗: 550 …`), so unlike
- * other routes that reason is relayed on a 5xx too; a timeout becomes a 504
- * the form can name.
+ * Answers a failed connection test or document-group sync. pwc_tars reports
+ * most failures as a 500 whose message is the file server's own reason
+ * (`連線失敗: 550 …`), so unlike other routes that reason is relayed on a 5xx
+ * too; a timeout becomes a 504 the form can name.
  */
 export function fileSystemTestErrorReply(error: unknown, fallback: string): TarsErrorReply {
   if (error instanceof TarsRequestError && error.serverMessage) {

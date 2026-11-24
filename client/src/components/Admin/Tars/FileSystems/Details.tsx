@@ -1,7 +1,7 @@
 import { Button, OGDialog, OGDialogTemplate } from '@librechat/client';
 import type { TTarsFileSystemSource } from 'librechat-data-provider';
 import type { TranslationKeys } from '~/hooks';
-import { knowledgeBaseNames, usesHostName } from './helpers';
+import { groupPathLabel, knowledgeBaseNames, usesHostName } from './helpers';
 import { useLocalize } from '~/hooks';
 
 /** Read-only view of a document group, including what the table has no room for. */
@@ -57,7 +57,7 @@ export default function FileSystemDetails({
             {usesHostName(fileSystem.mount_type as never) &&
               row('com_ui_tars_fs_server_name', fileSystem.host_name ?? '')}
             {row('com_ui_tars_fs_port', String(fileSystem.port ?? ''))}
-            {row('com_ui_tars_fs_path', fileSystem.path ?? '')}
+            {row('com_ui_tars_fs_path', groupPathLabel(fileSystem.path))}
             {listRow('com_ui_tars_db_allowed_kbs', names)}
             {row(
               'com_ui_tars_users_status',

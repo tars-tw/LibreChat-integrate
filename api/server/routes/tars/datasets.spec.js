@@ -67,7 +67,10 @@ describe('knowledge base data security routes', () => {
         return reply(200, { success: true, data: { all: false, knowledge_base_ids: ids } });
       }
       if (url.pathname === '/api/km_permission/resource_owners') {
-        return reply(200, { success: true, data: { document_ids: { d1: ['kb1'] } } });
+        return reply(200, {
+          success: true,
+          data: { document_ids: { d1: ['kb1'] }, file_system_association_ids: { a1: ['kb1'] } },
+        });
       }
       return answer;
     });
@@ -168,5 +171,48 @@ describe('knowledge base data security routes', () => {
       path: '/api/knowledge_detail/upload_file_server_files',
       body: { dataset_file_system_id: 'fs1', data_security_level_id: '1' },
     });
+  });
+
+  it('syncs a document group and answers with what the sync did', async () => {
+    answer = reply(200, {
+      status: 'success',
+      total_updated: 2,
+      total_failed: 0,
+      deleted_count: 1,
+      deletion_notices: [],
+      is_sync_all: true,
+    });
+
+    const res = await as(MANAGER, (agent) =>
+      agent
+        .post(`${KB}/file-systems/fs1/refresh`)
+        .send({ associationId: 'a1', chunkSize: 800, overlap: 80, syncAll: true }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ total_updated: 2, deleted_count: 1, is_sync_all: true });
+    expect(sentTo(fetchMock)).toMatchObject({
+      path: '/api/knowledge_detail/refresh_file_server_files',
+      body: { association_id: 'a1', new_file_chunk_size: 800, sync_all: true },
+    });
+  });
+
+  it('only switches a group to sync everything on a literal true', async () => {
+    await as(MANAGER, (agent) =>
+      agent.post(`${KB}/file-systems/fs1/refresh`).send({ associationId: 'a1', syncAll: 'yes' }),
+    );
+
+    expect(sentTo(fetchMock).body).not.toHaveProperty('sync_all');
+  });
+
+  it("relays the file server's reason when a sync fails", async () => {
+    answer = reply(500, { error: '重新處理檔案失敗: 530 Login incorrect.' });
+
+    const res = await as(MANAGER, (agent) =>
+      agent.post(`${KB}/file-systems/fs1/refresh`).send({ associationId: 'a1' }),
+    );
+
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: '重新處理檔案失敗: 530 Login incorrect.' });
   });
 });

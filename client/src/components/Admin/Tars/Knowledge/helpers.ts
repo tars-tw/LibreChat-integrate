@@ -104,3 +104,7 @@ export const accessCounts = (
 /** The reason pwc_tars gave for refusing a call, relayed by the `/api/tars` routes. */
 export const relayedError = (error: unknown): string | undefined =>
   (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+
+/** The HTTP status a failed `/api/tars` call answered with; 504 means pwc_tars ran out of time. */
+export const relayedStatus = (error: unknown): number | undefined =>
+  (error as { response?: { status?: number } })?.response?.status;

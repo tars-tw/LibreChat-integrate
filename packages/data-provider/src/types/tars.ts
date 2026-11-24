@@ -705,6 +705,41 @@ export type TTarsFileSystemImportInput = {
   dataSecurityLevelId?: string;
 };
 
+/** A manual sync of one document group. */
+export type TTarsFileSystemSyncInput = {
+  associationId?: string;
+  /** Chunking for the files this sync finds new; files already imported keep their own. */
+  chunkSize?: number;
+  overlap?: number;
+  /**
+   * Turns a selected-files group into one that syncs everything: this sync
+   * imports every source file, and once it succeeds the group stays that way.
+   */
+  syncAll?: boolean;
+};
+
+/** A file the sync could not bring in, with pwc_tars's reason. */
+export type TTarsFileSystemSyncFailure = {
+  file: string;
+  reason: string;
+};
+
+/** What a finished sync did (`refresh_file_server_files`). */
+export type TTarsFileSystemSyncResult = {
+  /** Files downloaded and handed to processing, new and changed alike. */
+  total_updated: number;
+  total_failed: number;
+  failed_files: TTarsFileSystemSyncFailure[];
+  /** Documents removed because their source file is gone. */
+  deleted_count: number;
+  /** pwc_tars's own sentences about deletions it deferred or could not finish. */
+  deletion_notices: string[];
+  /** The group's mode after the sync; `null` from a pwc_tars that predates the switch. */
+  is_sync_all: boolean | null;
+  /** `warning` when something was deferred, failed, or the switch could not be saved. */
+  status: 'success' | 'warning';
+};
+
 export type TTarsDatasetBatchDelete = {
   documentIds?: string[];
   websiteIds?: string[];

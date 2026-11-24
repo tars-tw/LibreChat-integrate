@@ -1,9 +1,9 @@
 import { Button } from '@librechat/client';
 import { Info, Pencil, Trash2 } from 'lucide-react';
 import type { TTarsFileSystemSource } from 'librechat-data-provider';
+import { groupPathLabel, knowledgeBaseNames, protocolIcon } from './helpers';
 import Pagination, { usePagination } from '../Knowledge/Pagination';
 import KnowledgeBaseChips from '../Sources/KnowledgeBaseChips';
-import { knowledgeBaseNames, protocolIcon } from './helpers';
 import { StatusBadge } from '../Users/Fields';
 import { useLocalize } from '~/hooks';
 
@@ -27,14 +27,15 @@ export default function FileSystemTable({
   return (
     <div className="space-y-3">
       <div className="border-border-light overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[64rem] border-collapse text-sm">
+        <table className="w-full min-w-[72rem] border-collapse text-sm">
           <thead className="bg-surface-secondary">
             <tr className="text-text-secondary text-left">
               <th className="w-[18%] px-3 py-2 font-medium">{localize('com_ui_tars_fs_name')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_protocol')}</th>
-              <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_host')}</th>
+              <th className="w-36 px-3 py-2 font-medium">{localize('com_ui_tars_fs_host')}</th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_fs_port')}</th>
-              <th className="w-[35%] px-3 py-2 font-medium">
+              <th className="w-[14%] px-3 py-2 font-medium">{localize('com_ui_tars_fs_path')}</th>
+              <th className="w-[28%] px-3 py-2 font-medium">
                 {localize('com_ui_tars_db_allowed_kbs')}
               </th>
               <th className="px-3 py-2 font-medium">{localize('com_ui_tars_users_status')}</th>
@@ -44,6 +45,7 @@ export default function FileSystemTable({
           <tbody>
             {paged.rows.map((fileSystem) => {
               const Icon = protocolIcon(fileSystem.mount_type);
+              const path = groupPathLabel(fileSystem.path);
               const names = knowledgeBaseNames(
                 fileSystem.allowed_km_ids ?? [],
                 knowledgeBaseNamesById,
@@ -77,6 +79,11 @@ export default function FileSystemTable({
                   </td>
                   <td className="text-text-secondary px-3 py-1.5 tabular-nums">
                     {fileSystem.port ?? '—'}
+                  </td>
+                  <td className="text-text-secondary max-w-0 px-3 py-1.5">
+                    <span className="block truncate" title={path}>
+                      {path}
+                    </span>
                   </td>
                   <td className="px-3 py-1.5">
                     <KnowledgeBaseChips names={names} />

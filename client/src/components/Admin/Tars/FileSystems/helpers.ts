@@ -2,11 +2,14 @@ import { FolderUp, HardDrive, Lock, Network, Server } from 'lucide-react';
 import {
   TARS_FILE_PROTOCOLS,
   TARS_PROTOCOL_DEFAULT_PORTS,
+  isTarsFileProtocol,
   tarsProtocolNeedsCredentials,
   tarsProtocolUsesHostName,
 } from 'librechat-data-provider';
 import type { TTarsFileProtocol, TTarsFileSystemSource } from 'librechat-data-provider';
 import type { LucideIcon } from 'lucide-react';
+
+import { nameInvalid, portInvalid } from '../Sources/helpers';
 
 export {
   NAME_MIN,
@@ -61,18 +64,35 @@ export const emptyFileSystemForm: FileSystemForm = {
   allowedKmIds: [],
 };
 
-export const toFileSystemForm = (fileSystem: TTarsFileSystemSource): FileSystemForm => ({
-  ...emptyFileSystemForm,
-  name: fileSystem.name,
-  description: fileSystem.description ?? '',
-  protocol: (fileSystem.mount_type as TTarsFileProtocol) ?? TARS_FILE_PROTOCOLS[0],
-  host: fileSystem.host ?? '',
-  port: fileSystem.port != null ? String(fileSystem.port) : '',
-  path: fileSystem.path ?? '',
-  hostName: fileSystem.host_name ?? '',
-  enabled: fileSystem.status === 1,
-  allowedKmIds: fileSystem.allowed_km_ids ?? [],
-});
+/** pwc_tars upper-cases the protocol wherever it reads one, so rows saved in lower case (`sftp`) are the same protocol. */
+const protocolOf = (mountType: string | null | undefined): TTarsFileProtocol => {
+  const protocol = (mountType ?? '').toUpperCase();
+  return isTarsFileProtocol(protocol) ? protocol : TARS_FILE_PROTOCOLS[0];
+};
+
+export const toFileSystemForm = (fileSystem: TTarsFileSystemSource): FileSystemForm => {
+  const protocol = protocolOf(fileSystem.mount_type);
+  return {
+    ...emptyFileSystemForm,
+    name: fileSystem.name,
+    description: fileSystem.description ?? '',
+    protocol,
+    host: fileSystem.host ?? '',
+    /** pwc_tars connects on the protocol's default when no port is stored, so that is the port in use. */
+    port: fileSystem.port != null ? String(fileSystem.port) : defaultPort(protocol),
+    path: fileSystem.path ?? '',
+    hostName: fileSystem.host_name ?? '',
+    enabled: fileSystem.status === 1,
+    allowedKmIds: fileSystem.allowed_km_ids ?? [],
+  };
+};
+
+/**
+ * Names are held to today's length rule only when typed: a group named before
+ * the rule (pwc_tars stores up to 255 characters) keeps saving under its name.
+ */
+export const nameRejected = (name: string, original?: string): boolean =>
+  (original == null || name.trim() !== original.trim()) && nameInvalid(name);
 
 /**
  * What a form needs before pwc_tars will accept it.
@@ -133,6 +153,14 @@ export const fileServerTestPath = (protocol: TTarsFileProtocol, path: string): s
 
 const segmentsOf = (path: string): string[] => path.split('/').filter(Boolean);
 
+/**
+ * A group's path as the list and its details show it: forward slashes, one
+ * leading `/`, no trailing one, and `/` for the server's whole root. SMB stores
+ * its share without a leading slash (`SharedFolder`), the others with one.
+ */
+export const groupPathLabel = (path: string | null | undefined): string =>
+  `/${segmentsOf((path ?? '').replace(/\\/g, '/')).join('/')}`;
+
 /** An SMB path's first segment is the share; without one every later sync fails. */
 export const hasSmbShare = (path: string): boolean =>
   segmentsOf(fileServerTestPath('SMB', path)).length > 0;
@@ -144,6 +172,69 @@ export const hasSmbShare = (path: string): boolean =>
 export const missingFolder = (form: Pick<FileSystemForm, 'protocol' | 'path'>): boolean =>
   (form.protocol === 'SMB' && !hasSmbShare(form.path)) ||
   (form.protocol === 'NFS' && form.path.trim() === '');
+
+/** Why the form cannot be saved yet. */
+export type SaveBlocker =
+  | 'unchanged'
+  | 'name'
+  | 'host'
+  | 'credentials'
+  | 'port'
+  | 'smb_share'
+  | 'nfs_export';
+
+const sameIds = (a: string[], b: string[]): boolean =>
+  a.length === b.length && a.every((id) => b.includes(id));
+
+/**
+ * Whether the form differs from the group as stored. A typed account or
+ * password counts, since blank means "keep the stored one"; the path counts
+ * by where it points, however it is spelt.
+ */
+export const formChanged = (form: FileSystemForm, original: FileSystemForm): boolean =>
+  form.name.trim() !== original.name.trim() ||
+  form.description !== original.description ||
+  form.protocol !== original.protocol ||
+  form.host.trim() !== original.host.trim() ||
+  form.port.trim() !== original.port.trim() ||
+  groupPathLabel(form.path) !== groupPathLabel(original.path) ||
+  form.hostName.trim() !== original.hostName.trim() ||
+  form.account.trim() !== original.account.trim() ||
+  form.password !== original.password ||
+  form.enabled !== original.enabled ||
+  !sameIds(form.allowedKmIds, original.allowedKmIds);
+
+/**
+ * Everything standing between the form and a save, in the order the form
+ * reads; empty when it can be saved. `original` is the stored group on an
+ * edit and `null` for a new one. An unchanged edit reports only that, since
+ * nothing else would change what is stored.
+ */
+export const saveBlockers = (
+  form: FileSystemForm,
+  original: FileSystemForm | null,
+): SaveBlocker[] => {
+  if (original != null && !formChanged(form, original)) {
+    return ['unchanged'];
+  }
+  const blockers: SaveBlocker[] = [];
+  if (nameRejected(form.name, original?.name)) {
+    blockers.push('name');
+  }
+  if (form.host.trim() === '') {
+    blockers.push('host');
+  }
+  if (!connectionFieldsFilled(form, original != null) && form.host.trim() !== '') {
+    blockers.push('credentials');
+  }
+  if (portInvalid(form.port)) {
+    blockers.push('port');
+  }
+  if (missingFolder(form)) {
+    blockers.push(form.protocol === 'NFS' ? 'nfs_export' : 'smb_share');
+  }
+  return blockers;
+};
 
 /**
  * An NFS server only mounts what it exports, so until one is picked the test
@@ -295,34 +386,65 @@ export const folderOptions = (
   return Array.from(new Set(options)).sort(compareFolderPaths);
 };
 
-const withoutTrailingSlash = (path: string): string => path.replace(/\/+$/, '') || '/';
+/** The folders directly inside `location`, out of the full paths a test offers. */
+export const childFolders = (folders: string[], location: string): string[] => {
+  const parent = segmentsOf(location);
+  return folders.filter((folder) => {
+    const segments = segmentsOf(folder);
+    return (
+      segments.length === parent.length + 1 &&
+      parent.every((segment, index) => segments[index] === segment)
+    );
+  });
+};
 
-/** The option matching the folder on the form, if the last test offered it. */
-export const selectedFolderOption = (
-  options: string[],
-  form: Pick<FileSystemForm, 'protocol' | 'path'>,
-): string | undefined => {
-  if (form.protocol === 'NFS' && form.path.trim() === '') {
-    return undefined;
+/** Every folder from the root down to `location`: `/a/b` → `/`, `/a`, `/a/b`. */
+export const breadcrumbOf = (location: string): { name: string; path: string }[] => {
+  const segments = segmentsOf(location);
+  return [
+    { name: '/', path: '/' },
+    ...segments.map((name, index) => ({
+      name,
+      path: `/${segments.slice(0, index + 1).join('/')}`,
+    })),
+  ];
+};
+
+/** Why a browsed folder cannot become the group path; `null` when it can. */
+export type GroupPathBlocker = 'smb_share' | 'nfs_export';
+
+/**
+ * SMB reaches files through a share, so the group path must start with one;
+ * NFS mounts only what the server exports, so `/` and an export list are not
+ * places a group can live.
+ */
+export const groupPathBlocker = (
+  protocol: TTarsFileProtocol,
+  location: string,
+  listedExports: boolean,
+): GroupPathBlocker | null => {
+  if (protocol === 'SMB' && !hasSmbShare(location)) {
+    return 'smb_share';
   }
-  const current = withoutTrailingSlash(fileServerTestPath(form.protocol, form.path));
-  return options.find((option) => withoutTrailingSlash(option) === current);
+  if (protocol === 'NFS' && (listedExports || segmentsOf(location).length === 0)) {
+    return 'nfs_export';
+  }
+  return null;
 };
 
 /**
  * `folder` relative to the tested folder — `''` for the tested folder itself —
  * or `null` when it lies outside it (an ancestor or another export), where the
- * last test saw none of its files.
+ * last test saw none of its files. Both are compared as `groupPathLabel` spells
+ * them, since SMB stores its share with or without a leading slash.
  */
 export const folderWithinTested = (
   protocol: TTarsFileProtocol,
   testedPath: string,
   folder: string,
 ): string | null => {
-  const current = withoutTrailingSlash(
-    buildFullFolderPath(fileServerTestPath(protocol, testedPath), ''),
-  );
-  const target = withoutTrailingSlash(folder);
+  const current = groupPathLabel(fileServerTestPath(protocol, testedPath));
+  const target = groupPathLabel(folder);
   if (target === current) {
     return '';
   }

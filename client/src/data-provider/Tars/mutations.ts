@@ -28,6 +28,8 @@ import type {
   TTarsFileSystemTestInput,
   TTarsWebsiteImportInput,
   TTarsFileSystemImportInput,
+  TTarsFileSystemSyncInput,
+  TTarsFileSystemSyncResult,
   TTarsDatasetLevelInput,
   TTarsDatasetLevelResult,
   TTarsDataSecurityAssignmentSavePayload,
@@ -531,32 +533,19 @@ export const useImportTarsFileSystemMutation = (
     options,
   );
 
+type FileSystemSyncVariables = TTarsFileSystemSyncInput & {
+  fileSystemId: string;
+  associationId: string;
+};
+
 export const useRefreshTarsFileSystemMutation = (
   knowledgeBaseId: string,
-  options?: UseMutationOptions<
-    { success: boolean },
-    unknown,
-    { fileSystemId: string; associationId: string; chunkSize?: number; overlap?: number }
-  >,
+  options?: UseMutationOptions<TTarsFileSystemSyncResult, unknown, FileSystemSyncVariables>,
 ) =>
   useDatasetMutation(
     knowledgeBaseId,
-    ({
-      fileSystemId,
-      associationId,
-      chunkSize,
-      overlap,
-    }: {
-      fileSystemId: string;
-      associationId: string;
-      chunkSize?: number;
-      overlap?: number;
-    }) =>
-      dataService.refreshTarsFileSystemDataset(knowledgeBaseId, fileSystemId, {
-        associationId,
-        chunkSize,
-        overlap,
-      }),
+    ({ fileSystemId, ...data }: FileSystemSyncVariables) =>
+      dataService.refreshTarsFileSystemDataset(knowledgeBaseId, fileSystemId, data),
     options,
   );
 
