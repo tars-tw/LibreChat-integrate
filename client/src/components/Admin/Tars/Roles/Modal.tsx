@@ -56,6 +56,7 @@ export default function RoleModal({
   const { showToast } = useToastContext();
   const isEdit = role != null;
   const [form, setForm] = useState<FormState>(() => toFormState(role));
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
 
   const onError = (error: unknown) =>
     showToast({
@@ -82,6 +83,8 @@ export default function RoleModal({
   const isSaving = createMutation.isLoading || updateMutation.isLoading;
 
   const handleSave = () => {
+    setShowValidationErrors(true);
+
     const name = form.name.trim();
     if (name.length < MIN_NAME_LENGTH || name.length > MAX_NAME_LENGTH) {
       showToast({ message: localize('com_ui_tars_roles_name_rule'), status: 'error' });
@@ -112,14 +115,29 @@ export default function RoleModal({
           <div className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto pr-1">
             <div className="grid shrink-0 gap-4 md:grid-cols-2">
               <div>
-                <Label htmlFor="tars-role-name">{localize('com_ui_tars_roles_name')}</Label>
+                <Label htmlFor="tars-role-name">
+                  {localize('com_ui_tars_roles_name')}
+                  <span className="text-status-error-strong"> *</span>
+                </Label>
                 <Input
                   id="tars-role-name"
                   className="mt-1"
+                  aria-invalid={
+                    showValidationErrors &&
+                    (form.name.trim().length < MIN_NAME_LENGTH ||
+                      form.name.trim().length > MAX_NAME_LENGTH)
+                  }
                   value={form.name}
                   maxLength={MAX_NAME_LENGTH}
                   onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                 />
+                {showValidationErrors &&
+                  (form.name.trim().length < MIN_NAME_LENGTH ||
+                    form.name.trim().length > MAX_NAME_LENGTH) && (
+                    <p className="text-status-error-strong mt-1 text-xs">
+                      {localize('com_ui_tars_models_required')}
+                    </p>
+                  )}
               </div>
               <div>
                 <Label htmlFor="tars-role-description">{localize('com_ui_description')}</Label>

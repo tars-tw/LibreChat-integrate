@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Label, Dropdown } from '@librechat/client';
 import type { RoleOption, GroupOption } from './helpers';
 import { useLocalize } from '~/hooks';
+import Picker from '../Audit/Picker';
 
 /**
  * Sentinel for "no role selected". `Dropdown` renders an empty trigger for an
@@ -50,17 +51,11 @@ export function RoleSelect({
   );
 }
 
-/**
- * Multi-group picker. Groups are a scrollable checkbox list, as in the domain editor.
- * `fill` stretches the list to its flex parent's height instead of capping it, so it
- * lines up with a taller neighbouring column; the list is taken out of flow there so
- * a long group list never grows the parent itself.
- */
+/** Multi-group picker with searchable options and selected chips. */
 export function GroupSelect({
   groups,
   selected,
   disabled,
-  fill,
   onToggle,
 }: {
   groups: GroupOption[];
@@ -70,34 +65,43 @@ export function GroupSelect({
   onToggle: (id: string) => void;
 }) {
   const localize = useLocalize();
-  const listClassName = 'overflow-y-auto rounded-lg border border-border-light p-2';
+
+  const options = useMemo(
+    () =>
+      groups.map((group) => ({
+        value: String(group.id),
+        label: group.name,
+      })),
+    [groups],
+  );
+
   return (
-    <div className={fill ? 'flex min-h-0 flex-1 flex-col' : undefined}>
+    <div>
       <Label>{localize('com_ui_tars_users_group')}</Label>
       {groups.length === 0 ? (
         <p className="text-text-secondary mt-1 text-sm">
           {localize('com_ui_tars_users_groups_empty')}
         </p>
       ) : (
-        <div className={fill ? 'relative mt-1 min-h-40 flex-1' : 'mt-1'}>
-          <div className={fill ? `absolute inset-0 ${listClassName}` : `max-h-40 ${listClassName}`}>
-            {groups.map((group) => (
-              <label
-                key={group.id}
-                className="flex cursor-pointer items-center gap-2 py-1 text-sm aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
-                aria-disabled={disabled}
-              >
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  disabled={disabled}
-                  checked={selected.has(group.id)}
-                  onChange={() => onToggle(group.id)}
-                />
-                <span className="text-text-primary truncate">{group.name}</span>
-              </label>
-            ))}
-          </div>
+        <div className="mt-1">
+          <Picker
+            id="tars-user-groups"
+            options={options}
+            selected={[...selected]}
+            onChange={(values) => {
+              const next = new Set(values);
+              const changedIds = new Set([...selected, ...next]);
+
+              changedIds.forEach((id) => {
+                if (selected.has(id) !== next.has(id)) {
+                  onToggle(id);
+                }
+              });
+            }}
+            placeholder={localize('com_ui_tars_users_select_group')}
+            disabled={disabled}
+            chips
+          />
         </div>
       )}
     </div>
