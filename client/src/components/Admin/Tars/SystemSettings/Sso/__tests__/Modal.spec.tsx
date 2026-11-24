@@ -112,7 +112,7 @@ describe('SsoConfigModal group source', () => {
   it('loads any other attribute as a custom one', () => {
     renderModal({ ...config, ldap_group_attribute: 'division' });
     expect(
-      screen.getByRole('textbox', { name: 'com_ui_tars_sso_group_attribute_custom' }),
+      screen.getByRole('textbox', { name: 'com_ui_tars_sso_group_attribute_custom *' }),
     ).toHaveValue('division');
   });
 
@@ -218,7 +218,9 @@ describe('SsoConfigModal group source', () => {
       status: 'error',
     });
 
-    const custom = screen.getByRole('textbox', { name: 'com_ui_tars_sso_group_attribute_custom' });
+    const custom = screen.getByRole('textbox', {
+      name: 'com_ui_tars_sso_group_attribute_custom *',
+    });
     await user.type(custom, 'dep art');
     await save(user);
     expect(mockShowToast).toHaveBeenCalledWith({
@@ -250,9 +252,9 @@ describe('SsoConfigModal group source', () => {
   it('creates a connection with its group source without any confirmation', async () => {
     const user = userEvent.setup();
     renderModal();
-    await user.type(screen.getByLabelText('com_ui_tars_sso_address'), 'ldap.example.com');
-    await user.type(screen.getByLabelText('com_ui_tars_sso_port'), '389');
-    await user.type(screen.getByLabelText('com_ui_tars_sso_base_dn'), 'DC=x');
+    await user.type(screen.getByLabelText('com_ui_tars_sso_address *'), 'ldap.example.com');
+    await user.type(screen.getByLabelText('com_ui_tars_sso_port *'), '389');
+    await user.type(screen.getByLabelText('com_ui_tars_sso_base_dn *'), 'DC=x');
     await user.click(groupSourceSwitch());
     await pickAttribute(user, 'com_ui_tars_sso_group_attribute_physicalDeliveryOfficeName');
     await save(user);
@@ -281,7 +283,7 @@ describe('SsoConfigModal group source layout', () => {
 
   it('describes the base DN field with the hint shown inside it', () => {
     renderModal(config);
-    expect(screen.getByLabelText('com_ui_tars_sso_base_dn')).toHaveAccessibleDescription(
+    expect(screen.getByLabelText('com_ui_tars_sso_base_dn *')).toHaveAccessibleDescription(
       'com_ui_tars_sso_base_dn_hint',
     );
   });
@@ -292,9 +294,9 @@ describe('SsoConfigModal group source layout', () => {
     const hint = () => document.getElementById('tars-ldap-base-dn-hint');
     expect(hint()).not.toHaveAttribute('hidden');
 
-    await user.type(screen.getByLabelText('com_ui_tars_sso_base_dn'), 'DC=x');
+    await user.type(screen.getByLabelText('com_ui_tars_sso_base_dn *'), 'DC=x');
     expect(hint()).toHaveAttribute('hidden');
-    expect(screen.getByLabelText('com_ui_tars_sso_base_dn')).toHaveAccessibleDescription(
+    expect(screen.getByLabelText('com_ui_tars_sso_base_dn *')).toHaveAccessibleDescription(
       'com_ui_tars_sso_base_dn_hint',
     );
   });

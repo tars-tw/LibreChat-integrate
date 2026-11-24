@@ -143,7 +143,7 @@ export default function GroupModal({
               />
             </div>
             <div>
-              <Label>
+              <Label htmlFor="tars-group-roles">
                 {localize('com_ui_tars_groups_roles')}
                 <span className="text-status-error-strong"> *</span>
               </Label>

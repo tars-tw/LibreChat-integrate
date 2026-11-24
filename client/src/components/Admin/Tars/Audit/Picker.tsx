@@ -45,7 +45,8 @@ export default function Picker({
   single = false,
 }: {
   id: string;
-  label: string;
+  /** Omit only when the caller renders its own `<Label htmlFor={id}>`. */
+  label?: string;
   options: PickerOption[];
   selected: string[];
   onChange: (values: string[]) => void;
@@ -183,7 +184,7 @@ export default function Picker({
 
   return (
     <div className="space-y-1.5" ref={containerRef}>
-      <Label htmlFor={id}>{label}</Label>
+      {label != null && <Label htmlFor={id}>{label}</Label>}
       <div className="relative">
         <button
           id={id}

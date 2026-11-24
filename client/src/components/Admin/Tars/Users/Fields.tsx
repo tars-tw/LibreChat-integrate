@@ -77,7 +77,7 @@ export function GroupSelect({
 
   return (
     <div>
-      <Label>{localize('com_ui_tars_users_group')}</Label>
+      <Label htmlFor="tars-user-groups">{localize('com_ui_tars_users_group')}</Label>
       {groups.length === 0 ? (
         <p className="text-text-secondary mt-1 text-sm">
           {localize('com_ui_tars_users_groups_empty')}

@@ -198,7 +198,7 @@ export default function McpToolEditorModal({
 }) {
   const localize = useLocalize();
   const [draft, setDraft] = useState<ToolDraft>(initialDraft);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ToolValidationError | null>(null);
   const [showValidationErrors, setShowValidationErrors] = useState(false);
 
   const set = <K extends keyof ToolDraft>(key: K, value: ToolDraft[K]) =>
