@@ -15,6 +15,7 @@ import { useCreateTarsUserGroupMutation, useUpdateTarsUserGroupMutation } from '
 import { GROUP_DISABLED, GROUP_ENABLED, groupRoleIds, isGroupEnabled } from './helpers';
 import { idsToCsv } from '../Users/helpers';
 import { useLocalize } from '~/hooks';
+import Picker from '../Audit/Picker';
 
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 30;
@@ -48,6 +49,7 @@ export default function GroupModal({
   const { showToast } = useToastContext();
   const isEdit = group != null;
   const [form, setForm] = useState<FormState>(() => toFormState(group));
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
 
   const onError = (error: unknown) =>
     showToast({
@@ -73,18 +75,9 @@ export default function GroupModal({
   });
   const isSaving = createMutation.isLoading || updateMutation.isLoading;
 
-  const toggleRole = (id: string) =>
-    setForm((prev) => {
-      const roleIds = new Set(prev.roleIds);
-      if (roleIds.has(id)) {
-        roleIds.delete(id);
-      } else {
-        roleIds.add(id);
-      }
-      return { ...prev, roleIds };
-    });
-
   const handleSave = () => {
+    setShowValidationErrors(true);
+
     const name = form.name.trim();
     if (name.length < MIN_NAME_LENGTH || name.length > MAX_NAME_LENGTH) {
       showToast({ message: localize('com_ui_tars_groups_name_rule'), status: 'error' });
@@ -117,13 +110,28 @@ export default function GroupModal({
         main={
           <div className="max-h-[65vh] space-y-4 overflow-y-auto pr-1">
             <div>
-              <Label htmlFor="tars-group-name">{localize('com_ui_tars_groups_name')}</Label>
+              <Label htmlFor="tars-group-name">
+                {localize('com_ui_tars_groups_name')}
+                <span className="text-status-error-strong"> *</span>
+              </Label>
               <Input
                 id="tars-group-name"
                 className="mt-1"
+                aria-invalid={
+                  showValidationErrors &&
+                  (form.name.trim().length < MIN_NAME_LENGTH ||
+                    form.name.trim().length > MAX_NAME_LENGTH)
+                }
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
               />
+              {showValidationErrors &&
+                (form.name.trim().length < MIN_NAME_LENGTH ||
+                  form.name.trim().length > MAX_NAME_LENGTH) && (
+                  <p className="text-status-error-strong mt-1 text-xs">
+                    {localize('com_ui_tars_models_required')}
+                  </p>
+                )}
             </div>
             <div>
               <Label htmlFor="tars-group-description">{localize('com_ui_description')}</Label>
@@ -135,29 +143,48 @@ export default function GroupModal({
               />
             </div>
             <div>
-              <Label>{localize('com_ui_tars_groups_roles')}</Label>
+              <Label>
+                {localize('com_ui_tars_groups_roles')}
+                <span className="text-status-error-strong"> *</span>
+              </Label>
+
               {roles.length === 0 ? (
                 <p className="text-text-secondary mt-1 text-sm">
                   {localize('com_ui_tars_groups_roles_empty')}
                 </p>
               ) : (
-                <div className="border-border-light mt-1 max-h-48 overflow-y-auto rounded-lg border p-2">
-                  {roles.map((role) => (
-                    <label
-                      key={role.id}
-                      className="flex cursor-pointer items-center gap-2 py-1 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4"
-                        checked={form.roleIds.has(String(role.id))}
-                        onChange={() => toggleRole(String(role.id))}
-                      />
-                      <span className="text-text-primary truncate">{role.name}</span>
-                    </label>
-                  ))}
+                <div
+                  className={`mt-1 rounded-lg ${
+                    showValidationErrors && form.roleIds.size === 0
+                      ? 'border-status-error-strong border p-2'
+                      : ''
+                  }`}
+                >
+                  <Picker
+                    id="tars-group-roles"
+                    options={roles.map((role) => ({
+                      value: String(role.id),
+                      label: role.name,
+                    }))}
+                    selected={[...form.roleIds]}
+                    onChange={(values) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        roleIds: new Set(values),
+                      }));
+                    }}
+                    placeholder={localize('com_ui_tars_users_select_role')}
+                    chips
+                  />
                 </div>
               )}
+
+              {showValidationErrors && form.roleIds.size === 0 && (
+                <p className="text-status-error-strong mt-1 text-xs">
+                  {localize('com_ui_tars_models_required')}
+                </p>
+              )}
+
               <p className="text-text-secondary mt-1 text-xs">
                 {localize('com_ui_tars_groups_roles_hint')}
               </p>

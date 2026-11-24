@@ -19,7 +19,10 @@ export default function FieldLabel({
   const localize = useLocalize();
   return (
     <div className="flex items-center gap-1">
-      <Label htmlFor={htmlFor}>{required ? `${label} *` : label}</Label>
+      <Label htmlFor={htmlFor}>
+        {label}
+        {required && <span className="text-status-error-strong"> *</span>}
+      </Label>
       <TooltipAnchor
         description={help}
         side="top"

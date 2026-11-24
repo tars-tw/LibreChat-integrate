@@ -4245,6 +4245,7 @@
   "com_ui_tars_users_role_follows_group": "若有選擇群組，權限將跟隨群組設定。",
   "com_ui_tars_users_search": "搜尋名稱、帳號或電子郵件",
   "com_ui_tars_users_select_role": "請選擇權限",
+  "com_ui_tars_users_select_group": "請選擇群組",
   "com_ui_tars_users_self_delete_blocked": "不可刪除目前登入的帳號。",
   "com_ui_tars_users_self_locked": "無法變更自己的權限與啟用狀態。",
   "com_ui_tars_users_sso_user": "SSO 使用者",
@@ -5870,5 +5871,7 @@
   "com_ui_tars_report_groups_unfiltered": "不篩選（所有使用者）",
   "com_ui_tars_report_no_group": "無群組",
   "com_ui_tars_report_member_search_placeholder": "搜尋使用者名稱或 Email",
-  "com_ui_tars_report_member_search_empty": "找不到符合的使用者"
+  "com_ui_tars_report_member_search_empty": "找不到符合的使用者",
+  "com_ui_tars_models_endpoint_copy_from": "從現有模型帶入 Endpoint 設定（選填）",
+  "com_ui_tars_models_endpoint_copy_none": "不帶入"
 }

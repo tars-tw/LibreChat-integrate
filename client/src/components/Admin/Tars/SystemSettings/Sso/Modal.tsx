@@ -129,6 +129,7 @@ export default function SsoConfigModal({
   const [showPassword, setShowPassword] = useState(false);
   const [sourceChange, setSourceChange] = useState<SourceChange | null>(null);
   const [syncEnableUsers, setSyncEnableUsers] = useState(true);
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
   const groupSourceRef = useRef<HTMLDivElement>(null);
   /**
    * Set only when the admin turns the group source on or picks another option, so the
@@ -243,6 +244,8 @@ export default function SsoConfigModal({
     );
 
   const handleSave = () => {
+    setShowValidationErrors(true);
+
     const attribute = formGroupAttribute(form);
     if (!validate() || !validateGroupSource(attribute)) {
       return;
@@ -381,18 +384,32 @@ export default function SsoConfigModal({
     labelKey: Parameters<typeof localize>[0],
     key: keyof FormState,
     placeholder?: string,
-  ) => (
-    <div>
-      <Label htmlFor={id}>{localize(labelKey)}</Label>
-      <Input
-        id={id}
-        className="mt-1"
-        placeholder={placeholder}
-        value={form[key] as string}
-        onChange={(e) => set(key, e.target.value as FormState[typeof key])}
-      />
-    </div>
-  );
+    required = false,
+  ) => {
+    const hasError = required && showValidationErrors && !(form[key] as string).trim();
+
+    return (
+      <div>
+        <Label htmlFor={id}>
+          {localize(labelKey)}
+          {required && <span className="text-status-error-strong"> *</span>}
+        </Label>
+        <Input
+          id={id}
+          className="mt-1"
+          aria-invalid={hasError}
+          placeholder={placeholder}
+          value={form[key] as string}
+          onChange={(e) => set(key, e.target.value as FormState[typeof key])}
+        />
+        {hasError && (
+          <p className="text-status-error-strong mt-1 text-xs">
+            {localize('com_ui_tars_models_required')}
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <OGDialog open={true} onOpenChange={onOpenChange}>
@@ -404,8 +421,14 @@ export default function SsoConfigModal({
           <div className="max-h-[70vh] scroll-pb-3 space-y-4 overflow-y-auto pr-1 pb-3">
             <div className="grid gap-3 md:grid-cols-2">
               {field('tars-ldap-name', 'com_ui_tars_sso_name', 'name')}
-              {field('tars-ldap-address', 'com_ui_tars_sso_address', 'address', 'ldap.example.com')}
-              {field('tars-ldap-port', 'com_ui_tars_sso_port', 'port', '389')}
+              {field(
+                'tars-ldap-address',
+                'com_ui_tars_sso_address',
+                'address',
+                'ldap.example.com',
+                true,
+              )}
+              {field('tars-ldap-port', 'com_ui_tars_sso_port', 'port', '389', true)}
               {field(
                 'tars-ldap-search',
                 'com_ui_tars_sso_search_attribute',
@@ -415,7 +438,10 @@ export default function SsoConfigModal({
             </div>
 
             <div>
-              <Label htmlFor="tars-ldap-base-dn">{localize('com_ui_tars_sso_base_dn')}</Label>
+              <Label htmlFor="tars-ldap-base-dn">
+                {localize('com_ui_tars_sso_base_dn')}
+                <span className="text-status-error-strong"> *</span>
+              </Label>
               {/*
                 The hint sits inside the empty field, like a second placeholder; <Input> owns its
                 padding, so it hides once there is a value it could overlap. Narrow screens get it
@@ -424,6 +450,7 @@ export default function SsoConfigModal({
               <div className="relative mt-1">
                 <Input
                   id="tars-ldap-base-dn"
+                  aria-invalid={showValidationErrors && !form.baseDn.trim()}
                   placeholder="dc=example,dc=com"
                   aria-describedby="tars-ldap-base-dn-hint"
                   value={form.baseDn}
@@ -437,6 +464,11 @@ export default function SsoConfigModal({
                   {localize('com_ui_tars_sso_base_dn_hint')}
                 </span>
               </div>
+              {showValidationErrors && !form.baseDn.trim() && (
+                <p className="text-status-error-strong mt-1 text-xs">
+                  {localize('com_ui_tars_models_required')}
+                </p>
+              )}
               <p className="text-text-secondary mt-1 text-xs sm:hidden">
                 {localize('com_ui_tars_sso_base_dn_hint')}
               </p>
@@ -536,14 +568,34 @@ export default function SsoConfigModal({
                     <div>
                       <Label htmlFor="tars-ldap-group-attribute-custom">
                         {localize('com_ui_tars_sso_group_attribute_custom')}
+                        <span className="text-status-error-strong"> *</span>
                       </Label>
                       <Input
                         id="tars-ldap-group-attribute-custom"
                         className="mt-1"
+                        aria-invalid={
+                          showValidationErrors &&
+                          (!form.customGroupAttribute.trim() ||
+                            !LDAP_ATTRIBUTE_PATTERN.test(form.customGroupAttribute.trim()))
+                        }
                         placeholder={localize('com_ui_tars_sso_group_attribute_custom_placeholder')}
                         value={form.customGroupAttribute}
                         onChange={(e) => set('customGroupAttribute', e.target.value)}
                       />
+                      {showValidationErrors && !form.customGroupAttribute.trim() && (
+                        <p className="text-status-error-strong mt-1 text-xs">
+                          {localize('com_ui_tars_models_required')}
+                        </p>
+                      )}
+                      {showValidationErrors &&
+                        !!form.customGroupAttribute.trim() &&
+                        !LDAP_ATTRIBUTE_PATTERN.test(form.customGroupAttribute.trim()) && (
+                          <p className="text-status-error-strong mt-1 text-xs">
+                            {localize('com_ui_tars_sso_group_attribute_invalid', {
+                              attribute: form.customGroupAttribute.trim(),
+                            })}
+                          </p>
+                        )}
                     </div>
                   )}
                 </div>

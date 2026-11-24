@@ -322,7 +322,7 @@
   },
   "client/src/components/Admin/Tars/Models/Modal.tsx": {
     "shadcn/no-restyle": {
-      "count": 4
+      "count": 10
     }
   },
   "client/src/components/Admin/Tars/Operations/DetailDialog.tsx": {
@@ -498,9 +498,6 @@
     }
   },
   "client/src/components/Admin/Tars/Users/Fields.tsx": {
-    "design/disabled-recipe": {
-      "count": 1
-    },
     "shadcn/no-raw-colors": {
       "count": 8
     }
@@ -1268,7 +1265,7 @@
   },
   "client/src/components/McpSettings/McpServerModal.tsx": {
     "shadcn/no-restyle": {
-      "count": 8
+      "count": 13
     }
   },
   "client/src/components/McpSettings/McpSettingsView.tsx": {
@@ -1277,11 +1274,6 @@
     },
     "shadcn/no-restyle": {
       "count": 6
-    }
-  },
-  "client/src/components/McpSettings/McpToolEditorModal.tsx": {
-    "shadcn/no-raw-colors": {
-      "count": 1
     }
   },
   "client/src/components/McpSettings/ServerTypeBadge.tsx": {

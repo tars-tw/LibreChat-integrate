@@ -26,6 +26,10 @@ interface:
   remoteAgents:
     share: false
     public: false
+  # A skill shared with someone (directly or through a group) starts switched on under
+  # 可供 Agent 使用, so they need not turn it on themselves; they can still turn it off.
+  skills:
+    defaultActiveOnShare: true
   # Scheduled chats (upstream default: off). Firing needs Redis streams or, on a
   # single replica without Redis, SCHEDULES_SINGLE_PROCESS=true in .env.
   # Temporarily disabled: absent config = off (server getLimits + side-nav entry).

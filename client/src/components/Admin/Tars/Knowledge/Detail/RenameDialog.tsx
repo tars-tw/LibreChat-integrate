@@ -50,7 +50,10 @@ export default function RenameDialog({
         showCloseButton={true}
         main={
           <div className="space-y-1.5">
-            <Label htmlFor="tars-doc-rename">{localize('com_ui_tars_kb_ds_name')}</Label>
+            <Label htmlFor="tars-doc-rename">
+              {localize('com_ui_tars_kb_ds_name')}
+              <span className="text-status-error-strong ml-0.5">*</span>
+            </Label>
             <Input
               id="tars-doc-rename"
               value={name}

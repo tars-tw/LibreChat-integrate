@@ -280,10 +280,6 @@ export default function McpSettingsView() {
                       className="pl-9"
                     />
                   </div>
-                  <Button variant="submit" onClick={() => setCreating(true)}>
-                    <Plus className="icon-sm mr-1" aria-hidden="true" />
-                    {localize('com_ui_tars_mcp_add_server')}
-                  </Button>
                 </div>
                 <div className="flex items-center gap-2">
                   {selectedIds.size > 0 && (
@@ -297,6 +293,10 @@ export default function McpSettingsView() {
                     disabled={selectedIds.size === 0}
                   >
                     {localize('com_ui_tars_mcp_bulk_delete')}
+                  </Button>
+                  <Button variant="submit" onClick={() => setCreating(true)}>
+                    <Plus className="icon-sm mr-1" aria-hidden="true" />
+                    {localize('com_ui_tars_mcp_add_server')}
                   </Button>
                 </div>
               </div>

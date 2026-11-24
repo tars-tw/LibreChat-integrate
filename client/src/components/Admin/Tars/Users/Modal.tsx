@@ -76,6 +76,7 @@ export default function UserModal({
   const [adMode, setAdMode] = useState(false);
   const [adFilter, setAdFilter] = useState('');
   const [showAdList, setShowAdList] = useState(false);
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
 
   const ldapAvailable = !isEdit && ssoEnabled && LDAP_SSO_TYPES.has(String(ssoType ?? ''));
   const { data: adUsernames = [], isFetching: adLoading } = useTarsAdWhitelistQuery(
@@ -162,6 +163,8 @@ export default function UserModal({
   };
 
   const handleSave = () => {
+    setShowValidationErrors(true);
+
     if (!validate()) {
       return;
     }
@@ -213,10 +216,20 @@ export default function UserModal({
           <div className="max-h-[65vh] space-y-4 overflow-y-auto pr-1">
             <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <Label htmlFor="tars-user-username">{localize('com_ui_tars_users_username')}</Label>
+                <Label htmlFor="tars-user-username">
+                  {localize('com_ui_tars_users_username')}
+                  {!isEdit && !adMode && <span className="text-status-error-strong"> *</span>}
+                </Label>
                 <div className="mt-1 flex gap-2">
                   <Input
                     id="tars-user-username"
+                    aria-invalid={
+                      showValidationErrors &&
+                      !isEdit &&
+                      !adMode &&
+                      (form.username.trim().length < MIN_USERNAME_LENGTH ||
+                        !USERNAME_PATTERN.test(form.username.trim()))
+                    }
                     value={form.username}
                     disabled={isEdit}
                     onChange={(e) => set('username', e.target.value)}
@@ -231,6 +244,15 @@ export default function UserModal({
                     </Button>
                   )}
                 </div>
+                {showValidationErrors &&
+                  !isEdit &&
+                  !adMode &&
+                  (form.username.trim().length < MIN_USERNAME_LENGTH ||
+                    !USERNAME_PATTERN.test(form.username.trim())) && (
+                    <p className="text-status-error-strong mt-1 text-xs">
+                      {localize('com_ui_tars_models_required')}
+                    </p>
+                  )}
               </div>
               <div>
                 <Label htmlFor="tars-user-display-name">
@@ -284,18 +306,24 @@ export default function UserModal({
             {!adMode && (
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <Label htmlFor="tars-user-email">{localize('com_auth_email')}</Label>
+                  <Label htmlFor="tars-user-email">
+                    {localize('com_auth_email')}
+                    {!isAd && <span className="text-status-error-strong"> *</span>}
+                  </Label>
                   <Input
                     id="tars-user-email"
                     type="email"
                     className="mt-1"
+                    aria-invalid={
+                      showValidationErrors && !isAd && !EMAIL_PATTERN.test(form.email.trim())
+                    }
                     value={form.email}
                     disabled={isAd}
                     onChange={(e) => set('email', e.target.value)}
                   />
-                  {isAd && (
-                    <p className="text-text-secondary mt-1 text-xs">
-                      {localize('com_ui_tars_users_ad_email_locked')}
+                  {showValidationErrors && !isAd && !EMAIL_PATTERN.test(form.email.trim()) && (
+                    <p className="text-status-error-strong mt-1 text-xs">
+                      {localize('com_ui_tars_models_required')}
                     </p>
                   )}
                 </div>
@@ -303,20 +331,29 @@ export default function UserModal({
                   <div>
                     <Label htmlFor="tars-user-password">
                       {localize('com_ui_tars_users_password')}
+                      <span className="text-status-error-strong"> *</span>
                     </Label>
                     <Input
                       id="tars-user-password"
                       type="password"
                       className="mt-1"
+                      aria-invalid={
+                        showValidationErrors && form.password.length < MIN_PASSWORD_LENGTH
+                      }
                       value={form.password}
                       onChange={(e) => set('password', e.target.value)}
                     />
+                    {showValidationErrors && form.password.length < MIN_PASSWORD_LENGTH && (
+                      <p className="text-status-error-strong mt-1 text-xs">
+                        {localize('com_ui_tars_models_required')}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-3">
               <RoleSelect
                 id="tars-user-role"
                 value={form.roleId}

@@ -133,8 +133,8 @@ export function BulkEditModal({
               {localize('com_ui_tars_users_selected_count', { count: users.length })}
             </p>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-4">
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="border-border-light space-y-2 rounded-lg border p-3">
                   <div className="flex items-center gap-2">
                     <Switch
@@ -183,22 +183,9 @@ export function BulkEditModal({
                     </Label>
                   </div>
                 </div>
-
-                <details className="border-border-light rounded-lg border p-3">
-                  <summary className="text-text-secondary cursor-pointer text-sm">
-                    {localize('com_ui_tars_users_expand_list')}
-                  </summary>
-                  <ul className="text-text-primary mt-2 max-h-48 space-y-1 overflow-y-auto text-sm">
-                    {users.map((user) => (
-                      <li key={user.id} className="truncate">
-                        {user.username} — {user.email ?? '—'}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
               </div>
 
-              <div className="border-border-light flex flex-col gap-2 rounded-lg border p-3">
+              <div className="border-border-light space-y-2 rounded-lg border p-3">
                 <div className="flex items-center gap-2">
                   <Switch
                     id="tars-bulk-apply-group"
@@ -214,10 +201,22 @@ export function BulkEditModal({
                   groups={groups}
                   selected={groupIds}
                   disabled={!applyGroup}
-                  fill={true}
                   onToggle={toggleGroup}
                 />
               </div>
+
+              <details className="border-border-light rounded-lg border p-3">
+                <summary className="text-text-secondary cursor-pointer text-sm">
+                  {localize('com_ui_tars_users_expand_list')}
+                </summary>
+                <ul className="text-text-primary mt-2 max-h-48 space-y-1 overflow-y-auto text-sm">
+                  {users.map((user) => (
+                    <li key={user.id} className="truncate">
+                      {user.username} — {user.email ?? '—'}
+                    </li>
+                  ))}
+                </ul>
+              </details>
             </div>
           </div>
         }

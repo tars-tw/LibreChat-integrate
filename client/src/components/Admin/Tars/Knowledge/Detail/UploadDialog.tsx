@@ -132,7 +132,10 @@ export default function UploadDialog({
         main={
           <div className="max-h-[70vh] min-w-0 space-y-4 overflow-y-auto pr-1">
             <div className="space-y-1.5">
-              <Label htmlFor="tars-doc-files">{localize('com_ui_tars_kb_choose_files')}</Label>
+              <Label htmlFor="tars-doc-files">
+                {localize('com_ui_tars_kb_choose_files')}
+                <span className="text-status-error-strong ml-0.5">*</span>
+              </Label>
               <Input
                 id="tars-doc-files"
                 ref={fileRef}
