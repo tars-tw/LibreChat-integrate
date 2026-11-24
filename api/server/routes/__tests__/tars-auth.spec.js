@@ -46,12 +46,17 @@ jest.mock('~/server/services/Config', () => ({ invalidateConfigCaches: jest.fn()
 jest.mock('~/server/services/MCP', () => ({ resolveAllMcpConfigs: jest.fn() }));
 jest.mock('~/server/services/Tools/mcp', () => ({ loadMCPServerCatalogs: jest.fn() }));
 jest.mock('~/server/services/tarsOidcTeardown', () => jest.fn());
+jest.mock('~/server/services/PermissionService', () => ({ checkPermission: jest.fn() }));
+/** Built at load from `generateCapabilityCheck`, which the stubbed `@librechat/api` leaves undefined. */
+jest.mock('~/server/middleware/roles/capabilities', () => ({ hasCapability: jest.fn() }));
 /** Built from `tarsSharing.directory` at load, which the stubbed `createTarsSharing` leaves undefined. */
 jest.mock('~/server/services/tarsMcpGrantEnable', () => ({
   saveThenEnable: jest.fn((actor, save) => save()),
 }));
 
 jest.mock('~/server/middleware', () => ({
+  /** A factory the agent-prompt routes call at load; the gate tests need only `requireJwtAuth`. */
+  canAccessAgentResource: () => (req, res, next) => next(),
   configMiddleware: jest.fn((req, res, next) => next()),
   requireJwtAuth: jest.fn((req, res, next) => {
     const header = req.headers['x-test-user'];

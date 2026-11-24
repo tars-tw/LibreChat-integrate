@@ -52,7 +52,7 @@ const renderDialog = () =>
 
 const addFile = (user: ReturnType<typeof userEvent.setup>) =>
   user.upload(
-    screen.getByLabelText('com_ui_tars_kb_choose_files'),
+    screen.getByLabelText('com_ui_tars_kb_choose_files*'),
     new File(['hello'], 'a.txt', { type: 'text/plain' }),
   );
 

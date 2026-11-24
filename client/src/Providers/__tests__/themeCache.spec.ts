@@ -224,7 +224,7 @@ describe('theme cache storage', () => {
  * - definitions with one or both mode blocks absent.
  * A new role, or a new fallback, joins by construction.
  */
-const PIN = { fingerprint: '1.7.1ln9dy9', digest: 'te0ysh' };
+const PIN = { fingerprint: '1.7.1wwhlrv', digest: '18wadh9' };
 
 const digestOf = (text: string): string => {
   let hash = 5381;
