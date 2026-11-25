@@ -6,6 +6,7 @@ const {
   deleteTarsConversation,
   deleteTarsConversations,
   mirrorTarsMessageFeedback,
+  toTarsResumedTurnMirror,
   deleteTarsConversationMemories,
 } = require('@librechat/api');
 const { getConvo, saveConvo, getMessage, getMessages, getRoleByName } = require('~/models');
@@ -20,6 +21,15 @@ let chatMirror;
 function mirrorChatToTars(req, input) {
   chatMirror ??= createTarsChatMirror?.({ getConvo, saveConvo, getMessages, getRoleByName });
   return chatMirror?.(req, input);
+}
+
+/**
+ * Mirrors a turn that paused for human review once the resume route finishes it (see
+ * `toTarsResumedTurnMirror`). Never rejects.
+ */
+function mirrorResumedTurnToTars(req, finished) {
+  const input = toTarsResumedTurnMirror?.(finished);
+  return input ? mirrorChatToTars(req, input) : undefined;
 }
 
 /**
@@ -119,6 +129,7 @@ async function mirrorFeedbackToTars(req, { conversationId, messageId, previous, 
 
 module.exports = {
   mirrorChatToTars,
+  mirrorResumedTurnToTars,
   mirrorFeedbackToTars,
   getTarsFeedbackBaseline,
   mirrorDeleteToTars,

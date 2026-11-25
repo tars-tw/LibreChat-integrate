@@ -84,9 +84,18 @@ export interface TarsTokenUsageLogRow {
   user_group_name: string | null;
   provider: string | null;
   model_id: string | null;
+  /** The row's model profile name, else its message's model; absent from an older pwc_tars. */
+  model_name?: string | null;
   conversation_id: string | null;
   message_id: string | null;
   ref_type: string | null;
+  /**
+   * Which end recorded the row: tars, tars.ai or langflow (librechat before the rename); null
+   * for rows from before it was kept.
+   */
+  source?: string | null;
+  /** The saved LibreChat agent the usage ran for; null for TARS chats and unsaved agents. */
+  agent_id?: string | null;
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;

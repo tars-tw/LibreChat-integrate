@@ -2490,6 +2490,29 @@ describe('createResponse controller', () => {
         }),
       );
     });
+
+    it('hands the run’s usage to pwc_tars after billing it', async () => {
+      const api = require('@librechat/api');
+      api.reportTarsApiUsage = jest.fn();
+      try {
+        await createResponse(req, res);
+
+        const [, billed] = mockRecordCollectedUsage.mock.calls[0];
+        expect(api.reportTarsApiUsage).toHaveBeenCalledTimes(1);
+        expect(api.reportTarsApiUsage).toHaveBeenCalledWith(req, {
+          messageId: billed.messageId,
+          conversationId: billed.conversationId,
+          model: billed.model,
+          agent: expect.objectContaining({ id: 'agent-123' }),
+          collectedUsage: billed.collectedUsage,
+        });
+        expect(mockRecordCollectedUsage.mock.invocationCallOrder[0]).toBeLessThan(
+          api.reportTarsApiUsage.mock.invocationCallOrder[0],
+        );
+      } finally {
+        delete api.reportTarsApiUsage;
+      }
+    });
   });
 
   describe('agent context parity with UI path', () => {
@@ -2604,6 +2627,29 @@ describe('createResponse controller', () => {
           context: 'message',
         }),
       );
+    });
+
+    it('hands the run’s usage to pwc_tars after billing it (streaming)', async () => {
+      const api = require('@librechat/api');
+      api.reportTarsApiUsage = jest.fn();
+      try {
+        await createResponse(req, res);
+
+        const [, billed] = mockRecordCollectedUsage.mock.calls[0];
+        expect(api.reportTarsApiUsage).toHaveBeenCalledTimes(1);
+        expect(api.reportTarsApiUsage).toHaveBeenCalledWith(req, {
+          messageId: billed.messageId,
+          conversationId: billed.conversationId,
+          model: billed.model,
+          agent: expect.objectContaining({ id: 'agent-123' }),
+          collectedUsage: billed.collectedUsage,
+        });
+        expect(mockRecordCollectedUsage.mock.invocationCallOrder[0]).toBeLessThan(
+          api.reportTarsApiUsage.mock.invocationCallOrder[0],
+        );
+      } finally {
+        delete api.reportTarsApiUsage;
+      }
     });
   });
 

@@ -49,6 +49,10 @@ export interface TarsMessageInput extends Partial<TarsTurnFields> {
   trace?: TarsTraceRecord[];
   /** Earlier turns of the thread, oldest first (see {@link loadTarsMirrorHistory}). */
   history?: TarsHistoryMessage[];
+  /** Idempotency key of this sync: a retry that already landed changes nothing in pwc_tars. */
+  requestId?: string;
+  /** The saved LibreChat agent that answered (see `savedTarsAgentId`). */
+  agentId?: string | null;
 }
 
 /** What LibreChat knows about a finished, stopped or failed turn. */
@@ -324,6 +328,8 @@ export async function createTarsMessage(
       ...(input.trace?.length && { trace: input.trace }),
       status: input.status ?? TARS_MESSAGE_STATUS.success,
       error_message: input.errorMessage || null,
+      ...(input.requestId && { request_id: input.requestId }),
+      ...(input.agentId && { agent_id: input.agentId }),
       upload_filename: input.uploadFilename || null,
       is_web_search: input.isWebSearch === true,
       is_sql_agent: input.isSqlAgent === true,

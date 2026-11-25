@@ -61,6 +61,7 @@ const {
   announceReply,
 } = require('@librechat/api');
 const { disposeClient } = require('~/server/cleanup');
+const { mirrorResumedTurnToTars } = require('~/server/services/Tars/mirror');
 const { decryptMetadata } = require('~/server/services/ActionService');
 const { checkPermission } = require('~/server/services/PermissionService');
 const {
@@ -677,6 +678,16 @@ async function finalizeResumedTurn({
       }
     }
     conversation.title = conversation.title || 'New Chat';
+    /** TARS: the paused request never mirrored this turn; best-effort, not awaited. */
+    mirrorResumedTurnToTars(req, {
+      conversationId,
+      conversation,
+      userMessage,
+      responseMessage,
+      client,
+      isTemporary,
+      outcome: { incomplete: preemptIncomplete, stepLimitReached },
+    });
 
     if (meta.scheduleId) {
       await recordScheduleOutcome({
@@ -1997,6 +2008,8 @@ const ResumeAgentController = async (req, res, next, initializeClient, addTitle)
       client.jobCreatedAt = job.createdAt;
       client.checkpointNamespace = checkpointNamespace;
       client.responseMessageId = job.metadata.responseMessageId;
+      /** TARS: this segment reports its own usage to pwc_tars (see `reportTarsCollectedUsage`). */
+      client.tarsResumedSegment = true;
       client.parentMessageId = job.metadata.userMessage?.messageId ?? Constants.NO_PARENT;
       // Seed the rebuilt pruner from the tier and calibration captured at the pause, so the
       // resumed segment keeps historical tool results byte-identical to the paused one.

@@ -5,6 +5,7 @@ import {
   ContentTypes,
   TARS_TRACE_EVENT,
   TARS_SWITCH_TOOLS,
+  inputTokensIncludesCache,
 } from 'librechat-data-provider';
 import type { TTarsToolStep, TEphemeralAgent, TMessageContentParts } from 'librechat-data-provider';
 import type { TarsMemoryAudit } from './memory';
@@ -30,6 +31,16 @@ export const TARS_MIRROR_SOURCE = 'librechat';
 export interface TarsTraceUsage {
   input_tokens?: number;
   output_tokens?: number;
+  total_tokens?: number;
+  provider?: string | null;
+  input_token_details?: {
+    cache_read?: number;
+    cache_creation?: number;
+    cache_write_tokens?: number;
+  } | null;
+  cache_read_input_tokens?: number;
+  cache_creation_input_tokens?: number;
+  cache_write_tokens?: number;
   model?: string;
   /** LibreChat's own count, used because the provider reported no usage. */
   estimated?: boolean;
@@ -110,6 +121,31 @@ export function tarsFinishReasonOf(usage: object | null | undefined): string | u
 }
 
 /**
+ * Input/output counts for one collected model call, as LibreChat bills them
+ * (`splitUsage` / `resolveCompletionTokens` in `agents/usage.ts`):
+ * - A provider outside `inputTokensIncludesCache` (Bedrock, or none named) reports cache
+ *   reads and writes beside `input_tokens`, so they are added to the input.
+ * - Vertex AI streaming leaves `thoughtsTokenCount` out of `output_tokens` but keeps it in
+ *   `total_tokens`, so `total - input` recovers it.
+ */
+function resolvedUsageTokens(entry: TarsTraceUsage): { input: number; output: number } {
+  const rawInput = tokenCount(entry.input_tokens);
+  const rawOutput = tokenCount(entry.output_tokens);
+  const total = tokenCount(entry.total_tokens);
+  const details = isObject(entry.input_token_details) ? entry.input_token_details : undefined;
+  const cacheRead = tokenCount(details?.cache_read) || tokenCount(entry.cache_read_input_tokens);
+  const cacheCreation =
+    tokenCount(details?.cache_creation) ||
+    tokenCount(details?.cache_write_tokens) ||
+    tokenCount(entry.cache_creation_input_tokens) ||
+    tokenCount(entry.cache_write_tokens);
+  const additiveCache = inputTokensIncludesCache(entry.provider) ? 0 : cacheRead + cacheCreation;
+  const input = rawInput + additiveCache;
+  const output = total > input + rawOutput ? total - input : rawOutput;
+  return { input, output };
+}
+
+/**
  * The turn's token totals for the mirrored pwc_tars message, in the meaning
  * pwc_tars gives `message_tokens` / `response_tokens` on its own messages: every
  * model call the run made — each turn plus side calls such as summarization or
@@ -126,8 +162,9 @@ export function sumTarsUsage(usage: TarsTraceUsage[] | null | undefined): {
     if (!isObject(entry)) {
       continue;
     }
-    messageTokens += tokenCount(entry?.input_tokens);
-    responseTokens += tokenCount(entry?.output_tokens);
+    const { input, output } = resolvedUsageTokens(entry);
+    messageTokens += input;
+    responseTokens += output;
   }
   return { messageTokens, responseTokens };
 }
@@ -938,12 +975,13 @@ export function buildTarsTraceRecords(input: TarsTraceInput): TarsTraceRecord[] 
       modelTurn += 1;
     }
     const turn = Math.max(modelTurn, 1);
+    const { input: inputTokens, output: outputTokens } = resolvedUsageTokens(usage);
     records.push({
       type: TARS_TRACE_EVENT.usage,
       turn,
       started_at: iso(t0),
-      input_tokens: tokenCount(usage.input_tokens),
-      output_tokens: tokenCount(usage.output_tokens),
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
       ...(nonEmptyString(usage.model) && { model: usage.model }),
       ...(usage.estimated === true && { estimated: true }),
       ...(sideCall && { source: usage.usage_type }),

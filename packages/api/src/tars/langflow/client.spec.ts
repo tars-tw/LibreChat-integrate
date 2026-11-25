@@ -108,6 +108,8 @@ describe('runLangflowCapability', () => {
     expect(headers['X-TARS-Service-Key']).toBe('from-sysconfig');
     /** pwc_tars carries no models of its own, so the gateway is never opt-in. */
     expect(headers['X-Use-Librechat-Gateway']).toBe('true');
+    /** LibreChat records the returned tokens itself, so pwc_tars must not log them again. */
+    expect(headers['X-TARS-Usage-Owner']).toBe('caller');
     expect(headers['X-Librechat-User-Id']).toBeUndefined();
   });
 

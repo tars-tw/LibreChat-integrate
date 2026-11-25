@@ -157,7 +157,7 @@ export interface TarsTemporaryTurnFields
  * stored conversation and a forced retention as well as the client's flag, so a stored
  * temporary chat continued without the flag still stays out.
  */
-function isTemporaryChat(req: TarsTemporaryTurnFields): boolean {
+export function isTemporaryChat(req: TarsTemporaryTurnFields): boolean {
   return isTemporaryTurn({
     body: { isTemporary: req.body?.isTemporary },
     config: req.config ?? undefined,
