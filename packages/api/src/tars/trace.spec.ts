@@ -2,7 +2,7 @@ jest.mock('@librechat/data-schemas', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), debug: jest.fn(), error: jest.fn() },
 }));
 
-import { ContentTypes } from 'librechat-data-provider';
+import { Providers, ContentTypes } from 'librechat-data-provider';
 import { formatAgentMessages, createContentAggregator } from '@librechat/agents';
 import { noteTarsMcpToolCall, noteTarsMcpToolError, takeTarsFailedToolCalls } from './failure';
 import type { TMessageContentParts } from 'librechat-data-provider';
@@ -874,6 +874,61 @@ describe('sumTarsUsage', () => {
       { messageTokens: 0, responseTokens: 0 },
     );
     expect(sumTarsUsage(usage)).toEqual(fromRows);
+  });
+
+  /** The same counts LibreChat bills (`splitUsage` / `resolveCompletionTokens` in agents/usage). */
+  describe('as LibreChat bills each call', () => {
+    const bedrock = {
+      provider: Providers.BEDROCK,
+      input_tokens: 100,
+      output_tokens: 20,
+      total_tokens: 470,
+      input_token_details: { cache_read: 300, cache_creation: 50 },
+    };
+    const vertex = {
+      provider: Providers.VERTEXAI,
+      input_tokens: 100,
+      output_tokens: 30,
+      total_tokens: 180,
+    };
+
+    it('adds the cache Bedrock reports beside the input, without taking it for output', () => {
+      expect(sumTarsUsage([bedrock])).toEqual({ messageTokens: 450, responseTokens: 20 });
+    });
+
+    it('leaves the cache inside the input of a provider that counts it there', () => {
+      expect(
+        sumTarsUsage([
+          {
+            provider: Providers.ANTHROPIC,
+            input_tokens: 400,
+            output_tokens: 20,
+            total_tokens: 420,
+            cache_read_input_tokens: 300,
+            cache_creation_input_tokens: 50,
+          },
+        ]),
+      ).toEqual({ messageTokens: 400, responseTokens: 20 });
+    });
+
+    it('adds the cache of a call that names no provider, as LibreChat bills it', () => {
+      expect(
+        sumTarsUsage([{ input_tokens: 100, output_tokens: 10, cache_write_tokens: 40 }]),
+      ).toEqual({ messageTokens: 140, responseTokens: 10 });
+    });
+
+    it('recovers the thinking tokens Vertex AI leaves out of the output', () => {
+      expect(sumTarsUsage([vertex])).toEqual({ messageTokens: 100, responseTokens: 80 });
+    });
+
+    it('writes the same counts on the trace’s usage rows', () => {
+      const rows = build({ usage: [bedrock, vertex] }).filter((record) => record.type === 'usage');
+
+      expect(rows.map((row) => [row.input_tokens, row.output_tokens])).toEqual([
+        [450, 20],
+        [100, 80],
+      ]);
+    });
   });
 });
 

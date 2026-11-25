@@ -1431,6 +1431,16 @@ const executeResponse = async (envelope, { req, res }) => {
             logger.error('[Responses API] Error recording usage:', getSafeErrorMetadata(err));
           }),
         );
+        /** TARS: no chat mirror carries an API run, so its usage and pwc_tars tool tokens go to
+         *  pwc_tars here. Keep it one standalone statement; `?.` because upstream specs mock
+         *  `@librechat/api`. */
+        require('@librechat/api').reportTarsApiUsage?.(req, {
+          messageId: responseId,
+          conversationId,
+          model: primaryConfig.model || agent.model_parameters?.model,
+          agent,
+          collectedUsage,
+        });
 
         const usage = buildResponsesUsage(collectedUsage);
 
@@ -1670,6 +1680,16 @@ const executeResponse = async (envelope, { req, res }) => {
             logger.error('[Responses API] Error recording usage:', getSafeErrorMetadata(err));
           }),
         );
+        /** TARS: no chat mirror carries an API run, so its usage and pwc_tars tool tokens go to
+         *  pwc_tars here. Keep it one standalone statement; `?.` because upstream specs mock
+         *  `@librechat/api`. */
+        require('@librechat/api').reportTarsApiUsage?.(req, {
+          messageId: responseId,
+          conversationId,
+          model: primaryConfig.model || agent.model_parameters?.model,
+          agent,
+          collectedUsage,
+        });
 
         if (artifactPromises.length > 0) {
           try {

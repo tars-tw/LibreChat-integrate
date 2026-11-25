@@ -218,6 +218,9 @@ const {
   hasEntityEmbeddings,
   withTarsVertexUsageModel,
   repairTarsGeneratedLinks,
+  reportTarsFallbackUsage,
+  reportTarsCollectedUsage,
+  withTarsDetachedUsageReport,
 } = require('@librechat/api');
 const {
   Run,
@@ -3896,6 +3899,9 @@ class AgentClient extends BaseClient {
     if (result && updateStreamUsage) {
       this.usage = result;
     }
+    /** TARS: usage the pwc_tars chat mirror does not carry (title, labels, paused turns).
+     *  `?.` because upstream specs mock `@librechat/api` without it. */
+    reportTarsCollectedUsage?.(this, { context, collectedUsage, model });
   }
 
   /**
@@ -4023,7 +4029,7 @@ class AgentClient extends BaseClient {
       endpointTokenConfig: options?.endpointTokenConfig,
       endpointTokenConfigByAgentId: options?.endpointTokenConfigByAgentId,
     };
-    return createDetachedSubagentUsageRecorder(
+    const record = createDetachedSubagentUsageRecorder(
       {
         spendTokens: db.spendTokens,
         spendStructuredTokens: db.spendStructuredTokens,
@@ -4039,6 +4045,8 @@ class AgentClient extends BaseClient {
       },
       { ...billing, balance, transactions },
     );
+    /** TARS: each detached call also reaches pwc_tars; `?.` as above. */
+    return withTarsDetachedUsageReport?.(this, record) ?? record;
   }
 
   /**
@@ -6413,6 +6421,15 @@ class AgentClient extends BaseClient {
         },
       },
     );
+    /** TARS: the same estimate for a turn no mirrored message carries.
+     *  `?.` because upstream specs mock `@librechat/api` without it. */
+    reportTarsFallbackUsage?.(this, {
+      context,
+      usage,
+      collectedUsage: this.collectedUsage,
+      promptTokens,
+      completionTokens,
+    });
   }
 
   /** Anthropic Claude models use a distinct BPE tokenizer; all others default to o200k_base. */

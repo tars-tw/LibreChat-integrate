@@ -4,6 +4,7 @@ export * from './common';
 export * from './crypto';
 export * from './schema';
 export * from './utils';
+export * from './tars';
 export { createModels } from './models';
 export {
   createMethods,

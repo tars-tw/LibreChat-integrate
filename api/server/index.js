@@ -101,6 +101,7 @@ const configureSocialLogins = require('./socialLogins');
 const createSpaFallback = require('./utils/fallback');
 const { getAppConfig, rederiveEndpoints } = require('./services/Config');
 const tarsSharing = require('./services/tarsSharing');
+const { startTarsOutbox } = require('./services/Tars/outbox');
 const workflowTransfer = require('./services/workflowTransfer');
 const staticCache = require('./utils/staticCache');
 const noIndex = require('./middleware/noIndex');
@@ -284,6 +285,8 @@ const startServer = async () => {
   startSkillDeletionSweep(appConfig.skillDeletion);
   startExpiredFileSweep({ appConfig, loadAppConfig: getAppConfig });
   tarsSharing.start(appConfig);
+  /** TARS: resend chat mirrors and usage reports that failed while pwc_tars was unreachable. */
+  startTarsOutbox(appConfig);
   workflowTransfer.start(appConfig);
   // Register any programmatic tool-approval policy hooks declared in
   // `endpoints.agents.toolApproval.hooks`. Honor the `enabled` kill switch: when tool

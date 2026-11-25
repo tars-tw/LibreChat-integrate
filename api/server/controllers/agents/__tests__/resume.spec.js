@@ -123,6 +123,7 @@ const mockGetAgentTriggerDelivery = jest.fn();
 const mockReserveAgentEventActorDetachedAction = jest.fn();
 const mockMarkAgentEventActorDetachedActionRunning = jest.fn();
 const mockSettleAgentEventActorDetachedAction = jest.fn();
+const mockMirrorResumedTurnToTars = jest.fn();
 
 jest.mock('@librechat/data-schemas', () => ({
   ...jest.requireActual('@librechat/data-schemas'),
@@ -207,6 +208,10 @@ jest.mock('~/server/services/Schedules', () => ({
 
 jest.mock('~/server/cleanup', () => ({
   disposeClient: (...args) => mockDisposeClient(...args),
+}));
+
+jest.mock('~/server/services/Tars/mirror', () => ({
+  mirrorResumedTurnToTars: (...args) => mockMirrorResumedTurnToTars(...args),
 }));
 
 jest.mock('~/server/services/MCPRequestContext', () => ({
@@ -4394,6 +4399,35 @@ describe('ResumeAgentController (POST /agents/chat/resume)', () => {
       );
     });
 
+    it('mirrors the finished turn into pwc_tars once, from a client marked as resumed', async () => {
+      mockGenerationJobManager.getJob.mockResolvedValue(makeToolApprovalJob());
+      const resumedClient = makeClient();
+      mockInitializeClient.mockResolvedValue({ client: resumedClient, userMCPAuthMap: {} });
+
+      await post(approveBody());
+      await settled;
+      await flush();
+
+      expect(resumedClient.tarsResumedSegment).toBe(true);
+      expect(mockMirrorResumedTurnToTars).toHaveBeenCalledTimes(1);
+      expect(mockMirrorResumedTurnToTars).toHaveBeenCalledWith(
+        expect.objectContaining({ user: expect.objectContaining({ id: USER_ID }) }),
+        expect.objectContaining({
+          conversationId: CONVO_ID,
+          client: resumedClient,
+          responseMessage: expect.objectContaining({
+            messageId: RESPONSE_MSG_ID,
+            unfinished: false,
+          }),
+          outcome: { incomplete: false, stepLimitReached: false },
+        }),
+      );
+      // Mirrored only once the response row is saved.
+      expect(mockSaveMessage.mock.invocationCallOrder[0]).toBeLessThan(
+        mockMirrorResumedTurnToTars.mock.invocationCallOrder[0],
+      );
+    });
+
     it('still finalizes the turn when first-turn title generation throws', async () => {
       const job = makeToolApprovalJob();
       job.metadata.userMessage.parentMessageId = Constants.NO_PARENT;
@@ -4434,6 +4468,7 @@ describe('ResumeAgentController (POST /agents/chat/resume)', () => {
       await flush();
 
       // It persists progress (unfinished) but must NOT finalize the turn.
+      expect(mockMirrorResumedTurnToTars).not.toHaveBeenCalled();
       expect(mockSaveMessage).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ unfinished: true }),

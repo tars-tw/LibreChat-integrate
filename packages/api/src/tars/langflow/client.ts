@@ -31,6 +31,11 @@ const USAGE_DOMAIN_HEADER = 'X-TARS-Domain-Id';
 const USAGE_MESSAGE_HEADER = 'X-TARS-Message-Id';
 /** Which rule pwc_tars scopes the call's knowledge bases by; absent is the user's chat list. */
 const ACCESS_MODE_HEADER = 'X-TARS-Access-Mode';
+/**
+ * Tells pwc_tars that LibreChat records the `tokens` a call returns itself (the chat mirror,
+ * or a usage report, adds them to the message), so pwc_tars does not log them a second time.
+ */
+const USAGE_OWNER_HEADER = 'X-TARS-Usage-Owner';
 
 /** `X-TARS-Access-Mode` for a 通用腦 turn: pwc_tars's general knowledge base alone, no assignment needed. */
 export const TARS_GENERAL_ACCESS_MODE = 'general';
@@ -243,6 +248,7 @@ async function langflowServiceHeaders({
   const headers: Record<string, string> = {
     [SERVICE_KEY_HEADER]: key,
     [GATEWAY_HEADER]: 'true',
+    [USAGE_OWNER_HEADER]: 'caller',
   };
   if (librechatUserId) {
     headers[GATEWAY_USER_HEADER] = librechatUserId;

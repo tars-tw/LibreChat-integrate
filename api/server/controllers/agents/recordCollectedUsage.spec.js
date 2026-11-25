@@ -17,6 +17,9 @@ const mockBulkInsertTransactions = jest.fn().mockResolvedValue(undefined);
 const mockRecordCollectedUsage = jest
   .fn()
   .mockResolvedValue({ input_tokens: 100, output_tokens: 50 });
+const mockReportTarsCollectedUsage = jest.fn();
+const mockReportTarsFallbackUsage = jest.fn();
+const mockWithTarsDetachedUsageReport = jest.fn();
 
 jest.mock('~/models', () => ({
   initializeMessageBudget: jest.fn(),
@@ -53,6 +56,9 @@ jest.mock('@librechat/api', () => {
   return {
     ...actual,
     recordCollectedUsage: (...args) => mockRecordCollectedUsage(...args),
+    reportTarsCollectedUsage: (...args) => mockReportTarsCollectedUsage(...args),
+    reportTarsFallbackUsage: (...args) => mockReportTarsFallbackUsage(...args),
+    withTarsDetachedUsageReport: (...args) => mockWithTarsDetachedUsageReport(...args),
   };
 });
 
@@ -425,6 +431,71 @@ describe('AgentClient - recordCollectedUsage', () => {
       const usage = client.getStreamUsage();
       expect(usage).not.toBeNull();
       expect(Number(usage.output_tokens)).toBeGreaterThan(0);
+    });
+  });
+
+  describe('pwc_tars usage reports', () => {
+    it('hands each recording to pwc_tars after billing it', async () => {
+      const collectedUsage = [{ input_tokens: 30, output_tokens: 5 }];
+
+      await client.recordCollectedUsage({ collectedUsage, context: 'title', model: 'gpt-4o-mini' });
+
+      expect(mockReportTarsCollectedUsage).toHaveBeenCalledWith(client, {
+        context: 'title',
+        collectedUsage,
+        model: 'gpt-4o-mini',
+      });
+      expect(mockRecordCollectedUsage.mock.invocationCallOrder[0]).toBeLessThan(
+        mockReportTarsCollectedUsage.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('passes the run’s own usage too, so a paused turn can report it', async () => {
+      client.collectedUsage = [{ input_tokens: 100, output_tokens: 20 }];
+
+      await client.recordCollectedUsage({ context: 'message' });
+
+      expect(mockReportTarsCollectedUsage).toHaveBeenCalledWith(client, {
+        context: 'message',
+        collectedUsage: client.collectedUsage,
+        model: undefined,
+      });
+    });
+
+    it('bills detached subagent calls through the pwc_tars-reporting wrapper', () => {
+      const wrapped = jest.fn();
+      mockWithTarsDetachedUsageReport.mockReturnValueOnce(wrapped);
+
+      const recorder = client.buildDetachedSubagentUsageRecorder({}, {});
+
+      expect(recorder).toBe(wrapped);
+      expect(mockWithTarsDetachedUsageReport).toHaveBeenCalledWith(client, expect.any(Function));
+    });
+
+    it('hands the text-count estimate to pwc_tars after billing it', async () => {
+      const usage = { reasoning_tokens: 3 };
+      client.collectedUsage = [];
+
+      await client.recordTokenUsage({ promptTokens: 40, completionTokens: 7, usage, model: 'm' });
+
+      expect(mockReportTarsFallbackUsage).toHaveBeenCalledWith(client, {
+        context: undefined,
+        usage,
+        collectedUsage: client.collectedUsage,
+        promptTokens: 40,
+        completionTokens: 7,
+      });
+      expect(mockSpendTokens.mock.invocationCallOrder[0]).toBeLessThan(
+        mockReportTarsFallbackUsage.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('keeps the plain recorder when the wrapper hands nothing back', () => {
+      mockWithTarsDetachedUsageReport.mockReturnValueOnce(undefined);
+
+      const recorder = client.buildDetachedSubagentUsageRecorder({}, {});
+
+      expect(recorder).toEqual(expect.any(Function));
     });
   });
 });

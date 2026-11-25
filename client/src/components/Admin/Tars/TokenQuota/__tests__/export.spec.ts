@@ -142,6 +142,48 @@ describe('downloadTokenReportCsvs', () => {
     expect(downloaded().map(({ name }) => name)).toEqual(CHAT_FILES);
   });
 
+  it('lists which end recorded each usage row, what it was for and on which model', async () => {
+    jest.spyOn(dataService, 'getTarsTokenReportExport').mockResolvedValue({
+      ...CHAT_EXPORT,
+      user_usage_log: [
+        {
+          id: 'l1',
+          user_id: 'u1',
+          username: 'amy',
+          display_name: 'Amy',
+          domain_id: null,
+          user_group_id: null,
+          user_group_name: 'G',
+          provider: 'openai',
+          model_id: null,
+          model_name: 'gpt-5.4-mini',
+          conversation_id: null,
+          message_id: null,
+          ref_type: 'title',
+          source: 'tars.ai',
+          agent_id: 'agent_abc',
+          prompt_tokens: 30,
+          completion_tokens: 5,
+          total_tokens: 35,
+          created_at: '2026-10-02',
+        },
+      ],
+    });
+    jest
+      .spyOn(dataService, 'getTarsEmbeddingUsageSummary')
+      .mockImplementation(async (query) => summaryOf(query, []));
+
+    await downloadTokenReportCsvs(RANGE, localize);
+
+    const index = downloaded().findIndex(({ name }) => name.startsWith('TokenReport_Logs_'));
+    const [headers, rows] = jest.mocked(toCsvBlob).mock.calls[index];
+    const column = (key: string) => headers.indexOf(key);
+    expect(rows[0][column('com_ui_tars_report_col_source')]).toBe('tars.ai');
+    expect(rows[0][column('com_ui_tars_report_col_purpose')]).toBe('title');
+    expect(rows[0][column('com_ui_tars_report_col_model')]).toBe('gpt-5.4-mini');
+    expect(rows[0][column('com_ui_tars_report_col_agent')]).toBe('agent_abc');
+  });
+
   it('has no embedding file and nothing to explain for a period without usage', async () => {
     jest
       .spyOn(dataService, 'getTarsEmbeddingUsageSummary')

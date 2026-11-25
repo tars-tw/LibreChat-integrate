@@ -926,6 +926,24 @@ export const tarsConfigSchema = z.object({
       panelRefreshMs: z.number().int().min(0).max(3600000).default(30000),
     })
     .prefault({}),
+  /** Chat mirrors and token usage reports that failed while pwc_tars was down or slow, kept in
+   *  Mongo and sent again by the cluster leader. Off, a failed write is only logged. */
+  outbox: z
+    .object({
+      enabled: z.boolean().default(true),
+      /** How often the leader sends the writes that are due. */
+      intervalMs: z.number().int().min(5000).max(3600000).default(60000),
+      /** Writes sent per round; a round stops early while pwc_tars does not answer. */
+      batchSize: z.number().int().min(1).max(1000).default(50),
+      /** How long a write is retried before it is given up and logged as lost. */
+      maxAgeMs: z
+        .number()
+        .int()
+        .min(60000)
+        .max(30 * 24 * 60 * 60 * 1000)
+        .default(7 * 24 * 60 * 60 * 1000),
+    })
+    .prefault({}),
 });
 
 /** The audit report's agent filter value for chats that ran no saved agent. */
@@ -958,6 +976,7 @@ export interface TTarsMemory {
 export type TTarsMemoryAssistConfig = z.infer<typeof tarsConfigSchema>['memoryAssist'];
 export type TTarsWorkflowFilesConfig = z.infer<typeof tarsConfigSchema>['workflowFiles'];
 export type TTarsMcpFilesConfig = z.infer<typeof tarsConfigSchema>['mcpFiles'];
+export type TTarsOutboxConfig = z.infer<typeof tarsConfigSchema>['outbox'];
 
 /** Resource `_meta` key an MCP server (pwc_tars for attachment responses) sets on a part it sends
  *  as a file, so it is saved whatever `tars.mcpFiles.textTypes` lists. */

@@ -10,10 +10,17 @@ import {
   PermissionTypes,
   TARS_MESSAGE_STATUS,
 } from 'librechat-data-provider';
-import type { TarsChatMirrorDeps, TarsMirrorRequest } from './chat';
+import type { TarsChatMirrorDeps, TarsMirrorDelivery, TarsMirrorRequest } from './chat';
 import type { TarsTurnSource } from './mirror';
 import { noteTarsMcpToolCall, noteTarsMcpToolError } from './failure';
-import { createTarsChatMirror } from './chat';
+import {
+  deliverTarsMirror,
+  redeliverTarsMirror,
+  createTarsChatMirror,
+  toTarsResumedTurnMirror,
+} from './chat';
+import { configureTarsOutbox } from './outbox';
+import { recordTarsToolUsage } from './tools/usage';
 
 const BASE_URL = 'http://tars.test';
 
@@ -55,6 +62,15 @@ const makeReq = (overrides: Partial<TarsMirrorRequest> = {}): TarsMirrorRequest 
 const answer = (text: string): TarsTurnSource => ({
   response: { text, content: [{ type: ContentTypes.TEXT, text }] },
 });
+
+/** Puts back an env value a test replaced; Node would store an unset one as "undefined". */
+const restoreEnv = (name: string, value: string | undefined) => {
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
+};
 
 let convoSeq = 0;
 const nextConvo = () => `convo-${++convoSeq}`;
@@ -107,7 +123,7 @@ describe('createTarsChatMirror', () => {
     expect(deps.saveConvo).toHaveBeenCalledWith(
       { userId: 'lc-user' },
       { conversationId, tarsConversationId: 'tc-1' },
-      expect.any(Object),
+      expect.objectContaining({ noUpsert: true }),
     );
     const message = tars.message();
     expect(message).toMatchObject({
@@ -156,6 +172,76 @@ describe('createTarsChatMirror', () => {
 
     expect(tars.paths()).toEqual(['/api/conversation/create_conversation']);
     expect(deps.saveConvo).not.toHaveBeenCalled();
+  });
+
+  describe('usage no mirrored message carries', () => {
+    const secret = process.env.TARS_JWT_SECRET;
+    beforeEach(() => {
+      process.env.TARS_JWT_SECRET = 'test-secret';
+    });
+    afterEach(() => restoreEnv('TARS_JWT_SECRET', secret));
+
+    /** `saveConvo` answers null when `noUpsert` finds nothing: the user deleted the chat meanwhile. */
+    it('reports only the usage of a conversation deleted before its link is saved', async () => {
+      const tars = mockTars();
+      const deps = makeDeps({ saveConvo: jest.fn(async () => null) });
+      const conversationId = nextConvo();
+
+      await createTarsChatMirror(deps)(makeReq(), {
+        conversationId,
+        existingTarsConversationId: 'tc-old',
+        messageId: 'msg-gone',
+        model: 'gpt-5.4-mini',
+        query: 'q',
+        turn: { ...answer('a'), usage: [{ input_tokens: 100, output_tokens: 20 }] },
+      });
+
+      expect(deps.saveConvo).toHaveBeenCalledTimes(1);
+      expect(tars.paths()).toEqual(['/api/message/record_usage']);
+      expect(tars.posted[0].body).toEqual({
+        ref_type: 'chat',
+        message_id: 'msg-gone',
+        conversation_id: conversationId,
+        model_name: 'gpt-5.4-mini',
+        domain_id: null,
+        prompt_tokens: 100,
+        completion_tokens: 20,
+        request_id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      });
+    });
+
+    it('reports a pwc_tars tool that settles after the turn was mirrored, on its message', async () => {
+      const tars = mockTars();
+      const req = makeReq();
+      const conversationId = nextConvo();
+      recordTarsToolUsage(req, 'call-1', { prompt: 9, completion: 2 });
+
+      await createTarsChatMirror(makeDeps())(req, {
+        conversationId,
+        existingTarsConversationId: 'tc-old',
+        messageId: 'msg-late',
+        model: 'gpt-5.4-mini',
+        domainId: '7',
+        query: 'q',
+        turn: answer('a'),
+      });
+      /** A call dispatched in the background, or by a detached subagent, outlives the turn. */
+      recordTarsToolUsage(req, 'call-2', { prompt: 40, completion: 9 });
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(tars.paths()).toEqual(['/api/message/create_message', '/api/message/record_usage']);
+      expect(tars.message()).toMatchObject({ message_tokens: 9, response_tokens: 2 });
+      expect(tars.posted[1].body).toEqual({
+        ref_type: 'chat',
+        message_id: 'msg-late',
+        conversation_id: conversationId,
+        model_name: 'gpt-5.4-mini',
+        domain_id: '7',
+        prompt_tokens: 40,
+        completion_tokens: 9,
+        request_id: expect.any(String),
+      });
+    });
   });
 
   it('names a turn of attachments alone by its files and keeps their download ids', async () => {
@@ -255,6 +341,233 @@ describe('createTarsChatMirror', () => {
       message_tokens: 120,
       response_tokens: 30,
     });
+  });
+
+  it('mirrors a turn whose usage was reported per segment without any usage of its own', async () => {
+    const tars = mockTars();
+    const req = makeReq();
+    recordTarsToolUsage(req, 'call-1', { prompt: 9, completion: 2 });
+
+    await createTarsChatMirror(makeDeps())(req, {
+      conversationId: nextConvo(),
+      query: 'q',
+      turn: { ...answer('approved and done'), usage: [{ input_tokens: 100, output_tokens: 20 }] },
+      tokenEstimate: { promptTokens: 120, completionTokens: 30 },
+      usageReported: true,
+    });
+
+    expect(tars.message()).toMatchObject({
+      status: TARS_MESSAGE_STATUS.success,
+      response: 'approved and done',
+      message_tokens: 0,
+      response_tokens: 0,
+    });
+  });
+
+  describe('when pwc_tars cannot take the turn', () => {
+    /** pwc_tars as `mockTars` answers it, except that `failing` paths reply with `failure`. */
+    function failingTars(failing: string, failure: () => Promise<Response>) {
+      const tars = mockTars({ createdId: 'tc-1' });
+      const answer200 = jest.mocked(global.fetch).getMockImplementation()!;
+      jest
+        .mocked(global.fetch)
+        .mockImplementation(async (url, init) =>
+          String(url).endsWith(failing) ? failure() : answer200(url, init),
+        );
+      return tars;
+    }
+
+    const keep = () => {
+      const kept: Array<{ kind: string; payload: TarsMirrorDelivery }> = [];
+      configureTarsOutbox({
+        add: async (item) => {
+          kept.push(item as never);
+        },
+        due: async () => [],
+        reschedule: async () => undefined,
+        remove: async () => undefined,
+      });
+      return kept;
+    };
+
+    afterEach(() => configureTarsOutbox(null));
+
+    it.each([
+      ['the agent it ran', { agent_id: 'agent_abc' }, 'agent_abc'],
+      ['nothing for an agent never saved', { agent_id: 'ephemeral' }, undefined],
+    ])('records %s', async (_case, body, agentId) => {
+      const tars = mockTars();
+
+      await createTarsChatMirror(makeDeps())(makeReq({ body: { ...makeReq().body, ...body } }), {
+        conversationId: nextConvo(),
+        query: 'q',
+        turn: answer('a'),
+      });
+
+      expect(tars.message()?.agent_id).toBe(agentId);
+    });
+
+    it('sends every sync with its own idempotency key', async () => {
+      const tars = mockTars();
+
+      await createTarsChatMirror(makeDeps())(makeReq(), {
+        conversationId: nextConvo(),
+        query: 'q',
+        turn: answer('a'),
+      });
+
+      expect(tars.message()?.request_id).toMatch(/^[0-9a-f-]{36}$/);
+    });
+
+    it.each([
+      ['the message', '/create_message'],
+      ['the conversation', '/create_conversation'],
+    ])('keeps the turn to send again when %s cannot be saved', async (_case, failing) => {
+      failingTars(failing, () => Promise.reject(new Error('fetch failed')));
+      const kept = keep();
+      const conversationId = nextConvo();
+
+      await createTarsChatMirror(makeDeps())(makeReq(), {
+        conversationId,
+        title: 'Flights',
+        query: 'q',
+        messageId: 'msg-1',
+        turn: answer('a'),
+      });
+
+      expect(kept).toHaveLength(1);
+      expect(kept[0].kind).toBe('mirror');
+      expect(kept[0].payload).toMatchObject({
+        tarsId: 'tars-user',
+        userId: 'lc-user',
+        conversationId,
+        title: 'Flights',
+        message: { messageId: 'msg-1', query: 'q', response: 'a' },
+      });
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it('does not keep a turn pwc_tars refused, and logs it', async () => {
+      failingTars(
+        '/create_message',
+        async () => ({ status: 400, ok: false, json: async () => ({}) }) as Response,
+      );
+      const kept = keep();
+
+      await createTarsChatMirror(makeDeps())(makeReq(), {
+        conversationId: nextConvo(),
+        query: 'q',
+        turn: answer('a'),
+      });
+
+      expect(kept).toEqual([]);
+      expect(logger.error).toHaveBeenCalledWith(
+        '[mirrorChatToTars] Failed to mirror conversation to pwc_tars',
+        expect.anything(),
+      );
+    });
+
+    it('sends a kept turn again under the same key, into the conversation linked meanwhile', async () => {
+      failingTars('/create_message', () => Promise.reject(new Error('fetch failed')));
+      const kept = keep();
+      const deps = makeDeps();
+      await createTarsChatMirror(deps)(makeReq(), {
+        conversationId: nextConvo(),
+        query: 'q',
+        turn: answer('a'),
+      });
+      const firstKey = kept[0].payload.message.requestId;
+
+      const tars = mockTars();
+      const retryDeps = makeDeps({
+        getConvo: jest.fn(async () => ({ tarsConversationId: 'tc-1' })),
+      });
+      await expect(deliverTarsMirror(retryDeps, kept[0].payload)).resolves.toBe(true);
+
+      expect(tars.paths()).toEqual(['/api/message/create_message']);
+      expect(tars.message()).toMatchObject({ conversation_id: 'tc-1', request_id: firstKey });
+      expect(retryDeps.saveConvo).toHaveBeenCalled();
+    });
+
+    /**
+     * Without the check the link save would bring the conversation back as an empty chat.
+     * The turn's tokens still reach pwc_tars, under the mirror's key: had the first attempt
+     * landed after all, pwc_tars would hold that key and count nothing twice.
+     */
+    it('drops a kept turn whose conversation was deleted while it waited, but not its usage', async () => {
+      const secret = process.env.TARS_JWT_SECRET;
+      process.env.TARS_JWT_SECRET = 'test-secret';
+      try {
+        failingTars('/create_message', () => Promise.reject(new Error('fetch failed')));
+        const kept = keep();
+        await createTarsChatMirror(makeDeps())(makeReq(), {
+          conversationId: nextConvo(),
+          messageId: 'msg-1',
+          query: 'q',
+          turn: { ...answer('a'), usage: [{ input_tokens: 100, output_tokens: 20 }] },
+        });
+
+        const tars = mockTars();
+        const retryDeps = makeDeps({ getConvo: jest.fn(async () => null) });
+        await expect(redeliverTarsMirror(retryDeps, kept[0].payload)).resolves.toBe(false);
+
+        expect(tars.paths()).toEqual(['/api/message/record_usage']);
+        expect(tars.posted[0].body).toMatchObject({
+          ref_type: 'chat',
+          message_id: 'msg-1',
+          prompt_tokens: 100,
+          completion_tokens: 20,
+          request_id: kept[0].payload.message.requestId,
+        });
+        expect(retryDeps.saveConvo).not.toHaveBeenCalled();
+      } finally {
+        restoreEnv('TARS_JWT_SECRET', secret);
+      }
+    });
+
+    it('resends a kept turn into the link the conversation holds now', async () => {
+      failingTars('/create_conversation', () => Promise.reject(new Error('fetch failed')));
+      const kept = keep();
+      const conversationId = nextConvo();
+      await createTarsChatMirror(makeDeps())(makeReq(), {
+        conversationId,
+        query: 'q',
+        turn: answer('a'),
+      });
+
+      const tars = mockTars();
+      const retryDeps = makeDeps({
+        getConvo: jest.fn(async () => ({ tarsConversationId: 'tc-9' })),
+      });
+      await expect(redeliverTarsMirror(retryDeps, kept[0].payload)).resolves.toBe(true);
+
+      expect(retryDeps.getConvo).toHaveBeenCalledWith('lc-user', conversationId);
+      expect(tars.paths()).toEqual(['/api/message/create_message']);
+      expect(tars.message()).toMatchObject({ conversation_id: 'tc-9' });
+    });
+  });
+
+  it('reads the history above the parent the input names, over the request’s', async () => {
+    const tars = mockTars();
+    const deps = makeDeps({
+      getMessages: jest.fn(async () => [
+        { messageId: 'p-0', parentMessageId: null, isCreatedByUser: true, text: 'earlier q' },
+        { messageId: 'p-1', parentMessageId: 'p-0', isCreatedByUser: false, text: 'earlier a' },
+      ]) as never,
+    });
+
+    await createTarsChatMirror(deps)(makeReq(), {
+      conversationId: nextConvo(),
+      query: 'q',
+      parentMessageId: 'p-1',
+      turn: answer('a'),
+    });
+
+    expect(JSON.parse(String(tars.message()?.message)).messages).toEqual([
+      { role: 'user', content: 'earlier q' },
+      { role: 'assistant', content: 'earlier a' },
+      { role: 'user', content: 'q' },
+    ]);
   });
 
   it('still mirrors the message when the history cannot be read', async () => {
@@ -420,6 +733,27 @@ describe('createTarsChatMirror', () => {
       expect(paths()).not.toContain('/api/memory/update');
     });
 
+    it.each([
+      ['a temporary chat the client flagged', { body: { isTemporary: true } }],
+      [
+        'a stored temporary chat continued without the flag',
+        { resolvedConversation: { isTemporary: true } },
+      ],
+      ['a compaction turn', { body: { compact: true } }],
+    ] as const)(
+      'does not mirror %s, whose usage is reported instead',
+      async (_label, overrides) => {
+        const { paths } = mockTars();
+        const req = memoryReq();
+        const body = { ...req.body, ...('body' in overrides ? overrides.body : {}) };
+        await createTarsChatMirror(memoryDeps())(
+          { ...req, ...overrides, body } as TarsMirrorRequest,
+          { conversationId: nextConvo(), query: 'hi', turn: answer('hello') },
+        );
+        expect(paths()).toEqual([]);
+      },
+    );
+
     it('does not teach from a message of attachments alone', async () => {
       const { paths } = mockTars();
       await createTarsChatMirror(memoryDeps())(memoryReq(), {
@@ -441,5 +775,83 @@ describe('createTarsChatMirror', () => {
       });
       expect(paths()).not.toContain('/api/memory/update');
     });
+  });
+});
+
+describe('toTarsResumedTurnMirror', () => {
+  const responseMessage = {
+    messageId: 'm-1',
+    model: 'gpt-5.4',
+    text: 'done',
+    unfinished: false,
+    attachments: [{ file_id: 'a-1' }],
+  };
+  const agent = { model_parameters: { model: 'gpt-5.4' } };
+
+  it('mirrors the finished turn once, without usage of its own, in its own branch', () => {
+    expect(
+      toTarsResumedTurnMirror({
+        conversationId: 'lc-c1',
+        conversation: {
+          title: 'Approved run',
+          model: 'gpt-5.4-mini',
+          domain_id: 'd-1',
+          tarsConversationId: 'tc-1',
+        },
+        userMessage: { text: 'run the tool', files: [{ file_id: 'f-1' }], parentMessageId: 'p-1' },
+        responseMessage,
+        client: { options: { agent } },
+        isTemporary: false,
+        outcome: { incomplete: false, stepLimitReached: false },
+      }),
+    ).toEqual({
+      conversationId: 'lc-c1',
+      existingTarsConversationId: 'tc-1',
+      title: 'Approved run',
+      model: 'gpt-5.4-mini',
+      domainId: 'd-1',
+      query: 'run the tool',
+      messageId: 'm-1',
+      parentMessageId: 'p-1',
+      turn: { response: responseMessage, files: [{ file_id: 'f-1' }], unfinished: false },
+      usageReported: true,
+      agent,
+      attachments: responseMessage.attachments,
+      outcome: { incomplete: false, stepLimitReached: false },
+    });
+  });
+
+  it('falls back to the response’s model and leaves the uploads to the request', () => {
+    expect(
+      toTarsResumedTurnMirror({
+        conversationId: 'lc-c1',
+        conversation: null,
+        userMessage: { text: 'q' },
+        responseMessage: { ...responseMessage, unfinished: true },
+      }),
+    ).toMatchObject({ model: 'gpt-5.4', turn: { files: undefined, unfinished: true } });
+  });
+
+  it.each([
+    ['a temporary chat', { isTemporary: true, responseMessage }],
+    ['a response without an id', { responseMessage: { text: 'x' } }],
+    ['no response', { responseMessage: null }],
+    ['nothing at all', undefined],
+  ])('mirrors nothing for %s', (_case, finished) => {
+    expect(toTarsResumedTurnMirror(finished)).toBeNull();
+  });
+
+  it('mirrors nothing, and does not fail the resumed turn, when the turn cannot be read', () => {
+    const unreadable = {
+      get responseMessage(): never {
+        throw new Error('unreadable');
+      },
+    };
+
+    expect(toTarsResumedTurnMirror(unreadable)).toBeNull();
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('resumed turn'),
+      expect.any(Error),
+    );
   });
 });
